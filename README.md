@@ -22,8 +22,9 @@
 1. 🐦 [What is Sparrow ?](#what-is-sparrow)
 2. 🔨 [Installation](#installation)
 3. 📖 [Env variables](#env-variables)
-4. 📣 [Subscribe to our Newsletter](#subscribe-to-our-newsletter)
-5. ❤️  [How to Contribute ?](#contributors)
+4. ❤️  [How to Contribute ?](#contributors)
+5. 📣 [Subscribe to our Newsletter](#subscribe-to-our-newsletter)
+
  
 ## <a name="what-is-sparrow">🐦 What is Sparrow ?</a>
  
