@@ -1,4 +1,4 @@
-name: Sparrow-Backend-Dev
+name: Development
 on:
   push:
     branches:
