@@ -1,4 +1,4 @@
-name: Sparrow-Backend-Prod
+name: Production
 on:
   push:
     branches:
