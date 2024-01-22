@@ -5,18 +5,38 @@ import {
   IsEnum,
   IsMongoId,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   ValidateNested,
 } from "class-validator";
 import { CollectionDto } from "./collection.model";
 import { ObjectId } from "mongodb";
-import { PermissionDto } from "./user.model";
 import { EnvironmentDto } from "./environment.model";
 
 export enum WorkspaceType {
   PERSONAL = "PERSONAL",
   TEAM = "TEAM",
+}
+
+export class UserDto {
+  @IsMongoId()
+  @IsNotEmpty()
+  id: string;
+
+  @IsNotEmpty()
+  @IsString()
+  role: string;
+}
+
+export class AdminDto {
+  @IsMongoId()
+  @IsNotEmpty()
+  id: string;
+
+  @IsNotEmpty()
+  @IsString()
+  name: string;
 }
 
 export class OwnerInformationDto {
@@ -33,18 +53,28 @@ export class OwnerInformationDto {
   type: WorkspaceType;
 }
 
+export class TeamInfoDto {
+  @IsMongoId()
+  @IsNotEmpty()
+  id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class Workspace {
   @IsString()
   @IsNotEmpty()
   name: string;
 
+  @IsNotEmpty()
+  @IsObject()
+  team: TeamInfoDto;
+
   @IsString()
   @IsOptional()
   description?: string;
-
-  @Type(() => OwnerInformationDto)
-  @IsNotEmpty()
-  owner: OwnerInformationDto;
 
   @IsArray()
   @Type(() => CollectionDto)
@@ -59,8 +89,16 @@ export class Workspace {
   environments?: EnvironmentDto[];
 
   @IsArray()
+  @Type(() => AdminDto)
+  @ValidateNested({ each: true })
   @IsOptional()
-  permissions?: PermissionDto[];
+  admins?: AdminDto[];
+
+  @IsArray()
+  @Type(() => UserDto)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  users?: UserDto[];
 
   @IsDate()
   @IsOptional()

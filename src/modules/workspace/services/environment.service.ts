@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import {
@@ -22,6 +23,8 @@ import {
 import { EnvironmentRepository } from "../repositories/environment.repository";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
+import { Workspace } from "@src/modules/common/models/workspace.model";
+import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
 
 /**
  * Environment Service
@@ -48,7 +51,7 @@ export class EnvironmentService {
       const user = this.contextService.get("user");
 
       if (type === EnvironmentType.LOCAL) {
-        await this.checkPermission(createEnvironmentDto.workspaceId, user._id);
+        await this.isWorkspaceAdminorEditor(createEnvironmentDto.workspaceId);
       }
 
       const newEnvironment: Environment = {
@@ -84,7 +87,7 @@ export class EnvironmentService {
    */
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
     const workspace = await this.workspaceReposistory.get(workspaceId);
-    const hasPermission = workspace.permissions.some((user) => {
+    const hasPermission = workspace.users.some((user) => {
       return user.id.toString() === userid.toString();
     });
     if (!hasPermission) {
@@ -101,8 +104,7 @@ export class EnvironmentService {
     id: string,
     workspaceId: string,
   ): Promise<DeleteResult> {
-    const user = this.contextService.get("user");
-    await this.checkPermission(workspaceId, user._id);
+    await this.isWorkspaceAdminorEditor(workspaceId);
     const data = await this.environmentRepository.delete(id);
     return data;
   }
@@ -137,8 +139,7 @@ export class EnvironmentService {
     updateEnvironmentDto: UpdateEnvironmentDto,
     workspaceId: string,
   ): Promise<UpdateResult> {
-    const user = this.contextService.get("user");
-    await this.checkPermission(workspaceId, user._id);
+    await this.isWorkspaceAdminorEditor(workspaceId);
     const data = await this.environmentRepository.update(
       environmentId,
       updateEnvironmentDto,
@@ -159,5 +160,27 @@ export class EnvironmentService {
     await this.checkPermission(workspaceId, user._id);
     const environment = await this.getEnvironment(environmentId);
     return environment;
+  }
+
+  /**
+   * Checks if user is admin or editor of workspace.
+   * @param id - Workspace id.
+   */
+  async isWorkspaceAdminorEditor(id: string): Promise<Workspace> {
+    const workspaceData = await this.workspaceReposistory.get(id);
+    const userId = this.contextService.get("user")._id;
+    if (workspaceData) {
+      for (const item of workspaceData.users) {
+        if (
+          item.id.toString() === userId.toString() &&
+          (item.role === WorkspaceRole.ADMIN ||
+            item.role === WorkspaceRole.EDITOR)
+        ) {
+          return workspaceData;
+        }
+      }
+      throw new BadRequestException("You don't have access for this Workspace");
+    }
+    throw new NotFoundException("Workspace doesn't exist");
   }
 }

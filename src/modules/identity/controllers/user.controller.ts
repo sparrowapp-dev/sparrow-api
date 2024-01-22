@@ -19,7 +19,6 @@ import {
 import { UserService } from "../services/user.service";
 import { RegisterPayload } from "../payloads/register.payload";
 import { UpdateUserDto } from "../payloads/user.payload";
-import { BlacklistGuard } from "@src/modules/common/guards/blacklist.guard";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
@@ -56,7 +55,7 @@ export class UserController {
       HttpStatusCode.CREATED,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Get(":userId")
@@ -64,7 +63,7 @@ export class UserController {
     summary: "Retrieve  User",
     description: "This will return  information about a specific user",
   })
-  @UseGuards(JwtAuthGuard, BlacklistGuard)
+  @UseGuards(JwtAuthGuard)
   async getUser(@Param("userId") id: string, @Res() res: FastifyReply) {
     const data = await this.userService.getUserById(id);
     const responseData = new ApiResponseService(
@@ -72,7 +71,7 @@ export class UserController {
       HttpStatusCode.OK,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Put(":userId")
@@ -92,7 +91,7 @@ export class UserController {
       HttpStatusCode.OK,
       user,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Delete(":userId")
@@ -108,7 +107,7 @@ export class UserController {
       HttpStatusCode.OK,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
   @Post("send-verification-email")
   @ApiOperation({
@@ -125,7 +124,7 @@ export class UserController {
       "Email Sent Successfully",
       HttpStatusCode.OK,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
   @Post("send-welcome-email")
   @ApiOperation({
@@ -142,7 +141,7 @@ export class UserController {
       "Email Sent Successfully",
       HttpStatusCode.OK,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
   @Get("logout")
   @ApiOperation({
@@ -164,7 +163,7 @@ export class UserController {
       "User Logout",
       HttpStatusCode.OK,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post("verify-email")
@@ -187,7 +186,7 @@ export class UserController {
       "Email Verified Successfully",
       HttpStatusCode.OK,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
   @Post("change-password")
   @ApiOperation({
@@ -208,6 +207,42 @@ export class UserController {
       "Password Updated",
       HttpStatusCode.OK,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get("application-details")
+  @ApiOperation({
+    summary: "Application Details",
+    description: "Application Details",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Application Details Retrieved Successfully",
+  })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async getApplicationDetails(@Res() res: FastifyReply) {
+    const data = {
+      version: "0.1.1",
+      notes: "See the assets to download this version and install.",
+      pub_date: "2023-06-13T05:12:10.282Z",
+      platforms: {
+        "windows-x86_64": {
+          signature:
+            "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRWDRzdDZJNWdOdGtNSXJUa1VYUVZiT1BHdExQS2JDRFRuWnQyWWhVZzlTVkNvK0lYY3lscVdJSTd3blMyMUQ3VGIxM0FISXAycDdkYWRQRjNWbURCcDJ0Mk1NWlJybkFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzA1MDQ0MDc2CWZpbGU6c3BhcnJvdy1hcHBfMC4wLjBfeDY0LXNldHVwLm5zaXMuemlwCnJMVzN1VUNaM256amlEdzdXdUhjMEFXdk8xd28veEtqYWNFUDJIV2wvM091Z0RTU1ZKK2dCMTk4S3ZNcXlzWDNabmhuVVdNbG42ckF2elRQbVZXckNBPT0K",
+          url: "https://appcenter-filemanagement-distrib3ede6f06e.azureedge.net/48c9ca97-5188-47e6-817f-35567accbd5b/Sparrow-app_0.0.0_x64_en-US.msi?sv=2019-02-02&sr=c&sig=9AjibRrKYjTcXXc8n0ZEWsgNTDZ2DKMJX4GUsLvSaYc%3D&se=2024-01-12T08%3A32%3A40Z&sp=r",
+        },
+        "darwin-aarch64": {
+          signature:
+            "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRSE1HWmJrS1Q4SzFzdFEwSjFhb0trQ29jZ3F3akZTMWlCMUF2enRBajRqZFo5SWFWNnV4R0o2UTFWR2dJV2RJK1lhTkFLV0ZHekJKWThESk4vTWxrSTRFb3l0VDRQc1FjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzA1MTc3MzA0CWZpbGU6c3BhcnJvdy1hcHAuYXBwLnRhci5negpMM2V0TnllTXlFWjBtVFBsZVc0SnI0MDZPdmpwbzFxd0JFOHVCMXozTm44ZE5zTmlNOENsbzlQSk1RLytLenRzRFdoQXR0LzhlR1I2d0tlQTlYS09DZz09Cg==",
+          url: "https://github.com/LordNayan/FindServer/blob/main/src/sparrow-app.app.tar.gz",
+        },
+        "darwin-x86_64": {
+          signature:
+            "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRSE1HWmJrS1Q4SzFzdFEwSjFhb0trQ29jZ3F3akZTMWlCMUF2enRBajRqZFo5SWFWNnV4R0o2UTFWR2dJV2RJK1lhTkFLV0ZHekJKWThESk4vTWxrSTRFb3l0VDRQc1FjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzA1MTc3MzA0CWZpbGU6c3BhcnJvdy1hcHAuYXBwLnRhci5negpMM2V0TnllTXlFWjBtVFBsZVc0SnI0MDZPdmpwbzFxd0JFOHVCMXozTm44ZE5zTmlNOENsbzlQSk1RLytLenRzRFdoQXR0LzhlR1I2d0tlQTlYS09DZz09Cg==",
+          url: "https://github.com/LordNayan/FindServer/blob/main/src/sparrow-app.app.tar.gz",
+        },
+      },
+    };
+    return res.status(HttpStatusCode.OK).send(data);
   }
 }

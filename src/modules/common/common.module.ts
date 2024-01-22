@@ -1,9 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { MongoClient, Db } from "mongodb";
 import { ContextService } from "./services/context.service";
-import { Redis } from "ioredis";
 import { ConfigService } from "@nestjs/config";
-import { RedisService } from "./services/redis.service";
 import { WorkspaceModule } from "../workspace/workspace.module";
 import { ApiResponseService } from "./services/api-response.service";
 import { ParserService } from "./services/parser.service";
@@ -30,16 +28,6 @@ import { ConsumerService } from "./services/kafka/consumer.service";
       },
     },
     {
-      provide: Redis,
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) =>
-        new Redis({
-          host: configService.get("redis.host"),
-          port: configService.get("redis.port"),
-          db: configService.get("redis.db"),
-        }),
-    },
-    {
       provide: "ErrorLogger",
       useValue: pino(
         {
@@ -54,7 +42,6 @@ import { ConsumerService } from "./services/kafka/consumer.service";
       ),
     },
     ContextService,
-    RedisService,
     ApiResponseService,
     ParserService,
     LoggingExceptionsFilter,
@@ -64,9 +51,7 @@ import { ConsumerService } from "./services/kafka/consumer.service";
   exports: [
     "DATABASE_CONNECTION",
     "ErrorLogger",
-    Redis,
     ContextService,
-    RedisService,
     ApiResponseService,
     ParserService,
     LoggingExceptionsFilter,

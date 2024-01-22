@@ -23,8 +23,6 @@ import { FastifyReply } from "fastify";
 import { EnvironmentService } from "../services/environment.service";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
-import { BlacklistGuard } from "@src/modules/common/guards/blacklist.guard";
-
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { EnvironmentType } from "@src/modules/common/models/environment.model";
 import { WorkspaceService } from "../services/workspace.service";
@@ -32,7 +30,7 @@ import { WorkspaceService } from "../services/workspace.service";
 @ApiBearerAuth()
 @ApiTags("environment")
 @Controller("api/workspace")
-@UseGuards(JwtAuthGuard, BlacklistGuard)
+@UseGuards(JwtAuthGuard)
 export class EnvironmentController {
   constructor(
     private readonly workspaceService: WorkspaceService,
@@ -69,7 +67,7 @@ export class EnvironmentController {
       HttpStatusCode.CREATED,
       environment,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Delete(":workspaceId/environment/:environmentId")
@@ -98,7 +96,7 @@ export class EnvironmentController {
       HttpStatusCode.OK,
       environment,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Get(":workspaceId/environment")
@@ -123,7 +121,7 @@ export class EnvironmentController {
       HttpStatusCode.OK,
       environment,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Put(":workspaceId/environment/:environmentId")
@@ -158,7 +156,7 @@ export class EnvironmentController {
       HttpStatusCode.OK,
       environment,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Get(":workspaceId/environment/:environmentId")
@@ -185,6 +183,6 @@ export class EnvironmentController {
       HttpStatusCode.OK,
       environment,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

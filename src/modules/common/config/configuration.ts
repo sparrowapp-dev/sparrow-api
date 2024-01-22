@@ -9,6 +9,8 @@ export default () => ({
     jwtExpirationTime: parseInt(process.env.JWT_EXPIRATION_TIME) || 1800,
     defaultWorkspaceName: "My Workspace",
     userBlacklistPrefix: "BL_",
+    defaultTeamNameSuffix: "'s Team",
+    imageSizeLimit: 102400,
     refreshTokenSecretKey: process.env.REFRESH_TOKEN_SECRET_KEY,
     emailValidationCodeExpirationTime: parseInt(
       process.env.EMAIL_VALIDATION_CODE_EXPIRY_TIME,
@@ -22,11 +24,6 @@ export default () => ({
   },
   db: {
     url: process.env.DB_URL,
-  },
-  redis: {
-    host: process.env.REDIS_HOST,
-    port: process.env.REDIS_PORT,
-    db: process.env.REDIS_DB,
   },
   oauth: {
     google: {

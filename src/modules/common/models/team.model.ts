@@ -3,6 +3,8 @@ import {
   IsDateString,
   IsMongoId,
   IsNotEmpty,
+  IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   ValidateNested,
@@ -12,10 +14,36 @@ import { Type } from "class-transformer";
 import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 
+export class logoDto {
+  @IsString()
+  @IsOptional()
+  bufferString?: string;
+
+  @IsString()
+  @IsOptional()
+  encoding?: string;
+
+  @IsString()
+  @IsOptional()
+  mimetype?: string;
+
+  @IsNumber()
+  @IsOptional()
+  size?: number;
+}
+
 export class Team {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsOptional()
+  @IsObject()
+  logo?: logoDto;
 
   @IsArray()
   @Type(() => WorkspaceDto)
@@ -26,11 +54,15 @@ export class Team {
   @IsArray()
   @Type(() => UserDto)
   @ValidateNested({ each: true })
-  @IsOptional()
-  users?: UserDto[];
+  users: UserDto[];
 
   @IsArray()
-  owners: string[];
+  @IsNotEmpty()
+  owner: string;
+
+  @IsArray()
+  @IsOptional()
+  admins?: string[];
 
   @IsDateString()
   createdAt: Date;
@@ -55,4 +87,8 @@ export class TeamDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role: string;
 }

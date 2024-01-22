@@ -62,9 +62,11 @@ export class WorkspaceRepository {
     return response;
   }
 
-  async findWorkspacesByIdArray(IdArray: Array<ObjectId>) {
+  async findWorkspacesByIdArray(
+    IdArray: Array<ObjectId>,
+  ): Promise<WithId<Workspace>[]> {
     const response = await this.db
-      .collection(Collections.WORKSPACE)
+      .collection<Workspace>(Collections.WORKSPACE)
       .find({ _id: { $in: IdArray } })
       .toArray();
     return response;
@@ -73,16 +75,16 @@ export class WorkspaceRepository {
   async updateWorkspaceById(
     id: ObjectId,
     updatedWorkspace: WorkspaceDtoForIdDocument,
-  ) {
+  ): Promise<WithId<Workspace>> {
     const response = await this.db
-      .collection(Collections.WORKSPACE)
+      .collection<Workspace>(Collections.WORKSPACE)
       .findOneAndUpdate(
         { _id: id },
         {
           $set: updatedWorkspace,
         },
       );
-    return response;
+    return response.value;
   }
 
   /**

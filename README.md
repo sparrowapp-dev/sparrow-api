@@ -1,12 +1,12 @@
 <p align="center">
-    <a href="https://sparrowapp.dev">
-    <img src="https://sparrowassets.blob.core.windows.net/publicassest/sparrow-logo.png" width="350" alt="logo"/>
-    </a>
-	<h4 align="center">One-stop API management tool </h4>
+<a href="https://sparrows-newsletter.beehiiv.com/subscribe">
+<img src="https://sparrowassets.blob.core.windows.net/publicassest/sparrow-logo.png" width="400" alt="logo"/>
+</a>
 </p>
-
  
-![screenshot](https://sparrowassets.blob.core.windows.net/publicassest/Improved-API-Workflow.png)
+<h1 align="center">
+One-stop API management tool
+</h1>
  
 ![TypeScript](https://img.shields.io/badge/-TypeScript-black?style=for-the-badge&logoColor=white&logo=typescript&color=2F73BF)
 ![Nest](https://img.shields.io/badge/-NestJs-black?style=for-the-badge&logo=nestjs&color=E0234D)
@@ -22,9 +22,9 @@
 1. 🐦 [What is Sparrow ?](#what-is-sparrow)
 2. 🔨 [Installation](#installation)
 3. 📖 [Env variables](#env-variables)
-4. ❤️  [How to Contribute ?](#contributors)
-5. 📣 [Subscribe to our Newsletter](#subscribe-to-our-newsletter)
-
+4. 📣 [Subscribe to our Newsletter](#subscribe-to-our-newsletter)
+5. ❤️ [How to Contribute ?](#contributors)
+6. ©️ [License](#license)
  
 ## <a name="what-is-sparrow">🐦 What is Sparrow ?</a>
  
@@ -42,7 +42,7 @@ Then, run the following commands :
  
 ```bash
 # Clone the repository
-git clone https://github.com/sparrowapp-dev/sparrow-api.git
+git clone https://github.com/techdome-io/sparrow-api.git
  
 # Move into the project directory
 cd sparrow-api
@@ -50,7 +50,7 @@ cd sparrow-api
 # Install PNPM globally
 npm i -g pnpm
 
-# Setup required components locally - Mongo, Kafka, Redis (Wait for 3-5 minutes after running this command)
+# Setup required components locally - Mongo, Kafka (Wait for 3-5 minutes after running this command)
 pnpm docker:up
 
 # Insatll dependencies
@@ -63,7 +63,7 @@ cp .env.example .env
 pnpm start:dev
 
 # Access swagger on localhost
-Go to http://localhost:9000/api/docs
+Go to http://localhost/api/docs
 
 #[OPTIONAL] In case you want to remove the local components, run the below command 
 pnpm docker:down
@@ -77,10 +77,10 @@ The above will start the app in development mode and watch for changes on local.
 1) "pnpm docker:up" command will expose the below components on respective ports, make sure you have those ports free on your system 
 
 	- 27017 (Mongo)
-	- 6379 (Redis)
-	- 9092 (Kafka)
+	- 2181 (Zookeeper)
+	- 29092, 9092, 9101 (Kafka)
 
-2) Wait for a minute after running "pnpm docker:up", so that kafka can initiate properly.
+2) Wait for 3-5 minutes after running "pnpm docker:up", so that kafka can initiate properly.
  
 ## <a name="env-variables">📖 Env variables</a>
  
@@ -88,8 +88,12 @@ All env variables are present in .env.example file which contains default values
 
 ## <a name="contributors">❤️ How to Contribue ?</a>
  
-You can checkout [Contributing Guidelines](./docs/CONTRIBUTING.md)
+![Atom](https://img.shields.io/badge/Coming%20Soon-%2366595C.svg?style=for-the-badge&logo=atom&logoColor=white)
  
 ## <a name="subscribe-to-our-newsletter">📣 Newsletter</a>
  
-Subscribe to our newsletter by applying [here!](https://sparrows-newsletter.beehiiv.com/subscribe)
+Subscribe to our newsletter by applying [here!](https://code.visualstudio.com/) 
+ 
+## <a name="license">©️ License</a>
+ 
+![Atom](https://img.shields.io/badge/Coming%20Soon-%2366595C.svg?style=for-the-badge&logo=atom&logoColor=white)

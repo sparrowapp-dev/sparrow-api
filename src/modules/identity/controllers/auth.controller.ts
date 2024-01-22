@@ -16,7 +16,7 @@ import {
 } from "@nestjs/swagger";
 import { AuthService } from "../services/auth.service";
 import { LoginPayload } from "../payloads/login.payload";
-import { FastifyReply, FastifyRequest } from "fastify";
+import { FastifyReply } from "fastify";
 import { RefreshTokenGuard } from "@src/modules/common/guards/refresh-token.guard";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
@@ -27,7 +27,7 @@ import { ConfigService } from "@nestjs/config";
 /**
  * Authentication Controller
  */
-export interface RefreshTokenRequest extends FastifyRequest {
+export interface RefreshTokenRequest {
   user: {
     _id: string;
     refreshToken: string;
@@ -76,12 +76,11 @@ export class AuthController {
       refreshToken,
     };
     const responseData = new ApiResponseService(
-      "Login Successfull",
+      "Login Successful",
       HttpStatusCode.OK,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
-    return data;
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post("/refresh-token")
@@ -110,7 +109,7 @@ export class AuthController {
       HttpStatusCode.OK,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   //initializes Google authentication
@@ -154,7 +153,7 @@ export class AuthController {
     const [accessToken, refreshToken] = await Promise.all(tokenPromises);
 
     const url = encodeURI(this.configService.get("oauth.google.redirectUrl"));
-    res.redirect(
+    return res.redirect(
       HttpStatusCode.MOVED_PERMANENTLY,
       `${url}?accessToken=${accessToken.token}&refreshToken=${refreshToken.token}`,
     );

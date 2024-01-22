@@ -24,7 +24,6 @@ import { CollectionService } from "../services/collection.service";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { WorkspaceService } from "../services/workspace.service";
-import { BlacklistGuard } from "@src/modules/common/guards/blacklist.guard";
 import {
   CollectionRequestDto,
   FolderPayload,
@@ -36,7 +35,7 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 @ApiBearerAuth()
 @ApiTags("collection")
 @Controller("api/collection")
-@UseGuards(JwtAuthGuard, BlacklistGuard)
+@UseGuards(JwtAuthGuard)
 export class collectionController {
   constructor(
     private readonly collectionService: CollectionService,
@@ -73,7 +72,7 @@ export class collectionController {
       HttpStatusCode.CREATED,
       collection,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Get(":workspaceId")
@@ -98,7 +97,7 @@ export class collectionController {
       HttpStatusCode.OK,
       collection,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Put(":collectionId/workspace/:workspaceId")
@@ -131,7 +130,7 @@ export class collectionController {
       HttpStatusCode.OK,
       collection,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
   @Delete(":collectionId/workspace/:workspaceId")
   @ApiOperation({
@@ -159,7 +158,7 @@ export class collectionController {
       HttpStatusCode.OK,
       collection,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post(":collectionId/workspace/:workspaceId/folder")
@@ -185,7 +184,7 @@ export class collectionController {
       HttpStatusCode.CREATED,
       newFolder,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Put(":collectionId/workspace/:workspaceId/folder/:folderId")
@@ -213,7 +212,7 @@ export class collectionController {
       HttpStatusCode.OK,
       updatedfolder,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Delete(":collectionId/workspace/:workspaceId/folder/:folderId")
@@ -239,7 +238,7 @@ export class collectionController {
       HttpStatusCode.OK,
       response,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post("request")
@@ -257,6 +256,9 @@ export class collectionController {
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
     const user = await this.contextService.get("user");
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(
+      requestDto.workspaceId,
+    );
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
     const noOfRequests = await this.collectionRequestService.getNoOfRequest(
       collectionId,
@@ -273,7 +275,7 @@ export class collectionController {
       HttpStatusCode.OK,
       requestObj,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Put("request/:requestId")
@@ -291,6 +293,9 @@ export class collectionController {
   ) {
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(
+      requestDto.workspaceId,
+    );
     const user = await this.contextService.get("user");
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
     const request = await this.collectionRequestService.updateRequest(
@@ -304,7 +309,7 @@ export class collectionController {
       HttpStatusCode.OK,
       request,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Delete("request/:requestId")
@@ -322,6 +327,9 @@ export class collectionController {
   ) {
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(
+      requestDto.workspaceId,
+    );
     const user = await this.contextService.get("user");
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
     const noOfRequests = await this.collectionRequestService.getNoOfRequest(
@@ -340,6 +348,6 @@ export class collectionController {
       HttpStatusCode.OK,
       collection,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

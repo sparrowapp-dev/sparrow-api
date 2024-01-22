@@ -74,7 +74,6 @@ export class ParserService {
           openApiDocument.tags.filter((tagObj) => {
             return tagObj.name === tag;
           });
-
         let folderObj: CollectionItem = folderObjMap.get(tag);
         if (!folderObj) {
           folderObj = {} as CollectionItem;
@@ -89,6 +88,7 @@ export class ParserService {
         folderObjMap.set(folderObj.name, folderObj);
       }
     }
+
     const itemObject = Object.fromEntries(folderObjMap);
     let items: CollectionItem[] = [];
     let totalRequests = 0;
@@ -146,6 +146,7 @@ export class ParserService {
       itemsObj.items = innerArray;
       newItems.push(itemsObj);
     }
+
     const collection: Collection = {
       name: openApiDocument.info.title,
       totalRequests,
@@ -157,6 +158,7 @@ export class ParserService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+
     if (existingCollection) {
       await this.collectionService.updateImportedCollection(
         existingCollection._id.toString(),
@@ -167,7 +169,11 @@ export class ParserService {
       const newCollection = await this.collectionService.importCollection(
         collection,
       );
-      return { id: newCollection.insertedId.toString(), name: collection.name };
+
+      return {
+        id: newCollection.insertedId.toString(),
+        name: collection.name,
+      };
     }
   }
   handleCircularReference(obj: CollectionItem) {
@@ -193,7 +199,7 @@ export class ParserService {
           newItems.map((item) => [
             item.type === ItemTypeEnum.FOLDER
               ? item.name
-              : item.name + item.request.method,
+              : item.name + item.request?.method,
             item,
           ]),
         )
@@ -203,7 +209,7 @@ export class ParserService {
           existingitems.map((item) => [
             item.type === ItemTypeEnum.FOLDER
               ? item.name
-              : item.name + item.request.method,
+              : item.name + item.request?.method,
             item,
           ]),
         )
@@ -214,14 +220,14 @@ export class ParserService {
         newItemMap.has(
           existingItem.type === ItemTypeEnum.FOLDER
             ? existingItem.name
-            : existingItem.name + existingItem.request.method,
+            : existingItem.name + existingItem.request?.method,
         )
       ) {
         return {
           ...newItemMap.get(
             existingItem.type === ItemTypeEnum.FOLDER
               ? existingItem.name
-              : existingItem.name + existingItem.request.method,
+              : existingItem.name + existingItem.request?.method,
           ),
           isDeleted: false,
         };
@@ -251,7 +257,7 @@ export class ParserService {
     if (openApiDocument.host) {
       return "https://" + openApiDocument.host + basePath;
     } else {
-      return "https://localhost:{{PORT}}" + basePath;
+      return "http://localhost:{{PORT}}" + basePath;
     }
   }
 }

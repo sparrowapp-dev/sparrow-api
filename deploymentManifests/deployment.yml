@@ -114,21 +114,6 @@ spec:
               secretKeyRef:
                 name: sparrow-api-secret
                 key:  GOOGLE_CLIENT_SECRET
-          - name:  REDIS_HOST
-            valueFrom:
-              secretKeyRef:
-                name: sparrow-api-secret
-                key:  REDIS_HOST
-          - name:  REDIS_PORT
-            valueFrom:
-              secretKeyRef:
-                name: sparrow-api-secret
-                key:  REDIS_PORT
-          - name:  REDIS_DB
-            valueFrom:
-              secretKeyRef:
-                name: sparrow-api-secret
-                key:  REDIS_DB
           - name: KAFKA_BROKER
             valueFrom:
               secretKeyRef:

@@ -13,6 +13,7 @@ import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { User } from "@src/modules/common/models/user.model";
 import { Team } from "@src/modules/common/models/team.model";
 import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
+import { TeamRole } from "@src/modules/common/enum/roles.enum";
 
 /**
  * Team Service
@@ -44,13 +45,16 @@ export class TeamRepository {
           id: user._id,
           email: user.email,
           name: user.name,
+          role: TeamRole.OWNER,
         },
       ],
       workspaces: [] as WorkspaceDto[],
-      owners: [user._id],
+      owner: user._id.toString(),
+      admins: [] as string[],
       createdBy: user._id,
       createdAt: new Date(),
       updatedAt: new Date(),
+      updatedBy: user._id,
     };
 
     const createdTeam = await this.db
@@ -59,15 +63,6 @@ export class TeamRepository {
         ...teamData,
         ...params,
       });
-
-    await this.db.collection<User>(Collections.USER).updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          teams: [{ id: createdTeam.insertedId, name: teamData.name }],
-        },
-      },
-    );
     return createdTeam;
   }
 
@@ -126,16 +121,6 @@ export class TeamRepository {
       );
     }
     return deletedTeam;
-  }
-
-  async HasPermission(data: Array<string>): Promise<boolean> {
-    const user = this.contextService.get("user");
-    for (const item of data) {
-      if (item.toString() === user._id.toString()) {
-        return true;
-      }
-    }
-    throw new BadRequestException("You don't have access");
   }
 
   async findTeamByTeamId(id: ObjectId): Promise<WithId<Team>> {
