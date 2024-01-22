@@ -25,10 +25,11 @@
       "@auth/*": ["src/modules/auth/*"],
       "@common/*": ["src/modules/common/*"],
       "@user/*": ["src/modules/user/*"],
-      "@winston/*": ["src/modules/winston/*"],
-    }
+      "@winston/*": ["src/modules/winston/*"]
+    },
+    "resolveJsonModule": true
   },
   "exclude": [
-    "node_modules",
+    "node_modules"
   ]
 }

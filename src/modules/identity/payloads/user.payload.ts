@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { TeamDto } from "@src/modules/common/models/team.model";
-import { PermissionDto } from "@src/modules/common/models/user.model";
+import { UserWorkspaceDto } from "@src/modules/common/models/user.model";
 import { Type } from "class-transformer";
 import {
   IsArray,
@@ -9,6 +9,8 @@ import {
   IsOptional,
   IsString,
   Matches,
+  ValidateNested,
+  // ValidateNested,
 } from "class-validator";
 
 export class UpdateUserDto {
@@ -35,11 +37,12 @@ export class UserDto {
 
   @IsArray()
   @IsOptional()
-  @Type(() => PermissionDto)
-  permissions?: PermissionDto[];
-
-  @IsArray()
-  @IsOptional()
   @Type(() => TeamDto)
   teams?: TeamDto[];
+
+  @IsArray()
+  @Type(() => UserWorkspaceDto)
+  @IsOptional()
+  @ValidateNested({ each: true })
+  workspaces?: UserWorkspaceDto[];
 }

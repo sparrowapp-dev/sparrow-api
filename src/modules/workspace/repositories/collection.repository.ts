@@ -21,6 +21,7 @@ import {
   CollectionRequestItem,
 } from "../payloads/collectionRequest.payload";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
+import { Workspace } from "@src/modules/common/models/workspace.model";
 @Injectable()
 export class CollectionRepository {
   constructor(
@@ -241,10 +242,18 @@ export class CollectionRepository {
     }
   }
 
-  async getActiveSyncedCollection(uuid: string): Promise<WithId<Collection>> {
-    const data = await this.db
-      .collection<Collection>(Collections.COLLECTION)
-      .findOne({ uuid });
-    return data;
+  async getActiveSyncedCollection(title: string): Promise<WithId<Collection>> {
+    const workspaceDetails = await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .findOne(
+        { "collection.name": title },
+        { projection: { "collection.$": 1 } },
+      );
+    if (workspaceDetails) {
+      const data = await this.db
+        .collection<Collection>(Collections.COLLECTION)
+        .findOne({ _id: workspaceDetails.collection[0].id });
+      return data;
+    }
   }
 }

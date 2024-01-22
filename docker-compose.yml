@@ -1,19 +1,6 @@
 version: "3.8"
 
 services:
-  # Redis
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-    networks:
-      - localnet
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256M
-
   # MongoDB
   mongo:
     image: mongo:7.0

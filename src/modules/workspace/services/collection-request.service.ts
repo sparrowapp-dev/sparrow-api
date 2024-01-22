@@ -21,6 +21,7 @@ import {
   SourceTypeEnum,
 } from "@src/modules/common/models/collection.model";
 import { CollectionService } from "./collection.service";
+import { WorkspaceService } from "./workspace.service";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -28,9 +29,11 @@ export class CollectionRequestService {
     private readonly workspaceReposistory: WorkspaceRepository,
     private readonly contextService: ContextService,
     private readonly collectionService: CollectionService,
+    private readonly workspaceService: WorkspaceService,
   ) {}
 
   async addFolder(payload: FolderDto): Promise<CollectionItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
     const user = await this.contextService.get("user");
     const uuid = uuidv4();
     await this.checkPermission(payload.workspaceId, user._id);
@@ -62,6 +65,7 @@ export class CollectionRequestService {
   }
 
   async updateFolder(payload: FolderDto): Promise<CollectionItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
     const user = await this.contextService.get("user");
     await this.checkPermission(payload.workspaceId, user._id);
     const collection = await this.collectionReposistory.getCollection(
@@ -84,6 +88,7 @@ export class CollectionRequestService {
   async deleteFolder(
     payload: DeleteFolderDto,
   ): Promise<UpdateResult<Collection>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
     const user = await this.contextService.get("user");
     await this.checkPermission(payload.workspaceId, user._id);
     const collection = await this.collectionReposistory.getCollection(
@@ -105,7 +110,7 @@ export class CollectionRequestService {
 
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
     const workspace = await this.workspaceReposistory.get(workspaceId);
-    const hasPermission = workspace.permissions.some((user) => {
+    const hasPermission = workspace.users.some((user) => {
       return user.id.toString() === userid.toString();
     });
     if (!hasPermission) {

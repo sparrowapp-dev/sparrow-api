@@ -1,33 +1,21 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { WorkspaceType } from "@src/modules/common/models/workspace.model";
+import { AdminDto } from "@src/modules/common/models/workspace.model";
 import {
   IsArray,
   IsDateString,
-  IsEnum,
+  IsEmail,
   IsMongoId,
   IsNotEmpty,
   IsOptional,
   IsString,
+  ValidateNested,
 } from "class-validator";
-import { PermissionDto } from "./permission.payload";
+import { Type } from "class-transformer";
 
 export class WorkspaceDto {
-  @ApiProperty({ example: "64f878a0293b1e4415866493" })
-  @IsMongoId()
-  @IsOptional()
-  id?: string;
-
-  @IsArray()
-  @IsOptional()
-  owners?: string[];
-
   @IsOptional()
   @IsArray()
   users?: string[];
-
-  @IsOptional()
-  @IsArray()
-  permissions?: PermissionDto[];
 
   @IsDateString()
   @IsOptional()
@@ -39,19 +27,17 @@ export class WorkspaceDto {
 }
 
 export class CreateWorkspaceDto extends WorkspaceDto {
+  @ApiProperty({ example: "64f878a0293b1e4415866493" })
+  @IsMongoId()
+  @IsNotEmpty()
+  id: string;
+
   @ApiProperty({
     example: "workspace 1",
   })
   @IsString()
   @IsNotEmpty()
   name: string;
-
-  @ApiProperty({
-    example: WorkspaceType.TEAM,
-  })
-  @IsEnum(WorkspaceType)
-  @IsNotEmpty()
-  type: WorkspaceType;
 }
 
 export class UpdateWorkspaceDto extends WorkspaceDto {
@@ -70,6 +56,16 @@ export class UpdateWorkspaceDto extends WorkspaceDto {
   description?: string;
 }
 
+export class UserDto {
+  @IsMongoId()
+  @IsNotEmpty()
+  id: string;
+
+  @IsNotEmpty()
+  @IsString()
+  role: string;
+}
+
 export class WorkspaceDtoForIdDocument {
   @IsMongoId()
   @IsOptional()
@@ -79,21 +75,17 @@ export class WorkspaceDtoForIdDocument {
   @IsNotEmpty()
   name?: string;
 
-  @IsEnum(WorkspaceType)
-  @IsNotEmpty()
-  type?: WorkspaceType;
+  @IsArray()
+  @Type(() => AdminDto)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  admins?: AdminDto[];
 
   @IsArray()
+  @Type(() => UserDto)
+  @ValidateNested({ each: true })
   @IsOptional()
-  owners?: string[];
-
-  @IsOptional()
-  @IsArray()
-  users?: string[];
-
-  @IsOptional()
-  @IsArray()
-  permissions?: PermissionDto[];
+  users?: UserDto[];
 
   @IsDateString()
   @IsOptional()
@@ -102,4 +94,26 @@ export class WorkspaceDtoForIdDocument {
   @IsMongoId()
   @IsOptional()
   createdBy?: string;
+}
+
+export class workspaceUsersResponseDto {
+  @IsMongoId()
+  @IsNotEmpty()
+  id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role: string;
+
+  @IsMongoId()
+  @IsNotEmpty()
+  workspaceId: string;
 }

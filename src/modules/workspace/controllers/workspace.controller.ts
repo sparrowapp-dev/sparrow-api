@@ -22,9 +22,10 @@ import {
   CreateWorkspaceDto,
   UpdateWorkspaceDto,
 } from "../payloads/workspace.payload";
-import { BlacklistGuard } from "../../common/guards/blacklist.guard";
-import { PermissionService } from "../services/permission.service";
-import { AddWorkspaceUserDto } from "../payloads/workspaceUser.payload";
+import {
+  AddWorkspaceUserDto,
+  UserWorkspaceRoleDto,
+} from "../payloads/workspaceUser.payload";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
@@ -49,11 +50,10 @@ import { BodyModeEnum } from "@src/modules/common/models/collection.model";
 @ApiBearerAuth()
 @ApiTags("workspace")
 @Controller("api/workspace")
-@UseGuards(JwtAuthGuard, BlacklistGuard)
+@UseGuards(JwtAuthGuard)
 export class WorkSpaceController {
   constructor(
     private readonly workspaceService: WorkspaceService,
-    private readonly permissionService: PermissionService,
     private readonly parserService: ParserService,
     private readonly collectionService: CollectionService,
   ) {}
@@ -79,7 +79,7 @@ export class WorkSpaceController {
       HttpStatusCode.CREATED,
       workspace,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Get(":workspaceId")
@@ -99,12 +99,13 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
+
   @Get("user/:userId")
   @ApiOperation({
     summary: "Retreive all User's Workspaces",
-    description: "This will retrieve all User's Wprkspaces",
+    description: "This will retrieve all workspaces of a user",
   })
   @ApiResponse({
     status: 200,
@@ -124,20 +125,47 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
-  @Get("team/:teamId")
+
+  @Get(":workspaceId/users")
   @ApiOperation({
-    summary: "Retreive all Team's Workspaces",
-    description: "This will retrieve all Team's Workspaces",
+    summary: "Retreive all workspace users",
+    description: "This will retrieve all the User's of a single Workspace",
   })
   @ApiResponse({
     status: 200,
-    description: "All Workspace Of Team Received Successfully",
+    description: "All Users of a workspace fetched Successfully",
   })
   @ApiResponse({
     status: 400,
-    description: "Fetching All Team Workspaces Request Failed",
+    description: "Fetching to fetch all users of a workspace",
+  })
+  async getAllWorkspaceUsers(
+    @Param("workspaceId") workspaceId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.workspaceService.getAllWorkspaceUsers(workspaceId);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      data,
+    );
+    res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get("team/:teamId")
+  @ApiOperation({
+    summary: "Retreive Team's all Workspaces",
+    description: "This will retrieve Team's all Workspaces",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "All Workspaces Of a Team Received Successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to receive all workspaces of a team",
   })
   async getTeamWorkspaces(
     @Param("teamId") teamId: string,
@@ -149,8 +177,9 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       data,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
+
   @Put(":workspaceId")
   @ApiOperation({
     summary: "Update a Workspace",
@@ -171,13 +200,13 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       workspace,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Delete(":workspaceId")
   @ApiOperation({
     summary: "Delete a Workspace",
-    description: "This will delete a  User's Workspace",
+    description: "This will delete a User's Workspace",
   })
   @ApiResponse({ status: 200, description: "Workspace Deleted Successfully" })
   @ApiResponse({ status: 400, description: "Delete Workspace Failed" })
@@ -191,20 +220,52 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       data,
     );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post(":workspaceId/user")
+  @ApiOperation({
+    summary: "Add Users in Workspace",
+    description: "You can add multiple users to your Workspace",
+  })
+  @ApiResponse({ status: 201, description: "Users Added Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Add Users" })
+  async addUserWorkspace(
+    @Param("workspaceId") workspaceId: string,
+    @Body() payload: AddWorkspaceUserDto,
+    @Res() res: FastifyReply,
+  ) {
+    const params = {
+      users: payload.users,
+      workspaceId: workspaceId,
+      role: payload.role,
+    };
+    const response = await this.workspaceService.addUserInWorkspace(params);
+    const workspace = await this.workspaceService.get(workspaceId);
+    const data = {
+      ...workspace,
+      ...response,
+    };
+    const responseData = new ApiResponseService(
+      "User Added",
+      HttpStatusCode.OK,
+      data,
+    );
     res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Post(":workspaceId/user/:userId")
+  @Put(":workspaceId/user/:userId")
   @ApiOperation({
-    summary: "Add a User in  Workspace",
-    description: "You can add another user to your Workspace",
+    summary: "Change Role of User",
+    description:
+      "You can change role of user in your Workspace from editor to viewer or vice-versa",
   })
-  @ApiResponse({ status: 201, description: "User Added Successfully" })
-  @ApiResponse({ status: 400, description: "Failed to Add User" })
-  async addUserWorkspace(
+  @ApiResponse({ status: 201, description: "User Role Change Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Change Role" })
+  async changeUserRoleInWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Param("userId") userId: string,
-    @Body() data: AddWorkspaceUserDto,
+    @Body() data: UserWorkspaceRoleDto,
     @Res() res: FastifyReply,
   ) {
     const params = {
@@ -212,14 +273,14 @@ export class WorkSpaceController {
       workspaceId: workspaceId,
       role: data.role,
     };
-    await this.permissionService.create(params);
+    await this.workspaceService.changeUserRole(params);
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
-      "User Added",
+      "Role Changed",
       HttpStatusCode.OK,
       workspace,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Delete(":workspaceId/user/:userId")
@@ -238,15 +299,14 @@ export class WorkSpaceController {
       userId: userId,
       workspaceId: workspaceId,
     };
-    const data = await this.permissionService.removeSinglePermissionInWorkspace(
-      params,
-    );
+    await this.workspaceService.removeUserFromWorkspace(params);
+    const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
       "User Removed",
       HttpStatusCode.OK,
-      data,
+      workspace,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post(":workspaceId/importFile/collection")
@@ -282,7 +342,7 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       collection,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post(":workspaceId/importUrl/collection")
@@ -313,7 +373,7 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       collectionObj,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post(":workspaceId/importJson/collection")
@@ -351,6 +411,6 @@ export class WorkSpaceController {
       HttpStatusCode.OK,
       collection,
     );
-    res.status(responseData.httpStatusCode).send(responseData);
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 }
