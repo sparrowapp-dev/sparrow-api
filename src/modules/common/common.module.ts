@@ -21,7 +21,7 @@ import { ConsumerService } from "./services/kafka/consumer.service";
       useFactory: async (configService: ConfigService): Promise<Db> => {
         try {
           const client = await MongoClient.connect(configService.get("db.url"));
-          return client.db();
+          return client.db("sparrow");
         } catch (e) {
           throw e;
         }
