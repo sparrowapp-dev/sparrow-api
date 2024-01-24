@@ -33,12 +33,8 @@ Sparrow is your next go to API development buddy which can help you test, debug,
  
 To install this project, you must have the following installed on your machine :
 
-<a href="https://www.docker.com/products/docker-desktop/">
 ![Docker](https://img.shields.io/badge/-Docker-black?style=for-the-badge&logoColor=white&logo=docker&color=2496ED)
-<a>
-<a href="https://nodejs.org/en/download">
 ![NODE](https://img.shields.io/badge/-Node.js-black?style=for-the-badge&logoColor=white&logo=nodedotjs&color=339933)
-<a>
 ![NPM](https://img.shields.io/badge/-NPM-black?style=for-the-badge&logoColor=white&logo=npm&color=CB3837)
  
 Then, run the following commands :
