@@ -17,7 +17,7 @@ spec:
         app: sparrow-api
     spec:
       containers:
-      - image: sparrowdev.azurecr.io/sparrow-api:_BUILD__ID_
+      - image: sparrowprod.azurecr.io/sparrow-api:_BUILD__ID_
         name: sparrow-api
         imagePullPolicy: Always
         resources: {}
