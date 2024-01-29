@@ -78,6 +78,7 @@ export class TeamService {
       id: createdTeam.insertedId,
       name: teamData.name,
       role: TeamRole.OWNER,
+      isNewInvite: false,
     });
     const updatedUserParams = {
       teams: updatedUserTeams,
@@ -174,6 +175,11 @@ export class TeamService {
     const teams: WithId<Team>[] = [];
     for (const { id } of user.teams) {
       const teamData = await this.get(id.toString());
+      user.teams.forEach((team) => {
+        if (team.id.toString() === teamData._id.toString()) {
+          teamData.isNewInvite = team?.isNewInvite;
+        }
+      });
       teams.push(teamData);
     }
     return teams;
