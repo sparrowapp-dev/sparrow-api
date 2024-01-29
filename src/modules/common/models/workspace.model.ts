@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsDate,
+  IsEmail,
   IsEnum,
   IsMongoId,
   IsNotEmpty,
@@ -27,6 +28,14 @@ export class UserDto {
   @IsNotEmpty()
   @IsString()
   role: string;
+
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }
 
 export class AdminDto {

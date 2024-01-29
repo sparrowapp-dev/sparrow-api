@@ -19,7 +19,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { TeamService } from "../services/team.service";
-import { CreateOrUpdateTeamDto } from "../payloads/team.payload";
+import { CreateOrUpdateTeamDto, UpdateTeamDto } from "../payloads/team.payload";
 import { TeamUserService } from "../services/team-user.service";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -99,6 +99,48 @@ export class TeamController {
       "Success",
       HttpStatusCode.OK,
       data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Put(":teamId")
+  @ApiOperation({
+    summary: "Update a Team",
+    description: "This will update a Team",
+  })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        image: {
+          type: "file",
+        },
+        name: {
+          type: "string",
+        },
+        description: {
+          type: "string",
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor("image"))
+  @ApiResponse({ status: 201, description: "Team Updated Successfully" })
+  @ApiResponse({ status: 400, description: "Updated Team Failed" })
+  async updateTeam(
+    @Param("teamId") teamId: string,
+    @Body() updateTeamDto: UpdateTeamDto,
+    @Res() res: FastifyReply,
+    @UploadedFile()
+    image: MemoryStorageFile,
+  ) {
+    await this.teamService.update(teamId, updateTeamDto, image);
+    const team = await this.teamService.get(teamId);
+    const responseData = new ApiResponseService(
+      "Team Updated",
+      HttpStatusCode.CREATED,
+      team,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
