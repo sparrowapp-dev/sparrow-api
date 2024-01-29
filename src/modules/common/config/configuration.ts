@@ -37,4 +37,20 @@ export default () => ({
   kafka: {
     broker: process.env.KAFKA_BROKER,
   },
+  updater: {
+    updateAvailable: process.env.APP_UPDATE_AVAILABLE,
+    appVersion: process.env.APP_VERSION,
+    windows: {
+      appSignature: process.env.WINDOWS_APP_SIGNATURE,
+      appUrl: process.env.WINDOWS_APP_URL,
+    },
+    macM1: {
+      appSignature: process.env.MAC_M1_APP_SIGNATURE,
+      appUrl: process.env.MAC_M1_APP_URL,
+    },
+    macIntel: {
+      appSignature: process.env.MAC_INTEL_APP_SIGNATURE,
+      appUrl: process.env.MAC_INTEL_APP_URL,
+    },
+  },
 });
