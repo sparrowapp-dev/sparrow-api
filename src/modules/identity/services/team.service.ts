@@ -16,6 +16,7 @@ import { UserRepository } from "../repositories/user.repository";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { User } from "@src/modules/common/models/user.model";
 
 /**
  * Team Service
@@ -221,5 +222,28 @@ export class TeamService {
       }
     }
     return false;
+  }
+
+  /**
+   * disable Team new invite tag
+   * @returns {Promise<IUser>} queried user data
+   */
+  async disableTeamNewInvite(
+    userId: string,
+    teamId: string,
+    user: WithId<User>,
+  ): Promise<Team> {
+    console.log({ userId, teamId, user });
+    const teams = user.teams.map((team) => {
+      if (team.id.toString() === teamId) {
+        team.isNewInvite = false;
+      }
+      return team;
+    });
+    await this.userRespository.updateUserById(new ObjectId(userId), {
+      teams,
+    });
+    const teamDetails = await this.teamRepository.get(teamId);
+    return teamDetails;
   }
 }
