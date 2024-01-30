@@ -4,7 +4,6 @@ import { UserWorkspaceDto } from "@src/modules/common/models/user.model";
 import { Type } from "class-transformer";
 import {
   IsArray,
-  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -46,8 +45,4 @@ export class UserDto {
   @IsOptional()
   @ValidateNested({ each: true })
   workspaces?: UserWorkspaceDto[];
-
-  @IsBoolean()
-  @IsOptional()
-  isNewInvite?: boolean;
 }

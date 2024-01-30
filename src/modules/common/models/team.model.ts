@@ -78,7 +78,9 @@ export class Team {
   @IsString()
   @IsOptional()
   updatedBy?: string;
+}
 
+export class TeamWithNewInviteTag extends Team {
   @IsBoolean()
   @IsOptional()
   isNewInvite?: boolean;
