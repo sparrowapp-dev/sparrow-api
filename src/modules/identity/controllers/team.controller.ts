@@ -321,7 +321,7 @@ export class TeamController {
 
   @Get(":teamId/user/:userId/disableTeamNewInvite")
   @ApiOperation({
-    summary: "Disable new Invite teag",
+    summary: "Disable new Invite tag",
     description: "This will return  information about a specific user",
   })
   async disableTeamNewInvite(
