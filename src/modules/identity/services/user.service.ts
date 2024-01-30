@@ -80,11 +80,6 @@ export class UserService {
    * @returns {Promise<IUser>} created user data
    */
   async createUser(payload: RegisterPayload) {
-    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}$/;
-    // Test the password against the regex
-    if (!passwordRegex.test(payload.password)) {
-      throw new BadRequestException("Password Invalid");
-    }
     const user = await this.getUserByEmail(payload.email);
     if (user) {
       throw new BadRequestException(
