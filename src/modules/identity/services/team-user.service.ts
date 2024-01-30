@@ -149,6 +149,7 @@ export class TeamUserService {
         name: teamData.name,
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
+        isNewInvite: true,
       });
       if (payload.role === TeamRole.ADMIN) {
         teamAdmins.push(userData._id.toString());

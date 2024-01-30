@@ -8,7 +8,10 @@ import {
   UpdateResult,
   WithId,
 } from "mongodb";
-import { Team } from "@src/modules/common/models/team.model";
+import {
+  Team,
+  TeamWithNewInviteTag,
+} from "@src/modules/common/models/team.model";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { ConfigService } from "@nestjs/config";
@@ -16,6 +19,7 @@ import { UserRepository } from "../repositories/user.repository";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { User } from "@src/modules/common/models/user.model";
 
 /**
  * Team Service
@@ -78,6 +82,7 @@ export class TeamService {
       id: createdTeam.insertedId,
       name: teamData.name,
       role: TeamRole.OWNER,
+      isNewInvite: false,
     });
     const updatedUserParams = {
       teams: updatedUserTeams,
@@ -173,7 +178,14 @@ export class TeamService {
     }
     const teams: WithId<Team>[] = [];
     for (const { id } of user.teams) {
-      const teamData = await this.get(id.toString());
+      const teamData: WithId<TeamWithNewInviteTag> = await this.get(
+        id.toString(),
+      );
+      user.teams.forEach((team) => {
+        if (team.id.toString() === teamData._id.toString()) {
+          teamData.isNewInvite = team?.isNewInvite;
+        }
+      });
       teams.push(teamData);
     }
     return teams;
@@ -215,5 +227,27 @@ export class TeamService {
       }
     }
     return false;
+  }
+
+  /**
+   * Disable team new invite tag
+   * @returns {Promise<IUser>} queried team data
+   */
+  async disableTeamNewInvite(
+    userId: string,
+    teamId: string,
+    user: WithId<User>,
+  ): Promise<Team> {
+    const teams = user.teams.map((team) => {
+      if (team.id.toString() === teamId) {
+        team.isNewInvite = false;
+      }
+      return team;
+    });
+    await this.userRespository.updateUserById(new ObjectId(userId), {
+      teams,
+    });
+    const teamDetails = await this.teamRepository.get(teamId);
+    return teamDetails;
   }
 }

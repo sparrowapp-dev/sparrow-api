@@ -31,6 +31,7 @@ import {
   MemoryStorageFile,
   UploadedFile,
 } from "@blazity/nest-file-fastify";
+import { UserService } from "../services/user.service";
 /**
  * Team Controller
  */
@@ -42,6 +43,7 @@ export class TeamController {
   constructor(
     private readonly teamService: TeamService,
     private readonly teamUserService: TeamUserService,
+    private readonly userService: UserService,
   ) {}
 
   @Post()
@@ -315,5 +317,30 @@ export class TeamController {
       team,
     );
     res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get(":teamId/user/:userId/disableTeamNewInvite")
+  @ApiOperation({
+    summary: "Disable new Invite tag",
+    description: "This will return  information about a specific user",
+  })
+  async disableTeamNewInvite(
+    @Param("userId") userId: string,
+    @Param("teamId") teamId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const user = await this.userService.getUserById(userId);
+    const data = await this.teamService.disableTeamNewInvite(
+      userId,
+      teamId,
+      user,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      data,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 }
