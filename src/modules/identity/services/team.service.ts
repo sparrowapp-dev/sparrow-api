@@ -226,7 +226,7 @@ export class TeamService {
 
   /**
    * Disable team new invite tag
-   * @returns {Promise<IUser>} queried user data
+   * @returns {Promise<IUser>} queried team data
    */
   async disableTeamNewInvite(
     userId: string,
