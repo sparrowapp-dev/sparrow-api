@@ -225,7 +225,7 @@ export class TeamService {
   }
 
   /**
-   * disable Team new invite tag
+   * Disable team new invite tag
    * @returns {Promise<IUser>} queried user data
    */
   async disableTeamNewInvite(
@@ -233,7 +233,6 @@ export class TeamService {
     teamId: string,
     user: WithId<User>,
   ): Promise<Team> {
-    console.log({ userId, teamId, user });
     const teams = user.teams.map((team) => {
       if (team.id.toString() === teamId) {
         team.isNewInvite = false;
