@@ -119,7 +119,50 @@ spec:
               secretKeyRef:
                 name: sparrow-api-secret
                 key: KAFKA_BROKER
-                                                                             
+          - name:  REFRESH_TOKEN_MAX_LIMIT
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+          - name:  APP_UPDATE_AVAILABLE
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  APP_UPDATE_AVAILABLE
+          - name:  APP_VERSION
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  APP_VERSION   
+          - name:  WINDOWS_APP_SIGNATURE
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  WINDOWS_APP_SIGNATURE                                                                                         
+          - name:  WINDOWS_APP_URL
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  WINDOWS_APP_URL        
+          - name:  MAC_M1_APP_SIGNATURE
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  MAC_M1_APP_SIGNATURE        
+          - name:  MAC_M1_APP_URL
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  MAC_M1_APP_URL      
+          - name:  MAC_INTEL_APP_SIGNATURE
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  MAC_INTEL_APP_SIGNATURE       
+          - name:  MAC_INTEL_APP_URL
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  MAC_INTEL_APP_URL       
 ---
 
 apiVersion: v1
