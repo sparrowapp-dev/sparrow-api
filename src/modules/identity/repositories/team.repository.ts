@@ -8,7 +8,11 @@ import {
   WithId,
 } from "mongodb";
 import { ContextService } from "@src/modules/common/services/context.service";
-import { CreateOrUpdateTeamDto, TeamDto } from "../payloads/team.payload";
+import {
+  CreateOrUpdateTeamDto,
+  TeamDto,
+  UpdateTeamDto,
+} from "../payloads/team.payload";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { User } from "@src/modules/common/models/user.model";
 import { Team } from "@src/modules/common/models/team.model";
@@ -91,7 +95,7 @@ export class TeamRepository {
    */
   async update(
     id: string,
-    payload: CreateOrUpdateTeamDto,
+    payload: UpdateTeamDto,
   ): Promise<UpdateResult<Team>> {
     const _id = new ObjectId(id);
     const updatedTeam = await this.db

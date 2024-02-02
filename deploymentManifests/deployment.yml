@@ -143,16 +143,16 @@ spec:
               secretKeyRef:
                 name: sparrow-api-secret
                 key:  WINDOWS_APP_URL        
-          - name:  MAC_M1_APP_SIGNATURE
+          - name:  MAC_APPLE_SILICON_APP_SIGNATURE
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  MAC_M1_APP_SIGNATURE        
-          - name:  MAC_M1_APP_URL
+                key:  MAC_APPLE_SILICON_APP_SIGNATURE        
+          - name:  MAC_APPLE_SILICON_APP_URL
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  MAC_M1_APP_URL      
+                key:  MAC_APPLE_SILICON_APP_URL      
           - name:  MAC_INTEL_APP_SIGNATURE
             valueFrom:
               secretKeyRef:
