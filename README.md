@@ -21,10 +21,9 @@ One-stop API management tool
  
 1. 🐦 [What is Sparrow ?](#what-is-sparrow)
 2. 🔨 [Installation](#installation)
-3. 📖 [Env variables](#env-variables)
-4. 📣 [Subscribe to our Newsletter](#subscribe-to-our-newsletter)
-5. ❤️ [How to Contribute ?](#contributors)
-6. ©️ [License](#license)
+3. ❤️ [How to Contribute ?](#contributors)
+4. 📨 [Subscribe to our Newsletter](#subscribe-to-our-newsletter)
+5. ©️  [License](#license)
  
 ## <a name="what-is-sparrow">🐦 What is Sparrow ?</a>
  
@@ -82,18 +81,15 @@ The above will start the app in development mode and watch for changes on local.
 
 2) Wait for 3-5 minutes after running "pnpm docker:up", so that kafka can initiate properly.
  
-## <a name="env-variables">📖 Env variables</a>
- 
-All env variables are present in .env.example file which contains default values. Do not commit it.
 
 ## <a name="contributors">❤️ How to Contribue ?</a>
+
+You can checkout [Contributing Guidelines](./docs/CONTRIBUTING.md)
  
-![Atom](https://img.shields.io/badge/Coming%20Soon-%2366595C.svg?style=for-the-badge&logo=atom&logoColor=white)
+## <a name="subscribe-to-our-newsletter">📨 Newsletter</a>
  
-## <a name="subscribe-to-our-newsletter">📣 Newsletter</a>
- 
-Subscribe to our newsletter by applying [here!](https://code.visualstudio.com/) 
+Subscribe to our newsletter by applying [here!](https://sparrows-newsletter.beehiiv.com/subscribe) 
  
 ## <a name="license">©️ License</a>
- 
-![Atom](https://img.shields.io/badge/Coming%20Soon-%2366595C.svg?style=for-the-badge&logo=atom&logoColor=white)
+
+Sparrow comes under the GNU AFFERO GENERAL PUBLIC LICENSE. For more information, you can checkout [LICENSE](./LICENSE)
