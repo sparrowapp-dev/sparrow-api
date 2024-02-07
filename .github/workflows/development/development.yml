@@ -2,7 +2,7 @@ name: Developement
 on:
   push:
     branches:
-      - feat/onboarding-v2
+      - development
 
 jobs:
    build:
