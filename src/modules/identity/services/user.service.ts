@@ -22,7 +22,6 @@ import { createHmac } from "crypto";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import hbs = require("nodemailer-express-handlebars");
 import path from "path";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { TeamService } from "./team.service";
 import { ContextService } from "@src/modules/common/services/context.service";
 export interface IGenericMessageBody {
@@ -37,7 +36,6 @@ export class UserService {
     private readonly userRepository: UserRepository,
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
-    private readonly producerService: ProducerService,
     private readonly teamService: TeamService,
     private readonly contextService: ContextService,
   ) {}

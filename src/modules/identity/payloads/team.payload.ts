@@ -77,3 +77,22 @@ export class TeamDto {
   @IsOptional()
   admins?: string[];
 }
+
+export class UpdateTeamDto {
+  @ApiProperty({
+    example: "team1",
+  })
+  @IsOptional()
+  name?: string;
+
+  @ApiProperty({
+    example: "Description of Team",
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsOptional()
+  @IsObject()
+  logo?: logoDto;
+}
