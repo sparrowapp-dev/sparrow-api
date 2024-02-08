@@ -23,7 +23,9 @@ export class RegisterPayload {
     required: true,
     example: "username",
   })
-  @Matches(/^[a-zA-Z ]+$/)
+  @Matches(/^[a-zA-Z ]+$/, {
+    message: "username only contain characters.",
+  })
   @IsNotEmpty()
   name: string;
 
@@ -35,6 +37,12 @@ export class RegisterPayload {
     example: "userpassword",
   })
   @IsNotEmpty()
+  @Matches(/(?=.*[0-9])/, {
+    message: "password must contain at least one digit.",
+  })
+  @Matches(/(?=.*[!@#$%^&*])/, {
+    message: "password must contain at least one special character (!@#$%^&*).",
+  })
   @MinLength(8)
   password: string;
 }

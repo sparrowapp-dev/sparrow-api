@@ -64,6 +64,14 @@ export class UserDto {
   @IsNotEmpty()
   @IsString()
   role: string;
+
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }
 
 export class WorkspaceDtoForIdDocument {

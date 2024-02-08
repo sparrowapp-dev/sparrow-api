@@ -230,6 +230,8 @@ export class WorkspaceService {
         usersInfo.push({
           role: WorkspaceRole.ADMIN,
           id: user.id.toString(),
+          name: user.name,
+          email: user.email,
         });
       }
     }
@@ -588,6 +590,8 @@ export class WorkspaceService {
       workspaceUsers.push({
         role: payload.role,
         id: userData._id.toString(),
+        name: userData.name,
+        email: userData.email,
       });
       const updatedWorkspaceParams = {
         users: workspaceUsers,

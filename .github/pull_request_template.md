@@ -27,6 +27,4 @@ Please do not leave this blank
 ## Added to documentation?
 
 - [ ] 📜 README.md
-
-## Any Known issue?
 ## Related Story, task & Documents?

@@ -149,6 +149,7 @@ export class TeamUserService {
         name: teamData.name,
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
+        isNewInvite: true,
       });
       if (payload.role === TeamRole.ADMIN) {
         teamAdmins.push(userData._id.toString());
@@ -322,7 +323,7 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
-    const teamOwner = await this.isTeamOwner(payload.teamId);
+    const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
     if (!teamOwner) {
       throw new BadRequestException("You don't have access");
     }
@@ -381,20 +382,9 @@ export class TeamUserService {
     return false;
   }
 
-  async isTeamOwner(id: string): Promise<boolean> {
-    const user = await this.contextService.get("user");
-    const teamDetails = await this.teamRepository.findTeamByTeamId(
-      new ObjectId(id),
-    );
-    if (teamDetails.owner !== user._id.toString()) {
-      return false;
-    }
-    return true;
-  }
-
   async changeOwner(payload: CreateOrUpdateTeamUserDto) {
     const user = await this.contextService.get("user");
-    const teamOwner = await this.isTeamOwner(payload.teamId);
+    const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
     if (!teamOwner) {
       throw new BadRequestException("You don't have access");
     }
@@ -472,7 +462,7 @@ export class TeamUserService {
   }
 
   async leaveTeam(teamId: string) {
-    const teamOwner = await this.isTeamOwner(teamId);
+    const teamOwner = await this.teamService.isTeamOwner(teamId);
     if (teamOwner) {
       throw new BadRequestException("Owner cannot leave team");
     }
