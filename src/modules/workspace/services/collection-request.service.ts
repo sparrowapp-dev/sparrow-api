@@ -75,7 +75,7 @@ export class CollectionRequestService {
       throw new BadRequestException("Collection Not Found");
     }
     const index = await this.checkFolderExist(collection, payload.folderId);
-    collection.items[index].name = payload.name;
+    collection.items[index].name = payload.name ?? collection.items[index].name;
     collection.items[index].description =
       payload.description ?? collection.items[index].description;
     await this.collectionReposistory.updateCollection(

@@ -93,8 +93,13 @@ export class CreateCollectionDto {
 export class UpdateCollectionDto {
   @ApiProperty({ example: "Swagger Petstore - OpenAPI 3.0" })
   @IsString()
-  @IsNotEmpty()
-  name: string;
+  @IsOptional()
+  name?: string;
+
+  @ApiProperty({ example: "Its a mock description" })
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()
