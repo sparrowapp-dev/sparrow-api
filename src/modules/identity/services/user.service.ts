@@ -8,10 +8,7 @@ import { UserRepository } from "../repositories/user.repository";
 import { RegisterPayload } from "../payloads/register.payload";
 import { ConfigService } from "@nestjs/config";
 import { AuthService } from "./auth.service";
-import {
-  EmailServiceProvider,
-  User,
-} from "@src/modules/common/models/user.model";
+import { User } from "@src/modules/common/models/user.model";
 import {
   EarlyAccessPayload,
   ResetPasswordPayload,
@@ -135,11 +132,14 @@ export class UserService {
       throw new UnauthorizedException(ErrorMessages.BadRequestError);
     }
     const transporter = nodemailer.createTransport({
-      service: EmailServiceProvider.GMAIL,
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
       auth: {
-        user: this.configService.get("app.senderEmail"),
+        user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
+      sender: this.configService.get("app.senderEmail"),
     });
     const verificationCode = this.generateEmailVerificationCode().toUpperCase();
     const handlebarOptions = {
@@ -173,11 +173,14 @@ export class UserService {
 
   async sendWelcomeEmail(earlyAccessDto: EarlyAccessPayload): Promise<void> {
     const transporter = nodemailer.createTransport({
-      service: EmailServiceProvider.GMAIL,
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
       auth: {
-        user: this.configService.get("app.senderEmail"),
+        user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
+      sender: this.configService.get("app.senderEmail"),
     });
     const handlebarOptions = {
       viewEngine: {
