@@ -77,7 +77,6 @@ export class TeamUserService {
         user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
-      sender: this.configService.get("app.senderEmail"),
     });
     const handlebarOptions = {
       //view engine contains default and partial templates

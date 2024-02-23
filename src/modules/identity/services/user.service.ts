@@ -139,7 +139,6 @@ export class UserService {
         user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
-      sender: this.configService.get("app.senderEmail"),
     });
     const verificationCode = this.generateEmailVerificationCode().toUpperCase();
     const handlebarOptions = {
@@ -180,7 +179,6 @@ export class UserService {
         user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
-      sender: this.configService.get("app.senderEmail"),
     });
     const handlebarOptions = {
       viewEngine: {
