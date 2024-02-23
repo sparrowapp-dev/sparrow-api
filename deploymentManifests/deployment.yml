@@ -89,6 +89,26 @@ spec:
               secretKeyRef:
                 name: sparrow-api-secret
                 key:  SENDER_PASSWORD
+          - name:  MAIL_HOST
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  MAIL_HOST
+          - name:  MAIL_PORT
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  MAIL_PORT
+          - name:  MAIL_SECURE
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  MAIL_SECURE
+          - name:  USER_NAME
+            valueFrom:
+              secretKeyRef:
+                name: sparrow-api-secret
+                key:  USER_NAME
           - name:  LOGIN_REDIRECT_URL
             valueFrom:
               secretKeyRef:
