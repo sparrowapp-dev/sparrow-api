@@ -69,6 +69,19 @@ export class EnvironmentVariables {
 
   @Type(() => Number)
   @IsNumber()
+  MAIL_PORT: number;
+
+  @IsString()
+  MAIL_HOST: string;
+
+  @IsString()
+  MAIL_SECURE: string;
+
+  @IsString()
+  USER_NAME: string;
+
+  @Type(() => Number)
+  @IsNumber()
   EMAIL_VALIDATION_CODE_EXPIRY_TIME: number;
 
   @IsString()

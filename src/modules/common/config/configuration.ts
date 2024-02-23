@@ -21,6 +21,10 @@ export default () => ({
     refreshTokenMaxLimit: parseInt(process.env.REFRESH_TOKEN_MAX_LIMIT),
     senderEmail: process.env.SENDER_EMAIL,
     senderPassword: process.env.SENDER_PASSWORD,
+    mailHost: process.env.MAIL_HOST,
+    mailPort: process.env.MAIL_PORT,
+    mailSecure: process.env.MAIL_SECURE,
+    userName: process.env.USER_NAME,
   },
   db: {
     url: process.env.DB_URL,
