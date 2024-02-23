@@ -360,8 +360,9 @@ export class WorkSpaceController {
     const response = await axios.get(importCollectionDto.url);
     const data = response.data;
     const responseType = response.headers["content-type"];
-    const dataObj =
-      responseType === BodyModeEnum["application/json"] ? data : yml.load(data);
+    const dataObj = responseType.includes(BodyModeEnum["application/json"])
+      ? data
+      : yml.load(data);
 
     const collectionObj = await this.parserService.parse(dataObj);
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {

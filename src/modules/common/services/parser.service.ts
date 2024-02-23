@@ -24,7 +24,7 @@ export class ParserService {
     private readonly collectionService: CollectionService,
   ) {}
   async parse(file: string): Promise<Record<string, string>> {
-    const openApiDocument = (await SwaggerParser.validate(file)) as OpenAPI303;
+    const openApiDocument = (await SwaggerParser.parse(file)) as OpenAPI303;
     const baseUrl = this.getBaseUrl(openApiDocument);
 
     const folderObjMap = new Map();
@@ -38,8 +38,8 @@ export class ParserService {
         requestObj.type = ItemTypeEnum.REQUEST;
         requestObj.source = SourceTypeEnum.SPEC;
         requestObj.id = uuidv4();
-        (requestObj.isDeleted = false),
-          (requestObj.request = {} as RequestMetaData);
+        requestObj.isDeleted = false;
+        requestObj.request = {} as RequestMetaData;
         requestObj.request.method = innerKey.toUpperCase() as HTTPMethods;
         requestObj.request.operationId = innerValue.operationId;
         requestObj.request.url = baseUrl + key;
@@ -63,7 +63,16 @@ export class ParserService {
             body.type = Object.values(BodyModeEnum).find(
               (enumMember) => enumMember === type,
             ) as BodyModeEnum;
-            body.schema = (schema as any).schema;
+            const ref = (schema as any).schema?.$ref;
+            if (ref) {
+              const schemaName = ref.slice(
+                ref.lastIndexOf("/") + 1,
+                ref.length,
+              );
+              body.schema = openApiDocument.components.schemas[schemaName];
+            } else {
+              body.schema = (schema as any).schema;
+            }
             requestObj.request.body.push(body);
           }
         }
