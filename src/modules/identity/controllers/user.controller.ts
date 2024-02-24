@@ -74,6 +74,24 @@ export class UserController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  @Get("email/:email")
+  @ApiOperation({
+    summary: "Retrieve User registration process",
+    description: "This will return registration status of a specific user",
+  })
+  async getUserByEmail(
+    @Param("email") email: string,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.userService.getUserRegisterStatus(email);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Put(":userId")
   @ApiOperation({
     summary: "Update a User",
