@@ -46,3 +46,8 @@ export class UserDto {
   @ValidateNested({ each: true })
   workspaces?: UserWorkspaceDto[];
 }
+
+export class RegisteredWith {
+  @IsString()
+  registeredWith: string;
+}
