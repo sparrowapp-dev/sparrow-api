@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { UpdateUserDto } from "../payloads/user.payload";
+import { RegisteredWith, UpdateUserDto } from "../payloads/user.payload";
 import { UserRepository } from "../repositories/user.repository";
 import { RegisterPayload } from "../payloads/register.payload";
 import { ConfigService } from "@nestjs/config";
@@ -54,6 +54,30 @@ export class UserService {
    */
   async getUserByEmail(email: string): Promise<WithId<User>> {
     return await this.userRepository.getUserByEmail(email);
+  }
+
+  /**
+   * Fetches a user from database by username
+   * @param {string} email
+   * @returns {Promise<IUser>} queried user data
+   */
+  async getUserRegisterStatus(email: string): Promise<RegisteredWith> {
+    const user = await this.userRepository.getUserByEmail(email);
+    if (user?.authProviders) {
+      // Registered with google auth
+      return {
+        registeredWith: "google",
+      };
+    } else if (user?.email) {
+      // registered with email
+      return {
+        registeredWith: "email",
+      };
+    } else {
+      return {
+        registeredWith: "unknown",
+      };
+    }
   }
 
   /**
