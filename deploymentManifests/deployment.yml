@@ -79,36 +79,36 @@ spec:
               secretKeyRef:
                 name: sparrow-api-secret
                 key:  REFRESH_TOKEN_MAX_LIMIT
-          - name:  SENDER_EMAIL
+          - name:  SMTP_SENDER_EMAIL
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  SENDER_EMAIL
-          - name:  SENDER_PASSWORD
+                key:  SMTP_SENDER_EMAIL
+          - name:  SMTP_SENDER_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  SENDER_PASSWORD
-          - name:  MAIL_HOST
+                key:  SMTP_SENDER_PASSWORD
+          - name:  SMTP_MAIL_HOST
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  MAIL_HOST
-          - name:  MAIL_PORT
+                key:  SMTP_MAIL_HOST
+          - name:  SMTP_MAIL_PORT
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  MAIL_PORT
-          - name:  MAIL_SECURE
+                key:  SMTP_MAIL_PORT
+          - name:  SMTP_MAIL_SECURE
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  MAIL_SECURE
-          - name:  USER_NAME
+                key:  SMTP_MAIL_SECURE
+          - name:  SMTP_USER_NAME
             valueFrom:
               secretKeyRef:
                 name: sparrow-api-secret
-                key:  USER_NAME
+                key:  SMTP_USER_NAME
           - name:  LOGIN_REDIRECT_URL
             valueFrom:
               secretKeyRef:

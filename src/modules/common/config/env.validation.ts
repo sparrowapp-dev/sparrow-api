@@ -62,23 +62,23 @@ export class EnvironmentVariables {
   REFRESH_TOKEN_MAX_LIMIT: number;
 
   @IsString()
-  SENDER_EMAIL: string;
+  SMTP_SENDER_EMAIL: string;
 
   @IsString()
-  SENDER_PASSWORD: string;
+  SMTP_SENDER_PASSWORD: string;
 
   @Type(() => Number)
   @IsNumber()
-  MAIL_PORT: number;
+  SMTP_MAIL_PORT: number;
 
   @IsString()
-  MAIL_HOST: string;
+  SMTP_MAIL_HOST: string;
 
   @IsString()
-  MAIL_SECURE: string;
+  SMTP_MAIL_SECURE: string;
 
   @IsString()
-  USER_NAME: string;
+  SMTP_USER_NAME: string;
 
   @Type(() => Number)
   @IsNumber()
