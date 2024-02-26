@@ -357,6 +357,7 @@ export class WorkSpaceController {
     @Res() res: FastifyReply,
     @Body() importCollectionDto: ImportCollectionDto,
   ) {
+    const activeSync = importCollectionDto.activeSync ?? false;
     const response = await axios.get(importCollectionDto.url);
     const data = response.data;
     const responseType = response.headers["content-type"];
@@ -364,7 +365,7 @@ export class WorkSpaceController {
       ? data
       : yml.load(data);
 
-    const collectionObj = await this.parserService.parse(dataObj);
+    const collectionObj = await this.parserService.parse(dataObj, activeSync);
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
       id: new ObjectId(collectionObj.id),
       name: collectionObj.name,

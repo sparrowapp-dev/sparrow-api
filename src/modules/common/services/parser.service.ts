@@ -23,10 +23,13 @@ export class ParserService {
     private readonly contextService: ContextService,
     private readonly collectionService: CollectionService,
   ) {}
-  async parse(file: string): Promise<Record<string, string>> {
+  async parse(
+    file: string,
+    activeSync?: boolean,
+  ): Promise<Record<string, string>> {
     const openApiDocument = (await SwaggerParser.parse(file)) as OpenAPI303;
     const baseUrl = this.getBaseUrl(openApiDocument);
-
+    let existingCollection: WithId<Collection> | null = null;
     const folderObjMap = new Map();
     for (const [key, value] of Object.entries(openApiDocument.paths)) {
       //key will be endpoints /put and values will its apis post ,put etc
@@ -112,26 +115,31 @@ export class ParserService {
     });
     const user = await this.contextService.get("user");
 
-    let mergedFolderItems: CollectionItem[] = [];
-    const existingCollection: WithId<Collection> =
-      await this.collectionService.getActiveSyncedCollection(
-        openApiDocument.info.title,
-      );
-    if (existingCollection) {
-      //check on folder level
-      mergedFolderItems = this.compareAndMerge(existingCollection.items, items);
-      for (let x = 0; x < existingCollection.items?.length; x++) {
-        const newItem: CollectionItem[] = items.filter((item) => {
-          return item.name === existingCollection.items[x].name;
-        });
-        //check on request level
-        const mergedFolderRequests: CollectionItem[] = this.compareAndMerge(
-          existingCollection.items[x].items,
-          newItem[0]?.items || [],
+    if (activeSync) {
+      let mergedFolderItems: CollectionItem[] = [];
+      existingCollection =
+        await this.collectionService.getActiveSyncedCollection(
+          openApiDocument.info.title,
         );
-        mergedFolderItems[x].items = mergedFolderRequests;
+      if (existingCollection) {
+        //check on folder level
+        mergedFolderItems = this.compareAndMerge(
+          existingCollection.items,
+          items,
+        );
+        for (let x = 0; x < existingCollection.items?.length; x++) {
+          const newItem: CollectionItem[] = items.filter((item) => {
+            return item.name === existingCollection.items[x].name;
+          });
+          //check on request level
+          const mergedFolderRequests: CollectionItem[] = this.compareAndMerge(
+            existingCollection.items[x].items,
+            newItem[0]?.items || [],
+          );
+          mergedFolderItems[x].items = mergedFolderRequests;
+        }
+        items = mergedFolderItems;
       }
-      items = mergedFolderItems;
     }
     const newItems: CollectionItem[] = [];
     for (let x = 0; x < items?.length; x++) {
@@ -163,7 +171,7 @@ export class ParserService {
       uuid: openApiDocument.info.title,
       createdBy: user.name,
       updatedBy: user.name,
-      activeSync: true,
+      activeSync,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -178,7 +186,6 @@ export class ParserService {
       const newCollection = await this.collectionService.importCollection(
         collection,
       );
-
       return {
         id: newCollection.insertedId.toString(),
         name: collection.name,
