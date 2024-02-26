@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsMongoId,
   IsNotEmpty,
@@ -79,6 +80,12 @@ export class Team {
   updatedBy?: string;
 }
 
+export class TeamWithNewInviteTag extends Team {
+  @IsBoolean()
+  @IsOptional()
+  isNewInvite?: boolean;
+}
+
 export class TeamDto {
   @IsMongoId()
   @IsNotEmpty()
@@ -91,4 +98,8 @@ export class TeamDto {
   @IsString()
   @IsNotEmpty()
   role: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isNewInvite?: boolean;
 }

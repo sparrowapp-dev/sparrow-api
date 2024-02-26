@@ -37,8 +37,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @param {any} done callback to resolve the request user with
    * @returns {Promise<boolean>} whether or not to validate the jwt token
    */
-  async validate({ iat, exp, _id }: JwtPayload) {
-    const timeDiff = exp - iat;
+  async validate({ exp, _id }: JwtPayload) {
+    const timeDiff = exp - Date.now() / 1000;
     if (timeDiff <= 0) {
       throw new UnauthorizedException(ErrorMessages.ExpiredToken);
     }

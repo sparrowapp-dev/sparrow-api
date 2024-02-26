@@ -232,7 +232,7 @@ export class CollectionRequestDto {
 export class FolderPayload {
   @ApiProperty({ example: "pet" })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   name: string;
 
   @ApiProperty({ example: "Everything about your Pets" })

@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
+import { UpdaterJsonResponsePayload } from "./payloads/updaterJson.payload";
 
 /**
  * Application Service
@@ -9,16 +11,39 @@ export class AppService {
   /**
    * Constructor
    * @param {ConfigService} config configuration service
-   * @param {Logger} logger logger service
    */
   constructor(private config: ConfigService) {}
 
-  /**
-   * Fetches and logs the APP_URL environment variable from the configuration file.
-   * @returns {string} the application url
-   */
-  root(): string {
-    const appURL = this.config.get("APP_URL");
-    return appURL;
+  getUpdaterDetails(currentVersion: string): UpdaterJsonResponsePayload {
+    if (
+      this.config.get("updater.updateAvailable") === "true" &&
+      currentVersion < this.config.get("updater.appVersion")
+    ) {
+      const updatorJson = {
+        version: this.config.get("updater.appVersion"),
+        platforms: {
+          "windows-x86_64": {
+            signature: this.config.get("updater.windows.appSignature"),
+            url: this.config.get("updater.windows.appUrl"),
+          },
+          "darwin-aarch64": {
+            signature: this.config.get("updater.macAppleSilicon.appSignature"),
+            url: this.config.get("updater.macAppleSilicon.appUrl"),
+          },
+          "darwin-x86_64": {
+            signature: this.config.get("updater.macIntel.appSignature"),
+            url: this.config.get("updater.macIntel.appUrl"),
+          },
+        },
+      };
+      return {
+        statusCode: HttpStatusCode.OK,
+        data: updatorJson,
+      };
+    }
+    return {
+      statusCode: HttpStatusCode.NO_CONTENT,
+      data: null,
+    };
   }
 }
