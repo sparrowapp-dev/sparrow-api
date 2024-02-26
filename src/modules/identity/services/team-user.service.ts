@@ -15,7 +15,6 @@ import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { TeamService } from "./team.service";
 import * as nodemailer from "nodemailer";
 import hbs = require("nodemailer-express-handlebars");
-import { EmailServiceProvider } from "@src/modules/common/models/user.model";
 import { ConfigService } from "@nestjs/config";
 import path = require("path");
 /**
@@ -71,9 +70,11 @@ export class TeamUserService {
   async inviteUserInTeamEmail(payload: TeamInviteMailDto) {
     const currentUser = await this.contextService.get("user");
     const transporter = nodemailer.createTransport({
-      service: EmailServiceProvider.GMAIL,
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
       auth: {
-        user: this.configService.get("app.senderEmail"),
+        user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
     });
@@ -149,6 +150,7 @@ export class TeamUserService {
         name: teamData.name,
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
+        isNewInvite: true,
       });
       if (payload.role === TeamRole.ADMIN) {
         teamAdmins.push(userData._id.toString());
@@ -322,7 +324,7 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
-    const teamOwner = await this.isTeamOwner(payload.teamId);
+    const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
     if (!teamOwner) {
       throw new BadRequestException("You don't have access");
     }
@@ -381,20 +383,9 @@ export class TeamUserService {
     return false;
   }
 
-  async isTeamOwner(id: string): Promise<boolean> {
-    const user = await this.contextService.get("user");
-    const teamDetails = await this.teamRepository.findTeamByTeamId(
-      new ObjectId(id),
-    );
-    if (teamDetails.owner !== user._id.toString()) {
-      return false;
-    }
-    return true;
-  }
-
   async changeOwner(payload: CreateOrUpdateTeamUserDto) {
     const user = await this.contextService.get("user");
-    const teamOwner = await this.isTeamOwner(payload.teamId);
+    const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
     if (!teamOwner) {
       throw new BadRequestException("You don't have access");
     }
@@ -472,7 +463,7 @@ export class TeamUserService {
   }
 
   async leaveTeam(teamId: string) {
-    const teamOwner = await this.isTeamOwner(teamId);
+    const teamOwner = await this.teamService.isTeamOwner(teamId);
     if (teamOwner) {
       throw new BadRequestException("Owner cannot leave team");
     }

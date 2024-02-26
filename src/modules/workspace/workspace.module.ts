@@ -16,6 +16,9 @@ import { EnvironmentRepository } from "./repositories/environment.repository";
 import { EnvironmentController } from "./controllers/environment.controller";
 import { PromoteAdminHandler } from "./handlers/promoteAdmin.handlers";
 import { DemoteAdminHandler } from "./handlers/demoteAdmin.handlers";
+import { FeatureController } from "./controllers/feature.controller";
+import { FeatureService } from "./services/feature.service";
+import { FeatureRepository } from "./repositories/feature.repository";
 @Module({
   imports: [IdentityModule],
   providers: [
@@ -32,6 +35,8 @@ import { DemoteAdminHandler } from "./handlers/demoteAdmin.handlers";
     CollectionRequestService,
     EnvironmentService,
     EnvironmentRepository,
+    FeatureService,
+    FeatureRepository,
   ],
   exports: [
     CollectionService,
@@ -39,11 +44,14 @@ import { DemoteAdminHandler } from "./handlers/demoteAdmin.handlers";
     WorkspaceRepository,
     EnvironmentService,
     EnvironmentRepository,
+    FeatureService,
+    FeatureRepository,
   ],
   controllers: [
     WorkSpaceController,
     collectionController,
     EnvironmentController,
+    FeatureController,
   ],
 })
 export class WorkspaceModule {}

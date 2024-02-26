@@ -31,12 +31,14 @@ export class WorkspaceUserService {
     }
     const workspaceDataArray =
       await this.workspaceRepository.findWorkspacesByIdArray(updatedIdArray);
+    const user = await this.userRepository.getUserById(userId);
     if (role === WorkspaceRole.ADMIN) {
-      const user = await this.userRepository.getUserById(userId);
       for (let index = 0; index < workspaceDataArray.length; index++) {
         workspaceDataArray[index].users.push({
           role: WorkspaceRole.ADMIN,
           id: userId,
+          name: user.name,
+          email: user.email,
         });
         workspaceDataArray[index].admins.push({
           id: userId,
@@ -50,6 +52,8 @@ export class WorkspaceUserService {
             workspaceDataArray[index].users.push({
               role: role,
               id: userId,
+              name: user.name,
+              email: user.email,
             });
           }
         }
@@ -131,13 +135,16 @@ export class WorkspaceUserService {
           count++;
         }
       }
+      const user = await this.userRepository.getUserById(userId);
       if (count === usersLength.length) {
         workspaceDataArray[index].users.push({
           id: userId,
           role: WorkspaceRole.ADMIN,
+          name: user.name,
+          email: user.email,
         });
       }
-      const user = await this.userRepository.getUserById(userId);
+
       workspaceDataArray[index].admins.push({
         id: userId,
         name: user.name,

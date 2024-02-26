@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { CreateOrUpdateTeamDto } from "../payloads/team.payload";
+import { CreateOrUpdateTeamDto, UpdateTeamDto } from "../payloads/team.payload";
 import { TeamRepository } from "../repositories/team.repository";
 import {
   DeleteResult,
@@ -8,7 +8,10 @@ import {
   UpdateResult,
   WithId,
 } from "mongodb";
-import { Team } from "@src/modules/common/models/team.model";
+import {
+  Team,
+  TeamWithNewInviteTag,
+} from "@src/modules/common/models/team.model";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { ConfigService } from "@nestjs/config";
@@ -16,6 +19,7 @@ import { UserRepository } from "../repositories/user.repository";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { User } from "@src/modules/common/models/user.model";
 
 /**
  * Team Service
@@ -78,6 +82,7 @@ export class TeamService {
       id: createdTeam.insertedId,
       name: teamData.name,
       role: TeamRole.OWNER,
+      isNewInvite: false,
     });
     const updatedUserParams = {
       teams: updatedUserTeams,
@@ -115,9 +120,42 @@ export class TeamService {
    */
   async update(
     id: string,
-    payload: CreateOrUpdateTeamDto,
+    teamData: UpdateTeamDto,
+    image?: MemoryStorageFile,
   ): Promise<UpdateResult<Team>> {
-    const data = await this.teamRepository.update(id, payload);
+    const teamOwner = await this.isTeamOwner(id);
+    if (!teamOwner) {
+      throw new BadRequestException("You don't have Access");
+    }
+    const teamDetails = await this.get(id);
+    if (!teamDetails) {
+      throw new BadRequestException(
+        "The teams with that id does not exist in the system.",
+      );
+    }
+    let team;
+    if (image) {
+      await this.isImageSizeValid(image.size);
+      const dataBuffer = image.buffer;
+      const dataString = Buffer.from(dataBuffer).toString("base64");
+      const logo = {
+        bufferString: dataString,
+        encoding: image.encoding,
+        mimetype: image.mimetype,
+        size: image.size,
+      };
+      team = {
+        name: teamData.name ?? teamDetails.name,
+        description: teamData.description ?? teamDetails.description,
+        logo: logo,
+      };
+    } else {
+      team = {
+        name: teamData.name ?? teamDetails.name,
+        description: teamData.description ?? teamDetails.description,
+      };
+    }
+    const data = await this.teamRepository.update(id, team);
     return data;
   }
 
@@ -140,10 +178,28 @@ export class TeamService {
     }
     const teams: WithId<Team>[] = [];
     for (const { id } of user.teams) {
-      const teamData = await this.get(id.toString());
+      const teamData: WithId<TeamWithNewInviteTag> = await this.get(
+        id.toString(),
+      );
+      user.teams.forEach((team) => {
+        if (team.id.toString() === teamData._id.toString()) {
+          teamData.isNewInvite = team?.isNewInvite;
+        }
+      });
       teams.push(teamData);
     }
     return teams;
+  }
+
+  async isTeamOwner(id: string): Promise<boolean> {
+    const user = await this.contextService.get("user");
+    const teamDetails = await this.teamRepository.findTeamByTeamId(
+      new ObjectId(id),
+    );
+    if (teamDetails.owner.toString() !== user._id.toString()) {
+      return false;
+    }
+    return true;
   }
 
   async isTeamOwnerOrAdmin(id: ObjectId): Promise<WithId<Team>> {
@@ -171,5 +227,27 @@ export class TeamService {
       }
     }
     return false;
+  }
+
+  /**
+   * Disable team new invite tag
+   * @returns {Promise<IUser>} queried team data
+   */
+  async disableTeamNewInvite(
+    userId: string,
+    teamId: string,
+    user: WithId<User>,
+  ): Promise<Team> {
+    const teams = user.teams.map((team) => {
+      if (team.id.toString() === teamId) {
+        team.isNewInvite = false;
+      }
+      return team;
+    });
+    await this.userRespository.updateUserById(new ObjectId(userId), {
+      teams,
+    });
+    const teamDetails = await this.teamRepository.get(teamId);
+    return teamDetails;
   }
 }

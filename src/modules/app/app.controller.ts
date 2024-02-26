@@ -1,29 +1,32 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
-import { AppService } from "@app/app.service";
-import { ApiBearerAuth, ApiResponse } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { Controller, Get, Param, Res } from "@nestjs/common";
+import { ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { FastifyReply } from "fastify";
+import { AppService } from "./app.service";
 
 /**
  * App Controller
  */
 @Controller()
-@ApiBearerAuth()
 export class AppController {
-  /**
-   * Constructor
-   * @param appService
-   */
-  constructor(private readonly appService: AppService) {}
+  constructor(private appService: AppService) {}
 
-  /**
-   * Returns the an environment variable from config file
-   * @returns {string} the application environment url
-   */
-  @Get()
-  @UseGuards(JwtAuthGuard)
-  @ApiResponse({ status: 200, description: "Request Received" })
-  @ApiResponse({ status: 400, description: "Request Failed" })
-  getString(): string {
-    return this.appService.root();
+  @Get("updater/:target/:arch/:currentVersion")
+  @ApiOperation({
+    summary: "Updater Details",
+    description: "Fetch app updater json",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Updater Details Retrieved Successfully",
+  })
+  @ApiResponse({ status: 204, description: "No Content" })
+  async getUpdaterDetails(
+    @Res() res: FastifyReply,
+    @Param("currentVersion") currentVersion: string,
+  ) {
+    const { statusCode, data } = await this.appService.getUpdaterDetails(
+      currentVersion,
+    );
+    return res.status(statusCode).send(data);
   }
 }
