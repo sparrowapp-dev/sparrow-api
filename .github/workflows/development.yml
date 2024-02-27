@@ -12,13 +12,13 @@ jobs:
 
          - uses: Azure/docker-login@v1
            with:
-              login-server: sparrowdev.azurecr.io
+              login-server: sparrowprod.azurecr.io
               username: ${{ secrets.REGISTRY_USERNAME }}
               password: ${{ secrets.REGISTRY_PASSWORD }}
 
          - run: |
-              docker build . -t sparrowdev.azurecr.io/sparrow-api:${{ github.run_number }}
-              docker push sparrowdev.azurecr.io/sparrow-api:${{ github.run_number }}
+              docker build . -t sparrowprod.azurecr.io/sparrow-api:${{ github.run_number }}
+              docker push sparrowprod.azurecr.io/sparrow-api:${{ github.run_number }}
    deploy:
       needs: build
       runs-on: ubuntu-latest
