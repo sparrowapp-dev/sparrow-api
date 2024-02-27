@@ -242,11 +242,18 @@ export class CollectionRepository {
     }
   }
 
-  async getActiveSyncedCollection(title: string): Promise<WithId<Collection>> {
+  async getActiveSyncedCollection(
+    title: string,
+    workspaceId: string,
+  ): Promise<WithId<Collection>> {
     const workspaceDetails = await this.db
       .collection<Workspace>(Collections.WORKSPACE)
       .findOne(
-        { "collection.name": title },
+        {
+          "collection.name": title,
+          "collection.activeSync": true,
+          _id: new ObjectId(workspaceId),
+        },
         { projection: { "collection.$": 1 } },
       );
     if (workspaceDetails) {

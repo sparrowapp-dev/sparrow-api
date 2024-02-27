@@ -70,8 +70,14 @@ export class CollectionService {
     return collections;
   }
 
-  async getActiveSyncedCollection(title: string): Promise<WithId<Collection>> {
-    return await this.collectionReposistory.getActiveSyncedCollection(title);
+  async getActiveSyncedCollection(
+    title: string,
+    workspaceId: string,
+  ): Promise<WithId<Collection>> {
+    return await this.collectionReposistory.getActiveSyncedCollection(
+      title,
+      workspaceId,
+    );
   }
 
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
