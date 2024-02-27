@@ -254,6 +254,11 @@ export class Collection {
   @IsOptional()
   activeSync?: boolean;
 
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  activeSyncUrl?: string;
+
   @IsOptional()
   @IsDateString()
   createdAt?: Date;
@@ -279,4 +284,9 @@ export class CollectionDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  activeSync?: boolean;
 }
