@@ -10,7 +10,7 @@ import { AppService } from "./app.service";
 export class AppController {
   constructor(private appService: AppService) {}
 
-  @Get("updater/:target/:arch/:currentVersion1")
+  @Get("updater/:target/:arch/:currentVersion")
   @ApiOperation({
     summary: "Updater Details",
     description: "Fetch app updater json",
