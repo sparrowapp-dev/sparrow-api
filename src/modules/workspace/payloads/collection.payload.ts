@@ -6,6 +6,7 @@ import {
   IsArray,
   IsEnum,
   ValidateNested,
+  IsBoolean,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import {
@@ -117,4 +118,11 @@ export class ImportCollectionDto {
   @IsString()
   @IsNotEmpty()
   url: string;
+
+  @ApiProperty({
+    required: false,
+    example: false,
+  })
+  @IsBoolean()
+  activeSync?: boolean;
 }

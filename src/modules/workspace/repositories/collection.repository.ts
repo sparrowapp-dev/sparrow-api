@@ -252,7 +252,7 @@ export class CollectionRepository {
     if (workspaceDetails) {
       const data = await this.db
         .collection<Collection>(Collections.COLLECTION)
-        .findOne({ _id: workspaceDetails.collection[0].id });
+        .findOne({ _id: workspaceDetails.collection[0].id, activeSync: true });
       return data;
     }
   }
