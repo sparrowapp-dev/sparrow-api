@@ -115,12 +115,18 @@ export class WorkspaceRepository {
     collection: CollectionDto,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    return await this.db
-      .collection(Collections.WORKSPACE)
-      .updateOne(
-        { _id },
-        { $push: { collection: { id: collection.id, name: collection.name } } },
-      );
+    return await this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id },
+      {
+        $push: {
+          collection: {
+            id: collection.id,
+            name: collection.name,
+            activeSync: collection.activeSync,
+          },
+        },
+      },
+    );
   }
 
   async updateCollectioninWorkspace(
