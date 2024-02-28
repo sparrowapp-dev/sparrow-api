@@ -262,7 +262,7 @@ export class CollectionRepository {
       );
       const data = await this.db
         .collection<Collection>(Collections.COLLECTION)
-        .findOne({ _id: activeCollection.id, activeSync: true });
+        .findOne({ _id: activeCollection?.id, activeSync: true });
       return data;
     }
   }
