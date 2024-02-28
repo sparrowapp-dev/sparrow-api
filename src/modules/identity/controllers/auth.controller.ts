@@ -62,8 +62,8 @@ export class AuthController {
   @ApiResponse({ status: 401, description: "Unauthorized" })
   async login(@Body() payload: LoginPayload, @Res() res: FastifyReply) {
     const user = await this.authService.validateUser(payload);
-
-    await this.authService.checkRefreshTokenSize(user);
+    // Removing refresh token limit check until refresh token flow is fixed - Nayan (Feb 28, 2024)
+    // await this.authService.checkRefreshTokenLimit(user);
 
     const tokenPromises = [
       this.authService.createToken(user._id),
@@ -136,7 +136,8 @@ export class AuthController {
     if (isUserExists) {
       id = isUserExists._id;
       this.contextService.set("user", isUserExists);
-      await this.authService.checkRefreshTokenSize(isUserExists);
+      // Removing refresh token limit check until refresh token flow is fixed - Nayan (Feb 28, 2024)
+      // await this.authService.checkRefreshTokenLimit(isUserExists);
     } else {
       const user = await this.userService.createGoogleAuthUser(
         oAuthId,
