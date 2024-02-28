@@ -160,11 +160,12 @@ export class UserRepository {
     _id: ObjectId,
     refreshToken: string,
   ): Promise<void> {
+    // Replacing old refresh tokens with the new token until refresh token flow is fixed. - Nayan (Feb 28,2024)
     await this.db.collection<User>(Collections.USER).findOneAndUpdate(
       { _id },
       {
-        $push: {
-          refresh_tokens: refreshToken,
+        $set: {
+          refresh_tokens: [refreshToken],
         },
       },
     );

@@ -63,7 +63,7 @@ describe("AuthController", () => {
   let mockFastifyReply: FastifyReply;
   const authServiceMock = {
     validateUser: jest.fn().mockResolvedValue(UserDetails),
-    checkRefreshTokenSize: jest.fn().mockResolvedValue(null),
+    checkRefreshTokenLimit: jest.fn().mockResolvedValue(null),
     createToken: jest.fn().mockResolvedValue(TokenResponse),
     createRefreshToken: jest.fn().mockResolvedValue(TokenResponse),
     validateRefreshToken: jest.fn().mockResolvedValue(TokenResponse),
