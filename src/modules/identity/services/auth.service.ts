@@ -198,7 +198,7 @@ export class AuthService {
     };
   }
 
-  async checkRefreshTokenSize(user: User): Promise<void> {
+  async checkRefreshTokenLimit(user: User): Promise<void> {
     if (user.refresh_tokens.length === this.refreshTokenMaxLimit) {
       throw new BadRequestException("Maximum request limit reached");
     }
