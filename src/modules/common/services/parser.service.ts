@@ -28,7 +28,10 @@ export class ParserService {
     activeSync?: boolean,
     workspaceId?: string,
     activeSyncUrl?: string,
-  ): Promise<WithId<Collection>> {
+  ): Promise<{
+    collection: WithId<Collection>;
+    existingCollection: boolean;
+  }> {
     const openApiDocument = (await SwaggerParser.parse(file)) as OpenAPI303;
     const baseUrl = this.getBaseUrl(openApiDocument);
     let existingCollection: WithId<Collection> | null = null;
@@ -188,7 +191,10 @@ export class ParserService {
       const updatedCollection = await this.collectionService.getCollection(
         existingCollection._id.toString(),
       );
-      return updatedCollection;
+      return {
+        collection: updatedCollection,
+        existingCollection: true,
+      };
     } else {
       const newCollection = await this.collectionService.importCollection(
         collection,
@@ -196,7 +202,11 @@ export class ParserService {
       const collectionDetails = await this.collectionService.getCollection(
         newCollection.insertedId.toString(),
       );
-      return collectionDetails;
+      collectionDetails;
+      return {
+        collection: collectionDetails,
+        existingCollection: false,
+      };
     }
   }
   handleCircularReference(obj: CollectionItem) {

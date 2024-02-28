@@ -250,16 +250,19 @@ export class CollectionRepository {
       .collection<Workspace>(Collections.WORKSPACE)
       .findOne(
         {
-          "collection.name": title,
-          "collection.activeSync": true,
           _id: new ObjectId(workspaceId),
         },
-        { projection: { "collection.$": 1 } },
+        { projection: { collection: 1 } },
       );
-    if (workspaceDetails) {
+
+    if (workspaceDetails && workspaceDetails.collection) {
+      const activeCollection = workspaceDetails.collection.find(
+        (collection) =>
+          collection.activeSync === true && collection.name === title,
+      );
       const data = await this.db
         .collection<Collection>(Collections.COLLECTION)
-        .findOne({ _id: workspaceDetails.collection[0].id, activeSync: true });
+        .findOne({ _id: activeCollection.id, activeSync: true });
       return data;
     }
   }
