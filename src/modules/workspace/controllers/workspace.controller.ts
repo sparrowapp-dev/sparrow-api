@@ -330,12 +330,13 @@ export class WorkSpaceController {
         ? JSON.parse(dataString)
         : yml.load(dataString);
     const collectionObj = await this.parserService.parse(dataObj);
+
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj._id),
-      name: collectionObj.name,
+      id: new ObjectId(collectionObj.collection._id),
+      name: collectionObj.collection.name,
     });
     const collection = await this.collectionService.getCollection(
-      collectionObj._id.toString(),
+      collectionObj.collection._id.toString(),
     );
     const responseData = new ApiResponseService(
       "Collection Imported",
@@ -371,11 +372,13 @@ export class WorkSpaceController {
       workspaceId,
       importCollectionDto.url,
     );
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj._id),
-      name: collectionObj.name,
-      activeSync: collectionObj.activeSync,
-    });
+    if (!collectionObj.existingCollection) {
+      await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
+        id: new ObjectId(collectionObj.collection._id),
+        name: collectionObj.collection.name,
+        activeSync: collectionObj.collection.activeSync,
+      });
+    }
     const responseData = new ApiResponseService(
       "Collection Imported",
       HttpStatusCode.OK,
@@ -407,12 +410,12 @@ export class WorkSpaceController {
         : (yml.load(jsonObj) as string);
     const collectionObj = await this.parserService.parse(dataObj);
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj._id),
-      name: collectionObj.name,
+      id: new ObjectId(collectionObj.collection._id),
+      name: collectionObj.collection.name,
     });
 
     const collection = await this.collectionService.getCollection(
-      collectionObj._id.toString(),
+      collectionObj.collection._id.toString(),
     );
     const responseData = new ApiResponseService(
       "Collection Imported",
