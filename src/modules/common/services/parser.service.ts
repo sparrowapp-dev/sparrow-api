@@ -51,7 +51,7 @@ export class ParserService {
         requestObj.request.method = innerKey.toUpperCase() as HTTPMethods;
         requestObj.request.operationId = innerValue.operationId;
         requestObj.request.url = baseUrl + key;
-
+        let newBody = [];
         if (innerValue.parameters?.length) {
           requestObj.request.queryParams = innerValue.parameters.filter(
             (param: ParameterObject) => param.in === "query",
@@ -62,8 +62,30 @@ export class ParserService {
           requestObj.request.headers = innerValue.parameters.filter(
             (param: ParameterObject) => param.in === "header",
           );
+          newBody = innerValue.parameters.filter(
+            (param: ParameterObject) => param.in === "body",
+          );
         }
-        if (innerValue.requestBody) {
+
+        if (newBody.length) {
+          for (const body of newBody) {
+            const bodyToPush: RequestBody = {} as RequestBody;
+            const schema = body.schema;
+            const ref = schema["$ref"];
+            if (ref) {
+              const schemaName = ref.slice(
+                ref.lastIndexOf("/") + 1,
+                ref.length,
+              );
+              bodyToPush.schema = (openApiDocument as any).definitions[
+                schemaName
+              ];
+            } else {
+              bodyToPush.schema = (schema as any).schema;
+            }
+            requestObj.request.body.push(bodyToPush);
+          }
+        } else if (innerValue.requestBody) {
           requestObj.request.body = [];
           const bodyTypes = innerValue.requestBody.content;
           for (const [type, schema] of Object.entries(bodyTypes)) {
