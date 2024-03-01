@@ -57,4 +57,7 @@ export default () => ({
       appUrl: process.env.MAC_INTEL_APP_URL,
     },
   },
+  support: {
+    sparrowEmail: process.env.SPARROW_EMAIL,
+  },
 });

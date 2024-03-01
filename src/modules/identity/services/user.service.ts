@@ -181,6 +181,7 @@ export class UserService {
       context: {
         name: userDetails.name,
         verificationCode,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
       },
       subject: `Reset Your Sparrow Account Password`,
     };
