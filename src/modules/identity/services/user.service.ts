@@ -3,15 +3,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { UpdateUserDto } from "../payloads/user.payload";
+import { RegisteredWith, UpdateUserDto } from "../payloads/user.payload";
 import { UserRepository } from "../repositories/user.repository";
 import { RegisterPayload } from "../payloads/register.payload";
 import { ConfigService } from "@nestjs/config";
 import { AuthService } from "./auth.service";
-import {
-  EmailServiceProvider,
-  User,
-} from "@src/modules/common/models/user.model";
+import { User } from "@src/modules/common/models/user.model";
 import {
   EarlyAccessPayload,
   ResetPasswordPayload,
@@ -57,6 +54,30 @@ export class UserService {
    */
   async getUserByEmail(email: string): Promise<WithId<User>> {
     return await this.userRepository.getUserByEmail(email);
+  }
+
+  /**
+   * Fetches a user from database by username
+   * @param {string} email
+   * @returns {Promise<IUser>} queried user data
+   */
+  async getUserRegisterStatus(email: string): Promise<RegisteredWith> {
+    const user = await this.userRepository.getUserByEmail(email);
+    if (user?.authProviders) {
+      // Registered with google auth
+      return {
+        registeredWith: "google",
+      };
+    } else if (user?.email) {
+      // registered with email
+      return {
+        registeredWith: "email",
+      };
+    } else {
+      return {
+        registeredWith: "unknown",
+      };
+    }
   }
 
   /**
@@ -135,9 +156,11 @@ export class UserService {
       throw new UnauthorizedException(ErrorMessages.BadRequestError);
     }
     const transporter = nodemailer.createTransport({
-      service: EmailServiceProvider.GMAIL,
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
       auth: {
-        user: this.configService.get("app.senderEmail"),
+        user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
     });
@@ -158,6 +181,7 @@ export class UserService {
       context: {
         name: userDetails.name,
         verificationCode,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
       },
       subject: `Reset Your Sparrow Account Password`,
     };
@@ -173,9 +197,11 @@ export class UserService {
 
   async sendWelcomeEmail(earlyAccessDto: EarlyAccessPayload): Promise<void> {
     const transporter = nodemailer.createTransport({
-      service: EmailServiceProvider.GMAIL,
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
       auth: {
-        user: this.configService.get("app.senderEmail"),
+        user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
     });

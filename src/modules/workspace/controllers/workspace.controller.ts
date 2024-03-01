@@ -330,12 +330,13 @@ export class WorkSpaceController {
         ? JSON.parse(dataString)
         : yml.load(dataString);
     const collectionObj = await this.parserService.parse(dataObj);
+
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj.id),
-      name: collectionObj.name,
+      id: new ObjectId(collectionObj.collection._id),
+      name: collectionObj.collection.name,
     });
     const collection = await this.collectionService.getCollection(
-      collectionObj.id,
+      collectionObj.collection._id.toString(),
     );
     const responseData = new ApiResponseService(
       "Collection Imported",
@@ -357,17 +358,27 @@ export class WorkSpaceController {
     @Res() res: FastifyReply,
     @Body() importCollectionDto: ImportCollectionDto,
   ) {
+    const activeSync = importCollectionDto.activeSync ?? false;
     const response = await axios.get(importCollectionDto.url);
     const data = response.data;
     const responseType = response.headers["content-type"];
-    const dataObj =
-      responseType === BodyModeEnum["application/json"] ? data : yml.load(data);
+    const dataObj = responseType.includes(BodyModeEnum["application/json"])
+      ? data
+      : yml.load(data);
 
-    const collectionObj = await this.parserService.parse(dataObj);
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj.id),
-      name: collectionObj.name,
-    });
+    const collectionObj = await this.parserService.parse(
+      dataObj,
+      activeSync,
+      workspaceId,
+      importCollectionDto.url,
+    );
+    if (!collectionObj.existingCollection) {
+      await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
+        id: new ObjectId(collectionObj.collection._id),
+        name: collectionObj.collection.name,
+        activeSync: collectionObj.collection.activeSync,
+      });
+    }
     const responseData = new ApiResponseService(
       "Collection Imported",
       HttpStatusCode.OK,
@@ -399,12 +410,12 @@ export class WorkSpaceController {
         : (yml.load(jsonObj) as string);
     const collectionObj = await this.parserService.parse(dataObj);
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj.id),
-      name: collectionObj.name,
+      id: new ObjectId(collectionObj.collection._id),
+      name: collectionObj.collection.name,
     });
 
     const collection = await this.collectionService.getCollection(
-      collectionObj.id,
+      collectionObj.collection._id.toString(),
     );
     const responseData = new ApiResponseService(
       "Collection Imported",

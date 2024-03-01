@@ -242,17 +242,27 @@ export class CollectionRepository {
     }
   }
 
-  async getActiveSyncedCollection(title: string): Promise<WithId<Collection>> {
+  async getActiveSyncedCollection(
+    title: string,
+    workspaceId: string,
+  ): Promise<WithId<Collection>> {
     const workspaceDetails = await this.db
       .collection<Workspace>(Collections.WORKSPACE)
       .findOne(
-        { "collection.name": title },
-        { projection: { "collection.$": 1 } },
+        {
+          _id: new ObjectId(workspaceId),
+        },
+        { projection: { collection: 1 } },
       );
-    if (workspaceDetails) {
+
+    if (workspaceDetails && workspaceDetails.collection) {
+      const activeCollection = workspaceDetails.collection.find(
+        (collection) =>
+          collection.activeSync === true && collection.name === title,
+      );
       const data = await this.db
         .collection<Collection>(Collections.COLLECTION)
-        .findOne({ _id: workspaceDetails.collection[0].id });
+        .findOne({ _id: activeCollection.id, activeSync: true });
       return data;
     }
   }

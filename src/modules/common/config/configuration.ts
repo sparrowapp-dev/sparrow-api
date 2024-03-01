@@ -19,8 +19,12 @@ export default () => ({
       process.env.REFRESH_TOKEN_EXPIRATION_TIME,
     ),
     refreshTokenMaxLimit: parseInt(process.env.REFRESH_TOKEN_MAX_LIMIT),
-    senderEmail: process.env.SENDER_EMAIL,
-    senderPassword: process.env.SENDER_PASSWORD,
+    senderEmail: process.env.SMTP_SENDER_EMAIL,
+    senderPassword: process.env.SMTP_SENDER_PASSWORD,
+    mailHost: process.env.SMTP_MAIL_HOST,
+    mailPort: process.env.SMTP_MAIL_PORT,
+    mailSecure: process.env.SMTP_MAIL_SECURE,
+    userName: process.env.SMTP_USER_NAME,
   },
   db: {
     url: process.env.DB_URL,
@@ -29,7 +33,7 @@ export default () => ({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      appUrl: process.env.APP_URL,
+      appUrl: process.env.GOOGLE_APP_URL,
       redirectUrl: process.env.LOGIN_REDIRECT_URL,
       accessType: process.env.GOOGLE_ACCESS_TYPE,
     },
@@ -52,5 +56,8 @@ export default () => ({
       appSignature: process.env.MAC_INTEL_APP_SIGNATURE,
       appUrl: process.env.MAC_INTEL_APP_URL,
     },
+  },
+  support: {
+    sparrowEmail: process.env.SPARROW_EMAIL,
   },
 });

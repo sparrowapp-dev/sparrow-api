@@ -42,7 +42,6 @@ import { User } from "@src/modules/common/models/user.model";
 import { isString } from "class-validator";
 import * as nodemailer from "nodemailer";
 import hbs = require("nodemailer-express-handlebars");
-import { EmailServiceProvider } from "@src/modules/common/models/user.model";
 import { ConfigService } from "@nestjs/config";
 import path = require("path");
 /**
@@ -513,9 +512,11 @@ export class WorkspaceService {
   async inviteUserInWorkspaceEmail(payload: WorkspaceInviteMailDto) {
     const currentUser = await this.contextService.get("user");
     const transporter = nodemailer.createTransport({
-      service: EmailServiceProvider.GMAIL,
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
       auth: {
-        user: this.configService.get("app.senderEmail"),
+        user: this.configService.get("app.userName"),
         pass: this.configService.get("app.senderPassword"),
       },
     });
@@ -538,6 +539,7 @@ export class WorkspaceService {
           firstname: user.name,
           username: currentUser.name,
           workspacename: payload.workspaceName,
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
         },
         subject: `${currentUser.name} has invited you to the workspace "${payload.workspaceName}"`,
       };
