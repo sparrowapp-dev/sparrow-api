@@ -17,6 +17,8 @@ import { CollectionService } from "@src/modules/workspace/services/collection.se
 import { WithId } from "mongodb";
 import { resolveAllComponentRefs } from "./helper/parser.helper";
 import { OpenAPI20 } from "../models/openapi20.model";
+import { transformPath } from "./helper/oapi2.transformer";
+import * as util from "util";
 
 @Injectable()
 export class ParserService {
@@ -103,31 +105,33 @@ export class ParserService {
       }
     } else if (openApiDocument.hasOwnProperty("definitions")) {
       openApiDocument = resolveAllComponentRefs(openApiDocument) as OpenAPI20;
-      console.log("Yet to implement");
-      // newBody = innerValue.parameters.filter(
-      //   (param: ParameterObject) => param.in === "body",
-      // );
-      // if (newBody.length) {
-      //   for (const body of newBody) {
-      //     const bodyToPush: RequestBody = {} as RequestBody;
-      //     const schema = body.schema;
-      //     const ref = schema["$ref"];
-      //     if (ref) {
-      //       const schemaName = ref.slice(
-      //         ref.lastIndexOf("/") + 1,
-      //         ref.length,
-      //       );
-      //       bodyToPush.schema = (openApiDocument as any).definitions[
-      //         schemaName
-      //       ];
-      //     } else {
-      //       bodyToPush.schema = (schema as any).schema;
-      //     }
-      //     requestObj.request.body.push(bodyToPush);
-      //   }
-      // }
+      const transformedPaths: Array<any> = [];
+      for (const [pathName, pathObject] of Object.entries(
+        openApiDocument.paths,
+      )) {
+        transformedPaths.push(
+          transformPath(
+            pathName,
+            pathObject,
+            openApiDocument.securityDefinitions,
+          ),
+        );
+      }
 
-      return;
+      // const requestObj: CollectionItem = {
+      //   id: uuid,
+      //   name: request.items.name,
+      //   type: request.items.type,
+      //   description: request.items.description,
+      //   source: SourceTypeEnum.USER,
+      //   isDeleted: false,
+      //   createdBy: userName,
+      //   updatedBy: userName,
+      //   createdAt: new Date(),
+      //   updatedAt: new Date(),
+      // };
+      console.log("Implementation done");
+      console.log(util.inspect(transformedPaths, false, null, true));
     }
     const itemObject = Object.fromEntries(folderObjMap);
     let items: CollectionItem[] = [];
