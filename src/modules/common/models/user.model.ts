@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsDate,
   IsEmail,
   IsMongoId,
@@ -83,6 +84,10 @@ export class User {
   @IsDate()
   @IsOptional()
   verificationCodeTimeStamp?: Date;
+
+  @IsBoolean()
+  @IsOptional()
+  isVerificationCodeActive?: boolean;
 }
 
 export class UserDto {
