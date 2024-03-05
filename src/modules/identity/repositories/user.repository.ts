@@ -224,6 +224,18 @@ export class UserRepository {
         $set: {
           verificationCode,
           verificationCodeTimeStamp: new Date(),
+          isVerificationCodeActive: true,
+        },
+      },
+    );
+  }
+
+  async expireVerificationCode(email: string): Promise<void> {
+    await this.db.collection<User>(Collections.USER).findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          isVerificationCodeActive: false,
         },
       },
     );

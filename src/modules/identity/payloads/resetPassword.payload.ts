@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsNotEmpty, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, Matches, MinLength } from "class-validator";
 
 export class ResetPasswordPayload {
   @ApiProperty({
@@ -49,7 +49,21 @@ export class UpdatePasswordPayload {
     required: true,
     example: "newPassword",
   })
-  @MinLength(8)
   @IsNotEmpty()
+  @Matches(/(?=.*[0-9])/, {
+    message: "password must contain at least one digit.",
+  })
+  @Matches(/(?=.*[!@#$%^&*])/, {
+    message: "password must contain at least one special character (!@#$%^&*).",
+  })
+  @MinLength(8)
   newPassword: string;
+
+  @ApiProperty({
+    required: true,
+    example: "ABC123",
+  })
+  @MinLength(6)
+  @IsNotEmpty()
+  verificationCode: string;
 }
