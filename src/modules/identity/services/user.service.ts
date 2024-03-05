@@ -269,14 +269,15 @@ export class UserService {
   async verifyVerificationCode(
     email: string,
     verificationCode: string,
+    expireTime: number,
   ): Promise<void> {
     const user = await this.getUserByEmail(email);
+    if (!user?.isVerificationCodeActive) {
+      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+    }
     if (user?.verificationCode !== verificationCode.toUpperCase()) {
       throw new UnauthorizedException(ErrorMessages.Unauthorized);
     }
-    const expireTime = this.configService.get(
-      "app.emailValidationCodeExpirationTime",
-    );
     if (
       (Date.now() - user.verificationCodeTimeStamp.getTime()) / 1000 >
       expireTime
@@ -285,6 +286,12 @@ export class UserService {
     }
     return;
   }
+
+  async expireVerificationCode(email: string): Promise<void> {
+    await this.userRepository.expireVerificationCode(email);
+    return;
+  }
+
   async updatePassword(email: string, password: string): Promise<void> {
     const user = await this.getUserByEmailAndPass(email, password);
 
@@ -292,8 +299,10 @@ export class UserService {
       throw new UnauthorizedException(ErrorMessages.PasswordExist);
     }
     await this.userRepository.updatePassword(email, password);
+    await this.expireVerificationCode(email);
     return;
   }
+
   generateEmailVerificationCode(): string {
     return (Math.random() + 1).toString(36).substring(2, 8);
   }

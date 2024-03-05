@@ -31,6 +31,7 @@ import {
 import { RefreshTokenGuard } from "@src/modules/common/guards/refresh-token.guard";
 import { RefreshTokenRequest } from "./auth.controller";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { ConfigService } from "@nestjs/config";
 /**
  * User Controller
  */
@@ -38,7 +39,10 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 @ApiTags("user")
 @Controller("api/user")
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -196,9 +200,13 @@ export class UserController {
     @Res() res: FastifyReply,
     @Body() verifyEmailPayload: VerifyEmailPayload,
   ) {
+    const expireTime = this.configService.get(
+      "app.emailValidationCodeExpirationTime",
+    );
     await this.userService.verifyVerificationCode(
       verifyEmailPayload.email,
       verifyEmailPayload.verificationCode,
+      expireTime,
     );
     const responseData = new ApiResponseService(
       "Email Verified Successfully",
@@ -217,6 +225,14 @@ export class UserController {
     @Res() res: FastifyReply,
     @Body() updatePasswordPayload: UpdatePasswordPayload,
   ) {
+    const expireTime = this.configService.get(
+      "app.emailValidationCodeExpirationTime",
+    );
+    await this.userService.verifyVerificationCode(
+      updatePasswordPayload.email,
+      updatePasswordPayload.verificationCode,
+      expireTime * 2,
+    );
     await this.userService.updatePassword(
       updatePasswordPayload.email,
       updatePasswordPayload.newPassword,
