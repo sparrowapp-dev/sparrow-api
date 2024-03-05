@@ -17,8 +17,7 @@ import { CollectionService } from "@src/modules/workspace/services/collection.se
 import { WithId } from "mongodb";
 import { resolveAllComponentRefs } from "./helper/parser.helper";
 import { OpenAPI20 } from "../models/openapi20.model";
-import { transformPath } from "./helper/oapi2.transformer";
-import * as util from "util";
+import { createCollectionItems } from "./helper/oapi2.transformer";
 
 @Injectable()
 export class ParserService {
@@ -41,7 +40,8 @@ export class ParserService {
       | OpenAPI20;
     const baseUrl = this.getBaseUrl(openApiDocument);
     let existingCollection: WithId<Collection> | null = null;
-    const folderObjMap = new Map();
+    let folderObjMap = new Map();
+    const user = await this.contextService.get("user");
     if (openApiDocument.hasOwnProperty("components")) {
       openApiDocument = resolveAllComponentRefs(openApiDocument) as OpenAPI303;
       for (const [key, value] of Object.entries(openApiDocument.paths)) {
@@ -105,33 +105,7 @@ export class ParserService {
       }
     } else if (openApiDocument.hasOwnProperty("definitions")) {
       openApiDocument = resolveAllComponentRefs(openApiDocument) as OpenAPI20;
-      const transformedPaths: Array<any> = [];
-      for (const [pathName, pathObject] of Object.entries(
-        openApiDocument.paths,
-      )) {
-        transformedPaths.push(
-          transformPath(
-            pathName,
-            pathObject,
-            openApiDocument.securityDefinitions,
-          ),
-        );
-      }
-
-      // const requestObj: CollectionItem = {
-      //   id: uuid,
-      //   name: request.items.name,
-      //   type: request.items.type,
-      //   description: request.items.description,
-      //   source: SourceTypeEnum.USER,
-      //   isDeleted: false,
-      //   createdBy: userName,
-      //   updatedBy: userName,
-      //   createdAt: new Date(),
-      //   updatedAt: new Date(),
-      // };
-      console.log("Implementation done");
-      console.log(util.inspect(transformedPaths, false, null, true));
+      folderObjMap = createCollectionItems(openApiDocument, user);
     }
     const itemObject = Object.fromEntries(folderObjMap);
     let items: CollectionItem[] = [];
@@ -145,7 +119,6 @@ export class ParserService {
     items.map((itemObj) => {
       totalRequests = totalRequests + itemObj.items?.length;
     });
-    const user = await this.contextService.get("user");
 
     if (activeSync) {
       let mergedFolderItems: CollectionItem[] = [];

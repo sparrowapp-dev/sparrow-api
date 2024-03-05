@@ -1,16 +1,73 @@
 // @ts-nocheck
-export function transformPath(
-  pathName: string,
-  pathObject: any,
-  security: any,
-) {
+import { v4 as uuidv4 } from "uuid";
+import { ItemTypeEnum, SourceTypeEnum } from "../../models/collection.model";
+
+export function createCollectionItems(openApiDocument, user) {
+  let collectionItems = [];
+
+  //Get all collection items
+  for (const [pathName, pathObject] of Object.entries(openApiDocument.paths)) {
+    let request = transformPath(
+      pathName,
+      pathObject,
+      openApiDocument.securityDefinitions,
+    );
+    collectionItems.push({
+      id: uuidv4(),
+      name: request.name,
+      tag: request.tag,
+      type: ItemTypeEnum.REQUEST,
+      description: request.description,
+      operationId: request.operationId,
+      source: SourceTypeEnum.SPEC,
+      request: request.request,
+      isDeleted: false,
+      createdBy: user.name,
+      updatedBy: user.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  const baseUrl = getBaseUrl(openApiDocument);
+
+  //Assigning requests to folders according to their tag
+  const folderMap = new Map();
+  for (const item of collectionItems) {
+    item.request.url = baseUrl + item.request.url;
+    let tagDescription = "";
+    for (const tag of Object.values(openApiDocument?.tags)) {
+      if (tag.name === item.tag) {
+        tagDescription = tag.description;
+      }
+    }
+    let folderObj = folderMap.get(item.tag);
+    if (!folderObj) {
+      folderObj = {};
+      folderObj.name = item.tag;
+      folderObj.description = tagDescription;
+      folderObj.isDeleted = false;
+      folderObj.type = ItemTypeEnum.FOLDER;
+      folderObj.id = uuidv4();
+      folderObj.items = [];
+    }
+    delete item.tag;
+    folderObj.items.push(item);
+    folderMap.set(folderObj.name, folderObj);
+  }
+  return folderMap;
+}
+
+function transformPath(pathName: string, pathObject: any, security: any) {
   const transformedObject = {} as any;
   const method = Object.keys(pathObject)[0].toUpperCase(); // Assuming the first key is the HTTP method
   pathObject = Object.values(pathObject)[0];
+  transformedObject.tag = pathObject.tags ? pathObject.tags[0] : "default";
+
   transformedObject.name = pathName;
   transformedObject.description =
     pathObject.summary || pathObject.description || ""; // Use summary or description if available
-  transformedObject.type = "REQUEST";
+  transformedObject.operationId = pathObject.operationId;
 
   transformedObject.request = {};
 
@@ -39,6 +96,8 @@ export function transformPath(
   transformedObject.request.url = url;
   transformedObject.request.queryParams = queryParams;
 
+  transformedObject.request.pathParams = [];
+
   // Handle request body based on schema
   transformedObject.request.body = {};
   let consumes: any = null;
@@ -46,13 +105,14 @@ export function transformPath(
     consumes = Object.values(pathObject.consumes) || [];
     if (consumes.includes("application/json")) {
       transformedObject.request.body.raw = ""; // Placeholder for raw JSON body
+      transformedObject.request.selectedRequestBodyType = "application/json";
     } else if (consumes.includes("application/x-www-form-urlencoded")) {
       transformedObject.request.body.urlencoded = []; // Array for form-urlencoded data
+      transformedObject.request.selectedRequestBodyType =
+        "application/x-www-form-urlencoded";
     } else if (consumes.includes("multipart/form-data")) {
-      transformedObject.request.body.formdata = {
-        text: [],
-        file: [],
-      }; // Text and file data for multipart form data
+      transformedObject.request.body.formdata = {}; // Text and file data for multipart form data
+      transformedObject.request.selectedRequestBodyType = "multipart/form-data";
     }
   }
 
@@ -88,21 +148,7 @@ export function transformPath(
   }
 
   // Parse request body parameters
-  const parameters:
-    | {
-        in: string;
-        name: string;
-        example: string;
-        type: string;
-        schema: {
-          type: string;
-          properties: {
-            type: string;
-            example: string;
-          }[];
-        };
-      }[]
-    | [] = pathObject.parameters || [];
+  const parameters = pathObject.parameters || [];
   for (const param of Object.values(parameters)) {
     const paramIn = param.in;
     const paramName = param.name;
@@ -110,45 +156,20 @@ export function transformPath(
 
     switch (paramIn) {
       case "body":
-        if (consumes) {
-          if (consumes.includes("application/json")) {
-            const schema = param.schema;
-            if (schema && schema.type === "object") {
-              const properties = schema.properties || {};
-              const bodyObject = {};
-              for (const [propertyName, property] of Object.entries(
-                properties,
-              )) {
-                const exampleType = property.type;
-                const exampleValue = property.example; // Use example if available
-                bodyObject[propertyName] =
-                  exampleValue ||
-                  buildExampleValue(property) ||
-                  getExampleValue(exampleType);
-              }
-              transformedObject.request.body.raw = JSON.stringify(bodyObject);
+        if (consumes && consumes.includes("application/json")) {
+          const schema = param.schema;
+          if (schema && schema.type === "object") {
+            const properties = schema.properties || {};
+            const bodyObject = {};
+            for (const [propertyName, property] of Object.entries(properties)) {
+              const exampleType = property.type;
+              const exampleValue = property.example; // Use example if available
+              bodyObject[propertyName] =
+                exampleValue ||
+                buildExampleValue(property) ||
+                getExampleValue(exampleType);
             }
-          } else if (consumes.includes("application/x-www-form-urlencoded")) {
-            transformedObject.request.body.urlencoded.push({
-              key: paramName,
-              value: paramValue,
-              checked: false,
-            });
-          } else if (consumes.includes("multipart/form-data")) {
-            if (param.type === "file") {
-              transformedObject.request.body.formdata.file.push({
-                key: paramName,
-                value: paramValue,
-                checked: false,
-                base: "#@#" + paramValue,
-              });
-            } else {
-              transformedObject.request.body.formdata.text.push({
-                key: paramName,
-                value: paramValue,
-                checked: false,
-              });
-            }
+            transformedObject.request.body.raw = JSON.stringify(bodyObject);
           }
         }
         break;
@@ -166,6 +187,41 @@ export function transformPath(
           checked: false,
         });
         break;
+      case "path":
+        transformedObject.request.pathParams.push({
+          key: paramName,
+          value: paramValue,
+          checked: false,
+        });
+        break;
+      case "formData":
+        if (
+          consumes &&
+          consumes.includes("application/x-www-form-urlencoded")
+        ) {
+          transformedObject.request.body.urlencoded.push({
+            key: paramName,
+            value: paramValue,
+            checked: false,
+          });
+        } else if (consumes && consumes.includes("multipart/form-data")) {
+          if (param.type === "file") {
+            transformedObject.request.body.formdata.file = [];
+            transformedObject.request.body.formdata.file.push({
+              key: paramName,
+              value: paramValue,
+              checked: false,
+              base: "#@#" + paramValue,
+            });
+          } else {
+            transformedObject.request.body.formdata.text = [];
+            transformedObject.request.body.formdata.text.push({
+              key: paramName,
+              value: paramValue,
+              checked: false,
+            });
+          }
+        }
     }
   }
 
@@ -203,5 +259,14 @@ function buildExampleValue(property) {
     return nestedObject;
   } else {
     return property.example || getExampleValue(property.type);
+  }
+}
+
+function getBaseUrl(openApiDocument) {
+  const basePath = openApiDocument.basePath ? openApiDocument.basePath : "";
+  if (openApiDocument.host) {
+    return "https://" + openApiDocument.host + basePath;
+  } else {
+    return "http://localhost:{{PORT}}" + basePath;
   }
 }
