@@ -208,9 +208,13 @@ export class UserController {
       verifyEmailPayload.verificationCode,
       expireTime,
     );
+    const data = await this.userService.refreshVerificationCode(
+      verifyEmailPayload.email,
+    );
     const responseData = new ApiResponseService(
       "Email Verified Successfully",
       HttpStatusCode.OK,
+      data,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
@@ -231,7 +235,7 @@ export class UserController {
     await this.userService.verifyVerificationCode(
       updatePasswordPayload.email,
       updatePasswordPayload.verificationCode,
-      expireTime * 2,
+      expireTime,
     );
     await this.userService.updatePassword(
       updatePasswordPayload.email,

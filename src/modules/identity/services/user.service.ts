@@ -292,6 +292,12 @@ export class UserService {
     return;
   }
 
+  async refreshVerificationCode(email: string): Promise<string> {
+    const verificationCode = this.generateEmailVerificationCode().toUpperCase();
+    await this.userRepository.updateVerificationCode(email, verificationCode);
+    return verificationCode;
+  }
+
   async updatePassword(email: string, password: string): Promise<void> {
     const user = await this.getUserByEmailAndPass(email, password);
 
