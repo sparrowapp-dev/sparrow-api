@@ -30,6 +30,13 @@ export enum BodyModeEnum {
   "text/html" = "text/html",
 }
 
+export enum AuthModeEnum {
+  "No Auth" = "No Auth",
+  "API Key" = "API Key",
+  "Bearer Token" = "Bearer Token",
+  "Basic Auth" = "Basic Auth",
+}
+
 export enum SourceTypeEnum {
   SPEC = "SPEC",
   USER = "USER",
@@ -118,6 +125,14 @@ export class RequestMetaData {
   @IsString()
   @IsOptional()
   selectedRequestBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    enum: AuthModeEnum,
+  })
+  @IsEnum({ AuthModeEnum })
+  @IsString()
+  @IsNotEmpty()
+  selectedRequestAuthType?: AuthModeEnum;
 
   @ApiProperty({
     example: {
