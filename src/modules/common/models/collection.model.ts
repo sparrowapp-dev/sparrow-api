@@ -123,7 +123,7 @@ export class RequestMetaData {
   })
   @IsEnum({ BodyModeEnum })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   selectedRequestBodyType?: BodyModeEnum;
 
   @ApiProperty({
