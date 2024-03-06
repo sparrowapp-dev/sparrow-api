@@ -20,6 +20,26 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
+enum ApiKeyParamTypeEnum {
+  HEADER = "Header",
+  Query = "Query Parameter",
+}
+class Auth {
+  apiKey?: ApiKey;
+  bearerToken?: string;
+  basicAuth?: BasicAuth;
+}
+
+class ApiKey {
+  authKey?: string;
+  authValue?: string;
+  addTo: ApiKeyParamTypeEnum;
+}
+class BasicAuth {
+  username?: string;
+  password?: string;
+}
+
 export class CollectionRequestBody {
   @ApiProperty({ example: "application/json" })
   @IsEnum(BodyModeEnum)
@@ -118,6 +138,25 @@ export class CollectionRequestMetaData {
   @ValidateNested({ each: true })
   @IsOptional()
   headers?: Params[];
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      apiKey: {
+        authKey: "",
+        authValue: "",
+        paramType: "header",
+      },
+      bearerToken: "",
+      basicToken: {
+        username: "",
+        password: "",
+      },
+    },
+  })
+  @Type(() => Auth)
+  @IsOptional()
+  auth?: Auth;
 }
 
 export class CollectionRequestItem {

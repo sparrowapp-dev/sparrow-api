@@ -97,6 +97,7 @@ export class TeamUserService {
           firstname: user.name,
           username: currentUser.name,
           teamname: payload.teamName,
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
         },
         subject: `${currentUser.name} has invited you to the team "${payload.teamName}"`,
       };

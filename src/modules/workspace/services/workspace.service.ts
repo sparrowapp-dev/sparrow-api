@@ -539,6 +539,7 @@ export class WorkspaceService {
           firstname: user.name,
           username: currentUser.name,
           workspacename: payload.workspaceName,
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
         },
         subject: `${currentUser.name} has invited you to the workspace "${payload.workspaceName}"`,
       };
