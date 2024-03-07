@@ -15,6 +15,19 @@ export class AppService {
   constructor(private config: ConfigService) {}
 
   getUpdaterDetails(currentVersion: string): UpdaterJsonResponsePayload {
+    import("curlconverter")
+      .then((curlconverter) => {
+        // Now you can use the imported module
+        const { toJsonString } = curlconverter;
+        const a = toJsonString(`curl `);
+        console.log("APPPPPPP =====> ", a);
+        // Use the module functionality here
+      })
+      .catch((error) => {
+        // Handle any errors that occur during the import
+        console.error("Error importing 'curlconverter':", error);
+      });
+
     if (
       this.config.get("updater.updateAvailable") === "true" &&
       currentVersion < this.config.get("updater.appVersion")

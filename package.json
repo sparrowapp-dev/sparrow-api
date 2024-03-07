@@ -50,6 +50,7 @@
     "class-transformer": "0.5.1",
     "class-transformer-validator": "^0.9.1",
     "class-validator": "^0.14.0",
+    "curlconverter": "^4.9.0",
     "dotenv": "16.0.1",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",

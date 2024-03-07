@@ -3,11 +3,11 @@ import { v4 as uuidv4 } from "uuid";
 import { ItemTypeEnum, SourceTypeEnum } from "../../models/collection.model";
 
 export function createCollectionItems(openApiDocument, user) {
-  let collectionItems = [];
+  const collectionItems = [];
 
   //Get all collection items
   for (const [pathName, pathObject] of Object.entries(openApiDocument.paths)) {
-    let request = transformPath(
+    const request = transformPath(
       pathName,
       pathObject,
       openApiDocument.securityDefinitions,
