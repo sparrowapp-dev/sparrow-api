@@ -7,6 +7,7 @@ import {
   AuthModeEnum,
   BodyModeEnum,
   ItemTypeEnum,
+  SourceTypeEnum,
 } from "../common/models/collection.model";
 import {
   AddTo,
@@ -81,11 +82,15 @@ export class AppService {
   }
 }
 
-function transformRequest(requestObject: any): TransformedRequest {
+async function transformRequest(
+  requestObject: any,
+): Promise<TransformedRequest> {
+  const user = await this.contextService.get("user");
   const transformedObject: TransformedRequest = {
     name: requestObject.url || "",
     description: "",
     type: ItemTypeEnum.REQUEST,
+    source: SourceTypeEnum.USER,
     request: {
       method: requestObject.method.toUpperCase(),
       url: "",
@@ -103,6 +108,10 @@ function transformRequest(requestObject: any): TransformedRequest {
       selectedRequestBodyType: BodyModeEnum["none"],
       selectedRequestAuthType: AuthModeEnum["No Auth"],
     },
+    createdBy: user.name,
+    updatedBy: user.name,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   // Handle URL with query parameters

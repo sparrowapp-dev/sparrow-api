@@ -36,7 +36,7 @@ interface LicenseObject {
   url?: string;
 }
 
-interface PathsObject {
+export interface PathsObject {
   [path: string]: PathItemObject;
 }
 

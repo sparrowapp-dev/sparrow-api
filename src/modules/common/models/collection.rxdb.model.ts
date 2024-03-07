@@ -1,4 +1,9 @@
-import { AuthModeEnum, BodyModeEnum, ItemTypeEnum } from "./collection.model";
+import {
+  AuthModeEnum,
+  BodyModeEnum,
+  ItemTypeEnum,
+  SourceTypeEnum,
+} from "./collection.model";
 
 export enum AddTo {
   Header = "Header",
@@ -6,6 +11,11 @@ export enum AddTo {
 }
 
 export interface TransformedRequest {
+  id?: string;
+  tag?: string;
+  operationId?: string;
+  source: SourceTypeEnum;
+  isDeleted?: boolean;
   name: string;
   description?: string;
   type: ItemTypeEnum;
@@ -23,6 +33,10 @@ export interface TransformedRequest {
     queryParams?: KeyValue[];
     auth?: Auth;
   };
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  updatedBy: string;
 }
 
 interface FormData {

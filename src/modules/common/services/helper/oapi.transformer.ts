@@ -1,9 +1,15 @@
 // @ts-nocheck
 import { v4 as uuidv4 } from "uuid";
 import { ItemTypeEnum, SourceTypeEnum } from "../../models/collection.model";
+import { OpenAPI20, PathsObject } from "../../models/openapi20.model";
+import { OpenAPI303 } from "../../models/openapi303.model";
+import { TransformedRequest } from "../../models/collection.rxdb.model";
 
-export function createCollectionItems(openApiDocument, user) {
-  const collectionItems = [];
+export function createCollectionItems(
+  openApiDocument: OpenAPI20 | OpenAPI303,
+  user,
+) {
+  const collectionItems: TransformedRequest[] = [];
 
   if (openApiDocument.components) {
     for (const [pathName, pathObject] of Object.entries(
@@ -87,16 +93,22 @@ export function createCollectionItems(openApiDocument, user) {
   return folderMap;
 }
 
-function transformPath(pathName: string, pathObject: any, security: any) {
+function transformPath(
+  pathName: string,
+  pathObject: PathsObject,
+  security: any,
+) {
   const transformedObject = {} as any;
   const method = Object.keys(pathObject)[0].toUpperCase(); // Assuming the first key is the HTTP method
-  pathObject = Object.values(pathObject)[0];
-  transformedObject.tag = pathObject.tags ? pathObject.tags[0] : "default";
+  const pathItemObject = Object.values(pathObject)[0];
+  transformedObject.tag = pathItemObject.tags
+    ? pathItemObject.tags[0]
+    : "default";
 
   transformedObject.name = pathName;
   transformedObject.description =
-    pathObject.summary || pathObject.description || ""; // Use summary or description if available
-  transformedObject.operationId = pathObject.operationId;
+    pathItemObject.summary || pathItemObject.description || ""; // Use summary or description if available
+  transformedObject.operationId = pathItemObject.operationId;
 
   transformedObject.request = {};
 
@@ -129,8 +141,8 @@ function transformPath(pathName: string, pathObject: any, security: any) {
   // Handle request body based on schema
   transformedObject.request.body = {};
   let consumes: any = null;
-  if (pathObject.consumes) {
-    consumes = Object.values(pathObject.consumes) || [];
+  if (pathItemObject.consumes) {
+    consumes = Object.values(pathItemObject.consumes) || [];
     if (consumes.includes("application/json")) {
       transformedObject.request.body.raw = "";
       transformedObject.request.selectedRequestBodyType = "application/json";
@@ -189,7 +201,7 @@ function transformPath(pathName: string, pathObject: any, security: any) {
   }
 
   // Parse request body parameters
-  const parameters = pathObject.parameters || [];
+  const parameters = pathItemObject.parameters || [];
   for (const param of Object.values(parameters)) {
     const paramIn = param.in;
     const paramName = param.name;
@@ -461,7 +473,7 @@ function transformPathV3(pathName: string, pathObject: any, security: any) {
   return transformedObject;
 }
 
-function getExampleValue(exampleType) {
+function getExampleValue(exampleType: string) {
   switch (exampleType) {
     case "string":
       return ""; // Or a default string value
@@ -495,7 +507,7 @@ function buildExampleValue(property) {
   }
 }
 
-function getBaseUrl(openApiDocument) {
+function getBaseUrl(openApiDocument: OpenAPI20 | OpenAPI303) {
   const basePath = openApiDocument.basePath ? openApiDocument.basePath : "";
   if (openApiDocument.host) {
     return "https://" + openApiDocument.host + basePath;
