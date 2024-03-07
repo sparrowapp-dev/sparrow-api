@@ -3,7 +3,11 @@ import { ConfigService } from "@nestjs/config";
 import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
 import { UpdaterJsonResponsePayload } from "./payloads/updaterJson.payload";
 import { FastifyRequest } from "fastify";
-import { ItemTypeEnum } from "../common/models/collection.model";
+import {
+  AuthModeEnum,
+  BodyModeEnum,
+  ItemTypeEnum,
+} from "../common/models/collection.model";
 import {
   AddTo,
   TransformedRequest,
@@ -96,6 +100,8 @@ function transformRequest(requestObject: any): TransformedRequest {
       headers: [],
       queryParams: [],
       auth: {},
+      selectedRequestBodyType: BodyModeEnum["none"],
+      selectedRequestAuthType: AuthModeEnum["No Auth"],
     },
   };
 
@@ -113,6 +119,8 @@ function transformRequest(requestObject: any): TransformedRequest {
           authValue: value,
           addTo: AddTo.QueryParameter,
         };
+        transformedObject.request.selectedRequestAuthType =
+          AuthModeEnum["API Key"];
       }
     }
     transformedObject.request.url = requestObject.raw_url;
@@ -166,21 +174,36 @@ function transformRequest(requestObject: any): TransformedRequest {
           });
         }
       }
-    } else if (
-      contentType.includes("application/json") ||
-      contentType.includes("text/html") ||
-      contentType.includes("text/xml")
-    ) {
+      transformedObject.request.selectedRequestBodyType =
+        BodyModeEnum["multipart/form-data"];
+    } else if (contentType.includes("application/json")) {
       try {
         transformedObject.request.body.raw = JSON.stringify(
           requestObject.data,
           null,
           2,
-        ); // Pretty-printed JSON
+        );
       } catch (error) {
         console.warn("Error parsing request body JSON:", error);
-        transformedObject.request.body.raw = requestObject.data; // Fallback to raw data if parsing fails
+        transformedObject.request.body.raw = requestObject.data;
       }
+      transformedObject.request.selectedRequestBodyType =
+        BodyModeEnum["application/json"];
+    } else if (contentType.includes("application/javascript")) {
+      transformedObject.request.body.raw = "";
+      transformedObject.request.selectedRequestBodyType =
+        BodyModeEnum["application/javascript"];
+    } else if (contentType.includes("text/html")) {
+      transformedObject.request.body.raw = "";
+      transformedObject.request.selectedRequestBodyType =
+        BodyModeEnum["text/html"];
+    } else if (
+      contentType.includes("application/xml") ||
+      contentType.includes("text/xml")
+    ) {
+      transformedObject.request.body.raw = "";
+      transformedObject.request.selectedRequestBodyType =
+        BodyModeEnum["application/xml"];
     } else if (contentType.includes("application/x-www-form-urlencoded")) {
       // Assuming data is already URL-encoded key-value pairs
       for (const [key, value] of new URLSearchParams(requestObject.data)) {
@@ -190,10 +213,14 @@ function transformRequest(requestObject: any): TransformedRequest {
           checked: true,
         });
       }
+      transformedObject.request.selectedRequestBodyType =
+        BodyModeEnum["application/x-www-form-urlencoded"];
     } else {
       // Handle other content types (consider adding warnings or handling as raw data)
       console.warn(`Unsupported Content-Type: ${contentType}`);
       transformedObject.request.body.raw = requestObject.data;
+      transformedObject.request.selectedRequestBodyType =
+        BodyModeEnum["text/plain"];
     }
   }
 
@@ -221,6 +248,8 @@ function transformRequest(requestObject: any): TransformedRequest {
         (value.startsWith("bearer ") || value.startsWith("Bearer "))
       ) {
         transformedObject.request.auth.bearerToken = value.slice(7).trim();
+        transformedObject.request.selectedRequestAuthType =
+          AuthModeEnum["Bearer Token"];
       }
 
       // Check for API key
@@ -233,6 +262,8 @@ function transformRequest(requestObject: any): TransformedRequest {
           authValue: value,
           addTo: AddTo.Header,
         };
+        transformedObject.request.selectedRequestAuthType =
+          AuthModeEnum["API Key"];
       }
 
       // Check for Basic Auth (assuming encoded username:password)
@@ -249,6 +280,8 @@ function transformRequest(requestObject: any): TransformedRequest {
           username,
           password,
         };
+        transformedObject.request.selectedRequestAuthType =
+          AuthModeEnum["Basic Auth"];
       }
     }
   }

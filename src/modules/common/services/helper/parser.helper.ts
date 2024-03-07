@@ -1,4 +1,4 @@
-export function resolveAllComponentRefs(spec: any) {
+export function resolveAllRefs(spec: any) {
   if (!spec) return spec;
 
   if (typeof spec === "object") {

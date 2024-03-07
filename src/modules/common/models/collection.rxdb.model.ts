@@ -1,4 +1,4 @@
-import { BodyModeEnum, ItemTypeEnum } from "./collection.model";
+import { AuthModeEnum, BodyModeEnum, ItemTypeEnum } from "./collection.model";
 
 export enum AddTo {
   Header = "Header",
@@ -11,6 +11,7 @@ export interface TransformedRequest {
   type: ItemTypeEnum;
   request: {
     selectedRequestBodyType?: BodyModeEnum;
+    selectedRequestAuthType?: AuthModeEnum;
     method: string;
     url: string;
     body: {

@@ -21,6 +21,7 @@ export enum ItemTypeEnum {
   REQUEST = "REQUEST",
 }
 export enum BodyModeEnum {
+  "none" = "none",
   "application/json" = "application/json",
   "application/xml" = "application/xml",
   "application/x-www-form-urlencoded" = "application/x-www-form-urlencoded",
@@ -28,6 +29,13 @@ export enum BodyModeEnum {
   "application/javascript" = "application/javascript",
   "text/plain" = "text/plain",
   "text/html" = "text/html",
+}
+
+export enum AuthModeEnum {
+  "No Auth" = "No Auth",
+  "API Key" = "API Key",
+  "Bearer Token" = "Bearer Token",
+  "Basic Auth" = "Basic Auth",
 }
 
 export enum SourceTypeEnum {
@@ -118,6 +126,14 @@ export class RequestMetaData {
   @IsString()
   @IsOptional()
   selectedRequestBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    enum: AuthModeEnum,
+  })
+  @IsEnum({ AuthModeEnum })
+  @IsString()
+  @IsNotEmpty()
+  selectedRequestAuthType?: AuthModeEnum;
 
   @ApiProperty({
     example: {
