@@ -9,7 +9,8 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
-  ApiHeader,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
 } from "@nestjs/swagger";
@@ -47,11 +48,6 @@ export class AppController {
   }
 
   @Post("curl")
-  @ApiHeader({
-    name: "curl",
-    description: "Pass in the curl command.",
-    allowEmptyValue: false,
-  })
   @ApiOperation({
     summary: "Parse Curl",
     description: "Parses the provided curl into Sparrow api request schema",
@@ -59,6 +55,17 @@ export class AppController {
   @ApiResponse({
     status: 200,
     description: "Curl parsed successfully",
+  })
+  @ApiConsumes("application/x-www-form-urlencoded")
+  @ApiBody({
+    schema: {
+      properties: {
+        curl: {
+          type: "string",
+          example: "Use sparrow to hit this request",
+        },
+      },
+    },
   })
   @UseGuards(JwtAuthGuard)
   async parseCurl(
