@@ -17,31 +17,27 @@ export function createCollectionItems(
 ) {
   const collectionItems: TransformedRequest[] = [];
 
-  if (openApiDocument.components) {
-    for (const [pathName, pathObject] of Object.entries(
-      openApiDocument.paths,
-    )) {
-      const request = transformPathV3(
-        pathName,
-        pathObject,
-        openApiDocument.components.securitySchemes,
-      );
-      collectionItems.push({
-        id: uuidv4(),
-        name: request.name,
-        tag: request.tag,
-        type: ItemTypeEnum.REQUEST,
-        description: request.description,
-        operationId: request.operationId,
-        source: SourceTypeEnum.SPEC,
-        request: request.request,
-        isDeleted: false,
-        createdBy: user.name,
-        updatedBy: user.name,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    }
+  for (const [pathName, pathObject] of Object.entries(openApiDocument.paths)) {
+    const request = transformPathV3(
+      pathName,
+      pathObject,
+      openApiDocument.components.securitySchemes,
+    );
+    collectionItems.push({
+      id: uuidv4(),
+      name: request.name,
+      tag: request.tag,
+      type: ItemTypeEnum.REQUEST,
+      description: request.description,
+      operationId: request.operationId,
+      source: SourceTypeEnum.SPEC,
+      request: request.request,
+      isDeleted: false,
+      createdBy: user.name,
+      updatedBy: user.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   }
 
   const baseUrl = getBaseUrl(openApiDocument);

@@ -1,7 +1,16 @@
-import { Controller, Get, Param, Post, Req, Res } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiHeader, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 
 /**
  * App Controller
@@ -44,6 +53,7 @@ export class AppController {
     status: 200,
     description: "Curl parsed successfully",
   })
+  @UseGuards(JwtAuthGuard)
   async parseCurl(@Res() res: FastifyReply, @Req() req: FastifyRequest) {
     const parsedRequestData = await this.appService.parseCurl(req);
     return res.status(200).send(parsedRequestData);
