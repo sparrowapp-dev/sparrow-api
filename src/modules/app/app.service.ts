@@ -87,6 +87,17 @@ export class AppService {
 
   async transformRequest(requestObject: any): Promise<TransformedRequest> {
     const user = await this.contextService.get("user");
+    const keyValueDefaultObj = {
+      key: "",
+      value: "",
+      checked: false,
+    };
+    const formDataFileDefaultObj = {
+      key: "",
+      value: "",
+      checked: false,
+      base: "",
+    };
     const transformedObject: TransformedRequest = {
       name: requestObject.url || "",
       description: "",
@@ -105,7 +116,18 @@ export class AppService {
         },
         headers: [],
         queryParams: [],
-        auth: {},
+        auth: {
+          bearerToken: "",
+          basicAuth: {
+            username: "",
+            password: "",
+          },
+          apiKey: {
+            authKey: "",
+            authValue: "",
+            addTo: AddTo.Header,
+          },
+        },
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
       },
@@ -134,6 +156,7 @@ export class AppService {
         }
       }
       transformedObject.request.url = requestObject.raw_url;
+      transformedObject.request.queryParams = queryParams;
     }
 
     // Handle request body based on Content-Type
@@ -142,7 +165,6 @@ export class AppService {
         requestObject.headers["content-type"] ||
         requestObject.headers["Content-Type"] ||
         "";
-      //"multipart/form-data; boundary=----WebKitFormBoundaryhBHci3a7BLGRCFlH"
       if (contentType.startsWith("multipart/form-data")) {
         const boundary = contentType.split("boundary=")[1];
         const formDataParts = requestObject.data.split(`--${boundary}\r\n`);
@@ -152,7 +174,7 @@ export class AppService {
           const lines = part.trim().split("\r\n");
           const disposition = lines[0]; // Content-Disposition line
           if (disposition.includes('name="_method"')) {
-            // Ignore the _method part (can be handled elsewhere if needed)
+            // Ignore the _method part
             continue;
           }
           const key = disposition.split('name="')[1].split('"')[0];
@@ -202,22 +224,18 @@ export class AppService {
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["application/json"];
       } else if (contentType.includes("application/javascript")) {
-        transformedObject.request.body.raw = "";
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["application/javascript"];
       } else if (contentType.includes("text/html")) {
-        transformedObject.request.body.raw = "";
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["text/html"];
       } else if (
         contentType.includes("application/xml") ||
         contentType.includes("text/xml")
       ) {
-        transformedObject.request.body.raw = "";
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["application/xml"];
       } else if (contentType.includes("application/x-www-form-urlencoded")) {
-        // Assuming data is already URL-encoded key-value pairs
         for (const [key, value] of new URLSearchParams(requestObject.data)) {
           transformedObject.request.body.urlencoded.push({
             key,
@@ -228,7 +246,6 @@ export class AppService {
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["application/x-www-form-urlencoded"];
       } else {
-        // Handle other content types (consider adding warnings or handling as raw data)
         console.warn(`Unsupported Content-Type: ${contentType}`);
         transformedObject.request.body.raw = requestObject.data;
         transformedObject.request.selectedRequestBodyType =
@@ -236,7 +253,7 @@ export class AppService {
       }
     }
 
-    // Handle files from request object (unchanged from previous version)
+    // Handle files from request object
     if (requestObject.files) {
       for (const [key, filename] of Object.entries(requestObject.files)) {
         transformedObject.request.body.formdata.file.push({
@@ -248,7 +265,7 @@ export class AppService {
       }
     }
 
-    // Handle headers and populate auth details (unchanged from previous version)
+    // Handle headers and populate auth details
     if (requestObject.headers) {
       for (const [key, value] of Object.entries(requestObject.headers)) {
         transformedObject.request.headers.push({ key, value, checked: true });
@@ -278,7 +295,7 @@ export class AppService {
             AuthModeEnum["API Key"];
         }
 
-        // Check for Basic Auth (assuming encoded username:password)
+        // Check for Basic Auth
         if (
           key.toLowerCase() === "authorization" &&
           typeof value === "string" &&
@@ -296,6 +313,23 @@ export class AppService {
             AuthModeEnum["Basic Auth"];
         }
       }
+    }
+
+    //Assign default values
+    if (!transformedObject.request.headers.length) {
+      transformedObject.request.headers.push(keyValueDefaultObj);
+    }
+    if (!transformedObject.request.queryParams.length) {
+      transformedObject.request.queryParams.push(keyValueDefaultObj);
+    }
+    if (!transformedObject.request.body.formdata.text.length) {
+      transformedObject.request.body.formdata.text.push(keyValueDefaultObj);
+    }
+    if (!transformedObject.request.body.formdata.file.length) {
+      transformedObject.request.body.formdata.file.push(formDataFileDefaultObj);
+    }
+    if (!transformedObject.request.body.urlencoded.length) {
+      transformedObject.request.body.urlencoded.push(keyValueDefaultObj);
     }
 
     return transformedObject;

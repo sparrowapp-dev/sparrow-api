@@ -7,7 +7,12 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { ApiHeader, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiHeader,
+  ApiOperation,
+  ApiResponse,
+} from "@nestjs/swagger";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -15,6 +20,7 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 /**
  * App Controller
  */
+@ApiBearerAuth()
 @Controller()
 export class AppController {
   constructor(private appService: AppService) {}

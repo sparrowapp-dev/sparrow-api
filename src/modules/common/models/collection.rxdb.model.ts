@@ -7,7 +7,7 @@ import {
 
 export enum AddTo {
   Header = "Header",
-  QueryParameter = "QueryParameter",
+  QueryParameter = "Query Parameter",
 }
 
 export interface TransformedRequest {

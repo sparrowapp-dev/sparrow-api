@@ -1,5 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
-import { ItemTypeEnum, SourceTypeEnum } from "../../models/collection.model";
+import {
+  AuthModeEnum,
+  BodyModeEnum,
+  ItemTypeEnum,
+  SourceTypeEnum,
+} from "../../models/collection.model";
 import { OpenAPI20, SchemaRefObject } from "../../models/openapi20.model";
 import {
   OpenAPI303,
@@ -7,7 +12,7 @@ import {
   PathItemObject,
   Schema3RefObject,
 } from "../../models/openapi303.model";
-import { TransformedRequest } from "../../models/collection.rxdb.model";
+import { AddTo, TransformedRequest } from "../../models/collection.rxdb.model";
 import { WithId } from "mongodb";
 import { User } from "../../models/user.model";
 
@@ -22,6 +27,7 @@ export function createCollectionItems(
       pathName,
       pathObject,
       openApiDocument.components.securitySchemes,
+      user,
     );
     collectionItems.push({
       id: uuidv4(),
@@ -73,8 +79,57 @@ function transformPathV3(
   pathName: string,
   pathObject: PathItemObject,
   security: any,
+  user: WithId<User>,
 ) {
-  const transformedObject = {} as any;
+  const keyValueDefaultObj = {
+    key: "",
+    value: "",
+    checked: false,
+  };
+  const formDataFileDefaultObj = {
+    key: "",
+    value: "",
+    checked: false,
+    base: "",
+  };
+  const transformedObject: TransformedRequest = {
+    name: pathName || "",
+    description: "",
+    type: ItemTypeEnum.REQUEST,
+    source: SourceTypeEnum.USER,
+    request: {
+      method: "",
+      url: "",
+      body: {
+        raw: "",
+        urlencoded: [],
+        formdata: {
+          text: [],
+          file: [],
+        },
+      },
+      headers: [],
+      queryParams: [],
+      auth: {
+        bearerToken: "",
+        basicAuth: {
+          username: "",
+          password: "",
+        },
+        apiKey: {
+          authKey: "",
+          authValue: "",
+          addTo: AddTo.Header,
+        },
+      },
+      selectedRequestBodyType: BodyModeEnum["none"],
+      selectedRequestAuthType: AuthModeEnum["No Auth"],
+    },
+    createdBy: user.name,
+    updatedBy: user.name,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
   const method = Object.keys(pathObject)[0].toUpperCase();
   const pathItemObject: OperationObject = Object.values(pathObject)[0];
   transformedObject.tag = pathItemObject.tags
@@ -84,13 +139,11 @@ function transformPathV3(
   transformedObject.description =
     pathItemObject.summary || pathItemObject.description || "";
   transformedObject.operationId = pathItemObject.operationId;
-  transformedObject.request = {};
   transformedObject.request.method = method;
 
   // Extract URL path and query parameters
   const urlParts = pathName.split("/").filter((p) => p != "");
   let url = "";
-  const queryParams = [] as any;
   for (let i = 0; i < urlParts.length; i++) {
     if (urlParts[i].startsWith("{")) {
       url += "/{" + urlParts[i].slice(1, -1) + "}";
@@ -99,7 +152,7 @@ function transformPathV3(
     }
     if (i + 1 < urlParts.length && urlParts[i + 1].includes("=")) {
       const queryParam = urlParts[i + 1].split("=");
-      queryParams.push({
+      transformedObject.request.queryParams.push({
         key: queryParam[0],
         value: queryParam[1],
         checked: true,
@@ -108,16 +161,6 @@ function transformPathV3(
     }
   }
   transformedObject.request.url = url;
-  transformedObject.request.queryParams = queryParams;
-  transformedObject.request.pathParams = [];
-
-  // Handle request body based on schema
-  transformedObject.request.body = {};
-  transformedObject.request.body.raw = "";
-  transformedObject.request.body.formdata = {};
-  transformedObject.request.body.formdata.file = [];
-  transformedObject.request.body.formdata.text = [];
-  transformedObject.request.body.urlencoded = [];
 
   const content = pathItemObject?.requestBody?.content;
   if (content) {
@@ -138,7 +181,8 @@ function transformPathV3(
           }
           transformedObject.request.body.raw = JSON.stringify(bodyObject);
         }
-        transformedObject.request.selectedRequestBodyType = "application/json";
+        transformedObject.request.selectedRequestBodyType =
+          BodyModeEnum["application/json"];
       }
       if (key === "application/x-www-form-urlencoded") {
         const schema = content[key].schema;
@@ -158,10 +202,9 @@ function transformPathV3(
           }
         }
         transformedObject.request.selectedRequestBodyType =
-          "application/x-www-form-urlencoded";
+          BodyModeEnum["application/x-www-form-urlencoded"];
       }
       if (key === "application/octet-stream") {
-        transformedObject.request.body.formdata.file = [];
         transformedObject.request.body.formdata.file.push({
           key: "file",
           value: "",
@@ -169,7 +212,7 @@ function transformPathV3(
           base: "#@#",
         });
         transformedObject.request.selectedRequestBodyType =
-          "multipart/form-data";
+          BodyModeEnum["multipart/form-data"];
       }
       if (key === "multipart/form-data") {
         const schema = content[key].schema;
@@ -189,46 +232,33 @@ function transformPathV3(
                   key: propertyName,
                   value: getExampleValue(property.format),
                   checked: false,
-                  base: "#@#" + "",
                 });
               }
             }
           }
         }
         transformedObject.request.selectedRequestBodyType =
-          "multipart/form-data";
+          BodyModeEnum["multipart/form-data"];
       }
     }
   }
 
-  // Handle headers based on schema
-  transformedObject.request.headers = [];
-
-  // Handle authentication based on schema
-  transformedObject.request.auth = {};
-
   if (security.api_key) {
-    transformedObject.request.auth = {
-      apiKey: {
-        authKey: security.api_key.name,
-        authValue: "",
-        addTo: "",
-      },
-    };
+    transformedObject.request.auth.apiKey.authKey = security.api_key.name;
     if (security.api_key.in === "header") {
       transformedObject.request.headers.push({
         key: security.api_key.name,
         value: "",
         checked: false,
       });
-      transformedObject.request.auth.apiKey.addTo = "Header";
+      transformedObject.request.auth.apiKey.addTo = AddTo.Header;
     } else if (security.api_key.in === "query") {
       transformedObject.request.queryParams.push({
         key: security.api_key.name,
         value: "",
         checked: false,
       });
-      transformedObject.request.auth.apiKey.addTo = "Query Parameters";
+      transformedObject.request.auth.apiKey.addTo = AddTo.QueryParameter;
     }
   }
 
@@ -254,35 +284,45 @@ function transformPathV3(
           checked: false,
         });
         break;
-      case "path":
-        transformedObject.request.pathParams.push({
-          key: paramName,
-          value: paramValue,
-          checked: false,
-        });
-        break;
     }
+  }
+
+  //Assign default values
+  if (!transformedObject.request.headers.length) {
+    transformedObject.request.headers.push(keyValueDefaultObj);
+  }
+  if (!transformedObject.request.queryParams.length) {
+    transformedObject.request.queryParams.push(keyValueDefaultObj);
+  }
+  if (!transformedObject.request.body.formdata.text.length) {
+    transformedObject.request.body.formdata.text.push(keyValueDefaultObj);
+  }
+  if (!transformedObject.request.body.formdata.file.length) {
+    transformedObject.request.body.formdata.file.push(formDataFileDefaultObj);
+  }
+  if (!transformedObject.request.body.urlencoded.length) {
+    transformedObject.request.body.urlencoded.push(keyValueDefaultObj);
   }
 
   return transformedObject;
 }
 
-function getExampleValue(exampleType: string) {
+export function getExampleValue(exampleType: string) {
   switch (exampleType) {
     case "string":
-      return ""; // Or a default string value
+      return "";
     case "number":
-      return 0; // Or a default number value
+      return 0;
     case "integer":
-      return 0; // Or a default number value
+      return 0;
     case "boolean":
-      return false; // Or a default boolean value
+      return false;
     case "array":
-      return []; // Empty array
+      return [];
     case "object":
-      return {}; // Empty object
+      return {};
     default:
-      return ""; // Or a generic default value
+      return "";
   }
 }
 

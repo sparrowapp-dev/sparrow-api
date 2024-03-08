@@ -250,6 +250,11 @@ export class Collection {
   name: string;
 
   @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  description?: string;
+
+  @ApiProperty()
   @IsNumber()
   @IsNotEmpty()
   totalRequests: number;
