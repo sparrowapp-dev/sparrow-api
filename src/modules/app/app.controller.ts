@@ -16,6 +16,7 @@ import {
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { ParseCurlBodyPayload } from "./payloads/app.payload";
 
 /**
  * App Controller
@@ -60,7 +61,10 @@ export class AppController {
     description: "Curl parsed successfully",
   })
   @UseGuards(JwtAuthGuard)
-  async parseCurl(@Res() res: FastifyReply, @Req() req: FastifyRequest) {
+  async parseCurl(
+    @Res() res: FastifyReply,
+    @Req() req: FastifyRequest<{ Body: ParseCurlBodyPayload }>,
+  ) {
     const parsedRequestData = await this.appService.parseCurl(req);
     return res.status(200).send(parsedRequestData);
   }
