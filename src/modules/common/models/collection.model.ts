@@ -21,6 +21,7 @@ export enum ItemTypeEnum {
   REQUEST = "REQUEST",
 }
 export enum BodyModeEnum {
+  "none" = "none",
   "application/json" = "application/json",
   "application/xml" = "application/xml",
   "application/x-www-form-urlencoded" = "application/x-www-form-urlencoded",
@@ -247,6 +248,11 @@ export class Collection {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  description?: string;
 
   @ApiProperty()
   @IsNumber()

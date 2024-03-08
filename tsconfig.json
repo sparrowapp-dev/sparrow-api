@@ -7,7 +7,7 @@
     "allowSyntheticDefaultImports": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "target": "es2017",
+    "target": "ESNext",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
@@ -29,7 +29,11 @@
     },
     "resolveJsonModule": true
   },
-  "exclude": [
-    "node_modules"
-  ]
+  "ts-node": {
+    "esm": true,
+    "compilerOptions": {
+      "module": "nodenext"
+    }
+  },
+  "exclude": ["node_modules", "./dist/**/*"]
 }

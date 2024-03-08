@@ -12,7 +12,8 @@ import { CollectionService } from "@src/modules/workspace/services/collection.se
 import { WithId } from "mongodb";
 import { resolveAllRefs } from "./helper/parser.helper";
 import { OpenAPI20 } from "../models/openapi20.model";
-import { createCollectionItems } from "./helper/oapi.transformer";
+import * as oapi2Transformer from "./helper/oapi2.transformer";
+import * as oapi3Transformer from "./helper/oapi3.transformer";
 
 @Injectable()
 export class ParserService {
@@ -38,10 +39,17 @@ export class ParserService {
     const user = await this.contextService.get("user");
     if (openApiDocument.hasOwnProperty("components")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI303;
+      folderObjMap = oapi3Transformer.createCollectionItems(
+        openApiDocument,
+        user,
+      );
     } else if (openApiDocument.hasOwnProperty("definitions")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI20;
+      folderObjMap = oapi2Transformer.createCollectionItems(
+        openApiDocument,
+        user,
+      );
     }
-    folderObjMap = createCollectionItems(openApiDocument, user);
     const itemObject = Object.fromEntries(folderObjMap);
     let items: CollectionItem[] = [];
     let totalRequests = 0;
@@ -82,40 +90,19 @@ export class ParserService {
         items = mergedFolderItems;
       }
     }
-    const newItems: CollectionItem[] = [];
-    for (let x = 0; x < items?.length; x++) {
-      const itemsObj: CollectionItem = {
-        name: items[x].name,
-        description: items[x].description,
-        id: items[x].id,
-        type: items[x].type,
-        isDeleted: items[x].isDeleted,
-        source: SourceTypeEnum.SPEC,
-        createdBy: user.name,
-        updatedBy: user.name,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      const innerArray: CollectionItem[] = [];
-      for (let y = 0; y < items[x].items?.length; y++) {
-        const data = this.handleCircularReference(items[x].items[y]);
-        innerArray.push(JSON.parse(data));
-      }
-      itemsObj.items = innerArray;
-      newItems.push(itemsObj);
-    }
 
     const collection: Collection = {
       name: openApiDocument.info.title,
+      description: openApiDocument.info.description,
       totalRequests,
-      items: newItems,
+      items: items,
       uuid: openApiDocument.info.title,
-      createdBy: user.name,
-      updatedBy: user.name,
       activeSync,
       activeSyncUrl: activeSyncUrl ?? "",
       createdAt: new Date(),
       updatedAt: new Date(),
+      createdBy: user.name,
+      updatedBy: user.name,
     };
 
     if (existingCollection) {
@@ -130,34 +117,20 @@ export class ParserService {
         collection: updatedCollection,
         existingCollection: true,
       };
-    } else {
-      const newCollection = await this.collectionService.importCollection(
-        collection,
-      );
-      const collectionDetails = await this.collectionService.getCollection(
-        newCollection.insertedId.toString(),
-      );
-      collectionDetails;
-      return {
-        collection: collectionDetails,
-        existingCollection: false,
-      };
     }
+    const newCollection = await this.collectionService.importCollection(
+      collection,
+    );
+    const collectionDetails = await this.collectionService.getCollection(
+      newCollection.insertedId.toString(),
+    );
+    collectionDetails;
+    return {
+      collection: collectionDetails,
+      existingCollection: false,
+    };
   }
-  handleCircularReference(obj: CollectionItem) {
-    const cache: any = [];
-    return JSON.stringify(obj, function (key, value) {
-      if (typeof value === "object" && value !== null) {
-        if (cache.indexOf(value) !== -1) {
-          // Circular reference found, replace with undefined
-          return undefined;
-        }
-        // Store value in our collection
-        cache.push(value);
-      }
-      return value;
-    });
-  }
+
   compareAndMerge(
     existingitems: CollectionItem[],
     newItems: CollectionItem[],
