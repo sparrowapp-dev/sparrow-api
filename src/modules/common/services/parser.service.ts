@@ -12,7 +12,8 @@ import { CollectionService } from "@src/modules/workspace/services/collection.se
 import { WithId } from "mongodb";
 import { resolveAllRefs } from "./helper/parser.helper";
 import { OpenAPI20 } from "../models/openapi20.model";
-import { createCollectionItems } from "./helper/oapi.transformer";
+import * as oapi2Transformer from "./helper/oapi2.transformer";
+import * as oapi3Transformer from "./helper/oapi3.transformer";
 
 @Injectable()
 export class ParserService {
@@ -38,10 +39,17 @@ export class ParserService {
     const user = await this.contextService.get("user");
     if (openApiDocument.hasOwnProperty("components")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI303;
+      folderObjMap = oapi3Transformer.createCollectionItems(
+        openApiDocument,
+        user,
+      );
     } else if (openApiDocument.hasOwnProperty("definitions")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI20;
+      folderObjMap = oapi2Transformer.createCollectionItems(
+        openApiDocument,
+        user,
+      );
     }
-    folderObjMap = createCollectionItems(openApiDocument, user);
     const itemObject = Object.fromEntries(folderObjMap);
     let items: CollectionItem[] = [];
     let totalRequests = 0;
