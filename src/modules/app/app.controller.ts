@@ -9,13 +9,15 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
-  ApiHeader,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
 } from "@nestjs/swagger";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { ParseCurlBodyPayload } from "./payloads/app.payload";
 
 /**
  * App Controller
@@ -46,11 +48,6 @@ export class AppController {
   }
 
   @Post("curl")
-  @ApiHeader({
-    name: "curl",
-    description: "Pass in the curl command.",
-    allowEmptyValue: false,
-  })
   @ApiOperation({
     summary: "Parse Curl",
     description: "Parses the provided curl into Sparrow api request schema",
@@ -59,8 +56,22 @@ export class AppController {
     status: 200,
     description: "Curl parsed successfully",
   })
+  @ApiConsumes("application/x-www-form-urlencoded")
+  @ApiBody({
+    schema: {
+      properties: {
+        curl: {
+          type: "string",
+          example: "Use sparrow to hit this request",
+        },
+      },
+    },
+  })
   @UseGuards(JwtAuthGuard)
-  async parseCurl(@Res() res: FastifyReply, @Req() req: FastifyRequest) {
+  async parseCurl(
+    @Res() res: FastifyReply,
+    @Req() req: FastifyRequest<{ Body: ParseCurlBodyPayload }>,
+  ) {
     const parsedRequestData = await this.appService.parseCurl(req);
     return res.status(200).send(parsedRequestData);
   }
