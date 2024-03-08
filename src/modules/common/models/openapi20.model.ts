@@ -36,11 +36,11 @@ interface LicenseObject {
   url?: string;
 }
 
-interface PathsObject {
+export interface PathsObject {
   [path: string]: PathItemObject;
 }
 
-interface PathItemObject {
+export interface PathItemObject {
   $ref?: string;
   get?: OperationObject;
   put?: OperationObject;
@@ -52,7 +52,7 @@ interface PathItemObject {
   parameters?: (ParameterObject | ReferenceObject)[];
 }
 
-interface OperationObject {
+export interface OperationObject {
   tags?: string[];
   summary?: string;
   description?: string;
@@ -67,7 +67,9 @@ interface OperationObject {
   security?: SecurityRequirementObject[];
 }
 
-interface ParameterObject {
+export interface ParameterObject {
+  type: string;
+  example: string;
   name: string;
   in: string;
   description?: string;
@@ -93,7 +95,7 @@ interface SchemaObject {
   format?: string;
   items?: SchemaObject;
   properties?: {
-    [name: string]: SchemaObject;
+    [name: string]: SchemaRefObject;
   };
   required?: string[];
   enum?: any[];
@@ -142,3 +144,9 @@ interface ExternalDocumentationObject {
   description?: string;
   url: string;
 }
+
+export interface SchemaRefObject extends SchemaObject, ReferenceObject {
+  example: any;
+}
+
+export interface ParameterRefObject extends ParameterObject, ReferenceObject {}
