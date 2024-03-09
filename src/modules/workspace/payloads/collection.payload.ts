@@ -125,4 +125,9 @@ export class ImportCollectionDto {
   })
   @IsBoolean()
   activeSync?: boolean;
+
+  @ApiProperty({ example: "development" })
+  @IsString()
+  @IsOptional()
+  primaryBranch?: string;
 }

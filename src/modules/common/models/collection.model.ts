@@ -243,6 +243,18 @@ export class CollectionItem {
   updatedBy: string;
 }
 
+export class Branches {
+  @ApiProperty({ example: "64f878a0293b1e4415866493" })
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class Collection {
   @ApiProperty()
   @IsString()
@@ -253,6 +265,11 @@ export class Collection {
   @IsString()
   @IsNotEmpty()
   description?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  primaryBranch?: string;
 
   @ApiProperty()
   @IsNumber()
@@ -279,6 +296,13 @@ export class Collection {
   @IsString()
   @IsOptional()
   activeSyncUrl?: string;
+
+  @ApiProperty({ type: [Branches] })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => Branches)
+  allBranches?: Branches[];
 
   @IsOptional()
   @IsDateString()

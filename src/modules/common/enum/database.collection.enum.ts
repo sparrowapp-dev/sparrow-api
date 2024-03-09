@@ -6,4 +6,5 @@ export enum Collections {
   EARLYACCESS = "earlyaccess",
   ENVIRONMENT = "environment",
   FEATURES = "features",
+  BRANCHES = "branches",
 }
