@@ -12,6 +12,7 @@ import {
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { ContextService } from "@src/modules/common/services/context.service";
 import {
+  CollectionBranch,
   Collection,
   CollectionItem,
   ItemTypeEnum,
@@ -60,6 +61,29 @@ export class CollectionRepository {
         { _id: collectionId },
         { $set: { ...updateCollectionDto, ...defaultParams } },
       );
+    return data;
+  }
+
+  async updateBranchArray(
+    id: string,
+    branch: CollectionBranch,
+  ): Promise<UpdateResult> {
+    const collectionId = new ObjectId(id);
+    const defaultParams = {
+      updatedAt: new Date(),
+      updatedBy: this.contextService.get("user")._id,
+    };
+    const data = await this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: collectionId },
+      {
+        $push: {
+          branches: branch,
+        },
+        $set: {
+          ...defaultParams,
+        },
+      },
+    );
     return data;
   }
   async delete(id: string): Promise<DeleteResult> {
