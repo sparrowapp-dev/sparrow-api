@@ -14,12 +14,14 @@ import { resolveAllRefs } from "./helper/parser.helper";
 import { OpenAPI20 } from "../models/openapi20.model";
 import * as oapi2Transformer from "./helper/oapi2.transformer";
 import * as oapi3Transformer from "./helper/oapi3.transformer";
+import { BranchService } from "@src/modules/workspace/services/branch.service";
 
 @Injectable()
 export class ParserService {
   constructor(
     private readonly contextService: ContextService,
     private readonly collectionService: CollectionService,
+    private readonly branchService: BranchService,
   ) {}
 
   async parse(
@@ -27,6 +29,7 @@ export class ParserService {
     activeSync?: boolean,
     workspaceId?: string,
     activeSyncUrl?: string,
+    primaryBranch?: string,
   ): Promise<{
     collection: WithId<Collection>;
     existingCollection: boolean;
@@ -62,7 +65,9 @@ export class ParserService {
     items.map((itemObj) => {
       totalRequests = totalRequests + itemObj.items?.length;
     });
-
+    let branch;
+    let collection: Collection;
+    let existingBranch;
     if (activeSync) {
       let mergedFolderItems: CollectionItem[] = [];
       existingCollection =
@@ -88,22 +93,83 @@ export class ParserService {
           mergedFolderItems[x].items = mergedFolderRequests;
         }
         items = mergedFolderItems;
+        existingBranch = await this.collectionService.getActiveSyncedBranch(
+          existingCollection._id.toString(),
+          openApiDocument.info.title,
+        );
+        if (existingBranch) {
+          branch = {
+            insertedId: existingBranch.id,
+            name: existingBranch.name,
+          };
+        } else {
+          branch = await this.branchService.createBranch({
+            name: openApiDocument.info.title,
+            items: items,
+          });
+        }
+        collection = {
+          name: openApiDocument.info.title,
+          description: openApiDocument.info.description,
+          primaryBranch: primaryBranch ?? "",
+          totalRequests,
+          items: items,
+          allBranches: [
+            {
+              id: branch.insertedId.toString(),
+              name: openApiDocument.info.title,
+            },
+          ],
+          uuid: openApiDocument.info.title,
+          activeSync,
+          activeSyncUrl: activeSyncUrl ?? "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: user.name,
+          updatedBy: user.name,
+        };
+      } else {
+        branch = await this.branchService.createBranch({
+          name: openApiDocument.info.title,
+          items: items,
+        });
+        collection = {
+          name: openApiDocument.info.title,
+          description: openApiDocument.info.description,
+          primaryBranch: primaryBranch ?? "",
+          totalRequests,
+          items: items,
+          allBranches: [
+            {
+              id: branch.insertedId.toString(),
+              name: openApiDocument.info.title,
+            },
+          ],
+          uuid: openApiDocument.info.title,
+          activeSync,
+          activeSyncUrl: activeSyncUrl ?? "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: user.name,
+          updatedBy: user.name,
+        };
       }
+    } else {
+      collection = {
+        name: openApiDocument.info.title,
+        description: openApiDocument.info.description,
+        primaryBranch: primaryBranch ?? "",
+        totalRequests,
+        items: items,
+        uuid: openApiDocument.info.title,
+        activeSync,
+        activeSyncUrl: activeSyncUrl ?? "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: user.name,
+        updatedBy: user.name,
+      };
     }
-
-    const collection: Collection = {
-      name: openApiDocument.info.title,
-      description: openApiDocument.info.description,
-      totalRequests,
-      items: items,
-      uuid: openApiDocument.info.title,
-      activeSync,
-      activeSyncUrl: activeSyncUrl ?? "",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: user.name,
-      updatedBy: user.name,
-    };
 
     if (existingCollection) {
       await this.collectionService.updateImportedCollection(

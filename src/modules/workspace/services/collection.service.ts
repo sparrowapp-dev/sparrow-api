@@ -13,7 +13,10 @@ import {
   UpdateResult,
   WithId,
 } from "mongodb";
-import { Collection } from "@src/modules/common/models/collection.model";
+import {
+  Branches,
+  Collection,
+} from "@src/modules/common/models/collection.model";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceService } from "./workspace.service";
@@ -78,6 +81,15 @@ export class CollectionService {
       title,
       workspaceId,
     );
+  }
+
+  async getActiveSyncedBranch(id: string, name: string): Promise<Branches> {
+    const collection = await this.getCollection(id);
+    for (const branch of collection.allBranches) {
+      if (branch.name === name) {
+        return branch;
+      }
+    }
   }
 
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {

@@ -371,6 +371,7 @@ export class WorkSpaceController {
       activeSync,
       workspaceId,
       importCollectionDto.url,
+      importCollectionDto?.primaryBranch,
     );
     if (!collectionObj.existingCollection) {
       await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
