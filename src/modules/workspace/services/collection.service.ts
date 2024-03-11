@@ -16,12 +16,15 @@ import {
 import {
   Collection,
   CollectionBranch,
+  ItemTypeEnum,
 } from "@src/modules/common/models/collection.model";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { Branch } from "@src/modules/common/models/branch.model";
+import { UpdateBranchDto } from "../payloads/branch.payload";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class CollectionService {
@@ -31,6 +34,7 @@ export class CollectionService {
     private readonly branchRepository: BranchRepository,
     private readonly contextService: ContextService,
     private readonly workspaceService: WorkspaceService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createCollection(
@@ -164,9 +168,49 @@ export class CollectionService {
     collectionId: string,
     branchName: string,
   ): Promise<WithId<Branch> | void> {
-    return await this.branchRepository.getBranchByCollection(
+    const branch = await this.branchRepository.getBranchByCollection(
       collectionId,
       branchName,
     );
+    for (let index = 0; index < branch.items.length; index++) {
+      if (branch.items[index].type === ItemTypeEnum.FOLDER) {
+        for (let flag = 0; flag < branch.items[index].items.length; flag++) {
+          const deletedDate = new Date(
+            branch.items[index].items[flag].updatedAt,
+          );
+          const currentDate = new Date();
+          const diff = currentDate.getTime() - deletedDate.getTime();
+          const differenceInDays =
+            diff / this.configService.get("app.timeToDaysDivisor");
+          if (
+            branch.items[index].items[flag].isDeleted &&
+            differenceInDays >
+              this.configService.get("app.deletedAPILimitInDays")
+          ) {
+            branch.items[index].items.splice(flag, 1);
+          }
+        }
+      } else {
+        const deletedDate = new Date(branch.items[index].updatedAt);
+        const currentDate = new Date();
+        const diff = currentDate.getTime() - deletedDate.getTime();
+        if (
+          branch.items[index].isDeleted &&
+          diff > this.configService.get("app.deletedAPILimitInDays")
+        ) {
+          branch.items.splice(index, 1);
+        }
+      }
+    }
+    const updatedBranch: UpdateBranchDto = {
+      items: branch.items,
+      updatedAt: new Date(),
+      updatedBy: this.contextService.get("user")._id,
+    };
+    await this.branchRepository.updateBranchById(
+      branch._id.toJSON(),
+      updatedBranch,
+    );
+    return branch;
   }
 }

@@ -42,7 +42,12 @@ export class BranchService {
     items: CollectionItem[],
   ): Promise<void> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
-    await this.branchRepository.updateBranch(branchId, items);
+    const updatedParams = {
+      items: items,
+      updatedAt: new Date(),
+      updatedBy: this.contextService.get("user")._id,
+    };
+    await this.branchRepository.updateBranchById(branchId, updatedParams);
   }
 
   async getBranch(branchId: string): Promise<WithId<Branch>> {
