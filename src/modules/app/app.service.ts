@@ -14,6 +14,7 @@ import {
   TransformedRequest,
 } from "../common/models/collection.rxdb.model";
 import { ContextService } from "../common/services/context.service";
+import { ParseCurlBodyPayload } from "./payloads/app.payload";
 
 /**
  * Application Service
@@ -70,11 +71,13 @@ export class AppService {
     };
   }
 
-  async parseCurl(req: FastifyRequest): Promise<TransformedRequest> {
+  async parseCurl(
+    req: FastifyRequest<{ Body: ParseCurlBodyPayload }>,
+  ): Promise<TransformedRequest> {
     try {
       const curlconverter = await this.importCurlConverter();
       const { toJsonString } = curlconverter;
-      const curl = req.headers?.curl;
+      const curl = req.body?.curl;
       if (!curl || !curl.length) {
         throw new Error();
       }

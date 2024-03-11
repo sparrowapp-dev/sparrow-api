@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "nodenext",
     "declaration": true,
     "removeComments": true,
     "noLib": false,
@@ -28,12 +28,6 @@
       "@winston/*": ["src/modules/winston/*"]
     },
     "resolveJsonModule": true
-  },
-  "ts-node": {
-    "esm": true,
-    "compilerOptions": {
-      "module": "nodenext"
-    }
   },
   "exclude": ["node_modules", "./dist/**/*"]
 }
