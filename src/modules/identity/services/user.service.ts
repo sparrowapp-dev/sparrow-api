@@ -133,7 +133,7 @@ export class UserService {
    */
   async updateUser(
     userId: string,
-    payload: UpdateUserDto,
+    payload: Partial<UpdateUserDto>,
   ): Promise<WithId<User>> {
     const data = await this.userRepository.updateUser(userId, payload);
     return data;

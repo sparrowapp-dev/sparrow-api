@@ -64,7 +64,7 @@ export class CollectionRequestService {
     return updatedFolder;
   }
 
-  async updateFolder(payload: FolderDto): Promise<CollectionItem> {
+  async updateFolder(payload: Partial<FolderDto>): Promise<CollectionItem> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
     const user = await this.contextService.get("user");
     await this.checkPermission(payload.workspaceId, user._id);
@@ -185,7 +185,7 @@ export class CollectionRequestService {
   async updateRequest(
     collectionId: string,
     requestId: string,
-    request: CollectionRequestDto,
+    request: Partial<CollectionRequestDto>,
   ): Promise<CollectionRequestItem> {
     return await this.collectionReposistory.updateRequest(
       collectionId,

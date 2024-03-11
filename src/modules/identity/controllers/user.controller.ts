@@ -104,7 +104,7 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async updateUser(
     @Param("userId") id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body() updateUserDto: Partial<UpdateUserDto>,
     @Res() res: FastifyReply,
   ) {
     const user = await this.userService.updateUser(id, updateUserDto);

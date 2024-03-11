@@ -22,7 +22,6 @@ import { TeamRole, WorkspaceRole } from "@src/modules/common/enum/roles.enum";
 import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 import { CollectionDto } from "@src/modules/common/models/collection.model";
 
-import { Logger } from "nestjs-pino";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import {
   DefaultEnvironment,
@@ -57,7 +56,6 @@ export class WorkspaceService {
     private readonly userRepository: UserRepository,
     private readonly teamService: TeamService,
     private readonly configService: ConfigService,
-    private readonly logger: Logger,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -302,9 +300,12 @@ export class WorkspaceService {
    */
   async update(
     id: string,
-    updates: UpdateWorkspaceDto,
+    updates: Partial<UpdateWorkspaceDto>,
   ): Promise<UpdateResult<Document>> {
     const workspace = await this.IsWorkspaceAdminOrEditor(id);
+    // for(const value of Object.values(updates)){
+    //   if(const)
+    // }
     const data = await this.workspaceRepository.update(id, updates);
     const team = await this.teamRepository.findTeamByTeamId(
       new ObjectId(workspace.team.id),
