@@ -56,7 +56,10 @@ export class BranchRepository {
     return response;
   }
 
-  async updateBranchById(branchId: string, updateParams: UpdateBranchDto) {
+  async updateBranchById(
+    branchId: string,
+    updateParams: UpdateBranchDto,
+  ): Promise<WithId<Branch>> {
     const updatedBranchParams = {
       $set: updateParams,
     };
