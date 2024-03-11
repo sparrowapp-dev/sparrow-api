@@ -303,9 +303,6 @@ export class WorkspaceService {
     updates: Partial<UpdateWorkspaceDto>,
   ): Promise<UpdateResult<Document>> {
     const workspace = await this.IsWorkspaceAdminOrEditor(id);
-    // for(const value of Object.values(updates)){
-    //   if(const)
-    // }
     const data = await this.workspaceRepository.update(id, updates);
     const team = await this.teamRepository.findTeamByTeamId(
       new ObjectId(workspace.team.id),
