@@ -16,6 +16,9 @@ import * as oapi2Transformer from "./helper/oapi2.transformer";
 import * as oapi3Transformer from "./helper/oapi3.transformer";
 import { BranchService } from "@src/modules/workspace/services/branch.service";
 import { Branch } from "../models/branch.model";
+import { FastifyRequest } from "fastify";
+import axios from "axios";
+import * as yml from "js-yaml";
 interface ActiveSyncResponsePayload {
   collection: WithId<Collection>;
   existingCollection: boolean;
@@ -277,9 +280,26 @@ export class ParserService {
     );
   }
 
-  async validateOapi(data: string): Promise<void> {
+  async validateOapi(request: FastifyRequest): Promise<void> {
     try {
-      (await SwaggerParser.parse(data)) as OpenAPI303 | OpenAPI20;
+      let data: any;
+      const url = request.headers["x-oapi-url"] || null;
+      const oapi = request.body;
+      if (url) {
+        const isValidUrl = this.validateUrlIsALocalhostUrl(url as string);
+        if (!isValidUrl) throw new Error();
+        const response = await axios.get(url as string);
+        data = response.data;
+      } else {
+        try {
+          data = yml.load(oapi as string);
+          if (data[0] == "object Object") throw new Error();
+        } catch (err) {
+          data = JSON.stringify(oapi);
+          data = oapi;
+        }
+      }
+      await SwaggerParser.parse(data);
       return;
     } catch (err) {
       throw new Error("Invalid OAPI.");

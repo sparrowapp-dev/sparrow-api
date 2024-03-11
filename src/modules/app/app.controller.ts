@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   HttpStatus,
@@ -11,6 +10,8 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiHeader,
   ApiOperation,
   ApiResponse,
@@ -18,11 +19,8 @@ import {
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
-import { BodyModeEnum } from "../common/models/collection.model";
-import * as yml from "js-yaml";
-import axios from "axios";
 import { ParserService } from "../common/services/parser.service";
-import { ValidateOapiPayload } from "../workspace/payloads/collection.payload";
+import { ParseCurlBodyPayload } from "./payloads/app.payload";
 
 /**
  * App Controller
@@ -56,11 +54,6 @@ export class AppController {
   }
 
   @Post("curl")
-  @ApiHeader({
-    name: "curl",
-    description: "Pass in the curl command.",
-    allowEmptyValue: false,
-  })
   @ApiOperation({
     summary: "Parse Curl",
     description: "Parses the provided curl into Sparrow api request schema",
@@ -69,8 +62,22 @@ export class AppController {
     status: 200,
     description: "Curl parsed successfully",
   })
+  @ApiConsumes("application/x-www-form-urlencoded")
+  @ApiBody({
+    schema: {
+      properties: {
+        curl: {
+          type: "string",
+          example: "Use sparrow to hit this request",
+        },
+      },
+    },
+  })
   @UseGuards(JwtAuthGuard)
-  async parseCurl(@Res() res: FastifyReply, @Req() req: FastifyRequest) {
+  async parseCurl(
+    @Res() res: FastifyReply,
+    @Req() req: FastifyRequest<{ Body: ParseCurlBodyPayload }>,
+  ) {
     const parsedRequestData = await this.appService.parseCurl(req);
     return res.status(200).send(parsedRequestData);
   }
@@ -81,6 +88,10 @@ export class AppController {
     description: "Pass in the curl command.",
     allowEmptyValue: false,
   })
+  @ApiBody({
+    description: "Paste your JSON or YAML text",
+    required: false,
+  })
   @ApiOperation({
     summary: "Validate JSON/YAML/URL OAPI specification",
     description: "You can import a collection from jsonObj",
@@ -90,32 +101,9 @@ export class AppController {
     description: "Provided OAPI is a valid specification.",
   })
   @ApiResponse({ status: 400, description: "Provided OAPI is invalid." })
-  async validateOAPI(
-    @Req() request: FastifyRequest,
-    @Res() res: FastifyReply,
-    @Body() body?: ValidateOapiPayload,
-  ) {
+  async validateOAPI(@Req() request: FastifyRequest, @Res() res: FastifyReply) {
     try {
-      let data: any;
-      const url = request.headers["x-oapi-url"] || null;
-      if (url) {
-        const isValidUrl = this.parserService.validateUrlIsALocalhostUrl(
-          url as string,
-        );
-        if (!isValidUrl) throw new Error();
-        const response = await axios.get(url as string);
-        data = response.data;
-      } else {
-        const requestType = request.headers["content-type"];
-        if (requestType === BodyModeEnum["application/json"]) {
-          JSON.parse(body.data);
-        } else if (requestType === BodyModeEnum["application/yaml"]) {
-          data = yml.load(body.data);
-        } else {
-          throw new Error("Unsupported content type");
-        }
-      }
-      await this.parserService.validateOapi(data);
+      await this.parserService.validateOapi(request);
       return res
         .status(HttpStatus.OK)
         .send({ valid: true, msg: "Provided OAPI is a valid specification." });
