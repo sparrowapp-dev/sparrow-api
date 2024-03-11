@@ -1,7 +1,14 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { CollectionItem } from "@src/modules/common/models/collection.model";
 import { Type } from "class-transformer";
-import { IsArray, IsNotEmpty, IsString, ValidateNested } from "class-validator";
+import {
+  IsArray,
+  IsDate,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from "class-validator";
 
 export class createBranchDto {
   @IsString()
@@ -19,4 +26,20 @@ export class createBranchDto {
   @ValidateNested({ each: true })
   @Type(() => CollectionItem)
   items: CollectionItem[];
+}
+
+export class UpdateBranchDto {
+  @ApiProperty({ type: [CollectionItem] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CollectionItem)
+  items: CollectionItem[];
+
+  @IsDate()
+  @IsOptional()
+  updatedAt?: Date;
+
+  @IsString()
+  @IsOptional()
+  updatedBy?: string;
 }

@@ -16,12 +16,14 @@ import {
 import {
   Collection,
   CollectionBranch,
+  ItemTypeEnum,
 } from "@src/modules/common/models/collection.model";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { Branch } from "@src/modules/common/models/branch.model";
+import { UpdateBranchDto } from "../payloads/branch.payload";
 
 @Injectable()
 export class CollectionService {
@@ -164,9 +166,44 @@ export class CollectionService {
     collectionId: string,
     branchName: string,
   ): Promise<WithId<Branch> | void> {
-    return await this.branchRepository.getBranchByCollection(
+    const branch = await this.branchRepository.getBranchByCollection(
       collectionId,
       branchName,
     );
+    for (let index = 0; index < branch.items.length; index++) {
+      if (branch.items[index].type === ItemTypeEnum.FOLDER) {
+        for (let flag = 0; flag < branch.items[index].items.length; flag++) {
+          const deletedDate = new Date(
+            branch.items[index].items[flag].updatedAt,
+          );
+          const currentDate = new Date();
+          const diff = currentDate.getTime() - deletedDate.getTime();
+          const differenceInDays = diff / (1000 * 60 * 60 * 24);
+          if (
+            branch.items[index].items[flag].isDeleted &&
+            differenceInDays > 7
+          ) {
+            branch.items[index].items.splice(flag, 1);
+          }
+        }
+      } else {
+        const deletedDate = new Date(branch.items[index].updatedAt);
+        const currentDate = new Date();
+        const diff = currentDate.getTime() - deletedDate.getTime();
+        if (branch.items[index].isDeleted && diff > 7) {
+          branch.items.splice(index, 1);
+        }
+      }
+    }
+    const updatedBranch: UpdateBranchDto = {
+      items: branch.items,
+      updatedAt: new Date(),
+      updatedBy: this.contextService.get("user")._id,
+    };
+    await this.branchRepository.updateBranchById(
+      branch._id.toJSON(),
+      updatedBranch,
+    );
+    return branch;
   }
 }
