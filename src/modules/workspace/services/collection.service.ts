@@ -24,6 +24,7 @@ import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { Branch } from "@src/modules/common/models/branch.model";
 import { UpdateBranchDto } from "../payloads/branch.payload";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class CollectionService {
@@ -33,6 +34,7 @@ export class CollectionService {
     private readonly branchRepository: BranchRepository,
     private readonly contextService: ContextService,
     private readonly workspaceService: WorkspaceService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createCollection(
@@ -178,10 +180,12 @@ export class CollectionService {
           );
           const currentDate = new Date();
           const diff = currentDate.getTime() - deletedDate.getTime();
-          const differenceInDays = diff / (1000 * 60 * 60 * 24);
+          const differenceInDays =
+            diff / this.configService.get("app.timeToDaysDivisor");
           if (
             branch.items[index].items[flag].isDeleted &&
-            differenceInDays > 7
+            differenceInDays >
+              this.configService.get("app.deletedAPILimitInDays")
           ) {
             branch.items[index].items.splice(flag, 1);
           }
@@ -190,7 +194,10 @@ export class CollectionService {
         const deletedDate = new Date(branch.items[index].updatedAt);
         const currentDate = new Date();
         const diff = currentDate.getTime() - deletedDate.getTime();
-        if (branch.items[index].isDeleted && diff > 7) {
+        if (
+          branch.items[index].isDeleted &&
+          diff > this.configService.get("app.deletedAPILimitInDays")
+        ) {
           branch.items.splice(index, 1);
         }
       }
