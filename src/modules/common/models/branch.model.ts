@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsDate,
+  IsMongoId,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -9,12 +10,18 @@ import {
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { CollectionItem } from "./collection.model";
+import { ObjectId } from "mongodb";
 
 export class Branch {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty()
+  @IsMongoId()
+  @IsNotEmpty()
+  collectionId: ObjectId;
 
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()

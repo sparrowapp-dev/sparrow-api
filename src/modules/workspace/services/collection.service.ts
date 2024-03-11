@@ -14,18 +14,21 @@ import {
   WithId,
 } from "mongodb";
 import {
-  Branches,
   Collection,
+  CollectionBranch,
 } from "@src/modules/common/models/collection.model";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceService } from "./workspace.service";
+import { BranchRepository } from "../repositories/branch.repository";
+import { Branch } from "@src/modules/common/models/branch.model";
 
 @Injectable()
 export class CollectionService {
   constructor(
-    private readonly collectionReposistory: CollectionRepository,
-    private readonly workspaceReposistory: WorkspaceRepository,
+    private readonly collectionRepository: CollectionRepository,
+    private readonly workspaceRepository: WorkspaceRepository,
+    private readonly branchRepository: BranchRepository,
     private readonly contextService: ContextService,
     private readonly workspaceService: WorkspaceService,
   ) {}
@@ -48,24 +51,24 @@ export class CollectionService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    const collection = await this.collectionReposistory.addCollection(
+    const collection = await this.collectionRepository.addCollection(
       newCollection,
     );
     return collection;
   }
 
   async getCollection(id: string): Promise<WithId<Collection>> {
-    return await this.collectionReposistory.get(id);
+    return await this.collectionRepository.get(id);
   }
 
   async getAllCollections(id: string): Promise<WithId<Collection>[]> {
     const user = await this.contextService.get("user");
     await this.checkPermission(id, user._id);
 
-    const workspace = await this.workspaceReposistory.get(id);
+    const workspace = await this.workspaceRepository.get(id);
     const collections = [];
     for (let i = 0; i < workspace.collection?.length; i++) {
-      const collection = await this.collectionReposistory.get(
+      const collection = await this.collectionRepository.get(
         workspace.collection[i].id.toString(),
       );
       collections.push(collection);
@@ -77,23 +80,27 @@ export class CollectionService {
     title: string,
     workspaceId: string,
   ): Promise<WithId<Collection>> {
-    return await this.collectionReposistory.getActiveSyncedCollection(
+    return await this.collectionRepository.getActiveSyncedCollection(
       title,
       workspaceId,
     );
   }
 
-  async getActiveSyncedBranch(id: string, name: string): Promise<Branches> {
+  async getActiveSyncedBranch(
+    id: string,
+    name: string,
+  ): Promise<WithId<Branch> | null> {
     const collection = await this.getCollection(id);
-    for (const branch of collection.allBranches) {
+    for (const branch of collection.branches) {
       if (branch.name === name) {
-        return branch;
+        return await this.branchRepository.getBranch(branch.id);
       }
     }
+    return null;
   }
 
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
-    const workspace = await this.workspaceReposistory.get(workspaceId);
+    const workspace = await this.workspaceRepository.get(workspaceId);
     const hasPermission = workspace.users.some((user) => {
       return user.id.toString() === userid.toString();
     });
@@ -109,10 +116,26 @@ export class CollectionService {
     await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
     const user = await this.contextService.get("user");
     await this.checkPermission(workspaceId, user._id);
-    await this.collectionReposistory.get(collectionId);
-    const data = await this.collectionReposistory.update(
+    await this.collectionRepository.get(collectionId);
+    const data = await this.collectionRepository.update(
       collectionId,
       updateCollectionDto,
+    );
+    return data;
+  }
+
+  async updateBranchArray(
+    collectionId: string,
+    branch: CollectionBranch,
+    workspaceId: string,
+  ): Promise<UpdateResult> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    const user = await this.contextService.get("user");
+    await this.checkPermission(workspaceId, user._id);
+    await this.collectionRepository.get(collectionId);
+    const data = await this.collectionRepository.updateBranchArray(
+      collectionId,
+      branch,
     );
     return data;
   }
@@ -124,16 +147,26 @@ export class CollectionService {
     await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
     const user = await this.contextService.get("user");
     await this.checkPermission(workspaceId, user._id);
-    const data = await this.collectionReposistory.delete(id);
+    const data = await this.collectionRepository.delete(id);
     return data;
   }
   async importCollection(collection: Collection): Promise<InsertOneResult> {
-    return await this.collectionReposistory.addCollection(collection);
+    return await this.collectionRepository.addCollection(collection);
   }
   async updateImportedCollection(
     id: string,
     collection: Collection,
   ): Promise<UpdateResult<Collection>> {
-    return await this.collectionReposistory.updateCollection(id, collection);
+    return await this.collectionRepository.updateCollection(id, collection);
+  }
+
+  async getBranchData(
+    collectionId: string,
+    branchName: string,
+  ): Promise<WithId<Branch> | void> {
+    return await this.branchRepository.getBranchByCollection(
+      collectionId,
+      branchName,
+    );
   }
 }

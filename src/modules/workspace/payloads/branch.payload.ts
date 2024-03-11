@@ -9,6 +9,11 @@ export class createBranchDto {
   @IsNotEmpty()
   name: string;
 
+  @IsString()
+  @ApiProperty({ required: true, example: "65ed7a82af45cb59f471a983" })
+  @IsNotEmpty()
+  collectionId: string;
+
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()
   @ValidateNested({ each: true })

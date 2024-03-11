@@ -8,7 +8,7 @@ import {
   ValidateNested,
   IsBoolean,
 } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   CollectionItem,
   ItemTypeEnum,
@@ -130,4 +130,22 @@ export class ImportCollectionDto {
   @IsString()
   @IsOptional()
   primaryBranch?: string;
+
+  @ApiProperty({ example: "feat/onboarding-v2" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
+}
+
+export class SwitchCollectionBranchDto {
+  @ApiProperty({ example: "feat/onboarding-v2" })
+  @IsString()
+  @IsNotEmpty()
+  currentBranch: string;
+}
+
+export class ValidateOapiPayload {
+  @ApiPropertyOptional()
+  @IsString()
+  data?: string;
 }
