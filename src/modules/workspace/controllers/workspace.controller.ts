@@ -37,7 +37,6 @@ import {
 import * as yml from "js-yaml";
 import { ParserService } from "@src/modules/common/services/parser.service";
 import { CollectionService } from "../services/collection.service";
-import axios from "axios";
 import { ImportCollectionDto } from "../payloads/collection.payload";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ObjectId } from "mongodb";
@@ -359,9 +358,8 @@ export class WorkSpaceController {
     @Body() importCollectionDto: ImportCollectionDto,
   ) {
     const activeSync = importCollectionDto.activeSync ?? false;
-    const response = await axios.get(importCollectionDto.url);
-    const data = response.data;
-    const responseType = response.headers["content-type"];
+    const data = importCollectionDto.urlData.data;
+    const responseType = importCollectionDto.urlData.headers["content-type"];
     const dataObj = responseType.includes(BodyModeEnum["application/json"])
       ? data
       : yml.load(data);

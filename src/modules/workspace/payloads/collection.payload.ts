@@ -135,6 +135,10 @@ export class ImportCollectionDto {
   @IsString()
   @IsOptional()
   currentBranch?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  urlData?: any;
 }
 
 export class SwitchCollectionBranchDto {
