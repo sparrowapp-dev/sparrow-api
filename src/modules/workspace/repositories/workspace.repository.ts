@@ -74,7 +74,7 @@ export class WorkspaceRepository {
 
   async updateWorkspaceById(
     id: ObjectId,
-    updatedWorkspace: WorkspaceDtoForIdDocument,
+    updatedWorkspace: Partial<WorkspaceDtoForIdDocument>,
   ): Promise<WithId<Workspace>> {
     const response = await this.db
       .collection<Workspace>(Collections.WORKSPACE)

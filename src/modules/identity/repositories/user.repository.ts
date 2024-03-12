@@ -102,7 +102,7 @@ export class UserRepository {
    */
   async updateUser(
     userId: string,
-    payload: UpdateUserDto,
+    payload: Partial<UpdateUserDto>,
   ): Promise<WithId<User>> {
     const _id = new ObjectId(userId);
     const updatedUser = await this.db
@@ -146,7 +146,7 @@ export class UserRepository {
 
   async updateUserById(
     id: ObjectId,
-    updateParams: UserDto,
+    updateParams: Partial<UserDto>,
   ): Promise<WithId<User>> {
     const updatedUserParams = {
       $set: updateParams,

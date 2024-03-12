@@ -132,7 +132,7 @@ export class TeamController {
   @ApiResponse({ status: 400, description: "Updated Team Failed" })
   async updateTeam(
     @Param("teamId") teamId: string,
-    @Body() updateTeamDto: UpdateTeamDto,
+    @Body() updateTeamDto: Partial<UpdateTeamDto>,
     @Res() res: FastifyReply,
     @UploadedFile()
     image: MemoryStorageFile,

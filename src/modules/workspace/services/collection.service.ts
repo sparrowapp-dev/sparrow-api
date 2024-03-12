@@ -114,7 +114,7 @@ export class CollectionService {
   }
   async updateCollection(
     collectionId: string,
-    updateCollectionDto: UpdateCollectionDto,
+    updateCollectionDto: Partial<UpdateCollectionDto>,
     workspaceId: string,
   ): Promise<UpdateResult> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
@@ -159,7 +159,7 @@ export class CollectionService {
   }
   async updateImportedCollection(
     id: string,
-    collection: Collection,
+    collection: Partial<Collection>,
   ): Promise<UpdateResult<Collection>> {
     return await this.collectionRepository.updateCollection(id, collection);
   }

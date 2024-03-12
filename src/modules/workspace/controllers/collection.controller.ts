@@ -110,7 +110,7 @@ export class collectionController {
   async updateCollection(
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
-    @Body() updateCollectionDto: UpdateCollectionDto,
+    @Body() updateCollectionDto: Partial<UpdateCollectionDto>,
     @Res() res: FastifyReply,
   ) {
     await this.collectionService.updateCollection(
@@ -198,7 +198,7 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
     @Param("folderId") folderId: string,
-    @Body() body: FolderPayload,
+    @Body() body: Partial<FolderPayload>,
     @Res() res: FastifyReply,
   ) {
     const updatedfolder = await this.collectionRequestService.updateFolder({
@@ -288,7 +288,7 @@ export class collectionController {
   @ApiResponse({ status: 400, description: "Failed to save request" })
   async updateRequest(
     @Param("requestId") requestId: string,
-    @Body() requestDto: CollectionRequestDto,
+    @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
   ) {
     const collectionId = requestDto.collectionId;

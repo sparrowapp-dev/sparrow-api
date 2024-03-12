@@ -189,7 +189,7 @@ export class WorkSpaceController {
   @ApiResponse({ status: 400, description: "Update Workspace Failed" })
   async updateWorkspace(
     @Param("workspaceId") workspaceId: string,
-    @Body() updateWorkspaceDto: UpdateWorkspaceDto,
+    @Body() updateWorkspaceDto: Partial<UpdateWorkspaceDto>,
     @Res() res: FastifyReply,
   ) {
     await this.workspaceService.update(workspaceId, updateWorkspaceDto);
