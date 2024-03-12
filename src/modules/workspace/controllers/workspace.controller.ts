@@ -368,7 +368,6 @@ export class WorkSpaceController {
       dataObj,
       activeSync,
       workspaceId,
-      importCollectionDto.url,
       importCollectionDto?.primaryBranch,
       importCollectionDto?.currentBranch,
     );
