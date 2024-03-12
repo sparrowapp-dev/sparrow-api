@@ -286,8 +286,6 @@ export class ParserService {
       const url = request.headers["x-oapi-url"] || null;
       const oapi = request.body;
       if (url) {
-        const isValidUrl = this.validateUrlIsALocalhostUrl(url as string);
-        if (!isValidUrl) throw new Error();
         const response = await axios.get(url as string);
         data = response.data;
       } else {
