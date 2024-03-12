@@ -47,7 +47,7 @@ export class CollectionRepository {
   }
   async update(
     id: string,
-    updateCollectionDto: UpdateCollectionDto,
+    updateCollectionDto: Partial<UpdateCollectionDto>,
   ): Promise<UpdateResult> {
     const collectionId = new ObjectId(id);
     const defaultParams = {
@@ -80,7 +80,7 @@ export class CollectionRepository {
 
   async updateCollection(
     id: string,
-    payload: Collection,
+    payload: Partial<Collection>,
   ): Promise<UpdateResult<Collection>> {
     const _id = new ObjectId(id);
     const data = await this.db
@@ -148,7 +148,7 @@ export class CollectionRepository {
   async updateRequest(
     collectionId: string,
     requestId: string,
-    request: CollectionRequestDto,
+    request: Partial<CollectionRequestDto>,
   ): Promise<CollectionRequestItem> {
     const _id = new ObjectId(collectionId);
     const defaultParams = {

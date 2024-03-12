@@ -49,7 +49,7 @@ export class EnvironmentRepository {
 
   async update(
     id: string,
-    updateEnvironmentDto: UpdateEnvironmentDto,
+    updateEnvironmentDto: Partial<UpdateEnvironmentDto>,
   ): Promise<UpdateResult> {
     const environmentId = new ObjectId(id);
     const defaultParams = {

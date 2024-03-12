@@ -134,7 +134,7 @@ export class EnvironmentController {
   async updateEnvironment(
     @Param("workspaceId") workspaceId: string,
     @Param("environmentId") environmentId: string,
-    @Body() updateEnvironmentDto: UpdateEnvironmentDto,
+    @Body() updateEnvironmentDto: Partial<UpdateEnvironmentDto>,
     @Res() res: FastifyReply,
   ) {
     await this.environmentService.updateEnvironment(

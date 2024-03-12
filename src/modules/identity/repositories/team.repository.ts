@@ -95,7 +95,7 @@ export class TeamRepository {
    */
   async update(
     id: string,
-    payload: UpdateTeamDto,
+    payload: Partial<UpdateTeamDto>,
   ): Promise<UpdateResult<Team>> {
     const _id = new ObjectId(id);
     const updatedTeam = await this.db
@@ -136,7 +136,7 @@ export class TeamRepository {
 
   async updateTeamById(
     id: ObjectId,
-    updateParams: TeamDto,
+    updateParams: Partial<TeamDto>,
   ): Promise<WithId<Team>> {
     const updatedTeamParams = {
       $set: updateParams,
