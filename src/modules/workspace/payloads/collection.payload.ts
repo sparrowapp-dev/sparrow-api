@@ -125,4 +125,21 @@ export class ImportCollectionDto {
   })
   @IsBoolean()
   activeSync?: boolean;
+
+  @ApiProperty({ example: "development" })
+  @IsString()
+  @IsOptional()
+  primaryBranch?: string;
+
+  @ApiProperty({ example: "feat/onboarding-v2" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
+}
+
+export class SwitchCollectionBranchDto {
+  @ApiProperty({ example: "feat/onboarding-v2" })
+  @IsString()
+  @IsNotEmpty()
+  currentBranch: string;
 }

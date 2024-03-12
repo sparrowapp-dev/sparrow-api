@@ -6,7 +6,11 @@ export function resolveAllRefs(spec: any) {
     const resolvedSpec: { [key: string]: any } = {};
     for (const key in spec) {
       if (componentToResolve.schemas) {
-        resolvedSpec[key] = resolveComponentRef(spec[key], componentToResolve);
+        resolvedSpec[key] = resolveComponentRef(
+          spec[key],
+          componentToResolve,
+          [],
+        );
       } else {
         resolvedSpec[key] = resolveDefinitionRef(spec[key], componentToResolve);
       }
@@ -17,7 +21,7 @@ export function resolveAllRefs(spec: any) {
   return spec;
 }
 
-function resolveComponentRef(data: any, components: any): any {
+function resolveComponentRef(data: any, components: any, cache: any): any {
   if (!data) return data;
 
   if (typeof data === "object") {
@@ -30,9 +34,15 @@ function resolveComponentRef(data: any, components: any): any {
           components.schemas &&
           components.schemas[schemaName]
         ) {
+          if (cache.indexOf(schemaName) !== -1) {
+            // Circular reference found, replace with undefined
+            return undefined;
+          }
+          cache.push(schemaName);
           return resolveComponentRef(
             components.schemas[schemaName],
             components,
+            cache,
           );
         } else {
           console.warn(`Reference "${refPath}" not found in components`);
@@ -44,7 +54,7 @@ function resolveComponentRef(data: any, components: any): any {
     } else {
       const newData: { [key: string]: any } = {};
       for (const key in data) {
-        newData[key] = resolveComponentRef(data[key], components);
+        newData[key] = resolveComponentRef(data[key], components, cache);
       }
       return newData;
     }

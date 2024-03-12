@@ -350,4 +350,28 @@ export class collectionController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Get(":collectionId/branch/:branchName")
+  @ApiOperation({
+    summary: "Get collection items as per the branch selected",
+    description: "Switch branch to get collection of that branch",
+  })
+  @ApiResponse({ status: 201, description: "Branch switched Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to switch branch" })
+  async switchCollectionBranch(
+    @Param("collectionId") collectionId: string,
+    @Param("branchName") branchName: string,
+    @Res() res: FastifyReply,
+  ) {
+    const branch = await this.collectionService.getBranchData(
+      collectionId,
+      branchName,
+    );
+    const responseData = new ApiResponseService(
+      "Branch switched Successfully",
+      HttpStatusCode.OK,
+      branch,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }
