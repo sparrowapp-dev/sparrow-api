@@ -28,7 +28,7 @@ export class CollectionService {
   ) {}
 
   async createCollection(
-    createCollectionDto: CreateCollectionDto,
+    createCollectionDto: Partial<CreateCollectionDto>,
   ): Promise<InsertOneResult> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(
       createCollectionDto.workspaceId,
