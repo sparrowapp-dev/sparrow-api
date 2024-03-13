@@ -171,17 +171,17 @@ function transformPathV3(
   }
   transformedObject.request.url = url;
 
-  function callRecursively(schema: any, bodyObject: { [key: string]: any }) {
+  function extractJsonBody(schema: any, bodyObject: { [key: string]: any }) {
     if (schema && schema.type === "object") {
       let properties = schema.properties || {};
 
       if (schema.allOf) {
         for (const property of Object.values(schema.allOf) as any) {
           if (property.type === "object") {
-            callRecursively(property, bodyObject);
+            extractJsonBody(property, bodyObject);
           } else if (property.properties) {
             properties = property.properties;
-            callRecursively(
+            extractJsonBody(
               {
                 type: "object",
                 properties,
@@ -197,13 +197,13 @@ function transformPathV3(
           const anyProperty = property as any;
           if (anyProperty.oneOf) {
             if (anyProperty.oneOf[0].type === "object") {
-              callRecursively(anyProperty.oneOf[0], bodyObject);
+              extractJsonBody(anyProperty.oneOf[0], bodyObject);
             } else {
               property = anyProperty.oneOf[0];
             }
           } else if (anyProperty.allOf) {
             if (anyProperty.type === "object") {
-              callRecursively(property, bodyObject);
+              extractJsonBody(property, bodyObject);
             }
           }
           const exampleType = anyProperty.type;
@@ -225,27 +225,7 @@ function transformPathV3(
     for (const key of contentKeys) {
       if (key === "application/json") {
         const schema = content[key].schema;
-        callRecursively(schema, bodyObject);
-        // if (schema && schema.type === "object") {
-        //   const properties = schema.properties || {};
-        //   const bodyObject: any = {};
-        //   for (let [propertyName, property] of Object.entries(properties)) {
-        //     propertyName = propertyName;
-        //     if (property.oneOf) {
-        //       property = property.oneOf[0];
-        //     } else if (property.allOf) {
-        //       // property = property.oneOf[0];
-        //     }
-        //     const exampleType = property.type;
-        //     const exampleValue = property.example;
-        //     bodyObject[propertyName] =
-        //       exampleValue ||
-        //       buildExampleValue(property) ||
-        //       getExampleValue(exampleType);
-        //   }
-        //   transformedObject.request.body.raw = JSON.stringify(bodyObject);
-        // }
-
+        extractJsonBody(schema, bodyObject);
         transformedObject.request.body.raw = JSON.stringify(bodyObject);
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["application/json"];
