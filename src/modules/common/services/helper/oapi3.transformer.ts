@@ -53,15 +53,24 @@ export function createCollectionItems(
   for (const item of collectionItems) {
     item.request.url = baseUrl + item.request.url;
     let tagDescription = "";
+    if (!openApiDocument.tags) {
+      openApiDocument.tags = [
+        {
+          name: "default",
+          description: "This is a default folder",
+        },
+      ];
+    }
+    const itemTag = item.tag ?? "default";
     for (const tag of Object.values(openApiDocument?.tags)) {
-      if (tag.name === item.tag) {
+      if (tag.name === itemTag) {
         tagDescription = tag.description;
       }
     }
-    let folderObj = folderMap.get(item.tag);
+    let folderObj = folderMap.get(itemTag);
     if (!folderObj) {
       folderObj = {};
-      folderObj.name = item.tag;
+      folderObj.name = itemTag;
       folderObj.description = tagDescription;
       folderObj.isDeleted = false;
       folderObj.type = ItemTypeEnum.FOLDER;
@@ -162,25 +171,62 @@ function transformPathV3(
   }
   transformedObject.request.url = url;
 
+  function extractJsonBody(schema: any, bodyObject: { [key: string]: any }) {
+    if (schema && schema.type === "object") {
+      let properties = schema.properties || {};
+
+      if (schema.allOf) {
+        for (const property of Object.values(schema.allOf) as any) {
+          if (property.type === "object") {
+            extractJsonBody(property, bodyObject);
+          } else if (property.properties) {
+            properties = property.properties;
+            extractJsonBody(
+              {
+                type: "object",
+                properties,
+              },
+              bodyObject,
+            );
+          }
+        }
+      }
+      if (properties) {
+        for (let [propertyName, property] of Object.entries(properties)) {
+          propertyName = propertyName as string;
+          const anyProperty = property as any;
+          if (anyProperty.oneOf) {
+            if (anyProperty.oneOf[0].type === "object") {
+              extractJsonBody(anyProperty.oneOf[0], bodyObject);
+            } else {
+              property = anyProperty.oneOf[0];
+            }
+          } else if (anyProperty.allOf) {
+            if (anyProperty.type === "object") {
+              extractJsonBody(property, bodyObject);
+            }
+          }
+          const exampleType = anyProperty.type;
+          const exampleValue = anyProperty.example;
+          bodyObject[propertyName] =
+            exampleValue ||
+            buildExampleValue(anyProperty) ||
+            getExampleValue(exampleType);
+        }
+      }
+    }
+  }
+
+  // Extract Request Body
   const content = pathItemObject?.requestBody?.content;
   if (content) {
     const contentKeys = Object.keys(pathItemObject.requestBody.content) || [];
+    const bodyObject = {};
     for (const key of contentKeys) {
       if (key === "application/json") {
         const schema = content[key].schema;
-        if (schema && schema.type === "object") {
-          const properties = schema.properties || {};
-          const bodyObject: any = {};
-          for (const [propertyName, property] of Object.entries(properties)) {
-            const exampleType = property.type;
-            const exampleValue = property.example;
-            bodyObject[propertyName] =
-              exampleValue ||
-              buildExampleValue(property) ||
-              getExampleValue(exampleType);
-          }
-          transformedObject.request.body.raw = JSON.stringify(bodyObject);
-        }
+        extractJsonBody(schema, bodyObject);
+        transformedObject.request.body.raw = JSON.stringify(bodyObject);
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["application/json"];
       }
