@@ -20,6 +20,8 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { ParserService } from "../common/services/parser.service";
+import { ApiResponseService } from "../common/services/api-response.service";
+import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
 
 /**
  * App Controller
@@ -75,7 +77,12 @@ export class AppController {
   @UseGuards(JwtAuthGuard)
   async parseCurl(@Res() res: FastifyReply, @Req() req: FastifyRequest) {
     const parsedRequestData = await this.appService.parseCurl(req);
-    return res.status(200).send(parsedRequestData);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      parsedRequestData,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Post("/validate/oapi")

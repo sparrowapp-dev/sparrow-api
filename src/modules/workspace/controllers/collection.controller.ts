@@ -25,6 +25,7 @@ import { ApiResponseService } from "@src/modules/common/services/api-response.se
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { WorkspaceService } from "../services/workspace.service";
 import {
+  BranchChangeDto,
   CollectionRequestDto,
   FolderPayload,
 } from "../payloads/collectionRequest.payload";
@@ -351,7 +352,7 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Get(":collectionId/branch/:branchName")
+  @Post(":collectionId/branch")
   @ApiOperation({
     summary: "Get collection items as per the branch selected",
     description: "Switch branch to get collection of that branch",
@@ -360,12 +361,12 @@ export class collectionController {
   @ApiResponse({ status: 400, description: "Failed to switch branch" })
   async switchCollectionBranch(
     @Param("collectionId") collectionId: string,
-    @Param("branchName") branchName: string,
+    @Body() branchChangeDto: BranchChangeDto,
     @Res() res: FastifyReply,
   ) {
     const branch = await this.collectionService.getBranchData(
       collectionId,
-      branchName,
+      branchChangeDto.branchName,
     );
     const responseData = new ApiResponseService(
       "Branch switched Successfully",

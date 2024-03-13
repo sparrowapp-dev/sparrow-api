@@ -105,7 +105,7 @@ export class AppService {
       source: SourceTypeEnum.USER,
       request: {
         method: requestObject.method.toUpperCase(),
-        url: "",
+        url: requestObject.url ?? "",
         body: {
           raw: "",
           urlencoded: [],
