@@ -315,3 +315,10 @@ export class DeleteFolderDto {
   @IsNotEmpty()
   folderId: string;
 }
+
+export class BranchChangeDto {
+  @ApiProperty({ example: "development" })
+  @IsString()
+  @IsNotEmpty()
+  branchName: string;
+}
