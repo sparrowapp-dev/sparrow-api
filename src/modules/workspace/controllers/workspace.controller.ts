@@ -371,6 +371,7 @@ export class WorkSpaceController {
       importCollectionDto.url,
       importCollectionDto?.primaryBranch,
       importCollectionDto?.currentBranch,
+      importCollectionDto?.localRepositoryPath,
     );
     if (!collectionObj.existingCollection) {
       await this.workspaceService.addCollectionInWorkSpace(workspaceId, {

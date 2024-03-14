@@ -39,6 +39,7 @@ export class ParserService {
     activeSyncUrl?: string,
     primaryBranch?: string,
     currentBranch?: string,
+    localRepositoryPath?: string,
   ): Promise<{
     collection: WithId<Collection>;
     existingCollection: boolean;
@@ -84,6 +85,7 @@ export class ParserService {
         totalRequests,
         activeSyncUrl,
         items,
+        localRepositoryPath,
       );
       return {
         collection,
@@ -94,6 +96,7 @@ export class ParserService {
         name: openApiDocument.info.title,
         description: openApiDocument.info.description,
         primaryBranch: "",
+        localRepositoryPath: "",
         branches: [],
         totalRequests,
         items: items,
@@ -127,6 +130,7 @@ export class ParserService {
     totalRequests: number,
     activeSyncUrl: string,
     items: CollectionItem[],
+    localRepositoryPath: string,
   ): Promise<ActiveSyncResponsePayload> {
     const collectionTitle = openApiDocument.info.title;
     let mergedFolderItems: CollectionItem[] = [];
@@ -188,6 +192,7 @@ export class ParserService {
       name: collectionTitle,
       description: openApiDocument.info.description,
       primaryBranch: primaryBranch ?? "",
+      localRepositoryPath: localRepositoryPath ?? "",
       totalRequests,
       items: items,
       branches: [],
