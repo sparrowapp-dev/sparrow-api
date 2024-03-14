@@ -24,6 +24,7 @@ export enum BodyModeEnum {
   "none" = "none",
   "application/json" = "application/json",
   "application/xml" = "application/xml",
+  "application/yaml" = "application/yaml",
   "application/x-www-form-urlencoded" = "application/x-www-form-urlencoded",
   "multipart/form-data" = "multipart/form-data",
   "application/javascript" = "application/javascript",
@@ -243,6 +244,18 @@ export class CollectionItem {
   updatedBy: string;
 }
 
+export class CollectionBranch {
+  @ApiProperty({ example: "64f878a0293b1e4415866493" })
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class Collection {
   @ApiProperty()
   @IsString()
@@ -253,6 +266,16 @@ export class Collection {
   @IsString()
   @IsNotEmpty()
   description?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  primaryBranch?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  localRepositoryPath?: string;
 
   @ApiProperty()
   @IsNumber()
@@ -279,6 +302,13 @@ export class Collection {
   @IsString()
   @IsOptional()
   activeSyncUrl?: string;
+
+  @ApiProperty({ type: [CollectionBranch] })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CollectionBranch)
+  branches?: CollectionBranch[];
 
   @IsOptional()
   @IsDateString()

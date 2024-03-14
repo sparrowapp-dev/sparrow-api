@@ -19,6 +19,8 @@ import { DemoteAdminHandler } from "./handlers/demoteAdmin.handlers";
 import { FeatureController } from "./controllers/feature.controller";
 import { FeatureService } from "./services/feature.service";
 import { FeatureRepository } from "./repositories/feature.repository";
+import { BranchService } from "./services/branch.service";
+import { BranchRepository } from "./repositories/branch.repository";
 @Module({
   imports: [IdentityModule],
   providers: [
@@ -37,6 +39,8 @@ import { FeatureRepository } from "./repositories/feature.repository";
     EnvironmentRepository,
     FeatureService,
     FeatureRepository,
+    BranchService,
+    BranchRepository,
   ],
   exports: [
     CollectionService,
@@ -46,6 +50,8 @@ import { FeatureRepository } from "./repositories/feature.repository";
     EnvironmentRepository,
     FeatureService,
     FeatureRepository,
+    BranchService,
+    BranchRepository,
   ],
   controllers: [
     WorkSpaceController,
