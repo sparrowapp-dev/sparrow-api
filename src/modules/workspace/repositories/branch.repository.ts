@@ -1,12 +1,20 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 
-import { Db, InsertOneResult, ObjectId, WithId } from "mongodb";
+import { Db, InsertOneResult, ObjectId, UpdateResult, WithId } from "mongodb";
 
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { Branch } from "@src/modules/common/models/branch.model";
-import { CollectionItem } from "@src/modules/common/models/collection.model";
+import {
+  CollectionItem,
+  ItemTypeEnum,
+} from "@src/modules/common/models/collection.model";
 import { UpdateBranchDto } from "../payloads/branch.payload";
+import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
+import {
+  CollectionRequestDto,
+  CollectionRequestItem,
+} from "../payloads/collectionRequest.payload";
 
 @Injectable()
 export class BranchRepository {
@@ -67,5 +75,143 @@ export class BranchRepository {
       .collection<Branch>(Collections.BRANCHES)
       .findOneAndUpdate({ _id: new ObjectId(branchId) }, updatedBranchParams);
     return responseData.value;
+  }
+
+  async addRequestInBranch(
+    collectionId: string,
+    branchName: string,
+    request: CollectionItem,
+  ): Promise<UpdateResult<Branch>> {
+    const branch = await this.getBranchByCollection(collectionId, branchName);
+    const _id = branch._id;
+    const data = await this.db
+      .collection<Branch>(Collections.BRANCHES)
+      .updateOne(
+        { _id },
+        {
+          $push: {
+            items: request,
+          },
+        },
+      );
+    return data;
+  }
+
+  async addRequestInBranchFolder(
+    collectionId: string,
+    branchName: string,
+    request: CollectionItem,
+    folderId: string,
+  ): Promise<UpdateResult<Branch>> {
+    const branch = await this.getBranchByCollection(collectionId, branchName);
+    const _id = branch._id;
+    const isFolderExists = branch.items.some((item) => {
+      return item.id === folderId;
+    });
+    if (isFolderExists) {
+      return await this.db.collection<Branch>(Collections.BRANCHES).updateOne(
+        { _id, "items.name": request.name },
+        {
+          $push: { "items.$.items": request.items[0] },
+        },
+      );
+    } else {
+      throw new BadRequestException(ErrorMessages.Unauthorized);
+    }
+  }
+
+  async updateRequestInBranch(
+    collectionId: string,
+    branchName: string,
+    requestId: string,
+    request: Partial<CollectionRequestDto>,
+  ): Promise<CollectionRequestItem> {
+    const branch = await this.getBranchByCollection(collectionId, branchName);
+    const _id = branch._id;
+    const user = await this.contextService.get("user");
+    const defaultParams = {
+      updatedAt: new Date(),
+      updatedBy: user._id,
+    };
+    if (request.items.type === ItemTypeEnum.REQUEST) {
+      request.items = { ...request.items, ...defaultParams };
+      await this.db.collection<Branch>(Collections.BRANCHES).updateOne(
+        { _id, "items.id": requestId },
+        {
+          $set: {
+            "items.$": request.items,
+            updatedAt: new Date(),
+            updatedBy: user._id,
+          },
+        },
+      );
+      return { ...request.items, id: requestId };
+    } else {
+      request.items.items = { ...request.items.items, ...defaultParams };
+      await this.db.collection<Branch>(Collections.BRANCHES).updateOne(
+        {
+          _id,
+          "items.id": request.folderId,
+          "items.items.id": requestId,
+        },
+        {
+          $set: {
+            "items.$[i].items.$[j]": request.items.items,
+            updatedAt: new Date(),
+            updatedBy: user._id,
+          },
+        },
+        {
+          arrayFilters: [{ "i.id": request.folderId }, { "j.id": requestId }],
+        },
+      );
+      return { ...request.items.items, id: requestId };
+    }
+  }
+
+  async deleteRequestInBranch(
+    collectionId: string,
+    branchName: string,
+    requestId: string,
+    folderId?: string,
+  ): Promise<UpdateResult<Branch>> {
+    const branch = await this.getBranchByCollection(collectionId, branchName);
+    const _id = branch._id;
+    if (folderId) {
+      return await this.db.collection<Branch>(Collections.BRANCHES).updateOne(
+        {
+          _id,
+        },
+        {
+          $pull: {
+            "items.$[i].items": {
+              id: requestId,
+            },
+          },
+          $set: {
+            updatedAt: new Date(),
+            updatedBy: this.contextService.get("user")._id,
+          },
+        },
+        {
+          arrayFilters: [{ "i.id": folderId }],
+        },
+      );
+    } else {
+      return await this.db.collection<Branch>(Collections.BRANCHES).updateOne(
+        { _id },
+        {
+          $pull: {
+            items: {
+              id: requestId,
+            },
+          },
+          $set: {
+            updatedAt: new Date(),
+            updatedBy: this.contextService.get("user")._id,
+          },
+        },
+      );
+    }
   }
 }
