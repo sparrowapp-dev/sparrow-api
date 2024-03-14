@@ -273,6 +273,11 @@ export class Collection {
   primaryBranch?: string;
 
   @ApiProperty()
+  @IsString()
+  @IsOptional()
+  localRepositoryPath?: string;
+
+  @ApiProperty()
   @IsNumber()
   @IsNotEmpty()
   totalRequests: number;

@@ -126,6 +126,11 @@ export class ImportCollectionDto {
   @IsBoolean()
   activeSync?: boolean;
 
+  @ApiProperty({ example: "C://users/github" })
+  @IsString()
+  @IsOptional()
+  localRepositoryPath?: string;
+
   @ApiProperty({ example: "development" })
   @IsString()
   @IsOptional()
