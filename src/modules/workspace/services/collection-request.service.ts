@@ -32,7 +32,7 @@ export class CollectionRequestService {
     private readonly workspaceService: WorkspaceService,
   ) {}
 
-  async addFolder(payload: FolderDto): Promise<CollectionItem> {
+  async addFolder(payload: Partial<FolderDto>): Promise<CollectionItem> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
     const user = await this.contextService.get("user");
     const uuid = uuidv4();
@@ -48,7 +48,7 @@ export class CollectionRequestService {
       name: payload.name,
       description: payload.description ?? "",
       type: ItemTypeEnum.FOLDER,
-      source: SourceTypeEnum.USER,
+      source: payload.source ?? SourceTypeEnum.USER,
       isDeleted: false,
       items: [],
       createdBy: user.name,
@@ -130,7 +130,7 @@ export class CollectionRequestService {
   }
   async addRequest(
     collectionId: string,
-    request: CollectionRequestDto,
+    request: Partial<CollectionRequestDto>,
     noOfRequests: number,
     userName: string,
     folderId?: string,
@@ -141,7 +141,7 @@ export class CollectionRequestService {
       name: request.items.name,
       type: request.items.type,
       description: request.items.description,
-      source: SourceTypeEnum.USER,
+      source: request.source ?? SourceTypeEnum.USER,
       isDeleted: false,
       createdBy: userName,
       updatedBy: userName,
