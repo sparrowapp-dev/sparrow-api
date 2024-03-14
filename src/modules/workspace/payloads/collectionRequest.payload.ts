@@ -16,6 +16,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import {
   BodyModeEnum,
   ItemTypeEnum,
+  SourceTypeEnum,
 } from "@src/modules/common/models/collection.model";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -260,7 +261,13 @@ export class CollectionRequestDto {
   @ApiProperty({ example: "6538e910aa77d958912371f5" })
   @IsString()
   @IsOptional()
-  folderId: string;
+  folderId?: string;
+
+  @ApiProperty({ enum: ["SPEC", "USER"] })
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  @IsString()
+  source?: SourceTypeEnum;
 
   @ApiProperty()
   @Type(() => CollectionRequestItem)
@@ -272,12 +279,17 @@ export class FolderPayload {
   @ApiProperty({ example: "pet" })
   @IsString()
   @IsOptional()
-  name: string;
+  name?: string;
 
   @ApiProperty({ example: "Everything about your Pets" })
   @IsString()
   @IsOptional()
-  description: string;
+  description?: string;
+
+  @ApiProperty({ example: SourceTypeEnum.USER })
+  @IsEnum(ItemTypeEnum)
+  @IsOptional()
+  source?: SourceTypeEnum;
 }
 
 export class FolderDto {
@@ -292,6 +304,10 @@ export class FolderDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  source?: SourceTypeEnum;
 
   @IsString()
   @IsNotEmpty()

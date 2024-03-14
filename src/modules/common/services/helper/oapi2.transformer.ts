@@ -104,7 +104,7 @@ function transformPath(
     name: pathName || "",
     description: "",
     type: ItemTypeEnum.REQUEST,
-    source: SourceTypeEnum.USER,
+    source: SourceTypeEnum.SPEC,
     request: {
       method: "",
       url: "",

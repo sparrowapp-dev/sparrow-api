@@ -172,7 +172,7 @@ export class collectionController {
   async addFolder(
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
-    @Body() body: FolderPayload,
+    @Body() body: Partial<FolderPayload>,
     @Res() res: FastifyReply,
   ) {
     const newFolder = await this.collectionRequestService.addFolder({
@@ -251,7 +251,7 @@ export class collectionController {
   @ApiResponse({ status: 200, description: "Request Updated Successfully" })
   @ApiResponse({ status: 400, description: "Failed to Update a request" })
   async addRequest(
-    @Body() requestDto: CollectionRequestDto,
+    @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
   ) {
     const collectionId = requestDto.collectionId;
@@ -323,7 +323,7 @@ export class collectionController {
   @ApiResponse({ status: 400, description: "Failed to delete request" })
   async deleteRequest(
     @Param("requestId") requestId: string,
-    @Body() requestDto: CollectionRequestDto,
+    @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
   ) {
     const collectionId = requestDto.collectionId;
