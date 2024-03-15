@@ -70,15 +70,25 @@ export class AppService {
     };
   }
 
+  async formatCur(curlCommand: string) {
+    curlCommand = curlCommand.replace(/^curl/i, "curl");
+
+    // Remove extra spaces and line breaks
+    curlCommand = curlCommand.replace(/\s+/g, " ").trim();
+
+    return curlCommand;
+  }
+
   async parseCurl(req: FastifyRequest): Promise<TransformedRequest> {
     try {
       const curlconverter = await this.importCurlConverter();
       const { toJsonString } = curlconverter;
       const curl = req.body as string;
+      const updatedCurl = await this.formatCur(curl);
       if (!curl || !curl.length) {
         throw new Error();
       }
-      return this.transformRequest(JSON.parse(toJsonString(curl)));
+      return this.transformRequest(JSON.parse(toJsonString(updatedCurl)));
     } catch (error) {
       console.error("Error parsing :", error);
       throw new BadRequestException("Invalid Curl");
