@@ -70,7 +70,7 @@ export class AppService {
     };
   }
 
-  async formatCur(curlCommand: string) {
+  async formatCurl(curlCommand: string) {
     curlCommand = curlCommand.replace(/^curl/i, "curl");
 
     // Remove extra spaces and line breaks
@@ -84,7 +84,7 @@ export class AppService {
       const curlconverter = await this.importCurlConverter();
       const { toJsonString } = curlconverter;
       const curl = req.body as string;
-      const updatedCurl = await this.formatCur(curl);
+      const updatedCurl = await this.formatCurl(curl);
       if (!curl || !curl.length) {
         throw new Error();
       }
