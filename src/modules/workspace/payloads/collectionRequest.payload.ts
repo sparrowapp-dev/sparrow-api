@@ -273,6 +273,11 @@ export class CollectionRequestDto {
   @Type(() => CollectionRequestItem)
   @ValidateNested({ each: true })
   items?: CollectionRequestItem;
+
+  @ApiProperty({ example: "main" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
 }
 
 export class FolderPayload {
@@ -287,9 +292,14 @@ export class FolderPayload {
   description?: string;
 
   @ApiProperty({ example: SourceTypeEnum.USER })
-  @IsEnum(ItemTypeEnum)
+  @IsEnum(SourceTypeEnum)
   @IsOptional()
   source?: SourceTypeEnum;
+
+  @ApiProperty({ example: "development" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
 }
 
 export class FolderDto {
@@ -316,6 +326,10 @@ export class FolderDto {
   @IsString()
   @IsNotEmpty()
   workspaceId: string;
+
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
 }
 
 export class DeleteFolderDto {
@@ -330,6 +344,10 @@ export class DeleteFolderDto {
   @IsString()
   @IsNotEmpty()
   folderId: string;
+
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
 }
 
 export class BranchChangeDto {

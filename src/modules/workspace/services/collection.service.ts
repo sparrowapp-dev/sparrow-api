@@ -172,8 +172,8 @@ export class CollectionService {
       collectionId,
       branchName,
     );
-    for (let index = 0; index < branch.items.length; index++) {
-      if (branch.items[index].type === ItemTypeEnum.FOLDER) {
+    for (let index = 0; index < branch?.items.length; index++) {
+      if (branch?.items[index].type === ItemTypeEnum.FOLDER) {
         for (let flag = 0; flag < branch.items[index].items.length; flag++) {
           const deletedDate = new Date(
             branch.items[index].items[flag].updatedAt,

@@ -227,13 +227,16 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
     @Param("folderId") folderId: string,
+    @Body() branchNameDto: Partial<BranchChangeDto>,
     @Res() res: FastifyReply,
   ) {
-    const response = await this.collectionRequestService.deleteFolder({
-      collectionId,
-      workspaceId,
-      folderId,
-    });
+    const payload = {
+      collectionId: collectionId,
+      workspaceId: workspaceId,
+      folderId: folderId,
+      currentBranch: branchNameDto.branchName,
+    };
+    const response = await this.collectionRequestService.deleteFolder(payload);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -340,7 +343,7 @@ export class collectionController {
       collectionId,
       requestId,
       noOfRequests,
-      requestDto.folderId,
+      requestDto,
     );
     const collection = await this.collectionService.getCollection(collectionId);
 
