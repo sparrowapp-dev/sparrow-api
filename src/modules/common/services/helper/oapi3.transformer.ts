@@ -73,6 +73,7 @@ export function createCollectionItems(
       folderObj.name = itemTag;
       folderObj.description = tagDescription;
       folderObj.isDeleted = false;
+      folderObj.source = SourceTypeEnum.SPEC;
       folderObj.type = ItemTypeEnum.FOLDER;
       folderObj.id = uuidv4();
       folderObj.items = [];
