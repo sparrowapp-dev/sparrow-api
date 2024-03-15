@@ -21,13 +21,22 @@ export enum ItemTypeEnum {
   REQUEST = "REQUEST",
 }
 export enum BodyModeEnum {
+  "none" = "none",
   "application/json" = "application/json",
   "application/xml" = "application/xml",
+  "application/yaml" = "application/yaml",
   "application/x-www-form-urlencoded" = "application/x-www-form-urlencoded",
   "multipart/form-data" = "multipart/form-data",
   "application/javascript" = "application/javascript",
   "text/plain" = "text/plain",
   "text/html" = "text/html",
+}
+
+export enum AuthModeEnum {
+  "No Auth" = "No Auth",
+  "API Key" = "API Key",
+  "Bearer Token" = "Bearer Token",
+  "Basic Auth" = "Basic Auth",
 }
 
 export enum SourceTypeEnum {
@@ -116,8 +125,16 @@ export class RequestMetaData {
   })
   @IsEnum({ BodyModeEnum })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   selectedRequestBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    enum: AuthModeEnum,
+  })
+  @IsEnum({ AuthModeEnum })
+  @IsString()
+  @IsNotEmpty()
+  selectedRequestAuthType?: AuthModeEnum;
 
   @ApiProperty({
     example: {
@@ -227,11 +244,38 @@ export class CollectionItem {
   updatedBy: string;
 }
 
+export class CollectionBranch {
+  @ApiProperty({ example: "64f878a0293b1e4415866493" })
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class Collection {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  description?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  primaryBranch?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  localRepositoryPath?: string;
 
   @ApiProperty()
   @IsNumber()
@@ -258,6 +302,13 @@ export class Collection {
   @IsString()
   @IsOptional()
   activeSyncUrl?: string;
+
+  @ApiProperty({ type: [CollectionBranch] })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CollectionBranch)
+  branches?: CollectionBranch[];
 
   @IsOptional()
   @IsDateString()

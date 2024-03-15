@@ -22,6 +22,9 @@ import {
 } from "@src/modules/common/models/collection.model";
 import { CollectionService } from "./collection.service";
 import { WorkspaceService } from "./workspace.service";
+import { BranchRepository } from "../repositories/branch.repository";
+import { UpdateBranchDto } from "../payloads/branch.payload";
+import { Branch } from "@src/modules/common/models/branch.model";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -30,9 +33,10 @@ export class CollectionRequestService {
     private readonly contextService: ContextService,
     private readonly collectionService: CollectionService,
     private readonly workspaceService: WorkspaceService,
+    private readonly branchRepository: BranchRepository,
   ) {}
 
-  async addFolder(payload: FolderDto): Promise<CollectionItem> {
+  async addFolder(payload: Partial<FolderDto>): Promise<CollectionItem> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
     const user = await this.contextService.get("user");
     const uuid = uuidv4();
@@ -48,7 +52,7 @@ export class CollectionRequestService {
       name: payload.name,
       description: payload.description ?? "",
       type: ItemTypeEnum.FOLDER,
-      source: SourceTypeEnum.USER,
+      source: payload.source ?? SourceTypeEnum.USER,
       isDeleted: false,
       items: [],
       createdBy: user.name,
@@ -61,10 +65,38 @@ export class CollectionRequestService {
       payload.collectionId,
       collection,
     );
+    if (payload?.currentBranch) {
+      const branch = await this.branchRepository.getBranchByCollection(
+        payload.collectionId,
+        payload.currentBranch,
+      );
+      if (!branch) {
+        throw new BadRequestException("Branch Not Found");
+      }
+      branch.items.push(updatedFolder);
+      const updatedBranch: UpdateBranchDto = {
+        items: branch.items,
+        updatedAt: new Date(),
+        updatedBy: this.contextService.get("user")._id,
+      };
+      await this.branchRepository.updateBranchById(
+        branch._id.toString(),
+        updatedBranch,
+      );
+    }
     return updatedFolder;
   }
 
-  async updateFolder(payload: FolderDto): Promise<CollectionItem> {
+  async isFolderExist(branch: Branch, id: string): Promise<number> {
+    for (let i = 0; i < branch.items.length; i++) {
+      if (branch.items[i].id === id) {
+        return i;
+      }
+    }
+    throw new BadRequestException("Folder Doesn't Exist");
+  }
+
+  async updateFolder(payload: Partial<FolderDto>): Promise<CollectionItem> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
     const user = await this.contextService.get("user");
     await this.checkPermission(payload.workspaceId, user._id);
@@ -82,6 +114,28 @@ export class CollectionRequestService {
       payload.collectionId,
       collection,
     );
+    if (payload?.currentBranch) {
+      const branch = await this.branchRepository.getBranchByCollection(
+        payload.collectionId,
+        payload.currentBranch,
+      );
+      if (!branch) {
+        throw new BadRequestException("Branch Not Found");
+      }
+      const index = await this.isFolderExist(branch, payload.folderId);
+      branch.items[index].name = payload.name ?? branch.items[index].name;
+      branch.items[index].description =
+        payload.description ?? branch.items[index].description;
+      const updatedBranch: UpdateBranchDto = {
+        items: branch.items,
+        updatedAt: new Date(),
+        updatedBy: user._id,
+      };
+      await this.branchRepository.updateBranchById(
+        branch._id.toString(),
+        updatedBranch,
+      );
+    }
     return collection.items[index];
   }
 
@@ -105,6 +159,28 @@ export class CollectionRequestService {
       payload.collectionId,
       collection,
     );
+    if (payload?.currentBranch) {
+      const branch = await this.branchRepository.getBranchByCollection(
+        payload.collectionId,
+        payload.currentBranch,
+      );
+      if (!branch) {
+        throw new BadRequestException("Branch Not Found");
+      }
+      const updatedBranchItems = branch.items.filter(
+        (item) => item.id !== payload.folderId,
+      );
+      branch.items = updatedBranchItems;
+      const updatedBranch: UpdateBranchDto = {
+        items: branch.items,
+        updatedAt: new Date(),
+        updatedBy: user._id,
+      };
+      await this.branchRepository.updateBranchById(
+        branch._id.toString(),
+        updatedBranch,
+      );
+    }
     return data;
   }
 
@@ -130,7 +206,7 @@ export class CollectionRequestService {
   }
   async addRequest(
     collectionId: string,
-    request: CollectionRequestDto,
+    request: Partial<CollectionRequestDto>,
     noOfRequests: number,
     userName: string,
     folderId?: string,
@@ -141,7 +217,7 @@ export class CollectionRequestService {
       name: request.items.name,
       type: request.items.type,
       description: request.items.description,
-      source: SourceTypeEnum.USER,
+      source: request.source ?? SourceTypeEnum.USER,
       isDeleted: false,
       createdBy: userName,
       updatedBy: userName,
@@ -155,6 +231,13 @@ export class CollectionRequestService {
         requestObj,
         noOfRequests,
       );
+      if (request?.currentBranch) {
+        await this.branchRepository.addRequestInBranch(
+          collectionId,
+          request.currentBranch,
+          requestObj,
+        );
+      }
       return requestObj;
     } else {
       requestObj.items = [
@@ -178,6 +261,14 @@ export class CollectionRequestService {
         noOfRequests,
         folderId,
       );
+      if (request?.currentBranch) {
+        await this.branchRepository.addRequestInBranchFolder(
+          collectionId,
+          request.currentBranch,
+          requestObj,
+          folderId,
+        );
+      }
       return requestObj.items[0];
     }
   }
@@ -185,27 +276,45 @@ export class CollectionRequestService {
   async updateRequest(
     collectionId: string,
     requestId: string,
-    request: CollectionRequestDto,
+    request: Partial<CollectionRequestDto>,
   ): Promise<CollectionRequestItem> {
-    return await this.collectionReposistory.updateRequest(
+    const collection = await this.collectionReposistory.updateRequest(
       collectionId,
       requestId,
       request,
     );
+    if (request?.currentBranch) {
+      await this.branchRepository.updateRequestInBranch(
+        collectionId,
+        request.currentBranch,
+        requestId,
+        request,
+      );
+    }
+    return collection;
   }
 
   async deleteRequest(
     collectionId: string,
     requestId: string,
     noOfRequests: number,
-    folderId?: string,
+    requestDto: Partial<CollectionRequestDto>,
   ): Promise<UpdateResult<Collection>> {
-    return await this.collectionReposistory.deleteRequest(
+    const collection = await this.collectionReposistory.deleteRequest(
       collectionId,
       requestId,
       noOfRequests,
-      folderId,
+      requestDto?.folderId,
     );
+    if (requestDto.currentBranch) {
+      await this.branchRepository.deleteRequestInBranch(
+        collectionId,
+        requestDto.currentBranch,
+        requestId,
+        requestDto.folderId,
+      );
+    }
+    return collection;
   }
 
   async getNoOfRequest(collectionId: string): Promise<number> {

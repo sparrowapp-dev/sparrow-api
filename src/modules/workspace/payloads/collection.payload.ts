@@ -125,4 +125,30 @@ export class ImportCollectionDto {
   })
   @IsBoolean()
   activeSync?: boolean;
+
+  @ApiProperty({ example: "C://users/github" })
+  @IsString()
+  @IsOptional()
+  localRepositoryPath?: string;
+
+  @ApiProperty({ example: "development" })
+  @IsString()
+  @IsOptional()
+  primaryBranch?: string;
+
+  @ApiProperty({ example: "feat/onboarding-v2" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  urlData?: any;
+}
+
+export class SwitchCollectionBranchDto {
+  @ApiProperty({ example: "feat/onboarding-v2" })
+  @IsString()
+  @IsNotEmpty()
+  currentBranch: string;
 }

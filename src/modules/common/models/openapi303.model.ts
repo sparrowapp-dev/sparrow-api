@@ -69,7 +69,7 @@ interface ServerVariableObject {
   description?: string;
 }
 
-interface PathItemObject {
+export interface PathItemObject {
   $ref?: string;
   summary?: string;
   description?: string;
@@ -82,17 +82,17 @@ interface PathItemObject {
   patch?: OperationObject;
   trace?: OperationObject;
   servers?: ServerObject[];
-  parameters?: (ParameterObject | ReferenceObject)[];
+  parameters?: ParameterRefObject[];
 }
 
-interface OperationObject {
+export interface OperationObject {
   tags?: string[];
   summary?: string;
   description?: string;
   externalDocs?: ExternalDocumentationObject;
   operationId?: string;
-  parameters?: (ParameterObject | ReferenceObject)[];
-  requestBody?: RequestBodyObject | ReferenceObject;
+  parameters?: ParameterRefObject[];
+  requestBody?: RequestRefObject;
   responses: {
     [statusCode: string]: ResponseObject | ReferenceObject;
   };
@@ -111,15 +111,16 @@ interface ExternalDocumentationObject {
 
 export interface ParameterObject {
   name: string;
-  in: "query" | "header" | "path" | "cookie";
+  in: "query" | "header" | "path" | "cookie" | "body";
   description?: string;
   required?: boolean;
   deprecated?: boolean;
   allowEmptyValue?: boolean;
   style?: string;
+  type?: string;
   explode?: boolean;
   allowReserved?: boolean;
-  schema?: SchemaObject | ReferenceObject;
+  schema?: Schema3RefObject;
   example?: any;
   examples?: {
     [exampleName: string]: ExampleObject | ReferenceObject;
@@ -129,13 +130,21 @@ export interface ParameterObject {
   };
 }
 
-interface RequestBodyObject {
+export interface RequestBodyObject {
   description?: string;
   content: {
     [mediaType: string]: MediaTypeObject;
   };
   required?: boolean;
 }
+
+export interface RequestRefObject extends RequestBodyObject, ReferenceObject {}
+
+export interface Schema3RefObject extends SchemaObject, ReferenceObject {
+  example: any;
+}
+
+export interface ParameterRefObject extends ParameterObject, ReferenceObject {}
 
 interface ResponseObject {
   description: string;
@@ -151,7 +160,7 @@ interface ResponseObject {
 }
 
 interface MediaTypeObject {
-  schema?: SchemaObject | ReferenceObject;
+  schema?: Schema3RefObject;
   example?: any;
   examples?: {
     [exampleName: string]: ExampleObject | ReferenceObject;
@@ -193,25 +202,25 @@ export interface SchemaObject {
   maxProperties?: number;
   minProperties?: number;
   required?: string[];
-  additionalProperties?: boolean | SchemaObject | ReferenceObject;
-  items?: SchemaObject | ReferenceObject;
-  allOf?: (SchemaObject | ReferenceObject)[];
-  oneOf?: (SchemaObject | ReferenceObject)[];
-  anyOf?: (SchemaObject | ReferenceObject)[];
-  not?: SchemaObject | ReferenceObject;
+  additionalProperties?: boolean | Schema3RefObject;
+  items?: Schema3RefObject;
+  allOf?: Schema3RefObject[];
+  oneOf?: Schema3RefObject[];
+  anyOf?: Schema3RefObject[];
+  not?: Schema3RefObject;
   properties?: {
-    [propertyName: string]: SchemaObject | ReferenceObject;
+    [propertyName: string]: Schema3RefObject;
   };
   dependencies?: {
     [propertyName: string]: SchemaObject | string[];
   };
-  propertyNames?: SchemaObject | ReferenceObject;
+  propertyNames?: Schema3RefObject;
   const?: any;
   contentMediaType?: string;
   contentEncoding?: string;
-  if?: SchemaObject | ReferenceObject;
-  then?: SchemaObject | ReferenceObject;
-  else?: SchemaObject | ReferenceObject;
+  if?: Schema3RefObject;
+  then?: Schema3RefObject;
+  else?: Schema3RefObject;
 }
 
 interface ExampleObject {
@@ -248,7 +257,7 @@ interface HeaderObject {
   style?: string;
   explode?: boolean;
   allowReserved?: boolean;
-  schema?: SchemaObject | ReferenceObject;
+  schema?: Schema3RefObject;
   example?: any;
   examples?: {
     [exampleName: string]: ExampleObject | ReferenceObject;

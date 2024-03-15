@@ -1,113 +1,69 @@
 import SwaggerParser from "@apidevtools/swagger-parser";
-// import * as util from "util";
 import {
-  BodyModeEnum,
   Collection,
   CollectionItem,
   ItemTypeEnum,
-  RequestBody,
-  RequestMetaData,
   SourceTypeEnum,
 } from "../models/collection.model";
-import { OpenAPI303, ParameterObject } from "../models/openapi303.model";
-import { HTTPMethods } from "fastify";
+import { OpenAPI303 } from "../models/openapi303.model";
 import { Injectable } from "@nestjs/common";
 import { ContextService } from "./context.service";
-import { v4 as uuidv4 } from "uuid";
 import { CollectionService } from "@src/modules/workspace/services/collection.service";
 import { WithId } from "mongodb";
+import { resolveAllRefs } from "./helper/parser.helper";
+import { OpenAPI20 } from "../models/openapi20.model";
+import * as oapi2Transformer from "./helper/oapi2.transformer";
+import * as oapi3Transformer from "./helper/oapi3.transformer";
+import { BranchService } from "@src/modules/workspace/services/branch.service";
+import { Branch } from "../models/branch.model";
+import { FastifyRequest } from "fastify";
+import axios from "axios";
+import * as yml from "js-yaml";
+interface ActiveSyncResponsePayload {
+  collection: WithId<Collection>;
+  existingCollection: boolean;
+}
 
 @Injectable()
 export class ParserService {
   constructor(
     private readonly contextService: ContextService,
     private readonly collectionService: CollectionService,
+    private readonly branchService: BranchService,
   ) {}
+
   async parse(
     file: string,
     activeSync?: boolean,
     workspaceId?: string,
     activeSyncUrl?: string,
+    primaryBranch?: string,
+    currentBranch?: string,
+    localRepositoryPath?: string,
   ): Promise<{
     collection: WithId<Collection>;
     existingCollection: boolean;
   }> {
-    const openApiDocument = (await SwaggerParser.parse(file)) as OpenAPI303;
-    const baseUrl = this.getBaseUrl(openApiDocument);
-    let existingCollection: WithId<Collection> | null = null;
-    const folderObjMap = new Map();
-    for (const [key, value] of Object.entries(openApiDocument.paths)) {
-      //key will be endpoints /put and values will its apis post ,put etc
-      for (const [innerKey, innerValue] of Object.entries(value)) {
-        //key will be api methods and values will it's desc
-        const requestObj: CollectionItem = {} as CollectionItem;
-        requestObj.name = key;
-        requestObj.description = innerValue.description;
-        requestObj.type = ItemTypeEnum.REQUEST;
-        requestObj.source = SourceTypeEnum.SPEC;
-        requestObj.id = uuidv4();
-        requestObj.isDeleted = false;
-        requestObj.request = {} as RequestMetaData;
-        requestObj.request.method = innerKey.toUpperCase() as HTTPMethods;
-        requestObj.request.operationId = innerValue.operationId;
-        requestObj.request.url = baseUrl + key;
-
-        if (innerValue.parameters?.length) {
-          requestObj.request.queryParams = innerValue.parameters.filter(
-            (param: ParameterObject) => param.in === "query",
-          );
-          requestObj.request.pathParams = innerValue.parameters.filter(
-            (param: ParameterObject) => param.in === "path",
-          );
-          requestObj.request.headers = innerValue.parameters.filter(
-            (param: ParameterObject) => param.in === "header",
-          );
-        }
-        if (innerValue.requestBody) {
-          requestObj.request.body = [];
-          const bodyTypes = innerValue.requestBody.content;
-          for (const [type, schema] of Object.entries(bodyTypes)) {
-            const body: RequestBody = {} as RequestBody;
-            body.type = Object.values(BodyModeEnum).find(
-              (enumMember) => enumMember === type,
-            ) as BodyModeEnum;
-            const ref = (schema as any).schema?.$ref;
-            if (ref) {
-              const schemaName = ref.slice(
-                ref.lastIndexOf("/") + 1,
-                ref.length,
-              );
-              body.schema = openApiDocument.components.schemas[schemaName];
-            } else {
-              body.schema = (schema as any).schema;
-            }
-            requestObj.request.body.push(body);
-          }
-        }
-        //Add to a folder
-        const tag = innerValue.tags ? innerValue.tags[0] : "default";
-        const tagArr =
-          openApiDocument?.tags?.length > 0 &&
-          openApiDocument.tags.filter((tagObj) => {
-            return tagObj.name === tag;
-          });
-        let folderObj: CollectionItem = folderObjMap.get(tag);
-        if (!folderObj) {
-          folderObj = {} as CollectionItem;
-          folderObj.name = tag;
-          folderObj.description = tagArr ? tagArr[0].description : "";
-          folderObj.isDeleted = false;
-          folderObj.type = ItemTypeEnum.FOLDER;
-          folderObj.id = uuidv4();
-          folderObj.items = [];
-        }
-        folderObj.items.push(requestObj);
-        folderObjMap.set(folderObj.name, folderObj);
-      }
+    let openApiDocument = (await SwaggerParser.parse(file)) as
+      | OpenAPI303
+      | OpenAPI20;
+    let folderObjMap = new Map();
+    const user = await this.contextService.get("user");
+    if (openApiDocument.hasOwnProperty("components")) {
+      openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI303;
+      folderObjMap = oapi3Transformer.createCollectionItems(
+        openApiDocument,
+        user,
+      );
+    } else if (openApiDocument.hasOwnProperty("definitions")) {
+      openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI20;
+      folderObjMap = oapi2Transformer.createCollectionItems(
+        openApiDocument,
+        user,
+      );
     }
-
     const itemObject = Object.fromEntries(folderObjMap);
-    let items: CollectionItem[] = [];
+    const items: CollectionItem[] = [];
     let totalRequests = 0;
     for (const key in itemObject) {
       if (itemObject.hasOwnProperty(key)) {
@@ -118,118 +74,263 @@ export class ParserService {
     items.map((itemObj) => {
       totalRequests = totalRequests + itemObj.items?.length;
     });
-    const user = await this.contextService.get("user");
+    let collection: Collection;
 
     if (activeSync) {
-      let mergedFolderItems: CollectionItem[] = [];
-      existingCollection =
-        await this.collectionService.getActiveSyncedCollection(
-          openApiDocument.info.title,
-          workspaceId,
-        );
-      if (existingCollection) {
-        //check on folder level
-        mergedFolderItems = this.compareAndMerge(
-          existingCollection.items,
-          items,
-        );
-        for (let x = 0; x < existingCollection.items?.length; x++) {
-          const newItem: CollectionItem[] = items.filter((item) => {
-            return item.name === existingCollection.items[x].name;
-          });
-          //check on request level
-          const mergedFolderRequests: CollectionItem[] = this.compareAndMerge(
-            existingCollection.items[x].items,
-            newItem[0]?.items || [],
-          );
-          mergedFolderItems[x].items = mergedFolderRequests;
-        }
-        items = mergedFolderItems;
-      }
-    }
-    const newItems: CollectionItem[] = [];
-    for (let x = 0; x < items?.length; x++) {
-      const itemsObj: CollectionItem = {
-        name: items[x].name,
-        description: items[x].description,
-        id: items[x].id,
-        type: items[x].type,
-        isDeleted: items[x].isDeleted,
-        source: SourceTypeEnum.SPEC,
-        createdBy: user.name,
-        updatedBy: user.name,
+      const { collection, existingCollection } = await this.runActiveSyncFlow(
+        openApiDocument,
+        workspaceId,
+        primaryBranch,
+        currentBranch,
+        totalRequests,
+        activeSyncUrl,
+        items,
+        localRepositoryPath,
+      );
+      return {
+        collection,
+        existingCollection,
+      };
+    } else {
+      collection = {
+        name: openApiDocument.info.title,
+        description: openApiDocument.info.description,
+        primaryBranch: "",
+        localRepositoryPath: "",
+        branches: [],
+        totalRequests,
+        items: items,
+        uuid: openApiDocument.info.title,
+        activeSync: false,
+        activeSyncUrl: "",
         createdAt: new Date(),
         updatedAt: new Date(),
+        createdBy: user.name,
+        updatedBy: user.name,
       };
-      const innerArray: CollectionItem[] = [];
-      for (let y = 0; y < items[x].items?.length; y++) {
-        const data = this.handleCircularReference(items[x].items[y]);
-        innerArray.push(JSON.parse(data));
-      }
-      itemsObj.items = innerArray;
-      newItems.push(itemsObj);
     }
 
-    const collection: Collection = {
-      name: openApiDocument.info.title,
-      totalRequests,
-      items: newItems,
-      uuid: openApiDocument.info.title,
-      createdBy: user.name,
-      updatedBy: user.name,
-      activeSync,
-      activeSyncUrl: activeSyncUrl ?? "",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const newCollection = await this.collectionService.importCollection(
+      collection,
+    );
+    const collectionDetails = await this.collectionService.getCollection(
+      newCollection.insertedId.toString(),
+    );
+    return {
+      collection: collectionDetails,
+      existingCollection: false,
     };
+  }
 
-    if (existingCollection) {
-      await this.collectionService.updateImportedCollection(
-        existingCollection._id.toString(),
-        collection,
+  async runActiveSyncFlow(
+    openApiDocument: OpenAPI20 | OpenAPI303,
+    workspaceId: string,
+    primaryBranch: string,
+    currentBranch: string,
+    totalRequests: number,
+    activeSyncUrl: string,
+    items: CollectionItem[],
+    localRepositoryPath: string,
+  ): Promise<ActiveSyncResponsePayload> {
+    const collectionTitle = openApiDocument.info.title;
+    let mergedFolderItems: CollectionItem[] = [];
+    const existingCollection =
+      await this.collectionService.getActiveSyncedCollection(
+        collectionTitle,
+        workspaceId,
       );
+    if (existingCollection) {
+      //Get existing branch or create one
+      const branch = await this.createOrFetchBranch(
+        currentBranch,
+        existingCollection._id.toString(),
+        workspaceId,
+        items,
+      );
+
+      //Check items on folder level
+      mergedFolderItems = this.compareAndMerge(branch.items, items);
+      for (let x = 0; x < branch.items?.length; x++) {
+        const newItem: CollectionItem[] = items.filter((item) => {
+          return item.name === branch.items[x].name;
+        });
+        //Check items on request level
+        const mergedFolderRequests: CollectionItem[] = this.compareAndMerge(
+          branch.items[x].items ?? [],
+          newItem[0]?.items || [],
+        );
+        mergedFolderItems[x].items = mergedFolderRequests;
+      }
+
+      this.updateItemsInbranch(
+        workspaceId,
+        branch._id.toString(),
+        mergedFolderItems,
+      );
+
+      //Update collection Items
       const updatedCollection = await this.collectionService.getCollection(
         existingCollection._id.toString(),
       );
+      updatedCollection.items = mergedFolderItems;
+
+      //No need for this as collection will be fetched from branch model
+      // this.updateItemsInCollection(
+      //   workspaceId,
+      //   existingCollection._id.toString(),
+      //   mergedFolderItems,
+      // );
+
       return {
         collection: updatedCollection,
         existingCollection: true,
       };
-    } else {
-      const newCollection = await this.collectionService.importCollection(
-        collection,
-      );
-      const collectionDetails = await this.collectionService.getCollection(
-        newCollection.insertedId.toString(),
-      );
-      collectionDetails;
-      return {
-        collection: collectionDetails,
-        existingCollection: false,
-      };
+    }
+    const user = await this.contextService.get("user");
+
+    const collection: Collection = {
+      name: collectionTitle,
+      description: openApiDocument.info.description,
+      primaryBranch: primaryBranch ?? "",
+      localRepositoryPath: localRepositoryPath ?? "",
+      totalRequests,
+      items: items,
+      branches: [],
+      uuid: collectionTitle,
+      activeSync: true,
+      activeSyncUrl: activeSyncUrl ?? "",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: user.name,
+      updatedBy: user.name,
+    };
+    const insertedCollection = await this.collectionService.importCollection(
+      collection,
+    );
+    const collectionId = insertedCollection.insertedId.toString();
+    const branch = await this.branchService.createBranch({
+      name: currentBranch,
+      items: items,
+      collectionId,
+    });
+
+    await this.collectionService.updateBranchArray(
+      collectionId,
+      { id: branch.insertedId.toString(), name: currentBranch },
+      workspaceId,
+    );
+
+    return {
+      collection: await this.collectionService.getCollection(
+        insertedCollection.insertedId.toString(),
+      ),
+      existingCollection: false,
+    };
+  }
+
+  async createOrFetchBranch(
+    currentBranch: string,
+    collectionId: string,
+    workspaceId: string,
+    items: CollectionItem[],
+  ): Promise<WithId<Branch>> {
+    const existingBranch = await this.collectionService.getActiveSyncedBranch(
+      collectionId,
+      currentBranch,
+    );
+    if (existingBranch) {
+      return existingBranch;
+    }
+    const insertedBranch = await this.branchService.createBranch({
+      name: currentBranch,
+      items: items,
+      collectionId,
+    });
+    const branch = await this.branchService.getBranch(
+      insertedBranch.insertedId.toString(),
+    );
+    await this.updateBranchInCollection(workspaceId, collectionId, branch);
+    return branch;
+  }
+
+  async updateItemsInbranch(
+    workspaceId: string,
+    branchId: string,
+    items: CollectionItem[],
+  ) {
+    await this.branchService.updateBranch(workspaceId, branchId, items);
+  }
+
+  async updateItemsInCollection(
+    workspaceId: string,
+    collectionId: string,
+    items: CollectionItem[],
+  ) {
+    await this.collectionService.updateCollection(
+      collectionId,
+      { items },
+      workspaceId,
+    );
+  }
+
+  async updateBranchInCollection(
+    workspaceId: string,
+    collectionId: string,
+    branch: WithId<Branch>,
+  ) {
+    await this.collectionService.updateBranchArray(
+      collectionId,
+      { id: branch._id.toString(), name: branch.name },
+      workspaceId,
+    );
+  }
+
+  async validateOapi(request: FastifyRequest): Promise<void> {
+    try {
+      let data: any;
+      const url = request.headers["x-oapi-url"] || null;
+      const oapi = request.body;
+      if (url) {
+        const response = await axios.get(url as string);
+        data = response.data;
+      } else {
+        try {
+          data = yml.load(oapi as string);
+          if (data[0] == "object Object") throw new Error();
+        } catch (err) {
+          data = JSON.stringify(oapi);
+          data = oapi;
+        }
+      }
+      await SwaggerParser.parse(data);
+      return;
+    } catch (err) {
+      throw new Error("Invalid OAPI.");
     }
   }
-  handleCircularReference(obj: CollectionItem) {
-    const cache: any = [];
-    return JSON.stringify(obj, function (key, value) {
-      if (typeof value === "object" && value !== null) {
-        if (cache.indexOf(value) !== -1) {
-          // Circular reference found, replace with undefined
-          return undefined;
-        }
-        // Store value in our collection
-        cache.push(value);
-      }
-      return value;
-    });
+
+  validateUrlIsALocalhostUrl(url: string): boolean {
+    const urlObject = new URL(url); // Create a URL object for parsing
+
+    // Check if protocol is http or https (localhost only works with these)
+    if (!["http:", "https:"].includes(urlObject.protocol)) {
+      return false;
+    }
+
+    // Check if hostname is 'localhost' or starts with 127.0.0.1
+    return (
+      urlObject.hostname === "localhost" ||
+      urlObject.hostname.startsWith("127.0.0.1")
+    );
   }
+
   compareAndMerge(
     existingitems: CollectionItem[],
     newItems: CollectionItem[],
   ): CollectionItem[] {
     const newItemMap = newItems
       ? new Map(
-          newItems.map((item) => [
+          newItems?.map((item) => [
             item.type === ItemTypeEnum.FOLDER
               ? item.name
               : item.name + item.request?.method,
@@ -239,7 +340,7 @@ export class ParserService {
       : new Map();
     const existingItemMap = existingitems
       ? new Map(
-          existingitems.map((item) => [
+          existingitems?.map((item) => [
             item.type === ItemTypeEnum.FOLDER
               ? item.name
               : item.name + item.request?.method,
@@ -248,7 +349,7 @@ export class ParserService {
         )
       : new Map();
     // Merge old and new items while marking deleted
-    const mergedArray: CollectionItem[] = existingitems.map((existingItem) => {
+    const mergedArray: CollectionItem[] = existingitems?.map((existingItem) => {
       if (
         newItemMap.has(
           existingItem.type === ItemTypeEnum.FOLDER
@@ -284,13 +385,5 @@ export class ParserService {
     });
 
     return mergedArray;
-  }
-  getBaseUrl(openApiDocument: OpenAPI303): string {
-    const basePath = openApiDocument.basePath ? openApiDocument.basePath : "";
-    if (openApiDocument.host) {
-      return "https://" + openApiDocument.host + basePath;
-    } else {
-      return "http://localhost:{{PORT}}" + basePath;
-    }
   }
 }

@@ -102,7 +102,7 @@ export class UserRepository {
    */
   async updateUser(
     userId: string,
-    payload: UpdateUserDto,
+    payload: Partial<UpdateUserDto>,
   ): Promise<WithId<User>> {
     const _id = new ObjectId(userId);
     const updatedUser = await this.db
@@ -146,7 +146,7 @@ export class UserRepository {
 
   async updateUserById(
     id: ObjectId,
-    updateParams: UserDto,
+    updateParams: Partial<UserDto>,
   ): Promise<WithId<User>> {
     const updatedUserParams = {
       $set: updateParams,
@@ -224,6 +224,18 @@ export class UserRepository {
         $set: {
           verificationCode,
           verificationCodeTimeStamp: new Date(),
+          isVerificationCodeActive: true,
+        },
+      },
+    );
+  }
+
+  async expireVerificationCode(email: string): Promise<void> {
+    await this.db.collection<User>(Collections.USER).findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          isVerificationCodeActive: false,
         },
       },
     );

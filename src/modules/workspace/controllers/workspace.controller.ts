@@ -37,7 +37,6 @@ import {
 import * as yml from "js-yaml";
 import { ParserService } from "@src/modules/common/services/parser.service";
 import { CollectionService } from "../services/collection.service";
-import axios from "axios";
 import { ImportCollectionDto } from "../payloads/collection.payload";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ObjectId } from "mongodb";
@@ -189,7 +188,7 @@ export class WorkSpaceController {
   @ApiResponse({ status: 400, description: "Update Workspace Failed" })
   async updateWorkspace(
     @Param("workspaceId") workspaceId: string,
-    @Body() updateWorkspaceDto: UpdateWorkspaceDto,
+    @Body() updateWorkspaceDto: Partial<UpdateWorkspaceDto>,
     @Res() res: FastifyReply,
   ) {
     await this.workspaceService.update(workspaceId, updateWorkspaceDto);
@@ -359,9 +358,8 @@ export class WorkSpaceController {
     @Body() importCollectionDto: ImportCollectionDto,
   ) {
     const activeSync = importCollectionDto.activeSync ?? false;
-    const response = await axios.get(importCollectionDto.url);
-    const data = response.data;
-    const responseType = response.headers["content-type"];
+    const data = importCollectionDto.urlData.data;
+    const responseType = importCollectionDto.urlData.headers["content-type"];
     const dataObj = responseType.includes(BodyModeEnum["application/json"])
       ? data
       : yml.load(data);
@@ -371,6 +369,9 @@ export class WorkSpaceController {
       activeSync,
       workspaceId,
       importCollectionDto.url,
+      importCollectionDto?.primaryBranch,
+      importCollectionDto?.currentBranch,
+      importCollectionDto?.localRepositoryPath,
     );
     if (!collectionObj.existingCollection) {
       await this.workspaceService.addCollectionInWorkSpace(workspaceId, {

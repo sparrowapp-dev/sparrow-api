@@ -25,6 +25,7 @@ import { ApiResponseService } from "@src/modules/common/services/api-response.se
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { WorkspaceService } from "../services/workspace.service";
 import {
+  BranchChangeDto,
   CollectionRequestDto,
   FolderPayload,
 } from "../payloads/collectionRequest.payload";
@@ -53,7 +54,7 @@ export class collectionController {
   @ApiResponse({ status: 201, description: "Collection Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Collection Failed" })
   async createCollection(
-    @Body() createCollectionDto: CreateCollectionDto,
+    @Body() createCollectionDto: Partial<CreateCollectionDto>,
     @Res() res: FastifyReply,
   ) {
     const workspaceId = createCollectionDto.workspaceId;
@@ -110,7 +111,7 @@ export class collectionController {
   async updateCollection(
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
-    @Body() updateCollectionDto: UpdateCollectionDto,
+    @Body() updateCollectionDto: Partial<UpdateCollectionDto>,
     @Res() res: FastifyReply,
   ) {
     await this.collectionService.updateCollection(
@@ -171,7 +172,7 @@ export class collectionController {
   async addFolder(
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
-    @Body() body: FolderPayload,
+    @Body() body: Partial<FolderPayload>,
     @Res() res: FastifyReply,
   ) {
     const newFolder = await this.collectionRequestService.addFolder({
@@ -198,7 +199,7 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
     @Param("folderId") folderId: string,
-    @Body() body: FolderPayload,
+    @Body() body: Partial<FolderPayload>,
     @Res() res: FastifyReply,
   ) {
     const updatedfolder = await this.collectionRequestService.updateFolder({
@@ -226,13 +227,16 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
     @Param("folderId") folderId: string,
+    @Body() branchNameDto: Partial<BranchChangeDto>,
     @Res() res: FastifyReply,
   ) {
-    const response = await this.collectionRequestService.deleteFolder({
-      collectionId,
-      workspaceId,
-      folderId,
-    });
+    const payload = {
+      collectionId: collectionId,
+      workspaceId: workspaceId,
+      folderId: folderId,
+      currentBranch: branchNameDto.branchName,
+    };
+    const response = await this.collectionRequestService.deleteFolder(payload);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -250,7 +254,7 @@ export class collectionController {
   @ApiResponse({ status: 200, description: "Request Updated Successfully" })
   @ApiResponse({ status: 400, description: "Failed to Update a request" })
   async addRequest(
-    @Body() requestDto: CollectionRequestDto,
+    @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
   ) {
     const collectionId = requestDto.collectionId;
@@ -288,7 +292,7 @@ export class collectionController {
   @ApiResponse({ status: 400, description: "Failed to save request" })
   async updateRequest(
     @Param("requestId") requestId: string,
-    @Body() requestDto: CollectionRequestDto,
+    @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
   ) {
     const collectionId = requestDto.collectionId;
@@ -322,7 +326,7 @@ export class collectionController {
   @ApiResponse({ status: 400, description: "Failed to delete request" })
   async deleteRequest(
     @Param("requestId") requestId: string,
-    @Body() requestDto: CollectionRequestDto,
+    @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
   ) {
     const collectionId = requestDto.collectionId;
@@ -339,7 +343,7 @@ export class collectionController {
       collectionId,
       requestId,
       noOfRequests,
-      requestDto.folderId,
+      requestDto,
     );
     const collection = await this.collectionService.getCollection(collectionId);
 
@@ -347,6 +351,30 @@ export class collectionController {
       "Success",
       HttpStatusCode.OK,
       collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post(":collectionId/branch")
+  @ApiOperation({
+    summary: "Get collection items as per the branch selected",
+    description: "Switch branch to get collection of that branch",
+  })
+  @ApiResponse({ status: 201, description: "Branch switched Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to switch branch" })
+  async switchCollectionBranch(
+    @Param("collectionId") collectionId: string,
+    @Body() branchChangeDto: BranchChangeDto,
+    @Res() res: FastifyReply,
+  ) {
+    const branch = await this.collectionService.getBranchData(
+      collectionId,
+      branchChangeDto.branchName,
+    );
+    const responseData = new ApiResponseService(
+      "Branch switched Successfully",
+      HttpStatusCode.OK,
+      branch,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }

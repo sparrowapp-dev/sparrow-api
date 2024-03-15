@@ -136,7 +136,7 @@ export class EnvironmentService {
    */
   async updateEnvironment(
     environmentId: string,
-    updateEnvironmentDto: UpdateEnvironmentDto,
+    updateEnvironmentDto: Partial<UpdateEnvironmentDto>,
     workspaceId: string,
   ): Promise<UpdateResult> {
     await this.isWorkspaceAdminorEditor(workspaceId);

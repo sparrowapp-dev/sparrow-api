@@ -16,9 +16,30 @@ import { ApiProperty } from "@nestjs/swagger";
 import {
   BodyModeEnum,
   ItemTypeEnum,
+  SourceTypeEnum,
 } from "@src/modules/common/models/collection.model";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+enum ApiKeyParamTypeEnum {
+  HEADER = "Header",
+  Query = "Query Parameter",
+}
+class Auth {
+  apiKey?: ApiKey;
+  bearerToken?: string;
+  basicAuth?: BasicAuth;
+}
+
+class ApiKey {
+  authKey?: string;
+  authValue?: string;
+  addTo: ApiKeyParamTypeEnum;
+}
+class BasicAuth {
+  username?: string;
+  password?: string;
+}
 
 export class CollectionRequestBody {
   @ApiProperty({ example: "application/json" })
@@ -118,6 +139,25 @@ export class CollectionRequestMetaData {
   @ValidateNested({ each: true })
   @IsOptional()
   headers?: Params[];
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      apiKey: {
+        authKey: "",
+        authValue: "",
+        paramType: "header",
+      },
+      bearerToken: "",
+      basicToken: {
+        username: "",
+        password: "",
+      },
+    },
+  })
+  @Type(() => Auth)
+  @IsOptional()
+  auth?: Auth;
 }
 
 export class CollectionRequestItem {
@@ -221,24 +261,45 @@ export class CollectionRequestDto {
   @ApiProperty({ example: "6538e910aa77d958912371f5" })
   @IsString()
   @IsOptional()
-  folderId: string;
+  folderId?: string;
+
+  @ApiProperty({ enum: ["SPEC", "USER"] })
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  @IsString()
+  source?: SourceTypeEnum;
 
   @ApiProperty()
   @Type(() => CollectionRequestItem)
   @ValidateNested({ each: true })
   items?: CollectionRequestItem;
+
+  @ApiProperty({ example: "main" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
 }
 
 export class FolderPayload {
   @ApiProperty({ example: "pet" })
   @IsString()
   @IsOptional()
-  name: string;
+  name?: string;
 
   @ApiProperty({ example: "Everything about your Pets" })
   @IsString()
   @IsOptional()
-  description: string;
+  description?: string;
+
+  @ApiProperty({ example: SourceTypeEnum.USER })
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  source?: SourceTypeEnum;
+
+  @ApiProperty({ example: "development" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
 }
 
 export class FolderDto {
@@ -254,6 +315,10 @@ export class FolderDto {
   @IsOptional()
   description?: string;
 
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  source?: SourceTypeEnum;
+
   @IsString()
   @IsNotEmpty()
   collectionId: string;
@@ -261,6 +326,10 @@ export class FolderDto {
   @IsString()
   @IsNotEmpty()
   workspaceId: string;
+
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
 }
 
 export class DeleteFolderDto {
@@ -275,4 +344,15 @@ export class DeleteFolderDto {
   @IsString()
   @IsNotEmpty()
   folderId: string;
+
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
+}
+
+export class BranchChangeDto {
+  @ApiProperty({ example: "development" })
+  @IsString()
+  @IsNotEmpty()
+  branchName: string;
 }

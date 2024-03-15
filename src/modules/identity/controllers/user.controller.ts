@@ -31,6 +31,7 @@ import {
 import { RefreshTokenGuard } from "@src/modules/common/guards/refresh-token.guard";
 import { RefreshTokenRequest } from "./auth.controller";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { ConfigService } from "@nestjs/config";
 /**
  * User Controller
  */
@@ -38,7 +39,10 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 @ApiTags("user")
 @Controller("api/user")
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -100,7 +104,7 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   async updateUser(
     @Param("userId") id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body() updateUserDto: Partial<UpdateUserDto>,
     @Res() res: FastifyReply,
   ) {
     const user = await this.userService.updateUser(id, updateUserDto);
@@ -196,13 +200,21 @@ export class UserController {
     @Res() res: FastifyReply,
     @Body() verifyEmailPayload: VerifyEmailPayload,
   ) {
+    const expireTime = this.configService.get(
+      "app.emailValidationCodeExpirationTime",
+    );
     await this.userService.verifyVerificationCode(
       verifyEmailPayload.email,
       verifyEmailPayload.verificationCode,
+      expireTime,
+    );
+    const data = await this.userService.refreshVerificationCode(
+      verifyEmailPayload.email,
     );
     const responseData = new ApiResponseService(
       "Email Verified Successfully",
       HttpStatusCode.OK,
+      data,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
@@ -217,6 +229,14 @@ export class UserController {
     @Res() res: FastifyReply,
     @Body() updatePasswordPayload: UpdatePasswordPayload,
   ) {
+    const expireTime = this.configService.get(
+      "app.emailValidationCodeExpirationTime",
+    );
+    await this.userService.verifyVerificationCode(
+      updatePasswordPayload.email,
+      updatePasswordPayload.verificationCode,
+      expireTime,
+    );
     await this.userService.updatePassword(
       updatePasswordPayload.email,
       updatePasswordPayload.newPassword,

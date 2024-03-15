@@ -120,7 +120,7 @@ export class TeamService {
    */
   async update(
     id: string,
-    teamData: UpdateTeamDto,
+    teamData: Partial<UpdateTeamDto>,
     image?: MemoryStorageFile,
   ): Promise<UpdateResult<Team>> {
     const teamOwner = await this.isTeamOwner(id);

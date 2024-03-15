@@ -12,6 +12,7 @@ import {
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { ContextService } from "@src/modules/common/services/context.service";
 import {
+  CollectionBranch,
   Collection,
   CollectionItem,
   ItemTypeEnum,
@@ -47,7 +48,7 @@ export class CollectionRepository {
   }
   async update(
     id: string,
-    updateCollectionDto: UpdateCollectionDto,
+    updateCollectionDto: Partial<UpdateCollectionDto>,
   ): Promise<UpdateResult> {
     const collectionId = new ObjectId(id);
     const defaultParams = {
@@ -60,6 +61,29 @@ export class CollectionRepository {
         { _id: collectionId },
         { $set: { ...updateCollectionDto, ...defaultParams } },
       );
+    return data;
+  }
+
+  async updateBranchArray(
+    id: string,
+    branch: CollectionBranch,
+  ): Promise<UpdateResult> {
+    const collectionId = new ObjectId(id);
+    const defaultParams = {
+      updatedAt: new Date(),
+      updatedBy: this.contextService.get("user")._id,
+    };
+    const data = await this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: collectionId },
+      {
+        $push: {
+          branches: branch,
+        },
+        $set: {
+          ...defaultParams,
+        },
+      },
+    );
     return data;
   }
   async delete(id: string): Promise<DeleteResult> {
@@ -80,7 +104,7 @@ export class CollectionRepository {
 
   async updateCollection(
     id: string,
-    payload: Collection,
+    payload: Partial<Collection>,
   ): Promise<UpdateResult<Collection>> {
     const _id = new ObjectId(id);
     const data = await this.db
@@ -148,7 +172,7 @@ export class CollectionRepository {
   async updateRequest(
     collectionId: string,
     requestId: string,
-    request: CollectionRequestDto,
+    request: Partial<CollectionRequestDto>,
   ): Promise<CollectionRequestItem> {
     const _id = new ObjectId(collectionId);
     const defaultParams = {
@@ -262,7 +286,7 @@ export class CollectionRepository {
       );
       const data = await this.db
         .collection<Collection>(Collections.COLLECTION)
-        .findOne({ _id: activeCollection.id, activeSync: true });
+        .findOne({ _id: activeCollection?.id, activeSync: true });
       return data;
     }
   }
