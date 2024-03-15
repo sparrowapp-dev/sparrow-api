@@ -156,7 +156,7 @@ export class ParserService {
         });
         //Check items on request level
         const mergedFolderRequests: CollectionItem[] = this.compareAndMerge(
-          branch.items[x].items,
+          branch.items[x].items ?? [],
           newItem[0]?.items || [],
         );
         mergedFolderItems[x].items = mergedFolderRequests;
@@ -330,7 +330,7 @@ export class ParserService {
   ): CollectionItem[] {
     const newItemMap = newItems
       ? new Map(
-          newItems.map((item) => [
+          newItems?.map((item) => [
             item.type === ItemTypeEnum.FOLDER
               ? item.name
               : item.name + item.request?.method,
@@ -340,7 +340,7 @@ export class ParserService {
       : new Map();
     const existingItemMap = existingitems
       ? new Map(
-          existingitems.map((item) => [
+          existingitems?.map((item) => [
             item.type === ItemTypeEnum.FOLDER
               ? item.name
               : item.name + item.request?.method,
@@ -349,7 +349,7 @@ export class ParserService {
         )
       : new Map();
     // Merge old and new items while marking deleted
-    const mergedArray: CollectionItem[] = existingitems.map((existingItem) => {
+    const mergedArray: CollectionItem[] = existingitems?.map((existingItem) => {
       if (
         newItemMap.has(
           existingItem.type === ItemTypeEnum.FOLDER
