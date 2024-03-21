@@ -55,15 +55,24 @@ export function createCollectionItems(
   for (const item of collectionItems) {
     item.request.url = baseUrl + item.request.url;
     let tagDescription = "";
+    if (!openApiDocument.tags) {
+      openApiDocument.tags = [
+        {
+          name: "default",
+          description: "This is a default folder",
+        },
+      ];
+    }
+    const itemTag = item.tag ?? "default";
     for (const tag of Object.values(openApiDocument?.tags)) {
-      if (tag.name === item.tag) {
+      if (tag.name === itemTag) {
         tagDescription = tag.description;
       }
     }
-    let folderObj = folderMap.get(item.tag);
+    let folderObj = folderMap.get(itemTag);
     if (!folderObj) {
       folderObj = {};
-      folderObj.name = item.tag;
+      folderObj.name = itemTag;
       folderObj.description = tagDescription;
       folderObj.isDeleted = false;
       folderObj.source = SourceTypeEnum.SPEC;

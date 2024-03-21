@@ -54,7 +54,7 @@ export class collectionController {
   @ApiResponse({ status: 201, description: "Collection Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Collection Failed" })
   async createCollection(
-    @Body() createCollectionDto: CreateCollectionDto,
+    @Body() createCollectionDto: Partial<CreateCollectionDto>,
     @Res() res: FastifyReply,
   ) {
     const workspaceId = createCollectionDto.workspaceId;
