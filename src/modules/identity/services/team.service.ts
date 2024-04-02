@@ -95,6 +95,7 @@ export class TeamService {
       const workspaceObj = {
         name: this.configService.get("app.defaultWorkspaceName"),
         id: createdTeam.insertedId.toString(),
+        firstWorkspace: true,
       };
       await this.producerService.produce(TOPIC.CREATE_USER_TOPIC, {
         value: JSON.stringify(workspaceObj),
