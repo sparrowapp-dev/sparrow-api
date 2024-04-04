@@ -221,7 +221,9 @@ export class TeamUserService {
     }
     const teamUser = [...teamData.users];
     let filteredAdmin;
-    const filteredData = teamUser.filter((item) => item.id !== payload.userId);
+    const filteredData = teamUser.filter(
+      (item) => item.id.toString() !== payload.userId.toString(),
+    );
     if (userTeamRole === TeamRole.ADMIN) {
       filteredAdmin = teamAdmins.filter(
         (id: string) => id.toString() !== payload.userId.toString(),
