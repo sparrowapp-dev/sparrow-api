@@ -286,6 +286,7 @@ export class WorkspaceService {
         workspaceId: response.insertedId.toString(),
         name: workspaceData.name,
         teamId: workspaceData.id,
+        isNewInvite: false,
       });
     }
     const userDataPromises = [];
@@ -587,6 +588,7 @@ export class WorkspaceService {
         workspaceId: workspaceData._id.toString(),
         teamId: workspaceData.team.id,
         name: workspaceData.name,
+        isNewInvite: true,
       });
       const updatedUserParams = {
         workspaces: userWorkspaces,
