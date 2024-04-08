@@ -9,7 +9,10 @@ import {
   UpdateWorkspaceDto,
   workspaceUsersResponseDto,
 } from "../payloads/workspace.payload";
-import { Workspace } from "@src/modules/common/models/workspace.model";
+import {
+  Workspace,
+  WorkspaceWithNewInviteTag,
+} from "@src/modules/common/models/workspace.model";
 import { ContextService } from "@src/modules/common/services/context.service";
 import {
   DeleteResult,
@@ -70,10 +73,17 @@ export class WorkspaceService {
         "The user with this id does not exist in the system",
       );
     }
-    const workspaces: Workspace[] = [];
+    const workspaces: WithId<Workspace>[] = [];
     for (const { workspaceId } of user.workspaces) {
-      const workspace = await this.get(workspaceId);
-      workspaces.push(workspace);
+      const workspaceData: WithId<WorkspaceWithNewInviteTag> = await this.get(
+        workspaceId,
+      );
+      user.workspaces.forEach((workspace) => {
+        if (workspace.workspaceId.toString() === workspaceData._id.toString()) {
+          workspaceData.isNewInvite = workspace.isNewInvite;
+        }
+      });
+      workspaces.push(workspaceData);
     }
     return workspaces;
   }
@@ -740,5 +750,26 @@ export class WorkspaceService {
       }
     }
     return allUsers;
+  }
+
+  /**
+   * Disable workspace new invite tag
+   */
+  async disableWorkspaceNewInvite(
+    userId: string,
+    workspaceId: string,
+  ): Promise<Workspace> {
+    const user = await this.userRepository.getUserById(userId);
+    const workspaces = user.workspaces.map((workspace) => {
+      if (workspace.workspaceId.toString() === workspaceId) {
+        workspace.isNewInvite = false;
+      }
+      return workspace;
+    });
+    await this.userRepository.updateUserById(new ObjectId(userId), {
+      workspaces,
+    });
+    const workspaceDetails = await this.workspaceRepository.get(workspaceId);
+    return workspaceDetails;
   }
 }

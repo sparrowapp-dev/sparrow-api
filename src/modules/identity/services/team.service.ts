@@ -30,7 +30,7 @@ export class TeamService {
     private readonly teamRepository: TeamRepository,
     private readonly producerService: ProducerService,
     private readonly configService: ConfigService,
-    private readonly userRespository: UserRepository,
+    private readonly userRepository: UserRepository,
     private readonly contextService: ContextService,
   ) {}
 
@@ -74,7 +74,7 @@ export class TeamService {
     }
     const createdTeam = await this.teamRepository.create(team);
     const user = await this.contextService.get("user");
-    const userData = await this.userRespository.findUserByUserId(
+    const userData = await this.userRepository.findUserByUserId(
       new ObjectId(user._id),
     );
     const updatedUserTeams = [...userData.teams];
@@ -87,7 +87,7 @@ export class TeamService {
     const updatedUserParams = {
       teams: updatedUserTeams,
     };
-    await this.userRespository.updateUserById(
+    await this.userRepository.updateUserById(
       new ObjectId(userData._id),
       updatedUserParams,
     );
@@ -171,7 +171,7 @@ export class TeamService {
   }
 
   async getAllTeams(userId: string): Promise<WithId<Team>[]> {
-    const user = await this.userRespository.getUserById(userId);
+    const user = await this.userRepository.getUserById(userId);
     if (!user) {
       throw new BadRequestException(
         "The user with this id does not exist in the system",
@@ -245,7 +245,7 @@ export class TeamService {
       }
       return team;
     });
-    await this.userRespository.updateUserById(new ObjectId(userId), {
+    await this.userRepository.updateUserById(new ObjectId(userId), {
       teams,
     });
     const teamDetails = await this.teamRepository.get(teamId);
