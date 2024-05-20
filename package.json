@@ -27,6 +27,7 @@
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
     "@azure/service-bus": "^7.9.1",
+    "@azure/storage-blob": "^12.18.0",
     "@blazity/nest-file-fastify": "^1.0.0",
     "@fastify/helmet": "^11.0.0",
     "@fastify/multipart": "^8.0.0",

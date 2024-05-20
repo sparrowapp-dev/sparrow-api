@@ -9,11 +9,13 @@ import { LoggingExceptionsFilter } from "./exception/logging.exception-filter";
 import pino from "pino";
 import { ProducerService } from "./services/kafka/producer.service";
 import { ConsumerService } from "./services/kafka/consumer.service";
+import { BlobStorageController } from "./controllers/blobStorage.controller";
+import { BlobStorageService } from "./services/blobStorage.service";
 
 @Global()
 @Module({
   imports: [WorkspaceModule],
-  controllers: [],
+  controllers: [BlobStorageController],
   providers: [
     {
       provide: "DATABASE_CONNECTION",
@@ -47,6 +49,7 @@ import { ConsumerService } from "./services/kafka/consumer.service";
     LoggingExceptionsFilter,
     ProducerService,
     ConsumerService,
+    BlobStorageService,
   ],
   exports: [
     "DATABASE_CONNECTION",
@@ -57,6 +60,7 @@ import { ConsumerService } from "./services/kafka/consumer.service";
     LoggingExceptionsFilter,
     ProducerService,
     ConsumerService,
+    BlobStorageService,
   ],
 })
 export class CommonModule {}

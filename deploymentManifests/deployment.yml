@@ -188,6 +188,11 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: SPARROW_EMAIL
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_CONNECTION_STRING
 
 ---
 apiVersion: v1
