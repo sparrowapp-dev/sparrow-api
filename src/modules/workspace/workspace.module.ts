@@ -21,6 +21,9 @@ import { FeatureService } from "./services/feature.service";
 import { FeatureRepository } from "./repositories/feature.repository";
 import { BranchService } from "./services/branch.service";
 import { BranchRepository } from "./repositories/branch.repository";
+import { FeedbackService } from "./services/feedback.service";
+import { FeedbackRepository } from "./repositories/feedback.repository";
+import { FeedbackController } from "./controllers/feedback.controller";
 @Module({
   imports: [IdentityModule],
   providers: [
@@ -41,6 +44,8 @@ import { BranchRepository } from "./repositories/branch.repository";
     FeatureRepository,
     BranchService,
     BranchRepository,
+    FeedbackService,
+    FeedbackRepository,
   ],
   exports: [
     CollectionService,
@@ -52,12 +57,15 @@ import { BranchRepository } from "./repositories/branch.repository";
     FeatureRepository,
     BranchService,
     BranchRepository,
+    FeedbackService,
+    FeedbackRepository,
   ],
   controllers: [
     WorkSpaceController,
     collectionController,
     EnvironmentController,
     FeatureController,
+    FeedbackController,
   ],
 })
 export class WorkspaceModule {}

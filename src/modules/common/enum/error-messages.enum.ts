@@ -6,4 +6,12 @@ export enum ErrorMessages {
   VerificationCodeExpired = "Verification Code Expired",
   BadRequestError = "Bad Request",
   PasswordExist = "Old Password and New Password cannot be same",
+  InvalidFile = "Invalid File Type",
+}
+
+export enum FeedbackErrorMessages {
+  VideoCountLimit = "Only one video per feedback is allowed",
+  VideoSizeLimit = "Video size should be less than 20 MB",
+  FilesCountLimit = "Files Count should not be greater than 5",
+  ImageSizeLimit = "Image size should be less than 2 MB",
 }
