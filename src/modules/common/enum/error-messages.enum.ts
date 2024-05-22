@@ -13,5 +13,5 @@ export enum FeedbackErrorMessages {
   VideoCountLimit = "Only one video per feedback is allowed",
   VideoSizeLimit = "Video size should be less than 20 MB",
   FilesCountLimit = "Files Count should not be greater than 5",
-  ImageSizeLimit = "Image size should be less than 2 MB",
+  ImageSizeLimit = "Image and Pdf size should be less than 2 MB",
 }
