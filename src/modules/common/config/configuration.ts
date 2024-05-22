@@ -63,4 +63,7 @@ export default () => ({
   support: {
     sparrowEmail: process.env.SPARROW_EMAIL,
   },
+  azure: {
+    connectionString: process.env.AZURE_CONNECTION_STRING,
+  },
 });
