@@ -60,7 +60,7 @@ export class FeedbackService {
         if (videoCount > 1) {
           throw new BadRequestException(FeedbackErrorMessages.VideoCountLimit);
         }
-        if (file.size > 20971520) {
+        if (file.size > 10485760) {
           throw new BadRequestException(FeedbackErrorMessages.VideoSizeLimit);
         }
       } else if (mimeToExtension[file.mimetype] && file.size > 2097152) {
