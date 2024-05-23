@@ -95,8 +95,12 @@ const { PORT } = process.env;
       },
     }),
   );
-  // Register multipart form data handling for file uploads
-  app.register(fastyfyMultipart);
+  // Register multipart form data handling for file uploads with increased limits
+  app.register(fastyfyMultipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024, // Set file size limit to 50MB
+    },
+  });
 
   // Start the server and listen on all available network interfaces
   await app.listen(PORT, "0.0.0.0");
