@@ -67,9 +67,9 @@ export class Feedback {
    */
   @ApiProperty()
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(FeebackSubCategory)
-  subCategory: string;
+  subCategory?: string;
 
   /**
    * The subject of the feedback (optional).

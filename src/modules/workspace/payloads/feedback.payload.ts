@@ -21,13 +21,13 @@ export class AddFeedbackDto {
   type: string;
 
   /**
-   * The sub-category of the feedback (e.g., UI, functionality).
+   * The sub-category of the feedback (e.g., Performance, functionality).
    */
   @ApiProperty()
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(FeebackSubCategory)
-  subCategory: string;
+  subCategory?: string;
 
   /**
    * The subject of the feedback (optional).
