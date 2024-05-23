@@ -46,7 +46,7 @@ export class FeedbackService {
     const mimeToExtension: { [key: string]: string } = {
       "image/jpeg": ".jpeg",
       "image/png": ".png",
-      "application/pdf": ".pdf",
+      // "application/pdf": ".pdf", // Disabling the pdf support for now
       // You can add more MIME types and their corresponding extensions here if needed
     };
     if (files.length > 5) {
