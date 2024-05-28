@@ -213,7 +213,7 @@ export class AppService {
               key,
               value,
               checked: true,
-              base: `#@#${value}`,
+              base: `${value}`,
             });
           }
         }
@@ -269,7 +269,7 @@ export class AppService {
           key,
           value: filename,
           checked: true,
-          base: `#@#${filename}`,
+          base: `${filename}`,
         });
       }
     }
