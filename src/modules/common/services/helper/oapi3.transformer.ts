@@ -1,4 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
+import { WithId } from "mongodb";
+
+// ---- Models
 import {
   AuthModeEnum,
   BodyModeEnum,
@@ -13,16 +16,23 @@ import {
   Schema3RefObject,
 } from "../../models/openapi303.model";
 import { AddTo, TransformedRequest } from "../../models/collection.rxdb.model";
-import { WithId } from "mongodb";
 import { User } from "../../models/user.model";
 
+/**
+ * Creates collection items from the provided OpenAPI document and user.
+ * @param openApiDocument - OpenAPI 3.0.3 document to transform.
+ * @param user - User creating the collection items.
+ * @returns Map of collection items.
+ */
 export function createCollectionItems(
   openApiDocument: OpenAPI303,
   user: WithId<User>,
 ) {
   const collectionItems: TransformedRequest[] = [];
 
+  // Iterate over each path in the OpenAPI document
   for (const [pathName, pathObject] of Object.entries(openApiDocument.paths)) {
+    // Transform the path into requests
     const requests = transformPathV3(
       pathName,
       pathObject,
@@ -30,6 +40,7 @@ export function createCollectionItems(
       user,
     );
     for (const requestObject of requests) {
+      // Create a new collection item for each request
       collectionItems.push({
         id: uuidv4(),
         name: requestObject.name,
@@ -48,6 +59,7 @@ export function createCollectionItems(
     }
   }
 
+  // Get the base URL for the API
   const baseUrl = getBaseUrl(openApiDocument);
 
   //Assigning requests to folders according to their tag
@@ -87,6 +99,14 @@ export function createCollectionItems(
   return folderMap;
 }
 
+/**
+ * Transforms an OpenAPI 3.0.3 path into a collection of requests.
+ * @param pathName - Name of the path.
+ * @param pathObject - Path item object.
+ * @param security - Security schemes from the OpenAPI document.
+ * @param user - User creating the requests.
+ * @returns Array of transformed requests.
+ */
 function transformPathV3(
   pathName: string,
   pathObject: PathItemObject,
@@ -176,6 +196,7 @@ function transformPathV3(
     }
     transformedObject.request.url = url;
 
+    // Function to extract JSON body from schema
     function extractJsonBody(schema: any, bodyObject: { [key: string]: any }) {
       if (schema && schema.type === "object") {
         let properties = schema.properties || {};
@@ -360,6 +381,11 @@ function transformPathV3(
   return transformedObjectArray;
 }
 
+/**
+ * Gets an example value based on the type provided.
+ * @param type - Type of the value.
+ * @returns Example value.
+ */
 export function getExampleValue(exampleType: string) {
   switch (exampleType) {
     case "string":
@@ -379,6 +405,11 @@ export function getExampleValue(exampleType: string) {
   }
 }
 
+/**
+ * Builds an example value based on the schema provided.
+ * @param schema - Schema object.
+ * @returns Example value.
+ */
 export function buildExampleValue(
   property: Schema3RefObject | SchemaRefObject,
 ) {
@@ -396,6 +427,11 @@ export function buildExampleValue(
   }
 }
 
+/**
+ * Gets the base URL from the OpenAPI document.
+ * @param openApiDocument - The OpenAPI document.
+ * @returns Base URL.
+ */
 export function getBaseUrl(openApiDocument: OpenAPI20 | OpenAPI303) {
   const basePath = openApiDocument.basePath ? openApiDocument.basePath : "";
   if (openApiDocument.host) {

@@ -1,4 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
+import { WithId } from "mongodb";
+
+// ---- Models
 import {
   AuthModeEnum,
   BodyModeEnum,
@@ -12,19 +15,27 @@ import {
   PathItemObject,
 } from "../../models/openapi20.model";
 import { AddTo, TransformedRequest } from "../../models/collection.rxdb.model";
-import { WithId } from "mongodb";
 import { User } from "../../models/user.model";
+
+// ---- Tranformers
 import {
   buildExampleValue,
   getBaseUrl,
   getExampleValue,
 } from "./oapi3.transformer";
 
+/**
+ * Creates collection items from an OpenAPI 2.0 document.
+ * @param openApiDocument - OOpenAPI 2.0 document.
+ * @param user - User object with ID.
+ * @returns Map containing transformed request items.
+ */
 export function createCollectionItems(
   openApiDocument: OpenAPI20,
   user: WithId<User>,
 ) {
   const collectionItems: TransformedRequest[] = [];
+  // Check if definitions are present in the OpenAPI document
   if (openApiDocument.definitions) {
     //Get all collection items
     for (const [pathName, pathObject] of Object.entries(
@@ -36,6 +47,7 @@ export function createCollectionItems(
         openApiDocument.securityDefinitions,
         user,
       );
+      // Create a collection item for each request object
       for (const requestObject of requests) {
         collectionItems.push({
           id: uuidv4(),
@@ -63,6 +75,7 @@ export function createCollectionItems(
   for (const item of collectionItems) {
     item.request.url = baseUrl + item.request.url;
     let tagDescription = "";
+    // Ensure there is at least one tag
     if (!openApiDocument.tags) {
       openApiDocument.tags = [
         {
@@ -77,6 +90,8 @@ export function createCollectionItems(
         tagDescription = tag.description;
       }
     }
+
+    // Create or retrieve the folder object and add the item to it
     let folderObj = folderMap.get(itemTag);
     if (!folderObj) {
       folderObj = {};
@@ -95,6 +110,14 @@ export function createCollectionItems(
   return folderMap;
 }
 
+/**
+ * Transforms a path object into an array of transformed request objects.
+ * @param pathName - Path name.
+ * @param pathObject - Path item object.
+ * @param security - Security definitions.
+ * @param user - User object with ID.
+ * @returns Array of transformed request objects.
+ */
 function transformPath(
   pathName: string,
   pathObject: PathItemObject,
