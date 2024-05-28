@@ -263,14 +263,14 @@ function transformPath(
         case "header":
           transformedObject.request.headers.push({
             key: paramName,
-            value: paramValue,
+            value: paramValue.toString(),
             checked: true,
           });
           break;
         case "query":
           transformedObject.request.queryParams.push({
             key: paramName,
-            value: paramValue,
+            value: paramValue.toString(),
             checked: false,
           });
           break;
@@ -290,7 +290,7 @@ function transformPath(
                 key: paramName,
                 value: paramValue,
                 checked: false,
-                base: "#@#" + paramValue,
+                base: "" + paramValue,
               });
             } else {
               transformedObject.request.body.formdata.text.push({

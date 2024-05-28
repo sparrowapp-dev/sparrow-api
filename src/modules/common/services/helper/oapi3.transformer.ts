@@ -260,7 +260,7 @@ function transformPathV3(
             key: "file",
             value: "",
             checked: false,
-            base: "#@#",
+            base: "",
           });
           transformedObject.request.selectedRequestBodyType =
             BodyModeEnum["multipart/form-data"];
@@ -276,7 +276,7 @@ function transformPathV3(
                     key: propertyName,
                     value: "",
                     checked: false,
-                    base: "#@#" + "",
+                    base: "",
                   });
                 } else {
                   transformedObject.request.body.formdata.text.push({
@@ -324,14 +324,14 @@ function transformPathV3(
         case "header":
           transformedObject.request.headers.push({
             key: paramName,
-            value: paramValue,
+            value: paramValue.toString(),
             checked: true,
           });
           break;
         case "query":
           transformedObject.request.queryParams.push({
             key: paramName,
-            value: paramValue,
+            value: paramValue.toString(),
             checked: false,
           });
           break;
