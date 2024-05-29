@@ -87,7 +87,9 @@ export class UserController {
     @Param("email") email: string,
     @Res() res: FastifyReply,
   ) {
-    const data = await this.userService.getUserRegisterStatus(email);
+    const data = await this.userService.getUserRegisterStatus(
+      email.toLowerCase(),
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -204,12 +206,12 @@ export class UserController {
       "app.emailValidationCodeExpirationTime",
     );
     await this.userService.verifyVerificationCode(
-      verifyEmailPayload.email,
+      verifyEmailPayload.email.toLowerCase(),
       verifyEmailPayload.verificationCode,
       expireTime,
     );
     const data = await this.userService.refreshVerificationCode(
-      verifyEmailPayload.email,
+      verifyEmailPayload.email.toLowerCase(),
     );
     const responseData = new ApiResponseService(
       "Email Verified Successfully",
@@ -233,12 +235,12 @@ export class UserController {
       "app.emailValidationCodeExpirationTime",
     );
     await this.userService.verifyVerificationCode(
-      updatePasswordPayload.email,
+      updatePasswordPayload.email.toLowerCase(),
       updatePasswordPayload.verificationCode,
       expireTime,
     );
     await this.userService.updatePassword(
-      updatePasswordPayload.email,
+      updatePasswordPayload.email.toLowerCase(),
       updatePasswordPayload.newPassword,
     );
     const responseData = new ApiResponseService(
