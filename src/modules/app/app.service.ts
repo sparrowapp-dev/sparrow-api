@@ -2,7 +2,6 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
 import { UpdaterJsonResponsePayload } from "./payloads/updaterJson.payload";
-import { FastifyRequest } from "fastify";
 import {
   AuthModeEnum,
   BodyModeEnum,
@@ -79,11 +78,11 @@ export class AppService {
     return curlCommand;
   }
 
-  async parseCurl(req: FastifyRequest): Promise<TransformedRequest> {
+  async parseCurl(req: string): Promise<TransformedRequest> {
     try {
       const curlconverter = await this.importCurlConverter();
       const { toJsonString } = curlconverter;
-      const curl = req.body as string;
+      const curl = req as string;
       const updatedCurl = await this.formatCurl(curl);
       if (!curl || !curl.length) {
         throw new Error();
@@ -214,7 +213,7 @@ export class AppService {
               key,
               value,
               checked: true,
-              base: `#@#${value}`,
+              base: `${value}`,
             });
           }
         }
@@ -270,7 +269,7 @@ export class AppService {
           key,
           value: filename,
           checked: true,
-          base: `#@#${filename}`,
+          base: `${filename}`,
         });
       }
     }

@@ -87,4 +87,8 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   KAFKA_BROKER: string;
+
+  @IsString()
+  @IsNotEmpty()
+  AZURE_CONNECTION_STRING: string;
 }

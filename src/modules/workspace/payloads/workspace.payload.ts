@@ -2,6 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { AdminDto } from "@src/modules/common/models/workspace.model";
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsMongoId,
@@ -36,6 +37,10 @@ export class CreateWorkspaceDto {
   @IsMongoId()
   @IsOptional()
   createdBy?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  firstWorkspace?: boolean;
 }
 
 export class UpdateWorkspaceDto {

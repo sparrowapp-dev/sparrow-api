@@ -105,8 +105,11 @@ export class ParserService {
         activeSyncUrl: "",
         createdAt: new Date(),
         updatedAt: new Date(),
-        createdBy: user.name,
-        updatedBy: user.name,
+        createdBy: user._id,
+        updatedBy: {
+          id: user._id,
+          name: user.name,
+        },
       };
     }
 
@@ -201,8 +204,11 @@ export class ParserService {
       activeSyncUrl: activeSyncUrl ?? "",
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: user.name,
-      updatedBy: user.name,
+      createdBy: user._id,
+      updatedBy: {
+        id: user._id,
+        name: user.name,
+      },
     };
     const insertedCollection = await this.collectionService.importCollection(
       collection,

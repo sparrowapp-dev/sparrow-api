@@ -53,7 +53,7 @@ export class UserService {
    * @returns {Promise<IUser>} queried user data
    */
   async getUserByEmail(email: string): Promise<WithId<User>> {
-    return await this.userRepository.getUserByEmail(email);
+    return await this.userRepository.getUserByEmail(email.toLowerCase());
   }
 
   /**
@@ -99,6 +99,7 @@ export class UserService {
    * @returns {Promise<IUser>} created user data
    */
   async createUser(payload: RegisterPayload) {
+    payload.email = payload.email.toLowerCase();
     const user = await this.getUserByEmail(payload.email);
     if (user) {
       throw new BadRequestException(
