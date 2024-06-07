@@ -294,7 +294,7 @@ function transformPathV3(
       }
     }
 
-    if (security.api_key) {
+    if (security?.api_key) {
       transformedObject.request.auth.apiKey.authKey = security.api_key.name;
       if (security.api_key.in === "header") {
         transformedObject.request.headers.push({
