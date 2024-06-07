@@ -66,4 +66,7 @@ export default () => ({
   azure: {
     connectionString: process.env.AZURE_CONNECTION_STRING,
   },
+  feedbackBlob: {
+    container: process.env.FEEDBACK_BLOB_CONTAINER,
+  },
 });
