@@ -25,6 +25,9 @@ export class BlobStorageService {
     const AZURE_STORAGE_CONNECTION_STRING = this.configService.get(
       "azure.connectionString",
     );
+    const feedbackBlobContainer = this.configService.get(
+      "feedbackBlob.container",
+    );
     /**
      * Create an instance of BlobServiceClient using the connection string.
      */
@@ -34,8 +37,9 @@ export class BlobStorageService {
     /**
      * Get a ContainerClient instance for the 'feedbackfiles' container.
      */
-    this.containerClient =
-      this.blobServiceClient.getContainerClient("feedbackfiles");
+    this.containerClient = this.blobServiceClient.getContainerClient(
+      feedbackBlobContainer,
+    );
   }
 
   /**
