@@ -77,7 +77,6 @@ export class AppController {
       },
     },
   })
-  @UseGuards(JwtAuthGuard)
   async parseCurl(@Body() req: curlDto, @Res() res: FastifyReply) {
     const parsedRequestData = await this.appService.parseCurl(req.curl);
     const responseData = new ApiResponseService(
