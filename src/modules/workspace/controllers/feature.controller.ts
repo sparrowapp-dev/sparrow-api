@@ -38,7 +38,6 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 @ApiBearerAuth()
 @ApiTags("feature")
 @Controller("api/feature")
-@UseGuards(JwtAuthGuard)
 export class FeatureController {
   constructor(private readonly featureService: FeatureService) {}
 
@@ -55,6 +54,7 @@ export class FeatureController {
   })
   @ApiResponse({ status: 201, description: "Feature Added" })
   @ApiResponse({ status: 400, description: "Failed to add feature" })
+  @UseGuards(JwtAuthGuard)
   async addFeature(
     @Body() addFeatureDto: AddFeatureDto,
     @Res() res: FastifyReply,
@@ -84,6 +84,7 @@ export class FeatureController {
   })
   @ApiResponse({ status: 200, description: "Feature Updated Successfully" })
   @ApiResponse({ status: 400, description: "Update Feature Failed" })
+  @UseGuards(JwtAuthGuard)
   async updateFeature(
     @Param("name") name: string,
     @Body() updateFeatureDto: UpdateFeatureDto,
@@ -113,6 +114,7 @@ export class FeatureController {
   })
   @ApiResponse({ status: 201, description: "Removed Feature Successfully" })
   @ApiResponse({ status: 400, description: "Failed to remove Feature" })
+  @UseGuards(JwtAuthGuard)
   async deleteFeature(@Param("name") name: string, @Res() res: FastifyReply) {
     const feature = await this.featureService.deleteFeature(name);
 
