@@ -140,6 +140,7 @@ export class AuthService {
    * @returns {Promise<IUser>} registered User
    */
   async validateUser(payload: LoginPayload): Promise<WithId<User>> {
+    payload.email = payload.email.toLowerCase();
     const user = await this.getUserByEmailAndPass(
       payload.email,
       payload.password,

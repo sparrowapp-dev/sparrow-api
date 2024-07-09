@@ -10,7 +10,7 @@ export default () => ({
     defaultWorkspaceName: "My Workspace",
     userBlacklistPrefix: "BL_",
     defaultTeamNameSuffix: "'s Team",
-    imageSizeLimit: 102400,
+    imageSizeLimit: 2097152, // value in byte
     deletedAPILimitInDays: 7,
     timeToDaysDivisor: 86400000,
     kafkaHitTimeInterval: 3000,
@@ -62,5 +62,11 @@ export default () => ({
   },
   support: {
     sparrowEmail: process.env.SPARROW_EMAIL,
+  },
+  azure: {
+    connectionString: process.env.AZURE_CONNECTION_STRING,
+  },
+  feedbackBlob: {
+    container: process.env.FEEDBACK_BLOB_CONTAINER,
   },
 });
