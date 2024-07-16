@@ -6,6 +6,7 @@ import { collectionController } from "./controllers/collection.controller";
 import { EnvironmentController } from "./controllers/environment.controller";
 import { FeatureController } from "./controllers/feature.controller";
 import { FeedbackController } from "./controllers/feedback.controller";
+import { UpdatesController } from "./controllers/updates.controller";
 
 // ---- Repository
 import { WorkspaceRepository } from "./repositories/workspace.repository";
@@ -14,6 +15,7 @@ import { EnvironmentRepository } from "./repositories/environment.repository";
 import { FeatureRepository } from "./repositories/feature.repository";
 import { FeedbackRepository } from "./repositories/feedback.repository";
 import { BranchRepository } from "./repositories/branch.repository";
+import { UpdatesRepository } from "./repositories/updates.repository";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -24,6 +26,7 @@ import { AddUserHandler } from "./handlers/addUser.handler";
 import { RemoveUserHandler } from "./handlers/removeUser.handler";
 import { PromoteAdminHandler } from "./handlers/promoteAdmin.handlers";
 import { DemoteAdminHandler } from "./handlers/demoteAdmin.handlers";
+import { UpdatesHandler } from "./handlers/updates.handler";
 
 // ---- Services
 import { CollectionService } from "./services/collection.service";
@@ -34,6 +37,7 @@ import { WorkspaceUserService } from "./services/workspace-user.service";
 import { FeatureService } from "./services/feature.service";
 import { BranchService } from "./services/branch.service";
 import { FeedbackService } from "./services/feedback.service";
+import { UpdatesService } from "./services/updates.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -61,6 +65,9 @@ import { FeedbackService } from "./services/feedback.service";
     BranchRepository,
     FeedbackService,
     FeedbackRepository,
+    UpdatesService,
+    UpdatesRepository,
+    UpdatesHandler,
   ],
   exports: [
     CollectionService,
@@ -74,6 +81,8 @@ import { FeedbackService } from "./services/feedback.service";
     BranchRepository,
     FeedbackService,
     FeedbackRepository,
+    UpdatesService,
+    UpdatesRepository,
   ],
   controllers: [
     WorkSpaceController,
@@ -81,6 +90,7 @@ import { FeedbackService } from "./services/feedback.service";
     EnvironmentController,
     FeatureController,
     FeedbackController,
+    UpdatesController,
   ],
 })
 export class WorkspaceModule {}

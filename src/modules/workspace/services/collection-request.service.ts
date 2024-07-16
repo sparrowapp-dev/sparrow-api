@@ -25,6 +25,9 @@ import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { UpdateBranchDto } from "../payloads/branch.payload";
 import { Branch } from "@src/modules/common/models/branch.model";
+import { TOPIC } from "@src/modules/common/enum/topic.enum";
+import { UpdatesType } from "@src/modules/common/enum/updates.enum";
+import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -34,6 +37,7 @@ export class CollectionRequestService {
     private readonly collectionService: CollectionService,
     private readonly workspaceService: WorkspaceService,
     private readonly branchRepository: BranchRepository,
+    private readonly producerService: ProducerService,
   ) {}
 
   async addFolder(payload: Partial<FolderDto>): Promise<CollectionItem> {
@@ -84,6 +88,14 @@ export class CollectionRequestService {
         updatedBranch,
       );
     }
+    const updateMessage = `New Folder "${payload.name}" is added in "${collection.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.FOLDER,
+        workspaceId: payload.workspaceId,
+      }),
+    });
     return updatedFolder;
   }
 
@@ -107,6 +119,7 @@ export class CollectionRequestService {
       throw new BadRequestException("Collection Not Found");
     }
     const index = await this.checkFolderExist(collection, payload.folderId);
+    const updateMessage = `"${collection.items[index].name}" folder is renamed to "${payload.name}" in "${collection.name}" collection`;
     collection.items[index].name = payload.name ?? collection.items[index].name;
     collection.items[index].description =
       payload.description ?? collection.items[index].description;
@@ -136,7 +149,48 @@ export class CollectionRequestService {
         updatedBranch,
       );
     }
+    if (payload?.name) {
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.FOLDER,
+          workspaceId: payload.workspaceId,
+        }),
+      });
+    }
+    if (payload?.description) {
+      const updateDescriptionMessage = `"${collection.items[index].name}" folder description is updated under "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateDescriptionMessage,
+          type: UpdatesType.FOLDER,
+          workspaceId: payload.workspaceId,
+        }),
+      });
+    }
     return collection.items[index];
+  }
+
+  /**
+   * Finds an item by its ID within a nested array of items.
+   *
+   * @param items - The array of items to search through.
+   * @param id - The ID of the item to find.
+   * @returns A promise that resolves to the found item or null if not found.
+   */
+  async findItemById(items: any[], id: string): Promise<CollectionItem> {
+    for (const item of items) {
+      if (item.id === id) {
+        return item;
+      }
+      if (item.items && item.items.length > 0) {
+        const found = this.findItemById(item.items, id);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return null;
   }
 
   async deleteFolder(
@@ -151,6 +205,7 @@ export class CollectionRequestService {
     if (!collection) {
       throw new BadRequestException("Collection Not Found");
     }
+    const folder = await this.findItemById(collection.items, payload.folderId);
     const updatedCollectionItems = collection.items.filter(
       (item) => item.id !== payload.folderId,
     );
@@ -181,6 +236,14 @@ export class CollectionRequestService {
         updatedBranch,
       );
     }
+    const updateMessage = `"${folder.name}" folder is deleted from "${collection.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.FOLDER,
+        workspaceId: payload.workspaceId,
+      }),
+    });
     return data;
   }
 
@@ -212,6 +275,9 @@ export class CollectionRequestService {
     folderId?: string,
   ): Promise<CollectionItem> {
     const uuid = uuidv4();
+    const collection = await this.collectionReposistory.getCollection(
+      collectionId,
+    );
     const requestObj: CollectionItem = {
       id: uuid,
       name: request.items.name,
@@ -224,6 +290,7 @@ export class CollectionRequestService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    let updateMessage = ``;
     if (request.items.type === ItemTypeEnum.REQUEST) {
       requestObj.request = request.items.request;
       await this.collectionReposistory.addRequest(
@@ -238,6 +305,14 @@ export class CollectionRequestService {
           requestObj,
         );
       }
+      updateMessage = `New API request "${request.items.name}" is saved in "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
       return requestObj;
     } else {
       requestObj.items = [
@@ -269,6 +344,14 @@ export class CollectionRequestService {
           folderId,
         );
       }
+      updateMessage = `New API request "${request.items.items.name}" is saved in "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
       return requestObj.items[0];
     }
   }
@@ -278,6 +361,13 @@ export class CollectionRequestService {
     requestId: string,
     request: Partial<CollectionRequestDto>,
   ): Promise<CollectionRequestItem> {
+    const collectionData = await this.collectionReposistory.getCollection(
+      collectionId,
+    );
+    const requestData = await this.findItemById(
+      collectionData.items,
+      requestId,
+    );
     const collection = await this.collectionReposistory.updateRequest(
       collectionId,
       requestId,
@@ -291,6 +381,35 @@ export class CollectionRequestService {
         request,
       );
     }
+    if (requestData.name !== request.items.name) {
+      const updateMessage = `"${requestData.name}" API is renamed to "${request.items.name}" in "${collectionData.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+    }
+    if (requestData.description === "" && request.items.description) {
+      const updateMessage = `API documentation is added for "${request.items.name}" API in "${collectionData.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+    } else if (requestData.description !== request.items.description) {
+      const updateMessage = `API documentation is updated for "${request.items.name}" API in "${collectionData.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+    }
     return collection;
   }
 
@@ -300,6 +419,13 @@ export class CollectionRequestService {
     noOfRequests: number,
     requestDto: Partial<CollectionRequestDto>,
   ): Promise<UpdateResult<Collection>> {
+    const collectionData = await this.collectionReposistory.getCollection(
+      collectionId,
+    );
+    const requestData = await this.findItemById(
+      collectionData.items,
+      requestId,
+    );
     const collection = await this.collectionReposistory.deleteRequest(
       collectionId,
       requestId,
@@ -314,6 +440,14 @@ export class CollectionRequestService {
         requestDto.folderId,
       );
     }
+    const updateMessage = `API request "${requestData.name}" is deleted from "${collectionData.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.REQUEST,
+        workspaceId: requestDto.workspaceId,
+      }),
+    });
     return collection;
   }
 

@@ -138,7 +138,7 @@ export class WorkSpaceController {
   })
   @ApiResponse({
     status: 400,
-    description: "Fetching to fetch all users of a workspace",
+    description: "Failed to fetch all users of a workspace",
   })
   async getAllWorkspaceUsers(
     @Param("workspaceId") workspaceId: string,
