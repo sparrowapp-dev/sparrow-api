@@ -17,6 +17,7 @@ import {
   UpdateEnvironmentDto,
 } from "../payloads/environment.payload";
 import {
+  DefaultEnvironment,
   Environment,
   EnvironmentType,
 } from "@src/modules/common/models/environment.model";
@@ -168,7 +169,10 @@ export class EnvironmentService {
       environmentId,
       updateEnvironmentDto,
     );
-    if (updateEnvironmentDto?.name) {
+    if (
+      updateEnvironmentDto?.name &&
+      updateEnvironmentDto?.name !== DefaultEnvironment.GLOBAL
+    ) {
       const updateMessage = `"${environment.name}" environment is renamed to "${updateEnvironmentDto.name}" environment under "${workspace.name}" workspace`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
