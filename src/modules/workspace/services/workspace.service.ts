@@ -636,7 +636,7 @@ export class WorkspaceService {
         new ObjectId(payload.workspaceId),
         updatedWorkspaceParams,
       );
-      const updateMessage = `"${userData.name}" is added to "${workspaceData.name}" workspace`;
+      const updateMessage = `"${userData?.name}" is added to "${workspaceData?.name}" workspace`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
@@ -719,7 +719,7 @@ export class WorkspaceService {
       new ObjectId(payload.userId),
       updatedUserParams,
     );
-    const updateMessage = `"${userData.name}" is no longer part of "${workspaceData.name}" workspace`;
+    const updateMessage = `"${userData?.name}" is no longer part of "${workspaceData?.name}" workspace`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,

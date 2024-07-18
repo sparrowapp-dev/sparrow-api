@@ -88,7 +88,7 @@ export class CollectionRequestService {
         updatedBranch,
       );
     }
-    const updateMessage = `New Folder "${payload.name}" is added in "${collection.name}" collection`;
+    const updateMessage = `New Folder "${payload?.name}" is added in "${collection.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
@@ -180,10 +180,10 @@ export class CollectionRequestService {
    */
   async findItemById(items: any[], id: string): Promise<CollectionItem> {
     for (const item of items) {
-      if (item.id === id) {
+      if (item?.id === id) {
         return item;
       }
-      if (item.items && item.items.length > 0) {
+      if (item?.items && item.items.length > 0) {
         const found = this.findItemById(item.items, id);
         if (found) {
           return found;
@@ -236,7 +236,7 @@ export class CollectionRequestService {
         updatedBranch,
       );
     }
-    const updateMessage = `"${folder.name}" folder is deleted from "${collection.name}" collection`;
+    const updateMessage = `"${folder?.name}" folder is deleted from "${collection?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
@@ -381,7 +381,7 @@ export class CollectionRequestService {
         request,
       );
     }
-    if (requestData.name !== request.items.name) {
+    if (requestData?.name !== request?.items?.name) {
       const updateMessage = `"${requestData.name}" API is renamed to "${request.items.name}" in "${collectionData.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -391,7 +391,7 @@ export class CollectionRequestService {
         }),
       });
     }
-    if (requestData.description === "" && request.items.description) {
+    if (requestData?.description === "" && request?.items?.description) {
       const updateMessage = `API documentation is added for "${request.items.name}" API in "${collectionData.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -400,7 +400,7 @@ export class CollectionRequestService {
           workspaceId: request.workspaceId,
         }),
       });
-    } else if (requestData.description !== request.items.description) {
+    } else if (requestData?.description !== request?.items?.description) {
       const updateMessage = `API documentation is updated for "${request.items.name}" API in "${collectionData.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -440,7 +440,7 @@ export class CollectionRequestService {
         requestDto.folderId,
       );
     }
-    const updateMessage = `API request "${requestData.name}" is deleted from "${collectionData.name}" collection`;
+    const updateMessage = `API request "${requestData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
