@@ -198,12 +198,12 @@ function transformPathV3(
 
     // Function to extract JSON body from schema
     function extractJsonBody(schema: any, bodyObject: { [key: string]: any }) {
-      if (schema && schema.type === "object") {
+      if (schema && schema?.type === "object") {
         let properties = schema.properties || {};
 
-        if (schema.allOf) {
-          for (const property of Object.values(schema.allOf) as any) {
-            if (property.type === "object") {
+        if (schema?.allOf) {
+          for (const property of Object.values(schema?.allOf) as any) {
+            if (property?.type === "object") {
               extractJsonBody(property, bodyObject);
             } else if (property.properties) {
               properties = property.properties;
@@ -221,19 +221,19 @@ function transformPathV3(
           for (let [propertyName, property] of Object.entries(properties)) {
             propertyName = propertyName as string;
             const anyProperty = property as any;
-            if (anyProperty.oneOf) {
+            if (anyProperty?.oneOf) {
               if (anyProperty.oneOf[0].type === "object") {
                 extractJsonBody(anyProperty.oneOf[0], bodyObject);
               } else {
                 property = anyProperty.oneOf[0];
               }
-            } else if (anyProperty.allOf) {
-              if (anyProperty.type === "object") {
+            } else if (anyProperty?.allOf) {
+              if (anyProperty?.type === "object") {
                 extractJsonBody(property, bodyObject);
               }
             }
-            const exampleType = anyProperty.type;
-            const exampleValue = anyProperty.example;
+            const exampleType = anyProperty?.type;
+            const exampleValue = anyProperty?.example;
             bodyObject[propertyName] =
               exampleValue ||
               buildExampleValue(anyProperty) ||
@@ -258,11 +258,11 @@ function transformPathV3(
         }
         if (key === "application/x-www-form-urlencoded") {
           const schema = content[key].schema;
-          if (schema && schema.type === "object") {
+          if (schema && schema?.type === "object") {
             const properties = schema.properties || {};
             for (const [propertyName, property] of Object.entries(properties)) {
-              const exampleType = property.type;
-              const exampleValue = property.example; // Use example if available
+              const exampleType = property?.type;
+              const exampleValue = property?.example; // Use example if available
               transformedObject.request.body.urlencoded.push({
                 key: propertyName,
                 value:
@@ -288,10 +288,10 @@ function transformPathV3(
         }
         if (key === "multipart/form-data") {
           const schema = content[key].schema;
-          if (schema && schema.type === "object") {
+          if (schema && schema?.type === "object") {
             const properties = schema.properties || {};
             for (const [propertyName, property] of Object.entries(properties)) {
-              if (property.type === "string" || property.type === "object") {
+              if (property?.type === "string" || property?.type === "object") {
                 if (property.format === "binary") {
                   transformedObject.request.body.formdata.file.push({
                     key: propertyName,
@@ -337,9 +337,9 @@ function transformPathV3(
     // Parse request body parameters
     const parameters = pathItemObject.parameters || [];
     for (const param of Object.values(parameters)) {
-      const paramIn = param.in;
-      const paramName = param.name;
-      const paramValue = param.example || getExampleValue(param.type);
+      const paramIn = param?.in;
+      const paramName = param?.name;
+      const paramValue = param?.example || getExampleValue(param?.type);
 
       switch (paramIn) {
         case "header":
@@ -413,7 +413,7 @@ export function getExampleValue(exampleType: string) {
 export function buildExampleValue(
   property: Schema3RefObject | SchemaRefObject,
 ) {
-  if (property.type === "object") {
+  if (property?.type === "object") {
     const nestedProperties = property.properties || {};
     const nestedObject: any = {};
     for (const [nestedPropertyName, nestedProperty] of Object.entries(
@@ -423,7 +423,7 @@ export function buildExampleValue(
     }
     return nestedObject;
   } else {
-    return property.example || getExampleValue(property.type);
+    return property?.example || getExampleValue(property?.type);
   }
 }
 
