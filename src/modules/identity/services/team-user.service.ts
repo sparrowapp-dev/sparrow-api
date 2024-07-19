@@ -118,7 +118,9 @@ export class TeamUserService {
     const usersNotExist = [];
     const alreadyTeamMember = [];
     for (const emailId of payload.users) {
-      const user = await this.userRepository.getUserByEmail(emailId);
+      const user = await this.userRepository.getUserByEmail(
+        emailId.toLowerCase(),
+      );
       if (user) {
         const teamMember = await this.teamService.isTeamMember(
           user._id.toString(),
@@ -139,7 +141,7 @@ export class TeamUserService {
     for (const userData of usersExist) {
       teamUsers.push({
         id: userData._id.toString(),
-        email: userData.email,
+        email: userData.email.toLowerCase(),
         name: userData.name,
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
