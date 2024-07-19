@@ -44,6 +44,9 @@ import hbs = require("nodemailer-express-handlebars");
 import { ConfigService } from "@nestjs/config";
 import path = require("path");
 import { Team } from "@src/modules/common/models/team.model";
+import { TOPIC } from "@src/modules/common/enum/topic.enum";
+import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 /**
  * Workspace Service
  */
@@ -57,6 +60,7 @@ export class WorkspaceService {
     private readonly userRepository: UserRepository,
     private readonly teamService: TeamService,
     private readonly configService: ConfigService,
+    private readonly producerService: ProducerService,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -295,6 +299,14 @@ export class WorkspaceService {
       );
     }
     await Promise.all(userDataPromises);
+    const updateMessage = `New workspace "${workspaceData.name}" is created under "${teamData.name}" team`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.WORKSPACE,
+        workspaceId: response.insertedId,
+      }),
+    });
     return response;
   }
 
@@ -309,6 +321,7 @@ export class WorkspaceService {
     updates: Partial<UpdateWorkspaceDto>,
   ): Promise<UpdateResult<Document>> {
     const workspace = await this.IsWorkspaceAdminOrEditor(id);
+    const updateNameMessage = `Workspace is renamed from "${workspace.name}" to "${updates.name}"`;
     const data = await this.workspaceRepository.update(id, updates);
     const team = await this.teamRepository.findTeamByTeamId(
       new ObjectId(workspace.team.id),
@@ -359,6 +372,23 @@ export class WorkspaceService {
         );
       }
       await Promise.all(userDataPromises);
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateNameMessage,
+          type: UpdatesType.WORKSPACE,
+          workspaceId: id,
+        }),
+      });
+    }
+    if (updates?.description) {
+      const updateDescriptionMessage = `"${workspace.name}" workspace description is updated `;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateDescriptionMessage,
+          type: UpdatesType.WORKSPACE,
+          workspaceId: id,
+        }),
+      });
     }
     return data;
   }
@@ -564,7 +594,7 @@ export class WorkspaceService {
     for (const emailId of payload.users) {
       const teamMember = await this.isTeamMember(
         workspaceData.team.id,
-        emailId,
+        emailId.toLowerCase(),
       );
       if (teamMember) {
         const workspaceMember = await this.isWorkspaceMember(
@@ -572,12 +602,12 @@ export class WorkspaceService {
           teamMember,
         );
         if (workspaceMember) {
-          alreadyWorkspaceMember.push(emailId);
+          alreadyWorkspaceMember.push(emailId.toLowerCase());
         } else {
-          usersExist.push(emailId);
+          usersExist.push(emailId.toLowerCase());
         }
       } else {
-        usersNotExist.push(emailId);
+        usersNotExist.push(emailId.toLowerCase());
       }
     }
     for (const emailId of usersExist) {
@@ -606,10 +636,20 @@ export class WorkspaceService {
         new ObjectId(payload.workspaceId),
         updatedWorkspaceParams,
       );
+      const updateMessage = `"${userData?.name}" is added to "${workspaceData?.name}" workspace`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.WORKSPACE,
+          workspaceId: payload.workspaceId,
+        }),
+      });
     }
     const userExistData = [];
     for (const email of usersExist) {
-      const userData = await this.userRepository.getUserByEmail(email);
+      const userData = await this.userRepository.getUserByEmail(
+        email.toLowerCase(),
+      );
       userExistData.push(userData);
     }
     await this.inviteUserInWorkspaceEmail({
@@ -681,7 +721,14 @@ export class WorkspaceService {
       new ObjectId(payload.userId),
       updatedUserParams,
     );
-
+    const updateMessage = `"${userData?.name}" is no longer part of "${workspaceData?.name}" workspace`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.WORKSPACE,
+        workspaceId: payload.workspaceId,
+      }),
+    });
     return response;
   }
 
@@ -694,6 +741,14 @@ export class WorkspaceService {
     const workspaceUsers = [...workspaceData.users];
     for (let index = 0; index < workspaceUsers.length; index++) {
       if (workspaceUsers[index].id === payload.userId) {
+        const updateMessage = `"${workspaceUsers[index].name}'s" role is changed from "${workspaceUsers[index].role}" to "${payload.role}" in "${workspaceData.name}" workspace`;
+        await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+          value: JSON.stringify({
+            message: updateMessage,
+            type: UpdatesType.WORKSPACE,
+            workspaceId: payload.workspaceId,
+          }),
+        });
         workspaceUsers[index].role = payload.role;
       }
     }

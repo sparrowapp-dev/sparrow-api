@@ -19,12 +19,14 @@ import {
   ItemTypeEnum,
 } from "@src/modules/common/models/collection.model";
 import { ContextService } from "@src/modules/common/services/context.service";
-import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { Branch } from "@src/modules/common/models/branch.model";
 import { UpdateBranchDto } from "../payloads/branch.payload";
 import { ConfigService } from "@nestjs/config";
+import { TOPIC } from "@src/modules/common/enum/topic.enum";
+import { UpdatesType } from "@src/modules/common/enum/updates.enum";
+import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 
 @Injectable()
 export class CollectionService {
@@ -35,12 +37,13 @@ export class CollectionService {
     private readonly contextService: ContextService,
     private readonly workspaceService: WorkspaceService,
     private readonly configService: ConfigService,
+    private readonly producerService: ProducerService,
   ) {}
 
   async createCollection(
     createCollectionDto: Partial<CreateCollectionDto>,
   ): Promise<InsertOneResult> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(
+    const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
       createCollectionDto.workspaceId,
     );
     const user = await this.contextService.get("user");
@@ -58,6 +61,14 @@ export class CollectionService {
     const collection = await this.collectionRepository.addCollection(
       newCollection,
     );
+    const updateMessage = `New Collection "${createCollectionDto.name}" is added in "${workspace.name}" workspace`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.COLLECTION,
+        workspaceId: createCollectionDto.workspaceId,
+      }),
+    });
     return collection;
   }
 
@@ -117,14 +128,36 @@ export class CollectionService {
     updateCollectionDto: Partial<UpdateCollectionDto>,
     workspaceId: string,
   ): Promise<UpdateResult> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+    );
     const user = await this.contextService.get("user");
     await this.checkPermission(workspaceId, user._id);
-    await this.collectionRepository.get(collectionId);
+    const collection = await this.collectionRepository.get(collectionId);
     const data = await this.collectionRepository.update(
       collectionId,
       updateCollectionDto,
     );
+    if (updateCollectionDto?.name) {
+      const updateMessage = `"${collection.name}" collection is renamed to "${updateCollectionDto.name}" in "${workspace.name}" workspace`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.COLLECTION,
+          workspaceId: workspaceId,
+        }),
+      });
+    }
+    if (updateCollectionDto?.description) {
+      const updateMessage = `"${collection.name}" collection description is updated under "${workspace.name}" workspace`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.COLLECTION,
+          workspaceId: workspaceId,
+        }),
+      });
+    }
     return data;
   }
 
@@ -148,10 +181,21 @@ export class CollectionService {
     id: string,
     workspaceId: string,
   ): Promise<DeleteResult> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+    );
     const user = await this.contextService.get("user");
     await this.checkPermission(workspaceId, user._id);
+    const collection = await this.getCollection(id);
     const data = await this.collectionRepository.delete(id);
+    const updateMessage = `"${collection.name}" collection is deleted from "${workspace.name}" workspace`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.COLLECTION,
+        workspaceId: workspaceId,
+      }),
+    });
     return data;
   }
   async importCollection(collection: Collection): Promise<InsertOneResult> {
