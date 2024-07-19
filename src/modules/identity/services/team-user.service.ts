@@ -42,7 +42,7 @@ export class TeamUserService {
       return true;
     } else if (
       teamData.admins.includes(currentUser._id.toString()) &&
-      !teamData.admins.includes(payload.userId)
+      teamData.admins.includes(payload.userId)
     ) {
       return true;
     }
@@ -329,10 +329,7 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
-    const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
-    if (!teamOwner) {
-      throw new BadRequestException("You don't have access");
-    }
+    await this.teamService.isTeamOwnerOrAdmin(new ObjectId(payload.teamId));
     const updatedTeamAdmins = teamData.admins.filter(
       (id) => id !== payload.userId,
     );
