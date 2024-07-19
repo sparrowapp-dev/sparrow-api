@@ -594,7 +594,7 @@ export class WorkspaceService {
     for (const emailId of payload.users) {
       const teamMember = await this.isTeamMember(
         workspaceData.team.id,
-        emailId,
+        emailId.toLowerCase(),
       );
       if (teamMember) {
         const workspaceMember = await this.isWorkspaceMember(
@@ -602,12 +602,12 @@ export class WorkspaceService {
           teamMember,
         );
         if (workspaceMember) {
-          alreadyWorkspaceMember.push(emailId);
+          alreadyWorkspaceMember.push(emailId.toLowerCase());
         } else {
-          usersExist.push(emailId);
+          usersExist.push(emailId.toLowerCase());
         }
       } else {
-        usersNotExist.push(emailId);
+        usersNotExist.push(emailId.toLowerCase());
       }
     }
     for (const emailId of usersExist) {
@@ -647,7 +647,9 @@ export class WorkspaceService {
     }
     const userExistData = [];
     for (const email of usersExist) {
-      const userData = await this.userRepository.getUserByEmail(email);
+      const userData = await this.userRepository.getUserByEmail(
+        email.toLowerCase(),
+      );
       userExistData.push(userData);
     }
     await this.inviteUserInWorkspaceEmail({
