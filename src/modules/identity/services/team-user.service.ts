@@ -40,10 +40,7 @@ export class TeamUserService {
       throw new BadRequestException("You cannot remove Owner");
     } else if (currentUser._id.toString() === teamData.owner) {
       return true;
-    } else if (
-      teamData.admins.includes(currentUser._id.toString()) &&
-      teamData.admins.includes(payload.userId)
-    ) {
+    } else if (teamData.admins.includes(currentUser._id.toString())) {
       return true;
     }
     throw new BadRequestException("You don't have access");
