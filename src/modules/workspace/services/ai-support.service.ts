@@ -25,6 +25,13 @@ export class AiSupportService {
     });
   }
 
+  /**
+   * Generates text based on a given prompt.
+   *
+   * @param {string} prompt - The prompt to generate ai response.
+   * @returns A promise that resolves to an object containing an array of choices.
+   */
+
   async generateText(prompt: string): Promise<{ choices: string[] }> {
     try {
       const result = await this.client.chat.completions.create({

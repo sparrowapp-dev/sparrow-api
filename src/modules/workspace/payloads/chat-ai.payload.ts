@@ -2,16 +2,11 @@ import { ApiProperty } from "@nestjs/swagger";
 import { IsNotEmpty, IsString } from "class-validator";
 
 /**
- * Data Transfer Object for adding a new feature.
- *
- * This class defines the structure and validation rules for the data
- * required to add a new feature.
+ * Data Transfer Object for generating ai response.
  */
 export class PromptDto {
   /**
    * The prompt command.
-   *
-   * @example "Feature name"
    */
   @IsString()
   @ApiProperty({ required: true, example: "prompt" })
