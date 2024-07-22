@@ -256,6 +256,16 @@ export class CollectionBranch {
   name: string;
 }
 
+export class UpdaterDetails {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  id?: string;
+}
+
 export class Collection {
   @ApiProperty()
   @IsString()
@@ -322,9 +332,9 @@ export class Collection {
   @IsOptional()
   createdBy?: string;
 
-  @IsString()
   @IsOptional()
-  updatedBy?: string;
+  @Type(() => UpdaterDetails)
+  updatedBy?: UpdaterDetails;
 }
 
 export class CollectionDto {

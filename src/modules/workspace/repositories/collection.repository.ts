@@ -53,7 +53,10 @@ export class CollectionRepository {
     const collectionId = new ObjectId(id);
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: {
+        id: this.contextService.get("user")._id,
+        name: this.contextService.get("user").name,
+      },
     };
     const data = await this.db
       .collection(Collections.COLLECTION)
@@ -71,7 +74,10 @@ export class CollectionRepository {
     const collectionId = new ObjectId(id);
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: {
+        id: this.contextService.get("user")._id,
+        name: this.contextService.get("user").name,
+      },
     };
     const data = await this.db.collection(Collections.COLLECTION).updateOne(
       { _id: collectionId },
@@ -187,7 +193,10 @@ export class CollectionRepository {
           $set: {
             "items.$": request.items,
             updatedAt: new Date(),
-            updatedBy: this.contextService.get("user").name,
+            updatedBy: {
+              id: this.contextService.get("user")._id,
+              name: this.contextService.get("user").name,
+            },
           },
         },
       );
@@ -204,7 +213,10 @@ export class CollectionRepository {
           $set: {
             "items.$[i].items.$[j]": request.items.items,
             updatedAt: new Date(),
-            updatedBy: this.contextService.get("user").name,
+            updatedBy: {
+              id: this.contextService.get("user")._id,
+              name: this.contextService.get("user").name,
+            },
           },
         },
         {
@@ -238,7 +250,10 @@ export class CollectionRepository {
             $set: {
               totalRequests: noOfRequests - 1,
               updatedAt: new Date(),
-              updatedBy: this.contextService.get("user").name,
+              updatedBy: {
+                id: this.contextService.get("user")._id,
+                name: this.contextService.get("user").name,
+              },
             },
           },
           {
@@ -259,7 +274,10 @@ export class CollectionRepository {
             $set: {
               totalRequests: noOfRequests - 1,
               updatedAt: new Date(),
-              updatedBy: this.contextService.get("user").name,
+              updatedBy: {
+                id: this.contextService.get("user")._id,
+                name: this.contextService.get("user").name,
+              },
             },
           },
         );

@@ -43,6 +43,7 @@ import * as nodemailer from "nodemailer";
 import hbs = require("nodemailer-express-handlebars");
 import { ConfigService } from "@nestjs/config";
 import path = require("path");
+import { Team } from "@src/modules/common/models/team.model";
 /**
  * Workspace Service
  */
@@ -195,7 +196,12 @@ export class WorkspaceService {
   ): Promise<InsertOneResult<Document>> {
     const userId = this.contextService.get("user")._id;
     const teamId = new ObjectId(workspaceData.id);
-    const teamData = await this.teamService.isTeamOwnerOrAdmin(teamId);
+    let teamData: WithId<Team>;
+    if (workspaceData?.firstWorkspace) {
+      teamData = await this.teamRepository.findTeamByTeamId(teamId);
+    } else {
+      teamData = await this.teamService.isTeamOwnerOrAdmin(teamId);
+    }
     const createEnvironmentDto: CreateEnvironmentDto = {
       name: DefaultEnvironment.GLOBAL,
       variable: [
