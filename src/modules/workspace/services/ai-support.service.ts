@@ -1,51 +1,109 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+
 import { AzureOpenAI } from "openai";
+import {
+  Assistant,
+  AssistantCreateParams,
+} from "openai/resources/beta/assistants";
+import { Message, MessagesPage } from "openai/resources/beta/threads/messages";
+import { Run } from "openai/resources/beta/threads/runs/runs";
+import { Thread } from "openai/resources/beta/threads/threads";
 
 @Injectable()
 export class AiSupportService {
-  private client: any;
+  private endpoint;
+  private apiKey;
+  private deployment;
+  private apiVersion;
   private maxTokens: number;
   private apiModel: string;
 
   constructor(private readonly configService: ConfigService) {
-    const endpoint = this.configService.get("ai.endpoint");
-    const apiKey = this.configService.get("ai.apiKey");
-    const deployment = this.configService.get("ai.deployment");
-    const apiVersion = this.configService.get("ai.apiVersion");
+    this.endpoint = this.configService.get("ai.endpoint");
+    this.apiKey = this.configService.get("ai.apiKey");
+    this.deployment = this.configService.get("ai.deployment");
+    this.apiVersion = this.configService.get("ai.apiVersion");
 
     this.apiModel = this.configService.get("ai.apiModel");
     this.maxTokens = this.configService.get("ai.maxTokens");
-
-    this.client = new AzureOpenAI({
-      endpoint,
-      apiKey,
-      apiVersion,
-      deployment,
-    });
   }
 
-  /**
-   * Generates text based on a given prompt.
-   *
-   * @param prompt - The prompt to generate ai response.
-   * @returns A promise that resolves to an object containing an array of choices.
-   */
+  private getClient = (): AzureOpenAI => {
+    const assistantsClient = new AzureOpenAI({
+      endpoint: this.endpoint,
+      apiVersion: this.apiVersion,
+      apiKey: this.apiKey,
+    });
+    return assistantsClient;
+  };
 
-  async generateText(prompt: string): Promise<{ choices: string[] }> {
+  public async generateText(
+    equation: string,
+    threadId?: string,
+  ): Promise<{ result: string; threadId?: string }> {
     try {
-      const result = await this.client.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: this.apiModel,
-        max_tokens: this.maxTokens, // Added max_tokens parameter
-      });
-      return {
-        choices: result.choices.map(
-          (choice: { message: { content: string } }) => {
-            return choice.message.content;
-          },
-        ),
+      const assistantsClient = this.getClient();
+
+      const options: AssistantCreateParams = {
+        model: this.deployment,
+        name: "API Instructor",
+        instructions:
+          "You are a personal API Instructor. Give the response accordingly.",
       };
+
+      const role = "user";
+      const message = ` ${equation}`;
+
+      let currentThreadId = threadId;
+
+      // Create an assistant
+      const assistantResponse: Assistant =
+        await assistantsClient.beta.assistants.create(options);
+      const currentAssistantId = assistantResponse.id;
+      console.log(`Assistant created: ${JSON.stringify(assistantResponse)}`);
+      if (!currentThreadId) {
+        // Create an thread if it does not exist
+        const assistantThread: Thread =
+          await assistantsClient.beta.threads.create({});
+        currentThreadId = assistantThread.id;
+        console.log(`Thread created: ${JSON.stringify(assistantThread)}`);
+      }
+
+      // Add a user question to the existing thread
+      const threadResponse: Message =
+        await assistantsClient.beta.threads.messages.create(currentThreadId, {
+          role,
+          content: message,
+        });
+      console.log(`Message created:  ${JSON.stringify(threadResponse)}`);
+
+      // Run the thread and poll it until it is in a terminal state
+      const runResponse: Run =
+        await assistantsClient.beta.threads.runs.createAndPoll(
+          currentThreadId,
+          {
+            assistant_id: currentAssistantId,
+          },
+          { pollIntervalMs: 500 },
+        );
+      console.log(`Run created:  ${JSON.stringify(runResponse)}`);
+
+      // Get the messages
+      const runMessages: MessagesPage =
+        await assistantsClient.beta.threads.messages.list(currentThreadId);
+      for await (const runMessageDatum of runMessages) {
+        for (const item of runMessageDatum.content) {
+          if (item.type === "text") {
+            return {
+              result: item.text?.value || "No solution found.",
+              threadId: currentThreadId,
+            };
+          }
+        }
+      }
+
+      return { result: "No solution found.", threadId: currentThreadId };
     } catch (e) {
       return e;
     }

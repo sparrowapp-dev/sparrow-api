@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 /**
  * Data Transfer Object for generating ai response.
@@ -12,4 +12,9 @@ export class PromptDto {
   @ApiProperty({ required: true, example: "prompt" })
   @IsNotEmpty()
   text: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "thread id" })
+  threadId: string;
 }

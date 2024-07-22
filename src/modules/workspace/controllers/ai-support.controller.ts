@@ -12,10 +12,10 @@ import {
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { PromptDto } from "../payloads/chat-ai.payload";
 
-@ApiBearerAuth()
+// @ApiBearerAuth()
 @ApiTags("AI Support")
 @Controller("api")
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 export class AiSupportController {
   /**
    * Constructor to initialize AiSupportController with the required service.
@@ -34,7 +34,10 @@ export class AiSupportController {
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
   @Post("chatbot/prompt")
   async generate(@Body() prompt: PromptDto, @Res() res: FastifyReply) {
-    const data = await this.aiSupportService.generateText(prompt.text);
+    const data = await this.aiSupportService.generateText(
+      prompt.text,
+      prompt.threadId,
+    );
     const response = new ApiResponseService(
       "Chatbot Reposonse Generated",
       HttpStatusCode.CREATED,
