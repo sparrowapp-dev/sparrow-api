@@ -61,33 +61,28 @@ export class AiSupportService {
       const assistantResponse: Assistant =
         await assistantsClient.beta.assistants.create(options);
       const currentAssistantId = assistantResponse.id;
-      console.log(`Assistant created: ${JSON.stringify(assistantResponse)}`);
+
       if (!currentThreadId) {
         // Create an thread if it does not exist
         const assistantThread: Thread =
           await assistantsClient.beta.threads.create({});
         currentThreadId = assistantThread.id;
-        console.log(`Thread created: ${JSON.stringify(assistantThread)}`);
       }
 
       // Add a user question to the existing thread
-      const threadResponse: Message =
-        await assistantsClient.beta.threads.messages.create(currentThreadId, {
-          role,
-          content: message,
-        });
-      console.log(`Message created:  ${JSON.stringify(threadResponse)}`);
+      await assistantsClient.beta.threads.messages.create(currentThreadId, {
+        role,
+        content: message,
+      });
 
       // Run the thread and poll it until it is in a terminal state
-      const runResponse: Run =
-        await assistantsClient.beta.threads.runs.createAndPoll(
-          currentThreadId,
-          {
-            assistant_id: currentAssistantId,
-          },
-          { pollIntervalMs: 500 },
-        );
-      console.log(`Run created:  ${JSON.stringify(runResponse)}`);
+      await assistantsClient.beta.threads.runs.createAndPoll(
+        currentThreadId,
+        {
+          assistant_id: currentAssistantId,
+        },
+        { pollIntervalMs: 500 },
+      );
 
       // Get the messages
       const runMessages: MessagesPage =
