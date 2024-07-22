@@ -7,6 +7,7 @@ import { EnvironmentController } from "./controllers/environment.controller";
 import { FeatureController } from "./controllers/feature.controller";
 import { FeedbackController } from "./controllers/feedback.controller";
 import { UpdatesController } from "./controllers/updates.controller";
+import { AiSupportController } from "./controllers/ai-support.controller";
 
 // ---- Repository
 import { WorkspaceRepository } from "./repositories/workspace.repository";
@@ -16,6 +17,7 @@ import { FeatureRepository } from "./repositories/feature.repository";
 import { FeedbackRepository } from "./repositories/feedback.repository";
 import { BranchRepository } from "./repositories/branch.repository";
 import { UpdatesRepository } from "./repositories/updates.repository";
+import { AiSupportRepository } from "./repositories/ai-support.repository";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -38,9 +40,7 @@ import { FeatureService } from "./services/feature.service";
 import { BranchService } from "./services/branch.service";
 import { FeedbackService } from "./services/feedback.service";
 import { UpdatesService } from "./services/updates.service";
-import { ChatbotController } from "./controllers/chatbot.controller";
-import { ChatbotService } from "./services/chatbot.service";
-import { ChatbotRepository } from "./repositories/chatbot.repository";
+import { AiSupportService } from "./services/ai-support.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -71,8 +71,8 @@ import { ChatbotRepository } from "./repositories/chatbot.repository";
     UpdatesService,
     UpdatesRepository,
     UpdatesHandler,
-    ChatbotService,
-    ChatbotRepository,
+    AiSupportService,
+    AiSupportRepository,
   ],
   exports: [
     CollectionService,
@@ -96,7 +96,7 @@ import { ChatbotRepository } from "./repositories/chatbot.repository";
     FeatureController,
     FeedbackController,
     UpdatesController,
-    ChatbotController,
+    AiSupportController,
   ],
 })
 export class WorkspaceModule {}
