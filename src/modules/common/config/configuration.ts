@@ -69,4 +69,9 @@ export default () => ({
   feedbackBlob: {
     container: process.env.FEEDBACK_BLOB_CONTAINER,
   },
+  chatbot: {
+    endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+    apiKey: process.env.AZURE_OPENAI_API_KEY,
+    deploymentId: process.env.AZURE_OPENAI_DEPLOYMENT_ID,
+  },
 });

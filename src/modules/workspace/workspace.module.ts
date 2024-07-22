@@ -38,6 +38,9 @@ import { FeatureService } from "./services/feature.service";
 import { BranchService } from "./services/branch.service";
 import { FeedbackService } from "./services/feedback.service";
 import { UpdatesService } from "./services/updates.service";
+import { ChatbotController } from "./controllers/chatbot.controller";
+import { ChatbotService } from "./services/chatbot.service";
+import { ChatbotRepository } from "./repositories/chatbot.repository";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -68,6 +71,8 @@ import { UpdatesService } from "./services/updates.service";
     UpdatesService,
     UpdatesRepository,
     UpdatesHandler,
+    ChatbotService,
+    ChatbotRepository,
   ],
   exports: [
     CollectionService,
@@ -91,6 +96,7 @@ import { UpdatesService } from "./services/updates.service";
     FeatureController,
     FeedbackController,
     UpdatesController,
+    ChatbotController,
   ],
 })
 export class WorkspaceModule {}
