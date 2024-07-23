@@ -12,10 +12,10 @@ import {
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { PromptDto } from "../payloads/ai-assistant.payload";
 
-// @ApiBearerAuth()
+@ApiBearerAuth()
 @ApiTags("AI Support")
 @Controller("api")
-// @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class AiAssistantController {
   /**
    * Constructor to initialize AiAssistantController with the required service.

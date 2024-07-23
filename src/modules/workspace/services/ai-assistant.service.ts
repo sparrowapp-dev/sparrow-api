@@ -17,6 +17,11 @@ export class AiAssistantService {
   private maxTokens: number;
   private currentAssistantId: string;
   private assistantsClient: AzureOpenAI;
+  private assistant = {
+    name: "API Instructor",
+    instruction:
+      "You are a personal API Instructor. Give the response accordingly.",
+  };
 
   constructor(private readonly configService: ConfigService) {
     this.endpoint = this.configService.get("ai.endpoint");
@@ -26,10 +31,14 @@ export class AiAssistantService {
     this.maxTokens = this.configService.get("ai.maxTokens");
 
     this.assistantsClient = this.getClient();
-
     this.createAssistant();
   }
 
+  /**
+   * Creates and returns a new instance of the AzureOpenAI client.
+   *
+   * @returns  A new instance of the AzureOpenAI client.
+   */
   private getClient = (): AzureOpenAI => {
     const assistantsClient = new AzureOpenAI({
       endpoint: this.endpoint,
@@ -39,12 +48,16 @@ export class AiAssistantService {
     return assistantsClient;
   };
 
+  /**
+   * Asynchronously creates a new assistant and sets the current assistant ID.
+   *
+   * @returns  A promise that resolves when the assistant is created.
+   */
   private createAssistant = async (): Promise<void> => {
     const options: AssistantCreateParams = {
       model: this.deployment,
-      name: "API Instructor",
-      instructions:
-        "You are a personal API Instructor. Give the response accordingly.",
+      name: this.assistant.name,
+      instructions: this.assistant.instruction,
     };
     // Create an assistant
     const assistantResponse: Assistant =
@@ -52,6 +65,13 @@ export class AiAssistantService {
     this.currentAssistantId = assistantResponse.id;
   };
 
+  /**
+   * Generates text based on a given prompt using an assistant.
+   *
+   * @param  prompt - The text prompt to generate a response for.
+   * @param threadId - Optional thread ID to continue a conversation.
+   * @returns A promise that resolves with the generated text and optional thread ID.
+   */
   public async generateText(
     prompt: string,
     threadId?: string,
