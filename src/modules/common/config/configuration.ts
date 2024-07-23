@@ -74,7 +74,6 @@ export default () => ({
     apiKey: process.env.AZURE_OPENAI_API_KEY,
     deployment: process.env.AZURE_OPENAI_DEPLOYMENT,
     apiVersion: process.env.AZURE_OPENAI_API_VERSION,
-    apiModel: process.env.AZURE_OPENAI_API_MODEL,
     maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS),
   },
 });

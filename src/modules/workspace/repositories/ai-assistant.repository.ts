@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
 @Injectable()
-export class AiSupportRepository {
+export class AiAssistantRepository {
   constructor() {}
 }

@@ -1,5 +1,5 @@
 import { Body, Controller, Post, Res, UseGuards } from "@nestjs/common";
-import { AiSupportService } from "../services/ai-support.service";
+import { AiAssistantService } from "../services/ai-assistant.service";
 import { FastifyReply } from "fastify";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -10,36 +10,36 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
-import { PromptDto } from "../payloads/chat-ai.payload";
+import { PromptDto } from "../payloads/ai-assistant.payload";
 
 // @ApiBearerAuth()
 @ApiTags("AI Support")
 @Controller("api")
 // @UseGuards(JwtAuthGuard)
-export class AiSupportController {
+export class AiAssistantController {
   /**
-   * Constructor to initialize AiSupportController with the required service.
-   * @param aiSupportService - Injected AiSupportService to handle business logic.
+   * Constructor to initialize AiAssistantController with the required service.
+   * @param aiAssistantService - Injected AiAssistantService to handle business logic.
    */
-  constructor(private readonly aiSupportService: AiSupportService) {}
+  constructor(private readonly aiAssistantService: AiAssistantService) {}
 
   @ApiOperation({
-    summary: "Get a respose for chatbot",
-    description: "this will return AI response from the prompt",
+    summary: "Get a respose for AI assistant",
+    description: "this will return AI response from the input prompt",
   })
   @ApiResponse({
     status: 201,
     description: "AI response Generated Successfully",
   })
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
-  @Post("chatbot/prompt")
+  @Post("assistant/prompt")
   async generate(@Body() prompt: PromptDto, @Res() res: FastifyReply) {
-    const data = await this.aiSupportService.generateText(
+    const data = await this.aiAssistantService.generateText(
       prompt.text,
       prompt.threadId,
     );
     const response = new ApiResponseService(
-      "Chatbot Reposonse Generated",
+      "AI Reposonse Generated",
       HttpStatusCode.CREATED,
       data,
     );
