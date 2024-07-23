@@ -7,6 +7,7 @@ import { EnvironmentController } from "./controllers/environment.controller";
 import { FeatureController } from "./controllers/feature.controller";
 import { FeedbackController } from "./controllers/feedback.controller";
 import { UpdatesController } from "./controllers/updates.controller";
+import { AiAssistantController } from "./controllers/ai-assistant.controller";
 
 // ---- Repository
 import { WorkspaceRepository } from "./repositories/workspace.repository";
@@ -16,6 +17,7 @@ import { FeatureRepository } from "./repositories/feature.repository";
 import { FeedbackRepository } from "./repositories/feedback.repository";
 import { BranchRepository } from "./repositories/branch.repository";
 import { UpdatesRepository } from "./repositories/updates.repository";
+import { AiAssistantRepository } from "./repositories/ai-assistant.repository";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -38,6 +40,7 @@ import { FeatureService } from "./services/feature.service";
 import { BranchService } from "./services/branch.service";
 import { FeedbackService } from "./services/feedback.service";
 import { UpdatesService } from "./services/updates.service";
+import { AiAssistantService } from "./services/ai-assistant.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -68,6 +71,8 @@ import { UpdatesService } from "./services/updates.service";
     UpdatesService,
     UpdatesRepository,
     UpdatesHandler,
+    AiAssistantService,
+    AiAssistantRepository,
   ],
   exports: [
     CollectionService,
@@ -91,6 +96,7 @@ import { UpdatesService } from "./services/updates.service";
     FeatureController,
     FeedbackController,
     UpdatesController,
+    AiAssistantController,
   ],
 })
 export class WorkspaceModule {}

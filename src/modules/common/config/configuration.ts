@@ -69,4 +69,11 @@ export default () => ({
   feedbackBlob: {
     container: process.env.FEEDBACK_BLOB_CONTAINER,
   },
+  ai: {
+    endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+    apiKey: process.env.AZURE_OPENAI_API_KEY,
+    deployment: process.env.AZURE_OPENAI_DEPLOYMENT,
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION,
+    maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS),
+  },
 });
