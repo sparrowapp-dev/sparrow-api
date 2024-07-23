@@ -122,6 +122,7 @@ export class UserService {
       firstTeam: true,
     };
     await this.teamService.create(teamName);
+    this.sendSignUpEmail(firstName, payload.email);
     return data;
   }
 
@@ -316,5 +317,38 @@ export class UserService {
   async getFirstName(name: string): Promise<string> {
     const nameArray = name.split(" ");
     return nameArray[0];
+  }
+
+  async sendSignUpEmail(firstname: string, email: string): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+    const handlebarOptions = {
+      //view engine contains default and partial templates
+      viewEngine: {
+        defaultLayout: "",
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+    };
+    transporter.use("compile", hbs(handlebarOptions));
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Sparrow Welcome",
+      template: "singnUpEmail",
+      context: {
+        name: firstname,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Welcome to Sparrow`,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
   }
 }
