@@ -7,6 +7,7 @@ import {
 } from "openai/resources/beta/assistants";
 import { MessagesPage } from "openai/resources/beta/threads/messages";
 import { Thread } from "openai/resources/beta/threads/threads";
+import { AIResponseDto, PromptPayload } from "../payloads/ai-assistant.payload";
 
 @Injectable()
 export class AiAssistantService {
@@ -15,12 +16,9 @@ export class AiAssistantService {
   private deployment: string;
   private apiVersion: string;
   private maxTokens: number;
-  private currentAssistantId: string;
   private assistantsClient: AzureOpenAI;
   private assistant = {
     name: "API Instructor",
-    instruction:
-      "You are a personal API Instructor. Give the response accordingly.",
   };
 
   constructor(private readonly configService: ConfigService) {
@@ -31,7 +29,6 @@ export class AiAssistantService {
     this.maxTokens = this.configService.get("ai.maxTokens");
 
     this.assistantsClient = this.getClient();
-    this.createAssistant();
   }
 
   /**
@@ -53,80 +50,71 @@ export class AiAssistantService {
    *
    * @returns  A promise that resolves when the assistant is created.
    */
-  private createAssistant = async (): Promise<void> => {
+  private createAssistant = async (_instructions: string): Promise<string> => {
     const options: AssistantCreateParams = {
       model: this.deployment,
       name: this.assistant.name,
-      instructions: this.assistant.instruction,
+      instructions: _instructions,
     };
     // Create an assistant
     const assistantResponse: Assistant =
       await this.assistantsClient.beta.assistants.create(options);
-    this.currentAssistantId = assistantResponse.id;
+    return assistantResponse.id;
   };
 
   /**
    * Generates text based on a given prompt using an assistant.
    *
-   * @param  prompt - The text prompt to generate a response for.
-   * @param threadId - Optional thread ID to continue a conversation.
+   * @param  data - The prompt input data to generate a response.
    * @returns A promise that resolves with the generated text and optional thread ID.
    */
-  public async generateText(
-    prompt: string,
-    threadId?: string,
-  ): Promise<{ result: string; threadId?: string }> {
-    if (!this.currentAssistantId) {
-      throw new BadRequestException("Assistant not created yet");
+  public async generateText(data: PromptPayload): Promise<AIResponseDto> {
+    const { text: prompt, threadId, instructions } = data;
+    const assistantId = await this.createAssistant(instructions);
+    if (!assistantId) {
+      throw new BadRequestException("AI Assistant not created!");
     }
-    try {
-      const role = "user";
-      const message = prompt;
 
-      let currentThreadId = threadId;
+    const role = "user";
+    const message = prompt;
 
-      if (!currentThreadId) {
-        // Create an thread if it does not exist
-        const assistantThread: Thread =
-          await this.assistantsClient.beta.threads.create({});
-        currentThreadId = assistantThread.id;
-      }
+    let currentThreadId = threadId;
 
-      // Add a user question to the existing thread
-      await this.assistantsClient.beta.threads.messages.create(
-        currentThreadId,
-        {
-          role,
-          content: message,
-        },
-      );
+    if (!currentThreadId) {
+      // Create an thread if it does not exist
+      const assistantThread: Thread =
+        await this.assistantsClient.beta.threads.create({});
+      currentThreadId = assistantThread.id;
+    }
 
-      // Run the thread and poll it until it is in a terminal state
-      await this.assistantsClient.beta.threads.runs.createAndPoll(
-        currentThreadId,
-        {
-          assistant_id: this.currentAssistantId,
-        },
-        { pollIntervalMs: 500 },
-      );
+    // Add a user question to the existing thread
+    await this.assistantsClient.beta.threads.messages.create(currentThreadId, {
+      role,
+      content: message,
+    });
 
-      // Get the messages
-      const runMessages: MessagesPage =
-        await this.assistantsClient.beta.threads.messages.list(currentThreadId);
-      for await (const runMessageDatum of runMessages) {
-        for (const item of runMessageDatum.content) {
-          if (item.type === "text") {
-            return {
-              result: item.text?.value || "No solution found.",
-              threadId: currentThreadId,
-            };
-          }
+    // Run the thread and poll it until it is in a terminal state
+    await this.assistantsClient.beta.threads.runs.createAndPoll(
+      currentThreadId,
+      {
+        assistant_id: assistantId,
+      },
+      { pollIntervalMs: 500 },
+    );
+
+    // Get the messages
+    const runMessages: MessagesPage =
+      await this.assistantsClient.beta.threads.messages.list(currentThreadId);
+    for await (const runMessageDatum of runMessages) {
+      for (const item of runMessageDatum.content) {
+        if (item.type === "text") {
+          return {
+            result: item.text?.value || "",
+            threadId: currentThreadId,
+          };
         }
       }
-
-      return { result: "No solution found.", threadId: currentThreadId };
-    } catch (e) {
-      throw new BadRequestException(e);
     }
+    return { result: "", threadId: currentThreadId };
   }
 }

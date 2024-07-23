@@ -10,11 +10,11 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
-import { PromptDto } from "../payloads/ai-assistant.payload";
+import { PromptPayload } from "../payloads/ai-assistant.payload";
 
 @ApiBearerAuth()
 @ApiTags("AI Support")
-@Controller("api")
+@Controller("api/assistant")
 @UseGuards(JwtAuthGuard)
 export class AiAssistantController {
   /**
@@ -32,12 +32,9 @@ export class AiAssistantController {
     description: "AI response Generated Successfully",
   })
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
-  @Post("assistant/prompt")
-  async generate(@Body() prompt: PromptDto, @Res() res: FastifyReply) {
-    const data = await this.aiAssistantService.generateText(
-      prompt.text,
-      prompt.threadId,
-    );
+  @Post("prompt")
+  async generate(@Body() prompt: PromptPayload, @Res() res: FastifyReply) {
+    const data = await this.aiAssistantService.generateText(prompt);
     const response = new ApiResponseService(
       "AI Reposonse Generated",
       HttpStatusCode.CREATED,
