@@ -38,7 +38,7 @@ export class TeamService {
     if (size < this.configService.get("app.imageSizeLimit")) {
       return true;
     }
-    throw new BadRequestException("Image size should be less than 100kb");
+    throw new BadRequestException("Image size should be less than 2MB");
   }
 
   /**
@@ -95,6 +95,7 @@ export class TeamService {
       const workspaceObj = {
         name: this.configService.get("app.defaultWorkspaceName"),
         id: createdTeam.insertedId.toString(),
+        firstWorkspace: true,
       };
       await this.producerService.produce(TOPIC.CREATE_USER_TOPIC, {
         value: JSON.stringify(workspaceObj),

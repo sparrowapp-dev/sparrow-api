@@ -7,4 +7,6 @@ export enum Collections {
   ENVIRONMENT = "environment",
   FEATURES = "features",
   BRANCHES = "branches",
+  FEEDBACK = "feedback",
+  UPDATES = "updates",
 }

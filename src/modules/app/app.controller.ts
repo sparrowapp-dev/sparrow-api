@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpStatus,
@@ -22,6 +23,7 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { ParserService } from "../common/services/parser.service";
 import { ApiResponseService } from "../common/services/api-response.service";
 import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
+import { curlDto } from "./payloads/curl.payload";
 
 /**
  * App Controller
@@ -66,6 +68,7 @@ export class AppController {
   @ApiConsumes("application/x-www-form-urlencoded")
   @ApiBody({
     schema: {
+      type: "object",
       properties: {
         curl: {
           type: "string",
@@ -74,9 +77,8 @@ export class AppController {
       },
     },
   })
-  @UseGuards(JwtAuthGuard)
-  async parseCurl(@Res() res: FastifyReply, @Req() req: FastifyRequest) {
-    const parsedRequestData = await this.appService.parseCurl(req);
+  async parseCurl(@Body() req: curlDto, @Res() res: FastifyReply) {
+    const parsedRequestData = await this.appService.parseCurl(req.curl);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
