@@ -198,7 +198,33 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: FEEDBACK_BLOB_CONTAINER
-                  
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_ENDPOINT
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_API_KEY
+            - name: AZURE_OPENAI_DEPLOYMENT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_DEPLOYMENT
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_API_VERSION
+            - name: AZURE_OPENAI_MAX_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_MAX_TOKENS
+
+
 ---
 apiVersion: v1
 kind: Service
