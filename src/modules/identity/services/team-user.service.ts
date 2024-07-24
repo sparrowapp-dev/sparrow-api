@@ -468,6 +468,18 @@ export class TeamUserService {
     return response;
   }
 
+  async OwnerDetails(
+    ownerId: string,
+    users: any[],
+  ): Promise<{ email: string; name: string } | null> {
+    for (const user of users) {
+      if (user.id.toString() === ownerId.toString()) {
+        return { email: user.email, name: user.name };
+      }
+    }
+    return null;
+  }
+
   async leaveTeam(teamId: string) {
     const teamOwner = await this.teamService.isTeamOwner(teamId);
     if (teamOwner) {
@@ -524,6 +536,62 @@ export class TeamUserService {
       new ObjectId(teamId),
       teamUpdatedParams,
     );
+
+    const OwnerDetails = await this.OwnerDetails(
+      teamData.owner,
+      teamData.users,
+    );
+
+    await this.leaveTeamEmail(
+      userData.name,
+      teamData.name,
+      OwnerDetails.name.split(" ")[0],
+      OwnerDetails.email,
+    );
+
     return data;
+  }
+
+  async leaveTeamEmail(
+    MemberName: string,
+    teamName: string,
+    OwnerName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+    transporter.use("compile", hbs(handlebarOptions));
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Sparrow Welcome",
+      template: "leaveTeamEmail",
+      context: {
+        ownerName: OwnerName,
+        memberName: MemberName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Team Member Update: ${MemberName} has left ${teamName}`,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
   }
 }

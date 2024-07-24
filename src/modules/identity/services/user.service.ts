@@ -348,7 +348,7 @@ export class UserService {
       from: this.configService.get("app.senderEmail"),
       to: email,
       text: "Sparrow Welcome",
-      template: "singnUpEmail",
+      template: "signUpEmail",
       context: {
         name: firstname,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
