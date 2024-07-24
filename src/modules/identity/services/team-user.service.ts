@@ -64,7 +64,7 @@ export class TeamUserService {
     );
   }
 
-  async inviteUserInTeamEmail(payload: TeamInviteMailDto) {
+  async inviteUserInTeamEmail(payload: TeamInviteMailDto, role: string) {
     const currentUser = await this.contextService.get("user");
     const transporter = nodemailer.createTransport({
       host: this.configService.get("app.mailHost"),
@@ -76,11 +76,14 @@ export class TeamUserService {
       },
     });
     const handlebarOptions = {
-      //view engine contains default and partial templates
       viewEngine: {
-        defaultLayout: "",
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
       },
       viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
     };
     transporter.use("compile", hbs(handlebarOptions));
     const promiseArray = [];
@@ -94,6 +97,7 @@ export class TeamUserService {
           firstname: user.name,
           username: currentUser.name,
           teamname: payload.teamName,
+          role: role,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
         },
         subject: `${currentUser.name} has invited you to the team "${payload.teamName}"`,
@@ -194,10 +198,13 @@ export class TeamUserService {
 
       await this.teamRepository.updateTeamById(teamFilter, updatedTeamParams);
     }
-    await this.inviteUserInTeamEmail({
-      users: usersExist,
-      teamName: teamData.name,
-    });
+    await this.inviteUserInTeamEmail(
+      {
+        users: usersExist,
+        teamName: teamData.name,
+      },
+      payload.role,
+    );
     const response = {
       nonExistingUsers: usersNotExist,
       alreadyTeamMember: alreadyTeamMember,
