@@ -168,11 +168,14 @@ export class UserService {
     });
     const verificationCode = this.generateEmailVerificationCode().toUpperCase();
     const handlebarOptions = {
-      //view engine contains default and partial templates
       viewEngine: {
-        defaultLayout: "",
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
       },
       viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
     };
     transporter.use("compile", hbs(handlebarOptions));
     const mailOptions = {
@@ -331,11 +334,14 @@ export class UserService {
       },
     });
     const handlebarOptions = {
-      //view engine contains default and partial templates
       viewEngine: {
-        defaultLayout: "",
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
       },
       viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
     };
     transporter.use("compile", hbs(handlebarOptions));
     const mailOptions = {
