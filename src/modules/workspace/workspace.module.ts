@@ -8,6 +8,7 @@ import { FeatureController } from "./controllers/feature.controller";
 import { FeedbackController } from "./controllers/feedback.controller";
 import { UpdatesController } from "./controllers/updates.controller";
 import { AiAssistantController } from "./controllers/ai-assistant.controller";
+import { ChatbotStatsController } from "./controllers/chatbot-stats.controller";
 
 // ---- Repository
 import { WorkspaceRepository } from "./repositories/workspace.repository";
@@ -18,6 +19,7 @@ import { FeedbackRepository } from "./repositories/feedback.repository";
 import { BranchRepository } from "./repositories/branch.repository";
 import { UpdatesRepository } from "./repositories/updates.repository";
 import { AiAssistantRepository } from "./repositories/ai-assistant.repository";
+import { ChatbotStatsRepository } from "./repositories/chatbot-stats.repositoy";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -29,6 +31,7 @@ import { RemoveUserHandler } from "./handlers/removeUser.handler";
 import { PromoteAdminHandler } from "./handlers/promoteAdmin.handlers";
 import { DemoteAdminHandler } from "./handlers/demoteAdmin.handlers";
 import { UpdatesHandler } from "./handlers/updates.handler";
+import { ChatbotTokenHandler } from "./handlers/chatbot-token.handler";
 
 // ---- Services
 import { CollectionService } from "./services/collection.service";
@@ -41,6 +44,7 @@ import { BranchService } from "./services/branch.service";
 import { FeedbackService } from "./services/feedback.service";
 import { UpdatesService } from "./services/updates.service";
 import { AiAssistantService } from "./services/ai-assistant.service";
+import { ChatbotStatsService } from "./services/chatbot-stats.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -73,6 +77,9 @@ import { AiAssistantService } from "./services/ai-assistant.service";
     UpdatesHandler,
     AiAssistantService,
     AiAssistantRepository,
+    ChatbotTokenHandler,
+    ChatbotStatsService,
+    ChatbotStatsRepository,
   ],
   exports: [
     CollectionService,
@@ -88,6 +95,8 @@ import { AiAssistantService } from "./services/ai-assistant.service";
     FeedbackRepository,
     UpdatesService,
     UpdatesRepository,
+    ChatbotStatsService,
+    ChatbotStatsRepository,
   ],
   controllers: [
     WorkSpaceController,
@@ -97,6 +106,7 @@ import { AiAssistantService } from "./services/ai-assistant.service";
     FeedbackController,
     UpdatesController,
     AiAssistantController,
+    ChatbotStatsController,
   ],
 })
 export class WorkspaceModule {}
