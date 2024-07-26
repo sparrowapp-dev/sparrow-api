@@ -266,7 +266,7 @@ export class TeamUserService {
       teamUpdatedParams,
     );
 
-    const OwnerDetails = await this.getOwnerDetails(
+    const ownerDetails = await this.getOwnerDetails(
       teamData.owner,
       teamData.users,
     );
@@ -274,8 +274,8 @@ export class TeamUserService {
     await this.removeUserEmail(
       userData.name,
       teamData.name,
-      OwnerDetails.name.split(" ")[0],
-      OwnerDetails.email,
+      ownerDetails.name.split(" ")[0],
+      ownerDetails.email,
     );
     return data;
   }
@@ -503,7 +503,7 @@ export class TeamUserService {
       currentOwnerUpdatedParams,
     );
 
-    const OwnerDetails = await this.getOwnerDetails(
+    const ownerDetails = await this.getOwnerDetails(
       teamDetails.owner,
       teamDetails.users,
     );
@@ -511,8 +511,8 @@ export class TeamUserService {
     //Old Owner
     await this.oldOwnerEmail(
       teamDetails.name,
-      OwnerDetails.name.split(" ")[0],
-      OwnerDetails.email,
+      ownerDetails.name.split(" ")[0],
+      ownerDetails.email,
     );
     return response;
   }
@@ -574,7 +574,7 @@ export class TeamUserService {
       teamUpdatedParams,
     );
 
-    const OwnerDetails = await this.getOwnerDetails(
+    const ownerDetails = await this.getOwnerDetails(
       teamData.owner,
       teamData.users,
     );
@@ -582,8 +582,8 @@ export class TeamUserService {
     await this.leaveTeamEmail(
       userData.name,
       teamData.name,
-      OwnerDetails.name.split(" ")[0],
-      OwnerDetails.email,
+      ownerDetails.name.split(" ")[0],
+      ownerDetails.email,
     );
 
     return data;
