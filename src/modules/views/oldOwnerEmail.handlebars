@@ -27,26 +27,9 @@
             .container-data {
                 margin: auto;
                 max-width: 570px;
-                background-color: var(--background-color, white);
                 padding: 20px;
                 transition: background-color 0.3s, color 0.3s;
             }
-
-            .header-container {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 10px;
-            }
-
-            .sparrow-heading-text {
-                font-size: 40px;
-                font-weight: 800;
-                color: var(--header-text-color, #3670F7);
-            }
-
-
-
             .email-text-style {
                 color: var(--email-text-color, #333);
                 font-family: "Inter", sans-serif;
@@ -54,20 +37,6 @@
                 font-style: normal;
                 font-weight: 400;
                 line-height: 21px;
-            }
-
-            .text-bold-dynamic {
-                color: var(--text-bold-color, #333333);
-                font-weight: 700;
-                line-height: 21px;
-            }
-
-            .icon {
-                transition: filter 0.3s;
-            }
-
-            .dark-mode .icon {
-                filter: invert(100%);
             }
         </style>
     </head>
@@ -93,7 +62,8 @@
                                 Your leadership has been instrumental, and we thank you for your contributions.
                             </p>
 
-                            <p>If you have any ideas or questions, please share them with the Sparrow team. For additional assistance, feel free to reach out at
+                            <p>If you have any ideas or questions, please share them with the Sparrow team. For
+                                additional assistance, feel free to reach out at
                                 <a href="mailto:{{sparrowEmail}}"
                                     style="text-decoration-line: underline;">{{sparrowEmail}}</a>
                             </p>
@@ -106,7 +76,6 @@
                             </p>
 
                         </div>
-
 
                         <hr>
 

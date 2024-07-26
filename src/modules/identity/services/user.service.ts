@@ -123,7 +123,7 @@ export class UserService {
       firstTeam: true,
     };
     await this.teamService.create(teamName);
-    this.sendSignUpEmail(firstName, payload.email);
+    await this.sendSignUpEmail(firstName, payload.email);
     return data;
   }
 
