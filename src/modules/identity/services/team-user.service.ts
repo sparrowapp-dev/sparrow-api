@@ -266,7 +266,7 @@ export class TeamUserService {
       teamUpdatedParams,
     );
 
-    const OwnerDetails = await this.OwnerDetails(
+    const OwnerDetails = await this.getOwnerDetails(
       teamData.owner,
       teamData.users,
     );
@@ -401,6 +401,31 @@ export class TeamUserService {
     return false;
   }
 
+  /**
+   * Get owner details by ID.
+   * @param {string} ownerId - The ID of the owner.
+   * @param {any[]} users - Array of users.
+   * @returns {Promise<{ email: string; name: string } | null>} Owner details or null if not found.
+   */
+  async getOwnerDetails(
+    ownerId: string,
+    users: any[],
+  ): Promise<{ email: string; name: string } | null> {
+    for (const user of users) {
+      if (user.id.toString() === ownerId.toString()) {
+        return { email: user.email, name: user.name };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Change the owner of a team.
+   * @param {CreateOrUpdateTeamUserDto} payload - The payload containing team and user information.
+   * @returns {Promise<any>} The response from the team update operation.
+   * @throws {BadRequestException} If the user does not have access or is not an admin.
+   */
+
   async changeOwner(payload: CreateOrUpdateTeamUserDto) {
     const user = await this.contextService.get("user");
     const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
@@ -477,19 +502,19 @@ export class TeamUserService {
       new ObjectId(payload.userId),
       currentOwnerUpdatedParams,
     );
-    return response;
-  }
 
-  async OwnerDetails(
-    ownerId: string,
-    users: any[],
-  ): Promise<{ email: string; name: string } | null> {
-    for (const user of users) {
-      if (user.id.toString() === ownerId.toString()) {
-        return { email: user.email, name: user.name };
-      }
-    }
-    return null;
+    const OwnerDetails = await this.getOwnerDetails(
+      teamDetails.owner,
+      teamDetails.users,
+    );
+
+    //Old Owner
+    await this.oldOwnerEmail(
+      teamDetails.name,
+      OwnerDetails.name.split(" ")[0],
+      OwnerDetails.email,
+    );
+    return response;
   }
 
   async leaveTeam(teamId: string) {
@@ -549,7 +574,7 @@ export class TeamUserService {
       teamUpdatedParams,
     );
 
-    const OwnerDetails = await this.OwnerDetails(
+    const OwnerDetails = await this.getOwnerDetails(
       teamData.owner,
       teamData.users,
     );
@@ -564,6 +589,14 @@ export class TeamUserService {
     return data;
   }
 
+  /**
+   * Send an email when a user leaves a team.
+   * @param {string} MemberName - The name of the member leaving the team.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the owner.
+   * @param {string} email - The email address to send the notification to.
+   * @returns {Promise<void>}
+   */
   async leaveTeamEmail(
     MemberName: string,
     teamName: string,
@@ -593,7 +626,7 @@ export class TeamUserService {
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: email,
-      text: "Sparrow Welcome",
+      text: "Leaving Team",
       template: "leaveTeamEmail",
       context: {
         ownerName: OwnerName,
@@ -607,6 +640,14 @@ export class TeamUserService {
     await Promise.all(promise);
   }
 
+  /**
+   * Send an email when a user is removed from a team.
+   * @param {string} MemberName - The name of the member removed from the team.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the owner.
+   * @param {string} email - The email address to send the notification to.
+   * @returns {Promise<void>}
+   */
   async removeUserEmail(
     MemberName: string,
     teamName: string,
@@ -636,7 +677,7 @@ export class TeamUserService {
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: email,
-      text: "Sparrow Welcome",
+      text: "User removed",
       template: "removeUserEmail",
       context: {
         ownerName: OwnerName,
@@ -645,6 +686,54 @@ export class TeamUserService {
         sparrowEmail: this.configService.get("support.sparrowEmail"),
       },
       subject: `Team Member Update: ${MemberName} been removed from ${teamName} team`,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Send an email to the old owner when ownership is transferred.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the new owner.
+   * @param {string} email - The email address to send the notification to.
+   * @returns {Promise<void>}
+   */
+  async oldOwnerEmail(
+    teamName: string,
+    OwnerName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+    transporter.use("compile", hbs(handlebarOptions));
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Owner Notification",
+      template: "oldOwnerEmail",
+      context: {
+        ownerName: OwnerName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Ownership of ${teamName} team is transferred `,
     };
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
