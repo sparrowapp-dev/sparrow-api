@@ -543,7 +543,10 @@ export class WorkspaceService {
     return;
   }
 
-  async inviteUserInWorkspaceEmail(payload: WorkspaceInviteMailDto) {
+  async inviteUserInWorkspaceEmail(
+    payload: WorkspaceInviteMailDto,
+    userRole: string,
+  ) {
     const currentUser = await this.contextService.get("user");
     const transporter = nodemailer.createTransport({
       host: this.configService.get("app.mailHost"),
@@ -555,11 +558,14 @@ export class WorkspaceService {
       },
     });
     const handlebarOptions = {
-      //view engine contains default and partial templates
       viewEngine: {
-        defaultLayout: "",
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
       },
       viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
     };
     transporter.use("compile", hbs(handlebarOptions));
     const promiseArray = [];
@@ -572,10 +578,11 @@ export class WorkspaceService {
         context: {
           firstname: user.name,
           username: currentUser.name,
+          userRole: userRole,
           workspacename: payload.workspaceName,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
         },
-        subject: `${currentUser.name} has invited you to the workspace "${payload.workspaceName}"`,
+        subject: ` You've been invited to contribute to ${payload.workspaceName} workspace on Sparrow!`,
       };
       promiseArray.push(transporter.sendMail(mailOptions));
     }
@@ -652,10 +659,13 @@ export class WorkspaceService {
       );
       userExistData.push(userData);
     }
-    await this.inviteUserInWorkspaceEmail({
-      users: userExistData,
-      workspaceName: workspaceData.name,
-    });
+    await this.inviteUserInWorkspaceEmail(
+      {
+        users: userExistData,
+        workspaceName: workspaceData.name,
+      },
+      payload.role,
+    );
     const response = {
       notExistInTeam: usersNotExist,
       existInWorkspace: alreadyWorkspaceMember,

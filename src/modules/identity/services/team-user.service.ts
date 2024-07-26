@@ -439,6 +439,8 @@ export class TeamUserService {
     const teamDetails = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
+
+    const prevOwner = teamDetails.owner;
     const teamMember = await this.teamService.isTeamMember(
       payload.userId,
       teamDetails.users,
@@ -476,6 +478,7 @@ export class TeamUserService {
     const currentOwnerUserDetails = await this.userRepository.getUserById(
       payload.userId,
     );
+
     const prevOwnerUserTeams = [...prevOwnerUserDetails.teams];
     for (let index = 0; index < prevOwnerUserTeams.length; index++) {
       if (prevOwnerUserTeams[index].id.toString() === payload.teamId) {
@@ -503,17 +506,26 @@ export class TeamUserService {
       currentOwnerUpdatedParams,
     );
 
-    const ownerDetails = await this.getOwnerDetails(
-      teamDetails.owner,
-      teamDetails.users,
+    const prevOwnerDetails = await this.userRepository.getUserById(prevOwner);
+
+    const newOwnerDetails = await this.userRepository.getUserById(
+      payload.userId,
     );
 
-    //Old Owner
+    //Old Owner Email
     await this.oldOwnerEmail(
       teamDetails.name,
-      ownerDetails.name.split(" ")[0],
-      ownerDetails.email,
+      prevOwnerDetails.name.split(" ")[0],
+      prevOwnerDetails.email,
     );
+
+    //New owner Email
+    await this.newOwnerEmail(
+      teamDetails.name,
+      newOwnerDetails.name.split(" ")[0],
+      newOwnerDetails.email,
+    );
+
     return response;
   }
 
@@ -694,8 +706,8 @@ export class TeamUserService {
   /**
    * Send an email to the old owner when ownership is transferred.
    * @param {string} teamName - The name of the team.
-   * @param {string} OwnerName - The name of the new owner.
-   * @param {string} email - The email address to send the notification to.
+   * @param {string} OwnerName - The name of the old owner.
+   * @param {string} email - The email address of old owner to send the notification to.
    * @returns {Promise<void>}
    */
   async oldOwnerEmail(
@@ -734,6 +746,54 @@ export class TeamUserService {
         sparrowEmail: this.configService.get("support.sparrowEmail"),
       },
       subject: `Ownership of ${teamName} team is transferred `,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Send an email to the new owner when ownership is transferred.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the new owner.
+   * @param {string} email - The email address of new owner  to send the notification to.
+   * @returns {Promise<void>}
+   */
+  async newOwnerEmail(
+    teamName: string,
+    OwnerName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+    transporter.use("compile", hbs(handlebarOptions));
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Owner Notification",
+      template: "newOwnerEmail",
+      context: {
+        ownerName: OwnerName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Congratulations you are owner of ${teamName} team.`,
     };
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
