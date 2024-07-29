@@ -16,6 +16,7 @@ import { BlobStorageService } from "./services/blobStorage.service";
 import { ApiResponseService } from "./services/api-response.service";
 import { ParserService } from "./services/parser.service";
 import { ContextService } from "./services/context.service";
+import { EmailService } from "./services/email.service";
 
 /**
  * Common Module provides global services and configurations used across the application.
@@ -60,6 +61,7 @@ import { ContextService } from "./services/context.service";
     ProducerService,
     ConsumerService,
     BlobStorageService,
+    EmailService,
   ],
   exports: [
     "DATABASE_CONNECTION",
@@ -71,6 +73,7 @@ import { ContextService } from "./services/context.service";
     ProducerService,
     ConsumerService,
     BlobStorageService,
+    EmailService,
   ],
 })
 export class CommonModule {}

@@ -47,6 +47,7 @@ import { Team } from "@src/modules/common/models/team.model";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
+import { EmailService } from "@src/modules/common/services/email.service";
 /**
  * Workspace Service
  */
@@ -61,6 +62,7 @@ export class WorkspaceService {
     private readonly teamService: TeamService,
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
+    private readonly emailService: EmailService,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -669,13 +671,16 @@ export class WorkspaceService {
       );
       userExistData.push(userData);
     }
-    await this.inviteUserInWorkspaceEmail(
-      {
-        users: userExistData,
-        workspaceName: workspaceData.name,
-      },
-      payload.role,
-    );
+
+    //it is causing improting issue will do this in next PR
+
+    // await this.inviteUserInWorkspaceEmail(
+    //   {
+    //     users: userExistData,
+    //     workspaceName: workspaceData.name,
+    //   },
+    //   payload.role,
+    // );
     const response = {
       notExistInTeam: usersNotExist,
       existInWorkspace: alreadyWorkspaceMember,
@@ -850,28 +855,7 @@ export class WorkspaceService {
     teamName: string,
     email: string,
   ): Promise<void> {
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
-
-    const handlebarOptions = {
-      viewEngine: {
-        extname: ".handlebars",
-        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
-        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
-        defaultLayout: "main", // Use the main.handlebars layout
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-      extName: ".handlebars",
-    };
-
-    transporter.use("compile", hbs(handlebarOptions));
+    const transporter = this.emailService.createTransporter();
 
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
@@ -908,29 +892,7 @@ export class WorkspaceService {
     workspaceName: string,
     email: string,
   ): Promise<void> {
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
-
-    const handlebarOptions = {
-      viewEngine: {
-        extname: ".handlebars",
-        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
-        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
-        defaultLayout: "main", // Use the main.handlebars layout
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-      extName: ".handlebars",
-    };
-
-    transporter.use("compile", hbs(handlebarOptions));
-
+    const transporter = this.emailService.createTransporter();
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: email,
@@ -966,28 +928,7 @@ export class WorkspaceService {
     workspaceName: string,
     email: string,
   ): Promise<void> {
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
-
-    const handlebarOptions = {
-      viewEngine: {
-        extname: ".handlebars",
-        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
-        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
-        defaultLayout: "main", // Use the main.handlebars layout
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-      extName: ".handlebars",
-    };
-
-    transporter.use("compile", hbs(handlebarOptions));
+    const transporter = this.emailService.createTransporter();
 
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
