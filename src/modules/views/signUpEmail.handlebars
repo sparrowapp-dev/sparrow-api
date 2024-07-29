@@ -1,0 +1,202 @@
+{{!< layoutName}}
+ <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+
+       
+        <style>
+           
+
+            body {
+                font-family: "Inter", sans-serif;
+                box-sizing: border-box;
+                padding: 0;
+                margin: 0;
+                transition: background-color 0.3s, color 0.3s;
+            }
+
+            .container {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+
+            }
+
+            .container-data {
+                margin: auto;
+                max-width: 570px;
+                background-color: var(--background-color, white);
+                padding: 20px;
+                transition: background-color 0.3s, color 0.3s;
+            }
+
+            .header-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            .sparrow-heading-text {
+                font-size: 40px;
+                font-weight: 800;
+                color: var(--header-text-color, #3670F7);
+            }
+
+         
+
+            .email-text-style {
+                color: var(--email-text-color, #333);
+                font-family: "Inter", sans-serif;
+                font-size: 14px;
+                font-style: normal;
+                font-weight: 400;
+                line-height: 21px;
+            }
+
+            .text-bold-dynamic {
+                color: var(--text-bold-color, #333333);
+                font-weight: 700;
+                line-height: 21px;
+            }
+
+            .icon {
+                transition: filter 0.3s;
+            }
+
+            .dark-mode .icon {
+                filter: invert(100%);
+            }
+
+        </style>
+    </head>
+
+    <body>
+
+        <div class="container">
+            <section style="width: 100%;">
+                <div class="container-data">
+
+                    {{> header}}
+
+                    <section>
+
+                        <h3 style=" font-weight: 600; color: var(--email-text-color);">
+                            Welcome to Sparrow - Elevate Your REST API Management Effortlessly!
+                        </h3>
+
+                        <div style="margin-bottom: 5%">
+                            <h2 class="email-text-style">
+                                Dear {{name}},
+                            </h2>
+                            <p class="welcome-text email-text-style">
+                                First of all, I want to <span class="text-bold-dynamic">congratulate you on becoming
+                                    part of
+                                    the Sparrow family.</span>
+                                We created Sparrow with a single motto to create a free and open-source API testing tool
+                                that foster collaboration and growth for startups and enterprise alike.
+                                Open Sparrow and you will see this new workspace in a team on your
+                                homepage.
+                            </p>
+
+                            <p class="welcome-text email-text-style">
+                                With every single release and with <span class="text-bold-dynamic"> your continuous
+                                    feedbacks, </span>
+                                we are making it evolve the way you want it with <span
+                                    class="text-bold-dynamic">features
+                                </span>
+                                you like, <span class="text-bold-dynamic">performance </span> you desire, and the <span
+                                    class="text-bold-dynamic">security + control </span> you need.
+                            </p>
+
+
+                        </div>
+
+                        <h4 class="email-text-style">Here are some of the key benefits of using Sparrow: </p>
+
+                            <div style="display: flex; gap: 3px; align-items: center; justify-content: space-between;">
+                                <img width="100%"
+                                    src="https://sparrowassets.blob.core.windows.net/emailtemplate/Feature-div.png"
+                                    alt="">
+                            </div>
+
+
+                            <div>
+                                <p class="welcome-text email-text-style">
+                                    We are excited to have you onboard and look forward to
+                                    seeing how Sparrow enhances your team's productivity
+                                    and collaboration. <span class="text-bold-dynamic"
+                                        style="border-bottom: 2px solid black;">For us, we have
+                                        just started and we know it is a long way to go. </span>
+                                </p>
+                            </div>
+
+
+
+                            <div>
+                                <div style="text-align: center;">
+                                    <h2 style="color: var(--email-text-color);">Where from <span
+                                            style="font-weight: 700; color: #3670F7;">here</span> ?</h2>
+                                </div>
+                                <div style="max-height: 184px; margin-top: 30px;">
+                                    <img width="100%"
+                                        src="https://sparrowassets.blob.core.windows.net/emailtemplate/path-bg.png"
+                                        alt="">
+                                </div>
+
+
+                            </div>
+
+
+                            <div>
+                                <p class="welcome-text email-text-style">
+                                    If you have any ideas or questions, we are listening, please connect with us and
+                                    we will be more than happy to take your feedback and incorporate it in our <span
+                                        style="color: #3670F7;"> Feature Roadmap.</span>
+                                </p>
+
+
+                                <p class="welcome-text email-text-style">
+                                    Want to collaborate? We are open for Pull Requests!
+                                </p>
+
+
+                                <p class="welcome-text email-text-style">
+                                    Please mark this email safe and add us to your contacts to not miss any updates from
+                                    us!
+                                </p>
+
+                                <p class="welcome-text email-text-style">
+                                    Welcome Again! 🎉
+                                </p>
+
+
+                                <p class="welcome-text email-text-style">
+                                    Gaurav C. <br> The Sparrow Team <br>
+                                    <a href="https://sparrowapp.dev"
+                                        style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7 ;">
+                                        https://sparrowapp.dev</a>
+                                </p>
+
+
+                            </div>
+
+                            <hr>
+
+                    </section>
+
+
+                    {{> footer}}
+
+
+                </div>
+            </section>
+        </div>
+    </body>
+
+    </html>

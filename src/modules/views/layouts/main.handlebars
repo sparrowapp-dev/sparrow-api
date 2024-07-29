@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Add some basic styling */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+        body {
+            font-family: "Inter", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        {{{body}}}
+    </div>
+
+
+
+    <script>
+        const toggleTheme = () => {
+
+            const isDarkMode = document.body.classList.toggle('dark-mode');
+            document.documentElement.style.setProperty('--background-color', isDarkMode ? 'black' : 'white');
+            document.documentElement.style.setProperty('--header-text-color', isDarkMode ? '#3670F7' : '#3670F7');
+            document.documentElement.style.setProperty('--email-text-color', isDarkMode ? '#ccc' : '#333');
+            document.documentElement.style.setProperty('--text-bold-color', isDarkMode ? '#fff' : '#333');
+            document.documentElement.style.setProperty('--footer-text-color', isDarkMode ? '#ccc' : '#8A9299');
+        };
+    </script>
+</body>
+
+</html>

@@ -1,186 +1,127 @@
-{{!< layoutName}}
-<html>
-  <head> </head>
+{{!< layoutName}} <!DOCTYPE html>
+  <html lang="en">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;1,100;1,300;1,400;1,500&display=swap" rel="stylesheet">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;1,100;1,300;1,400;1,500&display=swap" rel="stylesheet">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invite Team</title>
 
-  <body style="">
-    <div
-      class="welcome-letter"
-      style="
-        width: 580px;
-        margin: auto;
-        height: auto;
-        border-radius: 4px;
-        background: #FFFFFF;
-      "
-    >
 
-      <div class="container" style="padding: 10%">
-        <div
-          class="main-container"
-          style="margin-bottom: 20px"
-        >
-          <h1
-            class="main-heading"
-            style="
-             color: var(--colors-neutral-bg-0, #000);
-             font-family: Inter;
-             font-size: 18px;
-             font-style: normal;
-             font-weight: 500;
-             line-height: 150%; /* 27px */
-            "
-          >
-            Invite to Workspace
-          </h1>
-        </div>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+        transition: background-color 0.3s, color 0.3s;
+      }
 
-        <div style="margin-bottom: 5%">
-          <h2
-
-            style="
-              color: var(--colors-neutral-bg-3, #333);
-             /* p-sm-regular */
-             font-family: Roboto;
-             font-size: 14px;
-             font-style: normal;
-             font-weight: 400;
-             line-height: 150%; /* 21px */
-            "
-          >
-            Dear {{firstname}},
-          </h2>
-          <p
-            class="welcome-text"
-            style="
-            
-              color: var(--colors-neutral-bg-3, #333);
-
-/* p-sm-regular */
-font-family: Roboto !important ;
-font-size: 14px;
-font-style: normal;
-font-weight: 400;
-line-height: 150%; /* 21px */
-            "
-          >
-            {{username}} has invited you to contribute to the workspace 
-            <span
-              class="brand-name"
-              style="
-                color: var(--colors-neutral-bg-0, #000);
-
-/* p-sm-bold */
-font-family: Roboto;
-font-size: 14px;
-font-style: normal;
-font-weight: 700;
-line-height: 150%;
-              "
-            >"{{workspacename}}"</span>. Open Sparrow and you will see this new workspace in a team on your homepage.
-          </p>
-          <p
-            class="desc-support-text"
-            style="
-              color: var(--colors-neutral-bg-3, #333);
-
-/* p-sm-regular */
-font-family: Roboto;
-font-size: 14px;
-font-style: normal;
-font-weight: 400;
-line-height: 150%; /* 21px */
-            "
-          >
-            If you need additional assistance please contact us at 
-            <a
-              href="mailto:{{sparrowEmail}}"
-              class="desc-support-text-brand-name"
-              style="
-                color: var(--colors-brand-primary, #1193F0);
-
-/* p-sm-regular */
-font-family: Roboto;
-font-size: 14px;
-font-style: normal;
-font-weight: 400;
-line-height: 150%;
-text-decoration-line: underline;
-              "
-            >{{sparrowEmail}}</a>
-          </p>
-        </div>
-        <div style = "gap: var(--padding-padding-xxl, 24px);" >
-        <div 
-        style = "
+      .container {
+        display: flex;
+        justify-content: center;
         width: 100%;
-        height: var(--count, 1px);
-        border-radius: var(--count, 0px);
-        background: var(--colors-neutral-text-2, #E5E5E5);
-        margin-top: 28px;
-        "
-        >
+        height: 100%;
+
+      }
+
+      .container-data {
+        margin: auto;
+        max-width: 570px;
+        background-color: var(--background-color, white);
+        padding: 20px;
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .sparrow-heading-text {
+        font-size: 40px;
+        font-weight: 800;
+        color: var(--header-text-color, #3670F7);
+      }
+
+
+
+      .email-text-style {
+        color: var(--email-text-color, #333);
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 21px;
+      }
+
+      .text-bold-dynamic {
+        color: var(--text-bold-color, #333333);
+        font-weight: 700;
+        line-height: 21px;
+      }
+
+      .icon {
+        transition: filter 0.3s;
+      }
+
+      .dark-mode .icon {
+        filter: invert(100%);
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <div class="container">
+      <section style="width: 100%;">
+        <div class="container-data">
+
+          {{> header}}
+
+          <section>
+
+            <div style="margin-bottom: 5%">
+              <h2 class="email-text-style">
+                Hi {{firstname}},
+              </h2>
+
+              <p class="welcome-text email-text-style">
+                Congratulations! {{firstname}} has invited you to join the {{workspacename}} workspace on Sparrow as
+                {{!-- {{userRole}}. --}}
+              </p>
+
+              <p class="welcome-text email-text-style">
+                Your creativity and input will help shape the success in this workspace. Log in to Sparrow now to
+                start collaborating and making an impact to the team and the workspace!
+              </p>
+
+              <p>If you need additional assistance or you did not make this change, please contact us at <a
+                  href="mailto:{{sparrowEmail}}" style="text-decoration-line: underline;">{{sparrowEmail}}</a>
+              </p>
+
+              <p class="welcome-text email-text-style">
+                Warm regards, <br> The Sparrow Team <br>
+                <a href="https://sparrowapp.dev"
+                  style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 1px solid #3670F7 ;">
+                  https://sparrowapp.dev</a>
+              </p>
+
+            </div>
+
+
+            <hr>
+
+          </section>
+
+
+          {{> footer}}
+
+
         </div>
-        
-        <div
-          class="ending-lines"
-          style="
-            color: #e9e8e8;
-            text-align: center;
-            font-family: 'Urbanist', sans-serif;
-            font-size: 16px;
-            font-style: normal;
-            font-weight: 700;
-            margin-top: 35px;
-            line-height: 180%;
-            letter-spacing: 0.8px;
-            width: 100%;
-          "
-        >
-          
-        </div>
-      </div>
-
-      <footer
-        class="footer"
-        style="
-          width: 100%;
-          text-align: center;
-          height: 162px;
-          flex-shrink: 0;
-        "
-      >
-      <img
-            style="width: 150px; height: 50px; display: inline-block;"
-            src="https://sparrowassets.blob.core.windows.net/publicassest/sparrowemail.png"
-            alt="email-icon"
-          />
-        <p
-          class="footer-text"
-          style="
-            color: var(--colors-fun-placeholder, #8A9299);
-
-           font-family: Open Sans;
-           font-size: 12px;
-font-style: normal;
-font-weight: 400;
-line-height: 150%; /* 18px */
-          "
-        >
-          © 2023 Sparrow. All rights reserved
-        </p>
-
-        
-          
-      
-     
-      </footer>
+      </section>
     </div>
   </body>
-</html>
+
+  </html>
