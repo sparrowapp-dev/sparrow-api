@@ -48,6 +48,7 @@ import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { EmailService } from "@src/modules/common/services/email.service";
+
 /**
  * Workspace Service
  */
@@ -787,7 +788,7 @@ export class WorkspaceService {
       updatedWorkspaceParams,
     );
 
-    if (payload.role == "viewer") {
+    if (payload.role == WorkspaceRole.VIEWER) {
       await this.demoteEditorEmail(
         workspaceUsers[getUserIndex].name,
         workspaceUsers[getUserIndex].role,
