@@ -307,6 +307,16 @@ export class WorkspaceService {
         workspaceId: response.insertedId,
       }),
     });
+
+    const userDetails = await this.userRepository.getUserById(teamData.owner);
+
+    await this.newWorkspaceEmail(
+      userDetails.name,
+      workspaceData.name,
+      teamData.name,
+      userDetails.email,
+    );
+
     return response;
   }
 
@@ -743,6 +753,7 @@ export class WorkspaceService {
   }
 
   async changeUserRole(payload: UserRoleInWorkspcaeDto) {
+    let getUserIndex;
     await this.isWorkspaceAdmin(payload.workspaceId, payload.userId);
     await this.roleCheck(payload.role);
     const workspaceData = await this.workspaceRepository.get(
@@ -751,6 +762,7 @@ export class WorkspaceService {
     const workspaceUsers = [...workspaceData.users];
     for (let index = 0; index < workspaceUsers.length; index++) {
       if (workspaceUsers[index].id === payload.userId) {
+        getUserIndex = index;
         const updateMessage = `"${workspaceUsers[index].name}'s" role is changed from "${workspaceUsers[index].role}" to "${payload.role}" in "${workspaceData.name}" workspace`;
         await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
           value: JSON.stringify({
@@ -769,6 +781,22 @@ export class WorkspaceService {
       new ObjectId(payload.workspaceId),
       updatedWorkspaceParams,
     );
+
+    if (payload.role == "viewer") {
+      await this.demoteEditorEmail(
+        workspaceUsers[getUserIndex].name,
+        workspaceUsers[getUserIndex].role,
+        workspaceData.name,
+        workspaceUsers[getUserIndex].email,
+      );
+    } else {
+      await this.promoteViewerEmail(
+        workspaceUsers[getUserIndex].name,
+        workspaceUsers[getUserIndex].role,
+        workspaceData.name,
+        workspaceUsers[getUserIndex].email,
+      );
+    }
     return response;
   }
 
@@ -803,5 +831,179 @@ export class WorkspaceService {
       }
     }
     return allUsers;
+  }
+
+  /**
+   * Sends an email notification to a user when a new workspace is created under a team.
+   *
+   * @param {string} ownerName - The name of the owner of the new workspace.
+   * @param {string} workspaceName - The name of the newly created workspace.
+   * @param {string} teamName - The name of the team under which the workspace was created.
+   * @param {string} email - The email address of the recipient.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async newWorkspaceEmail(
+    ownerName: string,
+    workspaceName: string,
+    teamName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+
+    transporter.use("compile", hbs(handlebarOptions));
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Workspace Notification",
+      template: "newWorkspaceEmail",
+      context: {
+        ownerName: ownerName,
+        workspaceName: workspaceName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Workspace Update: New Workspace is created under ${teamName} team.`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when their role is demoted within a workspace.
+   *
+   * @param {string} userName - The name of the user whose role is being demoted.
+   * @param {string} userRole - The current role of the user being demoted.
+   * @param {string} workspaceName - The name of the workspace where the role change is occurring.
+   * @param {string} email - The email address of the recipient.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async demoteEditorEmail(
+    userName: string,
+    userRole: string,
+    workspaceName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+
+    transporter.use("compile", hbs(handlebarOptions));
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Workspace Notification",
+      template: "demoteEditorEmail",
+      context: {
+        userName: userName,
+        userRole: userRole,
+        workspaceName: workspaceName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Your Role in the ${workspaceName} Workspace has been updated`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when their role is promoted within a workspace.
+   *
+   * @param {string} userName - The name of the user whose role is being promoted.
+   * @param {string} userRole - The new role of the user being promoted.
+   * @param {string} workspaceName - The name of the workspace where the role change is occurring.
+   * @param {string} email - The email address of the recipient.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async promoteViewerEmail(
+    userName: string,
+    userRole: string,
+    workspaceName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+
+    transporter.use("compile", hbs(handlebarOptions));
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Workspace Notification",
+      template: "promoteViewerEmail",
+      context: {
+        userName: userName,
+        userRole: userRole,
+        workspaceName: workspaceName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Your Role in the ${workspaceName} Workspace has been updated`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
   }
 }

@@ -336,6 +336,15 @@ export class TeamUserService {
     await this.producerService.produce(TOPIC.TEAM_ADMIN_ADDED_TOPIC, {
       value: JSON.stringify(message),
     });
+
+    const userDetails = await this.userRepository.getUserById(payload.userId);
+
+    await this.addAdminEmail(
+      teamData.name,
+      userDetails.name,
+      userDetails.email,
+    );
+
     return response;
   }
 
@@ -384,6 +393,15 @@ export class TeamUserService {
     await this.producerService.produce(TOPIC.TEAM_ADMIN_DEMOTED_TOPIC, {
       value: JSON.stringify(message),
     });
+
+    const userDetails = await this.userRepository.getUserById(payload.userId);
+
+    await this.demoteTeamAdminEmail(
+      teamData.name,
+      userDetails.name,
+      userDetails.email,
+    );
+
     return response;
   }
 
@@ -795,6 +813,116 @@ export class TeamUserService {
       },
       subject: `Congratulations you are owner of ${teamName} team.`,
     };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when their admin role in a team is demoted.
+   *
+   * @param {string} teamName - The name of the team from which the user is being demoted.
+   * @param {string} userName - The name of the user who is being demoted.
+   * @param {string} email - The email address of the user who is being demoted.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async demoteTeamAdminEmail(
+    teamName: string,
+    userName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+
+    transporter.use("compile", hbs(handlebarOptions));
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Demote Admin Notification",
+      template: "demoteTeamAdminEmail",
+      context: {
+        teamName: teamName,
+        userName: userName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Your Role in the ${teamName} team has been updated.`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when they are promoted to an admin role in a team.
+   *
+   * @param {string} teamName - The name of the team to which the user is being promoted.
+   * @param {string} userName - The name of the user who is being promoted.
+   * @param {string} email - The email address of the user who is being promoted.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async addAdminEmail(
+    teamName: string,
+    userName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get("app.mailHost"),
+      port: this.configService.get("app.mailPort"),
+      secure: this.configService.get("app.mailSecure") === "true",
+      auth: {
+        user: this.configService.get("app.userName"),
+        pass: this.configService.get("app.senderPassword"),
+      },
+    });
+
+    const handlebarOptions = {
+      viewEngine: {
+        extname: ".handlebars",
+        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+        defaultLayout: "main", // Use the main.handlebars layout
+      },
+      viewPath: path.resolve(__dirname, "..", "..", "views"),
+      extName: ".handlebars",
+    };
+
+    transporter.use("compile", hbs(handlebarOptions));
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Promote Member Email",
+      template: "addTeamAdminEmail",
+      context: {
+        teamName: teamName,
+        userName: userName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+      },
+      subject: `Your Role in the team has been updated.`,
+    };
+
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
   }
