@@ -629,49 +629,6 @@ export class TeamUserService {
    * @param {string} email - The email address to send the notification to.
    * @returns {Promise<void>}
    */
-  // async leaveTeamEmail(
-  //   MemberName: string,
-  //   teamName: string,
-  //   OwnerName: string,
-  //   email: string,
-  // ): Promise<void> {
-  //   const transporter = nodemailer.createTransport({
-  //     host: this.configService.get("app.mailHost"),
-  //     port: this.configService.get("app.mailPort"),
-  //     secure: this.configService.get("app.mailSecure") === "true",
-  //     auth: {
-  //       user: this.configService.get("app.userName"),
-  //       pass: this.configService.get("app.senderPassword"),
-  //     },
-  //   });
-  //   const handlebarOptions = {
-  //     viewEngine: {
-  //       extname: ".handlebars",
-  //       partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
-  //       layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
-  //       defaultLayout: "main", // Use the main.handlebars layout
-  //     },
-  //     viewPath: path.resolve(__dirname, "..", "..", "views"),
-  //     extName: ".handlebars",
-  //   };
-  //   transporter.use("compile", hbs(handlebarOptions));
-  //   const mailOptions = {
-  //     from: this.configService.get("app.senderEmail"),
-  //     to: email,
-  //     text: "Leaving Team",
-  //     template: "leaveTeamEmail",
-  //     context: {
-  //       ownerName: OwnerName,
-  //       memberName: MemberName,
-  //       teamName: teamName,
-  //       sparrowEmail: this.configService.get("support.sparrowEmail"),
-  //     },
-  //     subject: `Team Member Update: ${MemberName} has left ${teamName}`,
-  //   };
-  //   const promise = [transporter.sendMail(mailOptions)];
-  //   await Promise.all(promise);
-  // }
-
   async leaveTeamEmail(
     MemberName: string,
     teamName: string,
