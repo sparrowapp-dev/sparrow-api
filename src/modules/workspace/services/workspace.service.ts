@@ -603,9 +603,7 @@ export class WorkspaceService {
   }
 
   async addUserInWorkspace(payload: AddUserInWorkspaceDto): Promise<object> {
-    const workspaceData = await this.workspaceRepository.get(
-      payload.workspaceId,
-    );
+    let workspaceData = await this.workspaceRepository.get(payload.workspaceId);
     await this.checkAdminRole(payload.workspaceId);
     await this.roleCheck(payload.role);
     const usersExist = [];
@@ -631,6 +629,7 @@ export class WorkspaceService {
       }
     }
     for (const emailId of usersExist) {
+      workspaceData = await this.workspaceRepository.get(payload.workspaceId);
       const userData = await this.userRepository.getUserByEmail(emailId);
       const userWorkspaces = [...userData.workspaces];
       userWorkspaces.push({
