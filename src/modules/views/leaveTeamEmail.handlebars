@@ -30,6 +30,7 @@
         padding: 20px;
         transition: background-color 0.3s, color 0.3s;
       }
+
       .email-text-style {
         color: var(--email-text-color, #333);
         font-family: "Inter", sans-serif;
@@ -38,7 +39,6 @@
         font-weight: 400;
         line-height: 21px;
       }
-
     </style>
   </head>
 
@@ -57,34 +57,27 @@
                 Hi {{ownerName}},
               </h2>
 
-              <p class="welcome-text email-text-style">
+              <p class="email-text-style">
                 We wanted to inform you that {{memberName}} has left from the {{teamName}} team on Sparrow. Your
                 leadership and vision drives the team forward, hence we thought we would inform you on this.
               </p>
 
-              <p class="welcome-text email-text-style">
-                Your expertise will be invaluable to the team as the team will collaborates and innovates together. Dive
-                in by logging into Sparrow to explore your new team.
+
+              <p class="email-text-style">If you have any ideas or questions, please share them with the Sparrow team.
+                For additional assistance, feel free to reach out at <a href="mailto:{{sparrowEmail}}"
+                  style="text-decoration-line: underline;">{{sparrowEmail}}</a>!
               </p>
 
-              <p>If you need additional assistance or you did not make this change, please contact us at <a
-                  href="mailto:{{sparrowEmail}}" style="text-decoration-line: underline;">{{sparrowEmail}}</a>
-              </p>
-
-              <p class="welcome-text email-text-style">
+              <p class="email-text-style">
                 Warm regards, <br> The Sparrow Team <br>
                 <a href="https://sparrowapp.dev"
                   style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 1px solid #3670F7 ;">
-                  https://sparrowapp.dev</a>
+                  www.sparrowapp.dev</a>
               </p>
-
             </div>
-
-
             <hr>
 
           </section>
-
 
           {{> footer}}
 

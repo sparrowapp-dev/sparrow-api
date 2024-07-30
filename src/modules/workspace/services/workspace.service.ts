@@ -561,26 +561,8 @@ export class WorkspaceService {
     userRole: string,
   ) {
     const currentUser = await this.contextService.get("user");
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
-    const handlebarOptions = {
-      viewEngine: {
-        extname: ".handlebars",
-        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
-        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
-        defaultLayout: "main", // Use the main.handlebars layout
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-      extName: ".handlebars",
-    };
-    transporter.use("compile", hbs(handlebarOptions));
+    const transporter = this.emailService.createTransporter();
+
     const promiseArray = [];
     for (const user of payload.users) {
       const mailOptions = {
@@ -591,7 +573,7 @@ export class WorkspaceService {
         context: {
           firstname: user.name,
           username: currentUser.name,
-          userRole: userRole,
+          userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
           workspacename: payload.workspaceName,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
         },
@@ -672,15 +654,13 @@ export class WorkspaceService {
       userExistData.push(userData);
     }
 
-    //it is causing improting issue will do this in next PR
-
-    // await this.inviteUserInWorkspaceEmail(
-    //   {
-    //     users: userExistData,
-    //     workspaceName: workspaceData.name,
-    //   },
-    //   payload.role,
-    // );
+    await this.inviteUserInWorkspaceEmail(
+      {
+        users: userExistData,
+        workspaceName: workspaceData.name,
+      },
+      payload.role,
+    );
     const response = {
       notExistInTeam: usersNotExist,
       existInWorkspace: alreadyWorkspaceMember,
@@ -899,8 +879,8 @@ export class WorkspaceService {
       text: "Workspace Notification",
       template: "demoteEditorEmail",
       context: {
-        userName: userName,
-        userRole: userRole,
+        userName: userName.split(" ")[0],
+        userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
         workspaceName: workspaceName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
       },

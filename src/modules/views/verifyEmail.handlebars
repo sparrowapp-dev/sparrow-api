@@ -82,16 +82,27 @@
 
           <section>
 
-            <h1>Dear {{name}} </h1>
-            <p>We have Recieved Your Request to reset your Password.Please use the verification code below to complete
-              the rest </p>
-            <p>The verification code is valid for 1 min</p>
-            <p style="color: blue;       /* Set the text color to blue */
-    font-size: 20px; ">{{verificationCode}}</p>
-            <p>The verification code is valid for 1 min</p>
-            <p>Please do not share verification code</p>
-            <p>If you need additional assistance or you did not make this change, please contact us at <a
-                href="mailto:{{sparrowEmail}}" style="text-decoration-line: underline;">{{sparrowEmail}}</a></p>
+            <h1 class="email-text-style">Hi {{name}} </h1>
+
+            <p class="email-text-style">We have received your request to reset your password. Please use the
+              verification code below to complete
+              the request. </p>
+
+            <p class="email-text-style" style="color: blue; font-size: 20px; ">{{verificationCode}}</p>
+
+            <p class="email-text-style"> The verification code is valid for 1 min. Please do not share verification
+              code.If you need additional assistance or you did not make this change, please contact us at
+              <a href="mailto:{{sparrowEmail}}" style="text-decoration-line: underline;">{{sparrowEmail}}</a>!
+            </p>
+
+
+
+            <p class="welcome-text email-text-style">
+              Warm regards, <br> The Sparrow Team <br>
+              <a href="https://sparrowapp.dev"
+                style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 1px solid #3670F7 ;">
+                www.sparrowapp.dev</a>
+            </p>
 
             <hr>
 
