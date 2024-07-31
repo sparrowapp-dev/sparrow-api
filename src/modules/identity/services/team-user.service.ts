@@ -668,7 +668,7 @@ export class TeamUserService {
         sparrowWebsite:this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
-      subject: `Team Member Update: ${MemberName} been removed from ${teamName} team`,
+      subject: `Team Member Update: ${MemberName} has been removed from ${teamName} team`,
     };
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
