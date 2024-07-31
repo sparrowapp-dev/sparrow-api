@@ -576,6 +576,8 @@ export class WorkspaceService {
           userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
           workspacename: payload.workspaceName,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
         },
         subject: ` You've been invited to contribute to ${payload.workspaceName} workspace on Sparrow!`,
       };
@@ -847,6 +849,8 @@ export class WorkspaceService {
         workspaceName: workspaceName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Workspace Update: New Workspace is created under ${teamName} team.`,
     };
@@ -883,6 +887,8 @@ export class WorkspaceService {
         userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
         workspaceName: workspaceName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Your Role in the ${workspaceName} Workspace has been updated`,
     };
@@ -920,6 +926,8 @@ export class WorkspaceService {
         userRole: userRole,
         workspaceName: workspaceName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Your Role in the ${workspaceName} Workspace has been updated`,
     };

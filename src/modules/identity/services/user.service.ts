@@ -189,6 +189,8 @@ export class UserService {
         name: userDetails.name.split(" ")[0],
         verificationCode,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Reset Your Sparrow Account Password`,
     };
@@ -335,6 +337,8 @@ export class UserService {
       context: {
         name: firstname,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: ` Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
     };

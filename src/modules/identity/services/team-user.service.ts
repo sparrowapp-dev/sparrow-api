@@ -101,6 +101,8 @@ export class TeamUserService {
           teamname: payload.teamName,
           role : role.charAt(0).toUpperCase() + role.slice(1),
           sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
         },
         subject: ` Welcome to the ${payload.teamName} team on Sparrow!`,
       };
@@ -647,6 +649,8 @@ export class TeamUserService {
         memberName: MemberName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Team Member Update: ${MemberName} has left ${teamName}`,
     };
@@ -680,6 +684,8 @@ export class TeamUserService {
         memberName: MemberName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Team Member Update: ${MemberName} been removed from ${teamName} team`,
     };
@@ -710,6 +716,8 @@ export class TeamUserService {
         ownerName: OwnerName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Ownership of ${teamName} team is transferred `,
     };
@@ -740,6 +748,8 @@ export class TeamUserService {
         ownerName: OwnerName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Congratulations! You Are Now the Owner of ${teamName} team.`,
     };
@@ -773,6 +783,8 @@ export class TeamUserService {
         teamName: teamName,
         userName: userName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Your Role in the ${teamName} team has been updated.`,
     };
@@ -807,6 +819,8 @@ export class TeamUserService {
         teamName: teamName,
         userName: userName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Your Role in the team has been updated.`,
     };
