@@ -62,6 +62,13 @@ export default () => ({
   },
   support: {
     sparrowEmail: process.env.SPARROW_EMAIL,
+    sparrowWebsite: "https://sparrowapp.dev",
+    sparrowWebsiteName: "www.sparrowapp.dev",
+  },
+  social:{
+    linkedinUrl:"https://www.linkedin.com/showcase/sparrow-app/",
+    githubUrl:"https://github.com/sparrowapp-dev/sparrow-app",
+    discordUrl:"https://discord.com/invite/thQhnvM42A"
   },
   azure: {
     connectionString: process.env.AZURE_CONNECTION_STRING,

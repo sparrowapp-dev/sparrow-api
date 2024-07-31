@@ -68,26 +68,7 @@ export class TeamUserService {
 
   async inviteUserInTeamEmail(payload: TeamInviteMailDto, role: string) {
     const currentUser = await this.contextService.get("user");
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
-    const handlebarOptions = {
-      viewEngine: {
-        extname: ".handlebars",
-        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
-        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
-        defaultLayout: "main", // Use the main.handlebars layout
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-      extName: ".handlebars",
-    };
-    transporter.use("compile", hbs(handlebarOptions));
+    const transporter = this.emailService.createTransporter();
     const promiseArray = [];
     for (const user of payload.users) {
       const mailOptions = {
@@ -96,13 +77,15 @@ export class TeamUserService {
         text: "User Invited",
         template: "inviteTeamEmail",
         context: {
-          firstname: user.name,
-          username: currentUser.name,
+          firstname: user.name.split(" ")[0],
+          username: currentUser.name.split(" ")[0],
           teamname: payload.teamName,
-          role: role,
+          role : role.charAt(0).toUpperCase() + role.slice(1),
           sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
         },
-        subject: `${currentUser.name} has invited you to the team "${payload.teamName}"`,
+        subject: ` Welcome to the ${payload.teamName} team on Sparrow!`,
       };
       promiseArray.push(transporter.sendMail(mailOptions));
     }
@@ -647,6 +630,8 @@ export class TeamUserService {
         memberName: MemberName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Team Member Update: ${MemberName} has left ${teamName}`,
     };
@@ -680,8 +665,10 @@ export class TeamUserService {
         memberName: MemberName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
-      subject: `Team Member Update: ${MemberName} been removed from ${teamName} team`,
+      subject: `Team Member Update: ${MemberName} has been removed from ${teamName} team`,
     };
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
@@ -710,6 +697,8 @@ export class TeamUserService {
         ownerName: OwnerName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Ownership of ${teamName} team is transferred `,
     };
@@ -740,8 +729,10 @@ export class TeamUserService {
         ownerName: OwnerName,
         teamName: teamName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
-      subject: `Congratulations you are owner of ${teamName} team.`,
+      subject: `Congratulations! You Are Now the Owner of ${teamName} team.`,
     };
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
@@ -773,6 +764,8 @@ export class TeamUserService {
         teamName: teamName,
         userName: userName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Your Role in the ${teamName} team has been updated.`,
     };
@@ -807,6 +800,8 @@ export class TeamUserService {
         teamName: teamName,
         userName: userName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Your Role in the team has been updated.`,
     };

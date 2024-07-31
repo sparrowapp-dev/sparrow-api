@@ -25,6 +25,11 @@ export class EmailService {
         partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
         layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
         defaultLayout: "main",
+        helpers: {
+          linkedinUrl: () => this.configService.get("social.linkedinUrl"),
+          githubUrl: () => this.configService.get("social.githubUrl"),
+          discordUrl: () => this.configService.get("social.discordUrl"),
+        },
       },
       viewPath: path.resolve(__dirname, "..", "..", "views"),
       extName: ".handlebars",
