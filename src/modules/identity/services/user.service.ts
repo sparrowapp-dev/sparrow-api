@@ -175,7 +175,7 @@ export class UserService {
         sparrowWebsite:this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
-      subject: `Reset Your Sparrow Account Password`,
+      subject: `Reset your Sparrow account password`,
     };
     const promise = [
       transporter.sendMail(mailOptions),
@@ -323,7 +323,7 @@ export class UserService {
         sparrowWebsite:this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
-      subject: ` Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
+      subject: `Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
     };
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);

@@ -85,7 +85,7 @@ export class TeamUserService {
           sparrowWebsite:this.configService.get("support.sparrowWebsite"),
           sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
         },
-        subject: ` Welcome to the ${payload.teamName} team on Sparrow!`,
+        subject: `Welcome to the ${payload.teamName} team on Sparrow!`,
       };
       promiseArray.push(transporter.sendMail(mailOptions));
     }
@@ -633,7 +633,7 @@ export class TeamUserService {
         sparrowWebsite:this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
-      subject: `Team Member Update: ${MemberName} has left ${teamName}`,
+      subject: `Team Member Update: ${MemberName} has left ${teamName} team`,
     };
 
     await transporter.sendMail(mailOptions);
