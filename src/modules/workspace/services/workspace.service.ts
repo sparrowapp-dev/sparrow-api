@@ -579,8 +579,8 @@ export class WorkspaceService {
         text: "User Invited",
         template: "inviteWorkspaceEmail",
         context: {
-          firstname: user.name,
-          username: currentUser.name,
+          firstname: user.name.split(" ")[0],
+          username: currentUser.name.split(" ")[0],
           userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
           workspacename: payload.workspaceName,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
@@ -589,7 +589,7 @@ export class WorkspaceService {
             "support.sparrowWebsiteName",
           ),
         },
-        subject: ` You've been invited to contribute to ${payload.workspaceName} workspace on Sparrow!`,
+        subject: `You've been invited to contribute to ${payload.workspaceName} workspace on Sparrow!`,
       };
       promiseArray.push(transporter.sendMail(mailOptions));
     }
