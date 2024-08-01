@@ -4,4 +4,6 @@ export enum TOPIC {
   CREATE_USER_TOPIC = "create_user_topic",
   TEAM_ADMIN_ADDED_TOPIC = "team_admin_added_topic",
   TEAM_ADMIN_DEMOTED_TOPIC = "team_admin_demoted_topic",
+  UPDATES_ADDED_TOPIC = "updates_added_topic",
+  AI_RESPONSE_GENERATED_TOPIC = "ai_response_generated_topic",
 }

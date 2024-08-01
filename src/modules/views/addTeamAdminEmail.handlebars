@@ -1,0 +1,99 @@
+{{!< layoutName}} <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Leave Team</title>
+
+
+        <style>
+            body {
+                font-family: "Inter", sans-serif;
+                box-sizing: border-box;
+                padding: 0;
+                margin: 0;
+                transition: background-color 0.3s, color 0.3s;
+            }
+
+            .container {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+
+            }
+
+            .container-data {
+                margin: auto;
+                max-width: 570px;
+                padding: 20px;
+                transition: background-color 0.3s, color 0.3s;
+            }
+
+            .email-text-style {
+                color: var(--email-text-color, #333);
+                font-family: "Inter", sans-serif;
+                font-size: 14px;
+                font-style: normal;
+                font-weight: 400;
+                line-height: 21px;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <div class="container">
+            <section style="width: 100%;">
+                <div class="container-data">
+
+                    {{> header}}
+
+                    <section>
+
+                        <div style="margin-bottom: 5%">
+                            <h2 class="email-text-style">
+                                Hi ,
+                            </h2>
+
+                            <p class="email-text-style">
+                                We wanted to inform you that your role in the team on Sparrow has been updated.
+                            </p>
+
+                            <p class="email-text-style">Congratulations on your promotion to an Admin role! This upgrade recognizes your valuable
+                                contributions and leadership within the team.
+                                You now have enhanced responsibilities to drive the team and the projects forward.
+                            </p>
+
+
+
+                            <p class="email-text-style">Please log in to Sparrow to review your updated role.
+                                If you have any ideas or questions, please share them with the Sparrow team.
+                                For additional assistance, feel free to reach out at <a href="mailto:{{sparrowEmail}}"
+                                    style="text-decoration-line: underline;">{{sparrowEmail}}</a>!
+                            </p>
+
+                            <p class="email-text-style">
+                                Warm regards, <br> The Sparrow Team <br>
+                                <a href="{{sparrowWebsite}}"
+                                        style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7 ;">
+                                        {{sparrowWebsiteName}}</a>
+                            </p>
+
+                        </div>
+
+                        <hr>
+
+                    </section>
+
+
+                    {{> footer}}
+
+
+                </div>
+            </section>
+        </div>
+    </body>
+
+    </html>

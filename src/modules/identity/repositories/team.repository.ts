@@ -39,10 +39,7 @@ export class TeamRepository {
     teamData: CreateOrUpdateTeamDto,
   ): Promise<InsertOneResult<Team>> {
     const user = this.contextService.get("user");
-    const exists = await this.doesTeamExistsForUser(user._id, teamData.name);
-    if (exists) {
-      throw new BadRequestException("The Team with that name already exists.");
-    }
+
     const params = {
       users: [
         {

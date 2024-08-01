@@ -8,4 +8,6 @@ export enum Collections {
   FEATURES = "features",
   BRANCHES = "branches",
   FEEDBACK = "feedback",
+  UPDATES = "updates",
+  CHATBOTSTATS = "chatbotstats",
 }

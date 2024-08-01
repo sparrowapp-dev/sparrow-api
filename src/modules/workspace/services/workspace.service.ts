@@ -42,11 +42,13 @@ import {
 } from "../payloads/workspaceUser.payload";
 import { User } from "@src/modules/common/models/user.model";
 import { isString } from "class-validator";
-import * as nodemailer from "nodemailer";
-import hbs = require("nodemailer-express-handlebars");
 import { ConfigService } from "@nestjs/config";
-import path = require("path");
 import { Team } from "@src/modules/common/models/team.model";
+import { TOPIC } from "@src/modules/common/enum/topic.enum";
+import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { UpdatesType } from "@src/modules/common/enum/updates.enum";
+import { EmailService } from "@src/modules/common/services/email.service";
+
 /**
  * Workspace Service
  */
@@ -60,6 +62,8 @@ export class WorkspaceService {
     private readonly userRepository: UserRepository,
     private readonly teamService: TeamService,
     private readonly configService: ConfigService,
+    private readonly producerService: ProducerService,
+    private readonly emailService: EmailService,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -306,6 +310,24 @@ export class WorkspaceService {
       );
     }
     await Promise.all(userDataPromises);
+    const updateMessage = `New workspace "${workspaceData.name}" is created under "${teamData.name}" team`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.WORKSPACE,
+        workspaceId: response.insertedId,
+      }),
+    });
+
+    const userDetails = await this.userRepository.getUserById(teamData.owner);
+
+    await this.newWorkspaceEmail(
+      userDetails.name,
+      workspaceData.name,
+      teamData.name,
+      userDetails.email,
+    );
+
     return response;
   }
 
@@ -320,6 +342,7 @@ export class WorkspaceService {
     updates: Partial<UpdateWorkspaceDto>,
   ): Promise<UpdateResult<Document>> {
     const workspace = await this.IsWorkspaceAdminOrEditor(id);
+    const updateNameMessage = `Workspace is renamed from "${workspace.name}" to "${updates.name}"`;
     const data = await this.workspaceRepository.update(id, updates);
     const team = await this.teamRepository.findTeamByTeamId(
       new ObjectId(workspace.team.id),
@@ -370,6 +393,23 @@ export class WorkspaceService {
         );
       }
       await Promise.all(userDataPromises);
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateNameMessage,
+          type: UpdatesType.WORKSPACE,
+          workspaceId: id,
+        }),
+      });
+    }
+    if (updates?.description) {
+      const updateDescriptionMessage = `"${workspace.name}" workspace description is updated `;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateDescriptionMessage,
+          type: UpdatesType.WORKSPACE,
+          workspaceId: id,
+        }),
+      });
     }
     return data;
   }
@@ -524,25 +564,13 @@ export class WorkspaceService {
     return;
   }
 
-  async inviteUserInWorkspaceEmail(payload: WorkspaceInviteMailDto) {
+  async inviteUserInWorkspaceEmail(
+    payload: WorkspaceInviteMailDto,
+    userRole: string,
+  ) {
     const currentUser = await this.contextService.get("user");
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
-    const handlebarOptions = {
-      //view engine contains default and partial templates
-      viewEngine: {
-        defaultLayout: "",
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-    };
-    transporter.use("compile", hbs(handlebarOptions));
+    const transporter = this.emailService.createTransporter();
+
     const promiseArray = [];
     for (const user of payload.users) {
       const mailOptions = {
@@ -553,10 +581,15 @@ export class WorkspaceService {
         context: {
           firstname: user.name,
           username: currentUser.name,
+          userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
           workspacename: payload.workspaceName,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName: this.configService.get(
+            "support.sparrowWebsiteName",
+          ),
         },
-        subject: `${currentUser.name} has invited you to the workspace "${payload.workspaceName}"`,
+        subject: ` You've been invited to contribute to ${payload.workspaceName} workspace on Sparrow!`,
       };
       promiseArray.push(transporter.sendMail(mailOptions));
     }
@@ -564,9 +597,7 @@ export class WorkspaceService {
   }
 
   async addUserInWorkspace(payload: AddUserInWorkspaceDto): Promise<object> {
-    const workspaceData = await this.workspaceRepository.get(
-      payload.workspaceId,
-    );
+    let workspaceData = await this.workspaceRepository.get(payload.workspaceId);
     await this.checkAdminRole(payload.workspaceId);
     await this.roleCheck(payload.role);
     const usersExist = [];
@@ -575,7 +606,7 @@ export class WorkspaceService {
     for (const emailId of payload.users) {
       const teamMember = await this.isTeamMember(
         workspaceData.team.id,
-        emailId,
+        emailId.toLowerCase(),
       );
       if (teamMember) {
         const workspaceMember = await this.isWorkspaceMember(
@@ -583,15 +614,16 @@ export class WorkspaceService {
           teamMember,
         );
         if (workspaceMember) {
-          alreadyWorkspaceMember.push(emailId);
+          alreadyWorkspaceMember.push(emailId.toLowerCase());
         } else {
-          usersExist.push(emailId);
+          usersExist.push(emailId.toLowerCase());
         }
       } else {
-        usersNotExist.push(emailId);
+        usersNotExist.push(emailId.toLowerCase());
       }
     }
     for (const emailId of usersExist) {
+      workspaceData = await this.workspaceRepository.get(payload.workspaceId);
       const userData = await this.userRepository.getUserByEmail(emailId);
       const userWorkspaces = [...userData.workspaces];
       userWorkspaces.push({
@@ -618,16 +650,30 @@ export class WorkspaceService {
         new ObjectId(payload.workspaceId),
         updatedWorkspaceParams,
       );
+      const updateMessage = `"${userData?.name}" is added to "${workspaceData?.name}" workspace`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.WORKSPACE,
+          workspaceId: payload.workspaceId,
+        }),
+      });
     }
     const userExistData = [];
     for (const email of usersExist) {
-      const userData = await this.userRepository.getUserByEmail(email);
+      const userData = await this.userRepository.getUserByEmail(
+        email.toLowerCase(),
+      );
       userExistData.push(userData);
     }
-    await this.inviteUserInWorkspaceEmail({
-      users: userExistData,
-      workspaceName: workspaceData.name,
-    });
+
+    await this.inviteUserInWorkspaceEmail(
+      {
+        users: userExistData,
+        workspaceName: workspaceData.name,
+      },
+      payload.role,
+    );
     const response = {
       notExistInTeam: usersNotExist,
       existInWorkspace: alreadyWorkspaceMember,
@@ -693,11 +739,19 @@ export class WorkspaceService {
       new ObjectId(payload.userId),
       updatedUserParams,
     );
-
+    const updateMessage = `"${userData?.name}" is no longer part of "${workspaceData?.name}" workspace`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.WORKSPACE,
+        workspaceId: payload.workspaceId,
+      }),
+    });
     return response;
   }
 
   async changeUserRole(payload: UserRoleInWorkspcaeDto) {
+    let getUserIndex;
     await this.isWorkspaceAdmin(payload.workspaceId, payload.userId);
     await this.roleCheck(payload.role);
     const workspaceData = await this.workspaceRepository.get(
@@ -706,6 +760,15 @@ export class WorkspaceService {
     const workspaceUsers = [...workspaceData.users];
     for (let index = 0; index < workspaceUsers.length; index++) {
       if (workspaceUsers[index].id === payload.userId) {
+        getUserIndex = index;
+        const updateMessage = `"${workspaceUsers[index].name}'s" role is changed from "${workspaceUsers[index].role}" to "${payload.role}" in "${workspaceData.name}" workspace`;
+        await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+          value: JSON.stringify({
+            message: updateMessage,
+            type: UpdatesType.WORKSPACE,
+            workspaceId: payload.workspaceId,
+          }),
+        });
         workspaceUsers[index].role = payload.role;
       }
     }
@@ -716,6 +779,22 @@ export class WorkspaceService {
       new ObjectId(payload.workspaceId),
       updatedWorkspaceParams,
     );
+
+    if (payload.role == WorkspaceRole.VIEWER) {
+      await this.demoteEditorEmail(
+        workspaceUsers[getUserIndex].name,
+        workspaceUsers[getUserIndex].role,
+        workspaceData.name,
+        workspaceUsers[getUserIndex].email,
+      );
+    } else {
+      await this.promoteViewerEmail(
+        workspaceUsers[getUserIndex].name,
+        workspaceUsers[getUserIndex].role,
+        workspaceData.name,
+        workspaceUsers[getUserIndex].email,
+      );
+    }
     return response;
   }
 
@@ -771,5 +850,127 @@ export class WorkspaceService {
     });
     const workspaceDetails = await this.workspaceRepository.get(workspaceId);
     return workspaceDetails;
+  }
+
+  /*
+   * Sends an email notification to a user when a new workspace is created under a team.
+   *
+   * @param {string} ownerName - The name of the owner of the new workspace.
+   * @param {string} workspaceName - The name of the newly created workspace.
+   * @param {string} teamName - The name of the team under which the workspace was created.
+   * @param {string} email - The email address of the recipient.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async newWorkspaceEmail(
+    ownerName: string,
+    workspaceName: string,
+    teamName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Workspace Notification",
+      template: "newWorkspaceEmail",
+      context: {
+        ownerName: ownerName,
+        workspaceName: workspaceName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Workspace Update: New Workspace is created under ${teamName} team.`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when their role is demoted within a workspace.
+   *
+   * @param {string} userName - The name of the user whose role is being demoted.
+   * @param {string} userRole - The current role of the user being demoted.
+   * @param {string} workspaceName - The name of the workspace where the role change is occurring.
+   * @param {string} email - The email address of the recipient.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async demoteEditorEmail(
+    userName: string,
+    userRole: string,
+    workspaceName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Workspace Notification",
+      template: "demoteEditorEmail",
+      context: {
+        userName: userName.split(" ")[0],
+        userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
+        workspaceName: workspaceName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Your Role in the ${workspaceName} Workspace has been updated`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when their role is promoted within a workspace.
+   *
+   * @param {string} userName - The name of the user whose role is being promoted.
+   * @param {string} userRole - The new role of the user being promoted.
+   * @param {string} workspaceName - The name of the workspace where the role change is occurring.
+   * @param {string} email - The email address of the recipient.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async promoteViewerEmail(
+    userName: string,
+    userRole: string,
+    workspaceName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Workspace Notification",
+      template: "promoteViewerEmail",
+      context: {
+        userName: userName,
+        userRole: userRole,
+        workspaceName: workspaceName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Your Role in the ${workspaceName} Workspace has been updated`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
   }
 }

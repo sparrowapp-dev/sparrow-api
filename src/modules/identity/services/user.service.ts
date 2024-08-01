@@ -21,6 +21,7 @@ import hbs = require("nodemailer-express-handlebars");
 import path from "path";
 import { TeamService } from "./team.service";
 import { ContextService } from "@src/modules/common/services/context.service";
+import { EmailService } from "@src/modules/common/services/email.service";
 export interface IGenericMessageBody {
   message: string;
 }
@@ -35,6 +36,7 @@ export class UserService {
     private readonly authService: AuthService,
     private readonly teamService: TeamService,
     private readonly contextService: ContextService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -123,6 +125,7 @@ export class UserService {
       firstTeam: true,
     };
     await this.teamService.create(teamName);
+    await this.sendSignUpEmail(firstName, payload.email);
     return data;
   }
 
@@ -156,33 +159,21 @@ export class UserService {
     if (!userDetails) {
       throw new UnauthorizedException(ErrorMessages.BadRequestError);
     }
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
+    const transporter = this.emailService.createTransporter();
+
     const verificationCode = this.generateEmailVerificationCode().toUpperCase();
-    const handlebarOptions = {
-      //view engine contains default and partial templates
-      viewEngine: {
-        defaultLayout: "",
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-    };
-    transporter.use("compile", hbs(handlebarOptions));
+  
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: resetPasswordDto.email,
       text: "Sparrow Password Reset",
       template: "verifyEmail",
       context: {
-        name: userDetails.name,
+        name: userDetails.name.split(" ")[0],
         verificationCode,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
       },
       subject: `Reset Your Sparrow Account Password`,
     };
@@ -317,5 +308,24 @@ export class UserService {
   async getFirstName(name: string): Promise<string> {
     const nameArray = name.split(" ");
     return nameArray[0];
+  }
+
+  async sendSignUpEmail(firstname: string, email: string): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Sparrow Welcome",
+      template: "signUpEmail",
+      context: {
+        name: firstname,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
+      },
+      subject: ` Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
   }
 }

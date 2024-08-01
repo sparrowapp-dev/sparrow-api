@@ -17,6 +17,7 @@ import * as nodemailer from "nodemailer";
 import hbs = require("nodemailer-express-handlebars");
 import { ConfigService } from "@nestjs/config";
 import path = require("path");
+import { EmailService } from "@src/modules/common/services/email.service";
 /**
  * Team User Service
  */
@@ -29,6 +30,7 @@ export class TeamUserService {
     private readonly producerService: ProducerService,
     private readonly teamService: TeamService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   async HasPermissionToRemove(
@@ -40,10 +42,7 @@ export class TeamUserService {
       throw new BadRequestException("You cannot remove Owner");
     } else if (currentUser._id.toString() === teamData.owner) {
       return true;
-    } else if (
-      teamData.admins.includes(currentUser._id.toString()) &&
-      !teamData.admins.includes(payload.userId)
-    ) {
+    } else if (teamData.admins.includes(currentUser._id.toString())) {
       return true;
     }
     throw new BadRequestException("You don't have access");
@@ -67,25 +66,9 @@ export class TeamUserService {
     );
   }
 
-  async inviteUserInTeamEmail(payload: TeamInviteMailDto) {
+  async inviteUserInTeamEmail(payload: TeamInviteMailDto, role: string) {
     const currentUser = await this.contextService.get("user");
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get("app.mailHost"),
-      port: this.configService.get("app.mailPort"),
-      secure: this.configService.get("app.mailSecure") === "true",
-      auth: {
-        user: this.configService.get("app.userName"),
-        pass: this.configService.get("app.senderPassword"),
-      },
-    });
-    const handlebarOptions = {
-      //view engine contains default and partial templates
-      viewEngine: {
-        defaultLayout: "",
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-    };
-    transporter.use("compile", hbs(handlebarOptions));
+    const transporter = this.emailService.createTransporter();
     const promiseArray = [];
     for (const user of payload.users) {
       const mailOptions = {
@@ -94,12 +77,15 @@ export class TeamUserService {
         text: "User Invited",
         template: "inviteTeamEmail",
         context: {
-          firstname: user.name,
-          username: currentUser.name,
+          firstname: user.name.split(" ")[0],
+          username: currentUser.name.split(" ")[0],
           teamname: payload.teamName,
+          role : role.charAt(0).toUpperCase() + role.slice(1),
           sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
         },
-        subject: `${currentUser.name} has invited you to the team "${payload.teamName}"`,
+        subject: ` Welcome to the ${payload.teamName} team on Sparrow!`,
       };
       promiseArray.push(transporter.sendMail(mailOptions));
     }
@@ -118,7 +104,9 @@ export class TeamUserService {
     const usersNotExist = [];
     const alreadyTeamMember = [];
     for (const emailId of payload.users) {
-      const user = await this.userRepository.getUserByEmail(emailId);
+      const user = await this.userRepository.getUserByEmail(
+        emailId.toLowerCase(),
+      );
       if (user) {
         const teamMember = await this.teamService.isTeamMember(
           user._id.toString(),
@@ -139,7 +127,7 @@ export class TeamUserService {
     for (const userData of usersExist) {
       teamUsers.push({
         id: userData._id.toString(),
-        email: userData.email,
+        email: userData.email.toLowerCase(),
         name: userData.name,
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
@@ -195,10 +183,13 @@ export class TeamUserService {
 
       await this.teamRepository.updateTeamById(teamFilter, updatedTeamParams);
     }
-    await this.inviteUserInTeamEmail({
-      users: usersExist,
-      teamName: teamData.name,
-    });
+    await this.inviteUserInTeamEmail(
+      {
+        users: usersExist,
+        teamName: teamData.name,
+      },
+      payload.role,
+    );
     const response = {
       nonExistingUsers: usersNotExist,
       alreadyTeamMember: alreadyTeamMember,
@@ -259,6 +250,18 @@ export class TeamUserService {
       teamFilter,
       teamUpdatedParams,
     );
+
+    const ownerDetails = await this.getOwnerDetails(
+      teamData.owner,
+      teamData.users,
+    );
+
+    await this.removeUserEmail(
+      userData.name,
+      teamData.name,
+      ownerDetails.name.split(" ")[0],
+      ownerDetails.email,
+    );
     return data;
   }
 
@@ -318,6 +321,15 @@ export class TeamUserService {
     await this.producerService.produce(TOPIC.TEAM_ADMIN_ADDED_TOPIC, {
       value: JSON.stringify(message),
     });
+
+    const userDetails = await this.userRepository.getUserById(payload.userId);
+
+    await this.addAdminEmail(
+      teamData.name,
+      userDetails.name,
+      userDetails.email,
+    );
+
     return response;
   }
 
@@ -327,10 +339,7 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
-    const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
-    if (!teamOwner) {
-      throw new BadRequestException("You don't have access");
-    }
+    await this.teamService.isTeamOwnerOrAdmin(new ObjectId(payload.teamId));
     const updatedTeamAdmins = teamData.admins.filter(
       (id) => id !== payload.userId,
     );
@@ -369,6 +378,15 @@ export class TeamUserService {
     await this.producerService.produce(TOPIC.TEAM_ADMIN_DEMOTED_TOPIC, {
       value: JSON.stringify(message),
     });
+
+    const userDetails = await this.userRepository.getUserById(payload.userId);
+
+    await this.demoteTeamAdminEmail(
+      teamData.name,
+      userDetails.name,
+      userDetails.email,
+    );
+
     return response;
   }
 
@@ -386,6 +404,31 @@ export class TeamUserService {
     return false;
   }
 
+  /**
+   * Get owner details by ID.
+   * @param {string} ownerId - The ID of the owner.
+   * @param {any[]} users - Array of users.
+   * @returns {Promise<{ email: string; name: string } | null>} Owner details or null if not found.
+   */
+  async getOwnerDetails(
+    ownerId: string,
+    users: any[],
+  ): Promise<{ email: string; name: string } | null> {
+    for (const user of users) {
+      if (user.id.toString() === ownerId.toString()) {
+        return { email: user.email, name: user.name };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Change the owner of a team.
+   * @param {CreateOrUpdateTeamUserDto} payload - The payload containing team and user information.
+   * @returns {Promise<any>} The response from the team update operation.
+   * @throws {BadRequestException} If the user does not have access or is not an admin.
+   */
+
   async changeOwner(payload: CreateOrUpdateTeamUserDto) {
     const user = await this.contextService.get("user");
     const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
@@ -399,6 +442,8 @@ export class TeamUserService {
     const teamDetails = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
+
+    const prevOwner = teamDetails.owner;
     const teamMember = await this.teamService.isTeamMember(
       payload.userId,
       teamDetails.users,
@@ -436,6 +481,7 @@ export class TeamUserService {
     const currentOwnerUserDetails = await this.userRepository.getUserById(
       payload.userId,
     );
+
     const prevOwnerUserTeams = [...prevOwnerUserDetails.teams];
     for (let index = 0; index < prevOwnerUserTeams.length; index++) {
       if (prevOwnerUserTeams[index].id.toString() === payload.teamId) {
@@ -462,6 +508,27 @@ export class TeamUserService {
       new ObjectId(payload.userId),
       currentOwnerUpdatedParams,
     );
+
+    const prevOwnerDetails = await this.userRepository.getUserById(prevOwner);
+
+    const newOwnerDetails = await this.userRepository.getUserById(
+      payload.userId,
+    );
+
+    //Old Owner Email
+    await this.oldOwnerEmail(
+      teamDetails.name,
+      prevOwnerDetails.name.split(" ")[0],
+      prevOwnerDetails.email,
+    );
+
+    //New owner Email
+    await this.newOwnerEmail(
+      teamDetails.name,
+      newOwnerDetails.name.split(" ")[0],
+      newOwnerDetails.email,
+    );
+
     return response;
   }
 
@@ -521,6 +588,225 @@ export class TeamUserService {
       new ObjectId(teamId),
       teamUpdatedParams,
     );
+
+    const ownerDetails = await this.getOwnerDetails(
+      teamData.owner,
+      teamData.users,
+    );
+
+    await this.leaveTeamEmail(
+      userData.name,
+      teamData.name,
+      ownerDetails.name.split(" ")[0],
+      ownerDetails.email,
+    );
+
     return data;
+  }
+
+  /**
+   * Send an email when a user leaves a team.
+   * @param {string} MemberName - The name of the member leaving the team.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the owner.
+   * @param {string} email - The email address to send the notification to.
+   * @returns {Promise<void>}
+   */
+  async leaveTeamEmail(
+    MemberName: string,
+    teamName: string,
+    OwnerName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Leaving Team",
+      template: "leaveTeamEmail",
+      context: {
+        ownerName: OwnerName,
+        memberName: MemberName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
+      },
+      subject: `Team Member Update: ${MemberName} has left ${teamName}`,
+    };
+
+    await transporter.sendMail(mailOptions);
+  }
+
+  /**
+   * Send an email when a user is removed from a team.
+   * @param {string} MemberName - The name of the member removed from the team.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the owner.
+   * @param {string} email - The email address to send the notification to.
+   * @returns {Promise<void>}
+   */
+  async removeUserEmail(
+    MemberName: string,
+    teamName: string,
+    OwnerName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "User removed",
+      template: "removeUserEmail",
+      context: {
+        ownerName: OwnerName,
+        memberName: MemberName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
+      },
+      subject: `Team Member Update: ${MemberName} has been removed from ${teamName} team`,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Send an email to the old owner when ownership is transferred.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the old owner.
+   * @param {string} email - The email address of old owner to send the notification to.
+   * @returns {Promise<void>}
+   */
+  async oldOwnerEmail(
+    teamName: string,
+    OwnerName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Owner Notification",
+      template: "oldOwnerEmail",
+      context: {
+        ownerName: OwnerName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
+      },
+      subject: `Ownership of ${teamName} team is transferred `,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Send an email to the new owner when ownership is transferred.
+   * @param {string} teamName - The name of the team.
+   * @param {string} OwnerName - The name of the new owner.
+   * @param {string} email - The email address of new owner  to send the notification to.
+   * @returns {Promise<void>}
+   */
+  async newOwnerEmail(
+    teamName: string,
+    OwnerName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Owner Notification",
+      template: "newOwnerEmail",
+      context: {
+        ownerName: OwnerName,
+        teamName: teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
+      },
+      subject: `Congratulations! You Are Now the Owner of ${teamName} team.`,
+    };
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when their admin role in a team is demoted.
+   *
+   * @param {string} teamName - The name of the team from which the user is being demoted.
+   * @param {string} userName - The name of the user who is being demoted.
+   * @param {string} email - The email address of the user who is being demoted.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async demoteTeamAdminEmail(
+    teamName: string,
+    userName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Demote Admin Notification",
+      template: "demoteTeamAdminEmail",
+      context: {
+        teamName: teamName,
+        userName: userName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
+      },
+      subject: `Your Role in the ${teamName} team has been updated.`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends an email notification to a user when they are promoted to an admin role in a team.
+   *
+   * @param {string} teamName - The name of the team to which the user is being promoted.
+   * @param {string} userName - The name of the user who is being promoted.
+   * @param {string} email - The email address of the user who is being promoted.
+   * @returns {Promise<void>} A promise that resolves when the email has been sent.
+   *
+   * @throws {Error} Throws an error if there is an issue with sending the email.
+   */
+  async addAdminEmail(
+    teamName: string,
+    userName: string,
+    email: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Promote Member Email",
+      template: "addTeamAdminEmail",
+      context: {
+        teamName: teamName,
+        userName: userName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite:this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName:this.configService.get("support.sparrowWebsiteName"),
+      },
+      subject: `Your Role in the team has been updated.`,
+    };
+
+    const promise = [transporter.sendMail(mailOptions)];
+    await Promise.all(promise);
   }
 }
