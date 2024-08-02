@@ -13,6 +13,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
         "oauth.google.appUrl",
       )}/api/auth/google/callback`,
       scope: ["email", "profile"],
+      prompt: "consent select_account",
     });
   }
 
