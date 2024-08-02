@@ -144,7 +144,11 @@ export class AuthController {
         name,
         email,
       );
-      this.contextService.set("user", { id: user.insertedId, name, email });
+      await this.contextService.set("user", {
+        _id: user.insertedId,
+        name,
+        email,
+      });
       id = user.insertedId;
     }
     const tokenPromises = [
