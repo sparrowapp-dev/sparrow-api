@@ -7,6 +7,7 @@ export class GoogleOAuthGuard extends AuthGuard("google") {
   constructor(private configService: ConfigService) {
     super({
       accessType: configService.get("oauth.google.accessType"),
+      prompt: "select_account",
     });
   }
 }
