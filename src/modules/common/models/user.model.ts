@@ -130,4 +130,8 @@ export class UserWorkspaceDto {
   @IsMongoId()
   @IsNotEmpty()
   teamId: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isNewInvite?: boolean;
 }

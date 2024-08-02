@@ -62,11 +62,25 @@ export default () => ({
   },
   support: {
     sparrowEmail: process.env.SPARROW_EMAIL,
+    sparrowWebsite: "https://sparrowapp.dev",
+    sparrowWebsiteName: "www.sparrowapp.dev",
+  },
+  social:{
+    linkedinUrl:"https://www.linkedin.com/showcase/sparrow-app/",
+    githubUrl:"https://github.com/sparrowapp-dev/sparrow-app",
+    discordUrl:"https://discord.com/invite/thQhnvM42A"
   },
   azure: {
     connectionString: process.env.AZURE_CONNECTION_STRING,
   },
   feedbackBlob: {
     container: process.env.FEEDBACK_BLOB_CONTAINER,
+  },
+  ai: {
+    endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+    apiKey: process.env.AZURE_OPENAI_API_KEY,
+    deployment: process.env.AZURE_OPENAI_DEPLOYMENT,
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION,
+    maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS),
   },
 });

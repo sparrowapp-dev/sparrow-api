@@ -1,6 +1,7 @@
 import { Type } from "class-transformer";
 import {
   IsArray,
+  IsBoolean,
   IsDate,
   IsEmail,
   IsEnum,
@@ -124,6 +125,12 @@ export class Workspace {
   @IsString()
   @IsOptional()
   updatedBy?: string;
+}
+
+export class WorkspaceWithNewInviteTag extends Workspace {
+  @IsBoolean()
+  @IsOptional()
+  isNewInvite?: boolean;
 }
 
 export class WorkspaceDto {

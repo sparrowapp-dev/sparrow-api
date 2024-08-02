@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invite Team</title>
+    <title>Leave Team</title>
 
 
     <style>
@@ -27,25 +27,9 @@
       .container-data {
         margin: auto;
         max-width: 570px;
-        background-color: var(--background-color, white);
         padding: 20px;
         transition: background-color 0.3s, color 0.3s;
       }
-
-      .header-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-      }
-
-      .sparrow-heading-text {
-        font-size: 40px;
-        font-weight: 800;
-        color: var(--header-text-color, #3670F7);
-      }
-
-
 
       .email-text-style {
         color: var(--email-text-color, #333);
@@ -54,20 +38,6 @@
         font-style: normal;
         font-weight: 400;
         line-height: 21px;
-      }
-
-      .text-bold-dynamic {
-        color: var(--text-bold-color, #333333);
-        font-weight: 700;
-        line-height: 21px;
-      }
-
-      .icon {
-        transition: filter 0.3s;
-      }
-
-      .dark-mode .icon {
-        filter: invert(100%);
       }
     </style>
   </head>
@@ -84,18 +54,14 @@
 
             <div style="margin-bottom: 5%">
               <h2 class="email-text-style">
-                Hi {{firstname}},
+                Hi {{ownerName}},
               </h2>
 
               <p class="email-text-style">
-                Congratulations! {{firstname}} has invited you to join the {{workspacename}} workspace on Sparrow as
-                {{userRole}}.
+                We wanted to inform you that {{memberName}} has left from the {{teamName}} team on Sparrow. Your
+                leadership and vision drives the team forward, hence we thought we would inform you on this.
               </p>
 
-              <p class="email-text-style">
-                Your creativity and input will help shape the success in this workspace. Log in to Sparrow now to
-                start collaborating and making an impact to the team and the workspace!
-              </p>
 
               <p class="email-text-style">If you have any ideas or questions, please share them with the Sparrow team.
                 For additional assistance, feel free to reach out at <a href="mailto:{{sparrowEmail}}"
@@ -108,14 +74,10 @@
                   style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7 ;">
                   {{sparrowWebsiteName}}</a>
               </p>
-
             </div>
-
-
             <hr>
 
           </section>
-
 
           {{> footer}}
 
