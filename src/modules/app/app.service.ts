@@ -111,14 +111,15 @@ export class AppService {
       checked: false,
       base: "",
     };
+    const url = await this.handleFormatUrl(requestObject.url);
     const transformedObject: TransformedRequest = {
-      name: requestObject.url || "",
+      name: url || "",
       description: "",
       type: ItemTypeEnum.REQUEST,
       source: SourceTypeEnum.USER,
       request: {
         method: requestObject.method.toUpperCase(),
-        url: requestObject.url ?? "",
+        url: url ?? "",
         body: {
           raw: "",
           urlencoded: [],
@@ -144,8 +145,8 @@ export class AppService {
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
       },
-      createdBy: user.name,
-      updatedBy: user.name,
+      createdBy: user?.name,
+      updatedBy: user?.name,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
