@@ -160,6 +160,54 @@ export class CollectionRequestMetaData {
   auth?: Auth;
 }
 
+/**
+ * Data Transfer Object representing the metadata for a WebSocket within a collection.
+ */
+export class CollectionWebSocketMetaData {
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @ApiProperty({ example: "/pet/{petId}/uploadImage" })
+  @IsString()
+  @IsNotEmpty()
+  url: string;
+
+  @ApiProperty({ example: "message" })
+  @IsString()
+  @IsOptional()
+  message?: string;
+
+  @ApiProperty({
+    type: [Params],
+    example: {
+      name: "search",
+      description: "The search term to filter results",
+      required: false,
+      schema: {},
+    },
+  })
+  @IsArray()
+  @Type(() => Params)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  queryParams?: Params[];
+
+  @ApiProperty({
+    type: [Params],
+    example: {
+      name: "headers",
+      description: "headers for websocket",
+    },
+  })
+  @IsArray()
+  @Type(() => Params)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  headers?: Params[];
+}
+
 export class CollectionRequestItem {
   @ApiProperty({ example: "e25a5332-7b80-48f3-8e4f-6e229bcedd43" })
   @IsOptional()
@@ -199,6 +247,11 @@ export class CollectionRequestItem {
   @IsOptional()
   @Type(() => CollectionRequestMetaData)
   request?: CollectionRequestMetaData;
+
+  @ApiProperty({ type: CollectionWebSocketMetaData })
+  @IsOptional()
+  @Type(() => CollectionWebSocketMetaData)
+  websocket?: CollectionWebSocketMetaData;
 }
 
 export class CollectionRequest {
@@ -248,6 +301,42 @@ export class QueryParams {
 }
 
 export class CollectionRequestDto {
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  collectionId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsOptional()
+  folderId?: string;
+
+  @ApiProperty({ enum: ["SPEC", "USER"] })
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  @IsString()
+  source?: SourceTypeEnum;
+
+  @ApiProperty()
+  @Type(() => CollectionRequestItem)
+  @ValidateNested({ each: true })
+  items?: CollectionRequestItem;
+
+  @ApiProperty({ example: "main" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
+}
+
+/**
+ * Data Transfer Object representing a WebSocket in a collection.
+ */
+export class CollectionWebSocketDto {
   @ApiProperty({ example: "6538e910aa77d958912371f5" })
   @IsString()
   @IsNotEmpty()
