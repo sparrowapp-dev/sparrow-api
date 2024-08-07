@@ -19,7 +19,9 @@ import { ApiProperty } from "@nestjs/swagger";
 export enum ItemTypeEnum {
   FOLDER = "FOLDER",
   REQUEST = "REQUEST",
+  WEBSOCKET = "WEBSOCKET",
 }
+
 export enum BodyModeEnum {
   "none" = "none",
   "application/json" = "application/json",
@@ -43,6 +45,15 @@ export enum SourceTypeEnum {
   SPEC = "SPEC",
   USER = "USER",
 }
+
+export enum WebSocketBodyModeEnum {
+  "none" = "none",
+  "application/json" = "application/json",
+  "application/xml" = "application/xml",
+  "text/plain" = "text/plain",
+  "text/html" = "text/html",
+}
+
 export class QueryParams {
   @IsString()
   @IsNotEmpty()
@@ -179,6 +190,56 @@ export class RequestMetaData {
   headers?: Params[];
 }
 
+/**
+ * Data Transfer Object representing the metadata for a WebSocket connection.
+ */
+export class WebSocketMetaDeta {
+  @ApiProperty({ example: "/pet" })
+  @IsString()
+  @IsNotEmpty()
+  url: string;
+
+  @ApiProperty({ example: "message" })
+  @IsString()
+  @IsOptional()
+  message?: string;
+
+  @ApiProperty({
+    enum: ["application/json", "application/xml", "text/plain", "text/html"],
+  })
+  @IsEnum({ WebSocketBodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedRequestBodyType?: WebSocketBodyModeEnum;
+
+  @ApiProperty({
+    example: {
+      name: "search",
+      description: "The search term to filter results",
+      required: false,
+      schema: {},
+    },
+  })
+  @IsArray()
+  @Type(() => Params)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  queryParams?: Params[];
+
+  @ApiProperty({
+    type: [Params],
+    example: {
+      name: "headers",
+      description: "headers for request",
+    },
+  })
+  @IsArray()
+  @Type(() => Params)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  headers?: Params[];
+}
+
 export class CollectionItem {
   @ApiProperty({ example: "64f878a0293b1e4415866493" })
   @IsOptional()
@@ -195,7 +256,7 @@ export class CollectionItem {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ enum: ["FOLDER", "REQUEST"] })
+  @ApiProperty({ enum: ["FOLDER", "REQUEST", "WEBSOCKET"] })
   @IsEnum(ItemTypeEnum)
   @IsString()
   @IsNotEmpty()
@@ -226,6 +287,11 @@ export class CollectionItem {
   @IsOptional()
   @Type(() => RequestMetaData)
   request?: RequestMetaData;
+
+  @ApiProperty({ type: WebSocketMetaDeta })
+  @IsOptional()
+  @Type(() => WebSocketMetaDeta)
+  websocket?: WebSocketMetaDeta;
 
   @IsOptional()
   @IsBoolean()
