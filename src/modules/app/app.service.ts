@@ -94,6 +94,10 @@ export class AppService {
     }
   }
 
+  async handleFormatUrl(url: string): Promise<string> {
+    url = url.replace(/^(https?:\/\/\s*)+(https?:\/\/)/, "$2");
+    return url;
+  }
   async transformRequest(requestObject: any): Promise<TransformedRequest> {
     const user = await this.contextService.get("user");
     const keyValueDefaultObj = {
