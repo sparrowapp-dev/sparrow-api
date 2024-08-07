@@ -197,8 +197,8 @@ export class CollectionWebSocketMetaData {
   @ApiProperty({
     type: [Params],
     example: {
-      name: "Authorization",
-      description: "Bearer token for authentication",
+      name: "headers",
+      description: "headers for websocket",
     },
   })
   @IsArray()

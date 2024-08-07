@@ -193,7 +193,7 @@ export class RequestMetaData {
 /**
  * Data Transfer Object representing the metadata for a WebSocket connection.
  */
-export class WebSocketMetaDeta {
+export class WebSocketMetaData {
   @ApiProperty({ example: "/pet" })
   @IsString()
   @IsNotEmpty()
@@ -210,7 +210,7 @@ export class WebSocketMetaDeta {
   @IsEnum({ WebSocketBodyModeEnum })
   @IsString()
   @IsOptional()
-  selectedRequestBodyType?: WebSocketBodyModeEnum;
+  selectedWebSocketBodyType?: WebSocketBodyModeEnum;
 
   @ApiProperty({
     example: {
@@ -230,7 +230,7 @@ export class WebSocketMetaDeta {
     type: [Params],
     example: {
       name: "headers",
-      description: "headers for request",
+      description: "headers for websocket",
     },
   })
   @IsArray()
@@ -288,10 +288,10 @@ export class CollectionItem {
   @Type(() => RequestMetaData)
   request?: RequestMetaData;
 
-  @ApiProperty({ type: WebSocketMetaDeta })
+  @ApiProperty({ type: WebSocketMetaData })
   @IsOptional()
-  @Type(() => WebSocketMetaDeta)
-  websocket?: WebSocketMetaDeta;
+  @Type(() => WebSocketMetaData)
+  websocket?: WebSocketMetaData;
 
   @IsOptional()
   @IsBoolean()
