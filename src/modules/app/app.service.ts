@@ -94,6 +94,10 @@ export class AppService {
     }
   }
 
+  async handleFormatUrl(url: string): Promise<string> {
+    url = url.replace(/^(https?:\/\/\s*)+(https?:\/\/)/, "$2");
+    return url;
+  }
   async transformRequest(requestObject: any): Promise<TransformedRequest> {
     const user = await this.contextService.get("user");
     const keyValueDefaultObj = {
@@ -107,14 +111,25 @@ export class AppService {
       checked: false,
       base: "",
     };
+    let method = requestObject.method.toUpperCase();
+    if (
+      method !== "GET" &&
+      method !== "POST" &&
+      method !== "PUT" &&
+      method !== "PATCH" &&
+      method !== "DELETE"
+    ) {
+      method = "INVALID";
+    }
+    const url = await this.handleFormatUrl(requestObject.url);
     const transformedObject: TransformedRequest = {
-      name: requestObject.url || "",
+      name: url || "",
       description: "",
       type: ItemTypeEnum.REQUEST,
       source: SourceTypeEnum.USER,
       request: {
-        method: requestObject.method.toUpperCase(),
-        url: requestObject.url ?? "",
+        method: method,
+        url: url ?? "",
         body: {
           raw: "",
           urlencoded: [],
@@ -140,8 +155,8 @@ export class AppService {
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
       },
-      createdBy: user.name,
-      updatedBy: user.name,
+      createdBy: user?.name,
+      updatedBy: user?.name,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -164,7 +179,7 @@ export class AppService {
             AuthModeEnum["API Key"];
         }
       }
-      transformedObject.request.url = requestObject.raw_url;
+      transformedObject.request.url = url;
       transformedObject.request.queryParams = queryParams;
     }
 
