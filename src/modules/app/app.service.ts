@@ -111,6 +111,16 @@ export class AppService {
       checked: false,
       base: "",
     };
+    let method = requestObject.method.toUpperCase();
+    if (
+      method !== "GET" &&
+      method !== "POST" &&
+      method !== "PUT" &&
+      method !== "PATCH" &&
+      method !== "DELETE"
+    ) {
+      method = "INVALID";
+    }
     const url = await this.handleFormatUrl(requestObject.url);
     const transformedObject: TransformedRequest = {
       name: url || "",
@@ -118,7 +128,7 @@ export class AppService {
       type: ItemTypeEnum.REQUEST,
       source: SourceTypeEnum.USER,
       request: {
-        method: requestObject.method.toUpperCase(),
+        method: method,
         url: url ?? "",
         body: {
           raw: "",
@@ -169,7 +179,7 @@ export class AppService {
             AuthModeEnum["API Key"];
         }
       }
-      transformedObject.request.url = requestObject.raw_url;
+      transformedObject.request.url = url;
       transformedObject.request.queryParams = queryParams;
     }
 
