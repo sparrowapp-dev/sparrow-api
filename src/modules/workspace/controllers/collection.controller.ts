@@ -27,6 +27,7 @@ import { WorkspaceService } from "../services/workspace.service";
 import {
   BranchChangeDto,
   CollectionRequestDto,
+  CollectionWebSocketDto,
   FolderPayload,
 } from "../payloads/collectionRequest.payload";
 import { CollectionRequestService } from "../services/collection-request.service";
@@ -375,6 +376,103 @@ export class collectionController {
       "Branch switched Successfully",
       HttpStatusCode.OK,
       branch,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * @description This method adds a websocket to the collection, either as an individual websocket or as part of a folder.
+   * @param websocketDto The DTO containing the details of the websocket to be added.
+   * @param res The response object.
+   * @returns The response containing the status and the added websocket object.
+   */
+  @Post("websocket")
+  @ApiOperation({
+    summary: "Add a Websocket",
+    description:
+      "This will add a websocket which will be individual websocket or folder based websocket in collection",
+  })
+  @ApiResponse({ status: 200, description: "Websocket Updated Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Update a websocket" })
+  async addWebSocket(
+    @Body() websocketDto: Partial<CollectionWebSocketDto>,
+    @Res() res: FastifyReply,
+  ) {
+    const websocketObj = await this.collectionRequestService.addWebSocket(
+      websocketDto,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      websocketObj,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * @description This method updates an existing websocket in the collection, either as an individual websocket or as part of a folder.
+   * @param websocketId The ID of the websocket to be updated.
+   * @param websocketDto The DTO containing the updated details of the websocket.
+   * @param res The response object.
+   * @returns The response containing the status and the updated websocket object.
+   */
+  @Put("websocket/:websocketId")
+  @ApiOperation({
+    summary: "Update a websocket",
+    description:
+      "This will update a websocket which will be individual websocket or folder based websocket in collection",
+  })
+  @ApiResponse({ status: 200, description: "Websocket saved Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to save websocket" })
+  async updateWebSocket(
+    @Param("websocketId") websocketId: string,
+    @Body() websocketDto: Partial<CollectionWebSocketDto>,
+    @Res() res: FastifyReply,
+  ) {
+    const websocket = await this.collectionRequestService.updateWebSocket(
+      websocketId,
+      websocketDto,
+    );
+
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      websocket,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * @description This method deletes a websocket from the collection, either as an individual websocket or as part of a folder.
+   * @param websocketId The ID of the websocket to be deleted.
+   * @param websocketDto The DTO containing the details of the websocket to be deleted.
+   * @param res The response object.
+   * @returns The response containing the status and the updated collection.
+   */
+  @Delete("websocket/:websocketId")
+  @ApiOperation({
+    summary: "Delete a Request",
+    description:
+      "This will delete a websocket which will be individual websocket or folder based websocket in collection",
+  })
+  @ApiResponse({ status: 200, description: "Websocket Deleted Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to delete websocket" })
+  async deleteWebSocket(
+    @Param("websocketId") websocketId: string,
+    @Body() websocketDto: Partial<CollectionWebSocketDto>,
+    @Res() res: FastifyReply,
+  ) {
+    await this.collectionRequestService.deleteWebSocket(
+      websocketId,
+      websocketDto,
+    );
+    const collection = await this.collectionService.getCollection(
+      websocketDto.collectionId,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collection,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }

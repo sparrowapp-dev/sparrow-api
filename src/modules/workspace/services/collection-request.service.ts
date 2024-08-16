@@ -10,6 +10,7 @@ import { ContextService } from "@src/modules/common/services/context.service";
 import {
   CollectionRequestDto,
   CollectionRequestItem,
+  CollectionWebSocketDto,
   DeleteFolderDto,
   FolderDto,
 } from "../payloads/collectionRequest.payload";
@@ -381,8 +382,12 @@ export class CollectionRequestService {
         request,
       );
     }
-    if (requestData?.name !== request?.items?.name) {
-      const updateMessage = `"${requestData.name}" API is renamed to "${request.items.name}" in "${collectionData.name}" collection`;
+    if (
+      requestData?.name !== request?.items?.name &&
+      requestData?.name &&
+      request?.items?.name
+    ) {
+      const updateMessage = `"${requestData?.name}" API is renamed to "${request?.items?.name}" in "${collectionData.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
@@ -400,7 +405,10 @@ export class CollectionRequestService {
           workspaceId: request.workspaceId,
         }),
       });
-    } else if (requestData?.description !== request?.items?.description) {
+    } else if (
+      requestData?.description !== request?.items?.description &&
+      request?.items?.description
+    ) {
       const updateMessage = `API documentation is updated for "${request.items.name}" API in "${collectionData.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -464,5 +472,117 @@ export class CollectionRequestService {
       });
     }
     return noOfRequests;
+  }
+
+  /**
+   * Adds a new WebSocket to the collection.
+   * This method handles both individual WebSockets and folder-based WebSockets.
+   *
+   * @param websocket - The WebSocket details to be added.
+   * @returns The added WebSocket item.
+   * @throws UnauthorizedException if the user does not have the required permissions.
+   */
+  async addWebSocket(
+    websocket: Partial<CollectionWebSocketDto>,
+  ): Promise<CollectionItem> {
+    const user = await this.contextService.get("user");
+    await this.workspaceService.IsWorkspaceAdminOrEditor(websocket.workspaceId);
+    await this.checkPermission(websocket.workspaceId, user._id);
+    const noOfRequests = await this.getNoOfRequest(websocket.collectionId);
+    const uuid = uuidv4();
+    await this.collectionReposistory.getCollection(websocket.collectionId);
+    const websocketObj: CollectionItem = {
+      id: uuid,
+      name: websocket.items.name,
+      type: websocket.items.type,
+      description: websocket.items.description,
+      source: websocket.source ?? SourceTypeEnum.USER,
+      isDeleted: false,
+      createdBy: user?.name,
+      updatedBy: user?.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    if (websocket.items.type === ItemTypeEnum.WEBSOCKET) {
+      websocketObj.websocket = websocket.items.websocket;
+      await this.collectionReposistory.addWebSocket(
+        websocket.collectionId,
+        websocketObj,
+        noOfRequests,
+      );
+      return websocketObj;
+    } else {
+      websocketObj.items = [
+        {
+          id: uuidv4(),
+          name: websocket.items.items.name,
+          type: websocket.items.items.type,
+          description: websocket.items.items.description,
+          websocket: { ...websocket.items.items.websocket },
+          source: SourceTypeEnum.USER,
+          createdBy: user?.name,
+          updatedBy: user?.name,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+      await this.collectionReposistory.addWebSocketInFolder(
+        websocket.collectionId,
+        websocketObj,
+        noOfRequests,
+        websocket?.folderId,
+      );
+      return websocketObj.items[0];
+    }
+  }
+
+  /**
+   * Updates an existing WebSocket in the collection.
+   *
+   * @param websocketId - The ID of the WebSocket to be updated.
+   * @param websocket - The updated WebSocket details.
+   * @returns The updated WebSocket item.
+   * @throws UnauthorizedException if the user does not have the required permissions.
+   */
+  async updateWebSocket(
+    websocketId: string,
+    websocket: Partial<CollectionWebSocketDto>,
+  ): Promise<CollectionRequestItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(websocket.workspaceId);
+    const user = await this.contextService.get("user");
+    await this.checkPermission(websocket.workspaceId, user._id);
+    const collection = await this.collectionReposistory.updateWebSocket(
+      websocket.collectionId,
+      websocketId,
+      websocket,
+    );
+    return collection;
+  }
+
+  /**
+   * Deletes an existing WebSocket from the collection.
+   *
+   * @param websocketId - The ID of the WebSocket to be deleted.
+   * @param websocketDto - The WebSocket details including collection ID and folder ID (if applicable).
+   * @returns The result of the update operation.
+   * @throws UnauthorizedException if the user does not have the required permissions.
+   */
+  async deleteWebSocket(
+    websocketId: string,
+    websocketDto: Partial<CollectionWebSocketDto>,
+  ): Promise<UpdateResult<Collection>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      websocketDto.workspaceId,
+    );
+    const user = await this.contextService.get("user");
+    await this.checkPermission(websocketDto.workspaceId, user._id);
+    const noOfRequests = await this.getNoOfRequest(websocketDto.collectionId);
+    const collection = await this.collectionReposistory.deleteWebSocket(
+      websocketDto.collectionId,
+      websocketId,
+      noOfRequests,
+      websocketDto?.folderId,
+    );
+    return collection;
   }
 }
