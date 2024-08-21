@@ -68,3 +68,41 @@ export class PromptPayload {
   @ApiProperty({ required: true, example: "instructions to your assistant" })
   instructions: string;
 }
+
+/**
+ * Data Transfer Object for generating AI response.
+ */
+export class StreamPromptPayload {
+  /**
+   * The prompt or command.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "prompt" })
+  @IsNotEmpty()
+  text: string;
+
+  /**
+   * The thread ID associated with the prompt.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "thread id" })
+  threadId: string;
+
+  /**
+   * The tab id where that thread belongs.
+   */
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "tab id" })
+  tabId: string;
+
+  /**
+   * Additional instructions for the assistant which will
+   * decide the context for a particular thread.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "instructions to your assistant" })
+  instructions: string;
+}
