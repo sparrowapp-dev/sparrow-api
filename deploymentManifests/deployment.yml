@@ -143,6 +143,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: sparrow-api-secret
+                  key: REFRESH_TOKEN_MAX_LIMIT
             - name: APP_UPDATE_AVAILABLE
               valueFrom:
                 secretKeyRef:
