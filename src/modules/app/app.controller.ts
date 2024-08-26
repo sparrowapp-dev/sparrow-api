@@ -7,7 +7,6 @@ import {
   Post,
   Req,
   Res,
-  UseGuards,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -19,7 +18,6 @@ import {
 } from "@nestjs/swagger";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
-import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { ParserService } from "../common/services/parser.service";
 import { ApiResponseService } from "../common/services/api-response.service";
 import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
@@ -117,5 +115,39 @@ export class AppController {
         .status(HttpStatus.BAD_REQUEST)
         .send({ valid: false, msg: "Provided OAPI is invalid." });
     }
+  }
+
+  @Get("health")
+  @ApiOperation({
+    summary: "Health Check",
+    description: "Checks the health of Kafka and MongoDB connections.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Health check successful.",
+  })
+  @ApiResponse({
+    status: 500,
+    description: "Health check failed.",
+  })
+  async healthCheck(@Res() res: FastifyReply) {
+    const isKafkaConnected = await this.appService.checkKafkaConnection();
+    const isMongoConnected = await this.appService.checkMongoConnection();
+
+    if (isKafkaConnected && isMongoConnected) {
+      return res.status(HttpStatus.OK).send({
+        statusCode: HttpStatus.OK,
+        status: "healthy",
+        kafka: "connected",
+        mongo: "connected",
+      });
+    }
+
+    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      status: "unhealthy",
+      kafka: isKafkaConnected ? "connected" : "disconnected",
+      mongo: isMongoConnected ? "connected" : "disconnected",
+    });
   }
 }
