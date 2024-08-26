@@ -91,4 +91,8 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   AZURE_CONNECTION_STRING: string;
+
+  @IsString()
+  @IsNotEmpty()
+  AZURE_INSIGHTS_CONNECTION_STRING: string;
 }

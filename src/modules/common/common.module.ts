@@ -17,6 +17,7 @@ import { ApiResponseService } from "./services/api-response.service";
 import { ParserService } from "./services/parser.service";
 import { ContextService } from "./services/context.service";
 import { EmailService } from "./services/email.service";
+import { InsightsService } from "./services/insights.service";
 
 /**
  * Common Module provides global services and configurations used across the application.
@@ -27,16 +28,31 @@ import { EmailService } from "./services/email.service";
   imports: [WorkspaceModule], // Import the Workspace Module
   controllers: [],
   providers: [
+    InsightsService,
     {
       provide: "DATABASE_CONNECTION",
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService): Promise<Db> => {
+      inject: [ConfigService, InsightsService],
+      useFactory: async (
+        configService: ConfigService,
+        insightsService: InsightsService,
+      ): Promise<Db> => {
         try {
           // Connect to MongoDB using the URL from ConfigService
           const client = await MongoClient.connect(configService.get("db.url"));
           return client.db("sparrow");
         } catch (e) {
-          throw e;
+          const client = await insightsService.getClient();
+          if (client) {
+            client.trackException({
+              exception: e,
+              properties: {
+                status: 500,
+                message: "MongoDB connection failure",
+              },
+            });
+          } else {
+            console.error("Application Insights client is not initialized.");
+          }
         }
       },
     },
@@ -74,6 +90,7 @@ import { EmailService } from "./services/email.service";
     ConsumerService,
     BlobStorageService,
     EmailService,
+    InsightsService,
   ],
 })
 export class CommonModule {}
