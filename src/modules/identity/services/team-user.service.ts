@@ -40,10 +40,7 @@ export class TeamUserService {
       throw new BadRequestException("You cannot remove Owner");
     } else if (currentUser._id.toString() === teamData.owner) {
       return true;
-    } else if (
-      teamData.admins.includes(currentUser._id.toString()) &&
-      !teamData.admins.includes(payload.userId)
-    ) {
+    } else if (teamData.admins.includes(currentUser._id.toString())) {
       return true;
     }
     throw new BadRequestException("You don't have access");
@@ -118,7 +115,9 @@ export class TeamUserService {
     const usersNotExist = [];
     const alreadyTeamMember = [];
     for (const emailId of payload.users) {
-      const user = await this.userRepository.getUserByEmail(emailId);
+      const user = await this.userRepository.getUserByEmail(
+        emailId.toLowerCase(),
+      );
       if (user) {
         const teamMember = await this.teamService.isTeamMember(
           user._id.toString(),
@@ -139,7 +138,7 @@ export class TeamUserService {
     for (const userData of usersExist) {
       teamUsers.push({
         id: userData._id.toString(),
-        email: userData.email,
+        email: userData.email.toLowerCase(),
         name: userData.name,
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
@@ -327,10 +326,7 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
-    const teamOwner = await this.teamService.isTeamOwner(payload.teamId);
-    if (!teamOwner) {
-      throw new BadRequestException("You don't have access");
-    }
+    await this.teamService.isTeamOwnerOrAdmin(new ObjectId(payload.teamId));
     const updatedTeamAdmins = teamData.admins.filter(
       (id) => id !== payload.userId,
     );

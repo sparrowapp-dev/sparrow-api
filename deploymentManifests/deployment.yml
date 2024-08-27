@@ -188,7 +188,17 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: SPARROW_EMAIL
-
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_CONNECTION_STRING
+            - name: FEEDBACK_BLOB_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: FEEDBACK_BLOB_CONTAINER
+                  
 ---
 apiVersion: v1
 kind: Service

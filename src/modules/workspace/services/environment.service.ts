@@ -17,6 +17,7 @@ import {
   UpdateEnvironmentDto,
 } from "../payloads/environment.payload";
 import {
+  DefaultEnvironment,
   Environment,
   EnvironmentType,
 } from "@src/modules/common/models/environment.model";
@@ -25,6 +26,9 @@ import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { Workspace } from "@src/modules/common/models/workspace.model";
 import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
+import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { TOPIC } from "@src/modules/common/enum/topic.enum";
+import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 
 /**
  * Environment Service
@@ -36,6 +40,7 @@ export class EnvironmentService {
     private readonly environmentRepository: EnvironmentRepository,
     private readonly workspaceReposistory: WorkspaceRepository,
     private readonly contextService: ContextService,
+    private readonly producerService: ProducerService,
   ) {}
 
   /**
@@ -51,7 +56,17 @@ export class EnvironmentService {
       const user = this.contextService.get("user");
 
       if (type === EnvironmentType.LOCAL) {
-        await this.isWorkspaceAdminorEditor(createEnvironmentDto.workspaceId);
+        const workspace = await this.isWorkspaceAdminorEditor(
+          createEnvironmentDto.workspaceId,
+        );
+        const updateMessage = `New environment "${createEnvironmentDto.name}" is added under "${workspace.name}" workspace`;
+        await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+          value: JSON.stringify({
+            message: updateMessage,
+            type: UpdatesType.ENVIRONMENT,
+            workspaceId: createEnvironmentDto.workspaceId,
+          }),
+        });
       }
 
       const newEnvironment: Environment = {
@@ -104,8 +119,17 @@ export class EnvironmentService {
     id: string,
     workspaceId: string,
   ): Promise<DeleteResult> {
-    await this.isWorkspaceAdminorEditor(workspaceId);
+    const workspace = await this.isWorkspaceAdminorEditor(workspaceId);
+    const environment = await this.environmentRepository.get(id);
     const data = await this.environmentRepository.delete(id);
+    const updateMessage = `"${environment.name}" environment is deleted from "${workspace.name}" workspace`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.ENVIRONMENT,
+        workspaceId: workspaceId,
+      }),
+    });
     return data;
   }
 
@@ -139,11 +163,25 @@ export class EnvironmentService {
     updateEnvironmentDto: Partial<UpdateEnvironmentDto>,
     workspaceId: string,
   ): Promise<UpdateResult> {
-    await this.isWorkspaceAdminorEditor(workspaceId);
+    const workspace = await this.isWorkspaceAdminorEditor(workspaceId);
+    const environment = await this.environmentRepository.get(environmentId);
     const data = await this.environmentRepository.update(
       environmentId,
       updateEnvironmentDto,
     );
+    if (
+      updateEnvironmentDto?.name &&
+      updateEnvironmentDto?.name !== DefaultEnvironment.GLOBAL
+    ) {
+      const updateMessage = `"${environment.name}" environment is renamed to "${updateEnvironmentDto.name}" environment under "${workspace.name}" workspace`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.ENVIRONMENT,
+          workspaceId: workspaceId,
+        }),
+      });
+    }
     return data;
   }
 

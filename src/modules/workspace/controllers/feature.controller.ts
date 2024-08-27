@@ -15,34 +15,52 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { AddFeatureDto, UpdateFeatureDto } from "../payloads/feature.payload";
 import { FastifyReply } from "fastify";
+// ---- Payload
+import { AddFeatureDto, UpdateFeatureDto } from "../payloads/feature.payload";
+
+// ---- Services
 import { FeatureService } from "../services/feature.service";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
+
+// ---- Enum
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
+
+// ---- Guard
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+
 /**
  * Feature Controller
+ *
+ * This controller handles all operations related to features, including
+ * adding, updating, deleting, and retrieving features.
  */
 @ApiBearerAuth()
 @ApiTags("feature")
 @Controller("api/feature")
-@UseGuards(JwtAuthGuard)
 export class FeatureController {
   constructor(private readonly featureService: FeatureService) {}
 
+  /**
+   * Add a new feature.
+   *
+   * @param addFeatureDto - Data transfer object containing the feature details.
+   * @param res - Fastify response object.
+   */
   @Post()
   @ApiOperation({
-    summary: "Add a User",
+    summary: "Add a Feature",
     description: "You can add a feature",
   })
   @ApiResponse({ status: 201, description: "Feature Added" })
   @ApiResponse({ status: 400, description: "Failed to add feature" })
+  @UseGuards(JwtAuthGuard)
   async addFeature(
     @Body() addFeatureDto: AddFeatureDto,
     @Res() res: FastifyReply,
   ) {
     await this.featureService.addFeature(addFeatureDto);
+    // Retrieve the added feature for confirmation
     const feature = await this.featureService.getFeature(addFeatureDto.name);
     const responseData = new ApiResponseService(
       "Feature Added",
@@ -52,26 +70,13 @@ export class FeatureController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Get(":name")
-  @ApiOperation({
-    summary: "Get a Feature",
-    description: "This will retrieve a feature ",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Feature Received Successfullt",
-  })
-  @ApiResponse({ status: 400, description: "Failed to fetch Feature" })
-  async getFeature(@Param("name") name: string, @Res() res: FastifyReply) {
-    const feature = await this.featureService.getFeature(name);
-    const responseData = new ApiResponseService(
-      "Success",
-      HttpStatusCode.OK,
-      feature,
-    );
-    return res.status(responseData.httpStatusCode).send(responseData);
-  }
-
+  /**
+   * Update an existing feature.
+   *
+   * @param name - Name of the feature to update.
+   * @param updateFeatureDto - Data transfer object containing the updated feature details.
+   * @param res - Fastify response object.
+   */
   @Put(":name")
   @ApiOperation({
     summary: "Update a Feature",
@@ -79,13 +84,14 @@ export class FeatureController {
   })
   @ApiResponse({ status: 200, description: "Feature Updated Successfully" })
   @ApiResponse({ status: 400, description: "Update Feature Failed" })
+  @UseGuards(JwtAuthGuard)
   async updateFeature(
     @Param("name") name: string,
     @Body() updateFeatureDto: UpdateFeatureDto,
     @Res() res: FastifyReply,
   ) {
     await this.featureService.updateFeature(name, updateFeatureDto);
-
+    // Retrieve the updated feature for confirmation
     const feature = await this.featureService.getFeature(name);
     const responseData = new ApiResponseService(
       "Success",
@@ -95,6 +101,12 @@ export class FeatureController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  /**
+   * Delete a feature.
+   *
+   * @param name - Name of the feature to delete.
+   * @param res - Fastify response object.
+   */
   @Delete(":name")
   @ApiOperation({
     summary: "Delete a Feature",
@@ -102,6 +114,7 @@ export class FeatureController {
   })
   @ApiResponse({ status: 201, description: "Removed Feature Successfully" })
   @ApiResponse({ status: 400, description: "Failed to remove Feature" })
+  @UseGuards(JwtAuthGuard)
   async deleteFeature(@Param("name") name: string, @Res() res: FastifyReply) {
     const feature = await this.featureService.deleteFeature(name);
 
@@ -109,6 +122,31 @@ export class FeatureController {
       "Feature Removed",
       HttpStatusCode.OK,
       feature,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Retrieve all features.
+   *
+   * @param res - Fastify response object.
+   */
+  @Get("")
+  @ApiOperation({
+    summary: "Get All Feature",
+    description: "This will retrieve All feature ",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Features Received Successfullt",
+  })
+  @ApiResponse({ status: 400, description: "Failed to fetch Feature" })
+  async getAllFeature(@Res() res: FastifyReply) {
+    const features = await this.featureService.getAllFeature();
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      features,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
