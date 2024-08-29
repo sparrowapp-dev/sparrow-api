@@ -64,10 +64,23 @@ export class BlobStorageService {
     const fileId = uuidv4();
     const uniqueFileName = `${fileId}-${
       file.fieldname
-    }-.${await this.getFileExtension(file.mimetype)}`;
+    }.${await this.getFileExtension(file.mimetype)}`;
     const blockBlobClient =
       this.containerClient.getBlockBlobClient(uniqueFileName);
-    await blockBlobClient.upload(file.buffer, file.buffer.length);
+
+    // Set Content-Type and Content-Disposition headers
+    const uploadOptions = {
+      blobHTTPHeaders: {
+        blobContentType: file.mimetype, // Set the MIME type
+        blobContentDisposition: "inline", // Display the image inline in the browser
+      },
+    };
+
+    await blockBlobClient.upload(
+      file.buffer,
+      file.buffer.length,
+      uploadOptions,
+    );
     const blobResponse = {
       fileId: fileId,
       fileName: file.fieldname,
