@@ -104,4 +104,15 @@ export class FeedbackService {
     );
     return response;
   }
+
+  async uploadFeedbackFile(files: MemoryStorageFile[]) {
+    // Validate the uploaded files
+    await this.isFeedbackFilesValid(files);
+
+    // Upload all files to the blob storage service in parallel
+    const uploadResults = await Promise.all(
+      files.map((file) => this.blobStorageService.uploadBlob(file)),
+    );
+    return uploadResults;
+  }
 }
