@@ -117,8 +117,8 @@ export class FeedbackController {
    */
   @Post("uploads")
   @ApiOperation({
-    summary: "Add a Feedback",
-    description: "You can add a Feedback",
+    summary: "Upload Files",
+    description: "You can upload the images in blob",
   }) // Provides metadata for this operation in Swagger documentation
   @ApiConsumes("multipart/form-data") // Specifies that this endpoint consumes multipart/form-data
   @ApiBody({
@@ -137,18 +137,17 @@ export class FeedbackController {
     },
   }) // Defines the structure of the request body for Swagger documentation
   @UseInterceptors(FilesInterceptor("files", 5)) // NestJS FilesInterceptor to handle file uploads, limiting to 5 files
-  @ApiResponse({ status: 201, description: "Feedback Added" })
-  @ApiResponse({ status: 400, description: "Failed to add Feedback" })
+  @ApiResponse({ status: 201, description: "File Uploaded" })
+  @ApiResponse({ status: 400, description: "Failed to upload files" })
   async uploadFeedbackFile(
     @Res() res: FastifyReply,
     @UploadedFiles()
     files: MemoryStorageFile[],
   ) {
     const uploads = await this.feedbackService.uploadFeedbackFile(files); // Calls the feedback service to add new feedback
-    console.log(uploads, "uploads");
 
     const responseData = new ApiResponseService(
-      "Feedback Added",
+      "Files Uploaded",
       HttpStatusCode.CREATED,
       uploads,
     );
