@@ -297,49 +297,6 @@ export class AppService {
     if (requestObject.headers) {
       for (const [key, value] of Object.entries(requestObject.headers)) {
         transformedObject.request.headers.push({ key, value, checked: true });
-
-        // Check for Bearer token
-        if (
-          key.toLowerCase() === "authorization" &&
-          typeof value === "string" &&
-          (value.startsWith("bearer ") || value.startsWith("Bearer "))
-        ) {
-          transformedObject.request.auth.bearerToken = value.slice(7).trim();
-          transformedObject.request.selectedRequestAuthType =
-            AuthModeEnum["Bearer Token"];
-        }
-
-        // Check for API key
-        if (
-          key.toLowerCase() === "api-key" ||
-          key.toLowerCase() === "x-api-key"
-        ) {
-          transformedObject.request.auth.apiKey = {
-            authKey: key,
-            authValue: value,
-            addTo: AddTo.Header,
-          };
-          transformedObject.request.selectedRequestAuthType =
-            AuthModeEnum["API Key"];
-        }
-
-        // Check for Basic Auth
-        if (
-          key.toLowerCase() === "authorization" &&
-          typeof value === "string" &&
-          (value.startsWith("basic ") || value.startsWith("Basic "))
-        ) {
-          const decodedValue = Buffer.from(value.slice(6), "base64").toString(
-            "utf8",
-          );
-          const [username, password] = decodedValue.split(":");
-          transformedObject.request.auth.basicAuth = {
-            username,
-            password,
-          };
-          transformedObject.request.selectedRequestAuthType =
-            AuthModeEnum["Basic Auth"];
-        }
       }
     }
 
