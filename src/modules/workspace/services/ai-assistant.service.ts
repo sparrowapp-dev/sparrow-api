@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Socket } from "socket.io";
 
 // ---- OpenAI
 import { AzureOpenAI } from "openai";
@@ -11,7 +12,11 @@ import { MessagesPage } from "openai/resources/beta/threads/messages";
 import { Thread } from "openai/resources/beta/threads/threads";
 
 // ---- Payload
-import { AIResponseDto, PromptPayload } from "../payloads/ai-assistant.payload";
+import {
+  AIResponseDto,
+  PromptPayload,
+  StreamPromptPayload,
+} from "../payloads/ai-assistant.payload";
 
 // ---- Services
 import { ContextService } from "@src/modules/common/services/context.service";
@@ -183,5 +188,105 @@ export class AiAssistantService {
       }
     }
     return { result: "", threadId: currentThreadId, messageId: "" };
+  }
+
+  /**
+   * Generates stream wise response based on a given prompt using an assistant.
+   * @param data - Prompt input data to generate a response.
+   * @returns A promise that resolves with the generated text, thread ID, and message ID.
+   * @throws BadRequestException if the assistant cannot be created.
+   */
+  public async generateTextStream(
+    data: StreamPromptPayload,
+    client: Socket,
+  ): Promise<void> {
+    const { text: prompt, threadId, instructions } = data;
+
+    // Create assistant
+    const assistantId = await this.createAssistant(instructions);
+    if (!assistantId) {
+      throw new BadRequestException("AI Assistant not created!");
+    }
+
+    let currentThreadId = threadId;
+
+    // Create thread
+    if (!currentThreadId) {
+      const assistantThread = await this.assistantsClient.beta.threads.create(
+        {},
+      );
+      currentThreadId = assistantThread.id;
+    }
+
+    // Send message in thread
+    await this.assistantsClient.beta.threads.messages.create(currentThreadId, {
+      role: "user",
+      content: prompt,
+    });
+
+    // Create Stream for the run in thread
+    const stream = await this.assistantsClient.beta.threads.runs.stream(
+      currentThreadId,
+      {
+        assistant_id: assistantId,
+        max_completion_tokens: this.maxTokens,
+      },
+    );
+    let total_tokens = 0;
+
+    // Retrieve the events from stream
+    for await (const event of stream) {
+      let savedMessageId = "";
+      // Event for the messages which are created
+      if (event.event === "thread.message.delta") {
+        const eventData = event.data;
+        const delta = eventData.delta;
+        const content = delta.content;
+        const textBlock = content[0];
+        if (textBlock.type === "text") {
+          const messageValue = textBlock?.text?.value;
+          const response = {
+            status: "Messages In Queue",
+            result: messageValue || "",
+            threadId: currentThreadId,
+            messageId: event.data.id,
+            tabId: data.tabId,
+          };
+          client?.emit(`aiResponse_${data.tabId}`, response);
+        }
+        savedMessageId = event.data.id;
+      }
+      // Event when thread run completed
+      if (event.event === "thread.run.completed") {
+        const completedResponse = {
+          status: "Completed",
+          result: "",
+          threadId: currentThreadId,
+          messageId: savedMessageId,
+          tabId: data.tabId,
+        };
+        client?.emit(`aiResponse_${data.tabId}`, completedResponse);
+        total_tokens = event.data.usage.total_tokens;
+      }
+      // Event for run failure
+      if (event.event === "thread.run.failed") {
+        const failedResponse = {
+          status: "Failed",
+          result: event.data.last_error || "Unknown error",
+          threadId: currentThreadId,
+          messageId: savedMessageId,
+          tabId: data.tabId,
+        };
+        client?.emit(`aiResponse_${data.tabId}`, failedResponse);
+      }
+    }
+    // Save token details
+    const kafkaMessage = {
+      userId: this.contextService.get("user")._id,
+      tokenCount: total_tokens,
+    };
+    await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+      value: JSON.stringify(kafkaMessage),
+    });
   }
 }

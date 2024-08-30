@@ -45,6 +45,7 @@ import { FeedbackService } from "./services/feedback.service";
 import { UpdatesService } from "./services/updates.service";
 import { AiAssistantService } from "./services/ai-assistant.service";
 import { ChatbotStatsService } from "./services/chatbot-stats.service";
+import { AiAssistantGateway } from "./controllers/ai-assistant.gateway";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -80,6 +81,7 @@ import { ChatbotStatsService } from "./services/chatbot-stats.service";
     ChatbotTokenHandler,
     ChatbotStatsService,
     ChatbotStatsRepository,
+    AiAssistantGateway,
   ],
   exports: [
     CollectionService,
