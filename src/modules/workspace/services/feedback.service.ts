@@ -13,7 +13,10 @@ import { BlobStorageService } from "@src/modules/common/services/blobStorage.ser
 import { ContextService } from "@src/modules/common/services/context.service";
 
 // ---- Model
-import { Feedback } from "@src/modules/common/models/feedback.model";
+import {
+  Feedback,
+  FeedbackFiles,
+} from "@src/modules/common/models/feedback.model";
 import {
   ErrorMessages,
   FeedbackErrorMessages,
@@ -105,9 +108,39 @@ export class FeedbackService {
     return response;
   }
 
-  async uploadFeedbackFile(files: MemoryStorageFile[]) {
+  /**
+   * Validates the uploaded feedback files.
+   * @param files Array of files to be validated.
+   * @returns True if the files are valid.
+   * @throws BadRequestException if the validation fails.
+   */
+  async isUploadFilesValid(files: MemoryStorageFile[]): Promise<boolean> {
+    const mimeToExtension: { [key: string]: string } = {
+      "image/jpeg": ".jpeg",
+      "image/png": ".png",
+      "image/jpg": ".jpg",
+      "image/svg+xml": ".svg",
+      // You can add more MIME types and their corresponding extensions here if needed
+    };
+    if (files.length > 5) {
+      throw new BadRequestException(FeedbackErrorMessages.FilesCountLimit);
+    }
+
+    files.forEach((file) => {
+      if (mimeToExtension[file.mimetype] && file.size > 2097152) {
+        throw new BadRequestException(FeedbackErrorMessages.ImageSizeLimit);
+      } else if (!mimeToExtension[file.mimetype]) {
+        throw new BadRequestException(ErrorMessages.InvalidFile);
+      }
+    });
+    return true;
+  }
+
+  async uploadFeedbackFile(
+    files: MemoryStorageFile[],
+  ): Promise<FeedbackFiles[]> {
     // Validate the uploaded files
-    await this.isFeedbackFilesValid(files);
+    await this.isUploadFilesValid(files);
 
     // Upload all files to the blob storage service in parallel
     const uploadResults = await Promise.all(
