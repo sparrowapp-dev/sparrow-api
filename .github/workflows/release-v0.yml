@@ -17,8 +17,8 @@ jobs:
               password: ${{ secrets.REGISTRY_PASSWORD }}
 
          - run: |
-              docker build . -t sparrowprod.azurecr.io/sparrow-api:${{ github.run_number }}
-              docker push sparrowprod.azurecr.io/sparrow-api:${{ github.run_number }}
+              docker build . -t sparrowprod.azurecr.io/release-api-v0:${{ github.run_number }}
+              docker push sparrowprod.azurecr.io/release-api-v0:${{ github.run_number }}
    deploy:
       needs: build
       runs-on: ubuntu-latest
@@ -26,7 +26,7 @@ jobs:
          - uses: actions/checkout@master
          - uses: richardrigutins/replace-in-files@v1
            with:
-              files: "./deploymentManifests/deployment.yml"
+              files: "./deploymentManifests/release-v0.yml"
               search-text: '_BUILD__ID_'
               replacement-text: '${{ github.run_number }}'
 
@@ -41,4 +41,4 @@ jobs:
               action: deploy
               namespace: ${{ secrets.RELEASE_NAMESPACE }}
               manifests: |
-                 ./deploymentManifests/deployment.yml
+                 ./deploymentManifests/release-v0.yml
