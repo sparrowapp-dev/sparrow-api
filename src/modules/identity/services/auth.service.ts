@@ -77,7 +77,7 @@ export class AuthService {
    * @returns {Promise<ITokenReturnBody>} token body
    */
   async createToken(insertedId: ObjectId): Promise<ITokenReturnBody> {
-    const user = this.contextService.get("user");
+    const user = await this.userReposistory.getUserById(insertedId.toString());
     return {
       expires: this.expiration.toString(),
       expiresPrettyPrint: AuthService.prettyPrintSeconds(
@@ -96,7 +96,7 @@ export class AuthService {
   }
 
   async createRefreshToken(insertedId: ObjectId): Promise<ITokenReturnBody> {
-    const user = this.contextService.get("user");
+    const user = await this.userReposistory.getUserById(insertedId.toString());
     const data = {
       expires: this.refreshTokenExpirationTime.toString(),
       expiresPrettyPrint: AuthService.prettyPrintSeconds(

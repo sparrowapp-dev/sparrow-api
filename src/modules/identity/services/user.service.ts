@@ -22,6 +22,7 @@ import path from "path";
 import { TeamService } from "./team.service";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { EmailService } from "@src/modules/common/services/email.service";
+import { VerificationPayload } from "../payloads/verification.payload";
 export interface IGenericMessageBody {
   message: string;
 }
@@ -108,16 +109,20 @@ export class UserService {
         "The account with the provided email currently exists. Please choose another one.",
       );
     }
-    const createdUser = await this.userRepository.createUser(payload);
+    await this.userRepository.createUser(payload);
 
-    const tokenPromises = [
-      this.authService.createToken(createdUser.insertedId),
-      this.authService.createRefreshToken(createdUser.insertedId),
-    ];
-    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+    // const tokenPromises = [
+    //   this.authService.createToken(createdUser.insertedId),
+    //   this.authService.createRefreshToken(createdUser.insertedId),
+    // ];
+    // const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+    // const data = {
+    //   accessToken,
+    //   refreshToken,
+    // };
     const data = {
-      accessToken,
-      refreshToken,
+      isUserCreated: true,
+      isEmailVerified: false,
     };
     const firstName = await this.getFirstName(payload.name);
     const teamName = {
@@ -126,6 +131,7 @@ export class UserService {
     };
     await this.teamService.create(teamName);
     await this.sendSignUpEmail(firstName, payload.email);
+    await this.sendUserVerificationEmail({ email: payload.email });
     return data;
   }
 
@@ -183,6 +189,43 @@ export class UserService {
       transporter.sendMail(mailOptions),
       this.userRepository.updateVerificationCode(
         resetPasswordDto.email,
+        verificationCode,
+      ),
+    ];
+    await Promise.all(promise);
+  }
+
+  async sendUserVerificationEmail(
+    verificationPayload: VerificationPayload,
+  ): Promise<void> {
+    const userDetails = await this.getUserByEmail(verificationPayload.email);
+    if (userDetails?.isEmailVerified) {
+      throw new BadRequestException(ErrorMessages.BadRequestError);
+    }
+    const transporter = this.emailService.createTransporter();
+
+    const verificationCode = this.generateEmailVerificationCode().toUpperCase();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: verificationPayload.email,
+      text: "Email Verification Code",
+      template: "signUpVerifyEmail",
+      context: {
+        name: userDetails.name.split(" ")[0],
+        verificationCode,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Your Sparrow Verification Code Inside - Let’s Get You Started!`,
+    };
+    const promise = [
+      transporter.sendMail(mailOptions),
+      this.userRepository.updateEmailVerificationCode(
+        verificationPayload.email,
         verificationCode,
       ),
     ];
@@ -279,6 +322,36 @@ export class UserService {
       throw new UnauthorizedException(ErrorMessages.VerificationCodeExpired);
     }
     return;
+  }
+
+  async verifyUserEmailVerificationCode(
+    email: string,
+    verificationCode: string,
+    expireTime: number,
+  ) {
+    const user = await this.getUserByEmail(email);
+    if (user?.emailVerificationCode !== verificationCode.toUpperCase()) {
+      throw new BadRequestException("Email Already Verified");
+    }
+    if (
+      (Date.now() - user.emailVerificationCodeTimeStamp.getTime()) / 1000 >
+      expireTime
+    ) {
+      throw new UnauthorizedException(ErrorMessages.VerificationCodeExpired);
+    }
+    if (verificationCode === user.emailVerificationCode) {
+      await this.userRepository.updateUserEmailVerificationStatus(email);
+    }
+    const tokenPromises = [
+      this.authService.createToken(user._id),
+      this.authService.createRefreshToken(user._id),
+    ];
+    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+    const data = {
+      accessToken,
+      refreshToken,
+    };
+    return data;
   }
 
   async expireVerificationCode(email: string): Promise<void> {

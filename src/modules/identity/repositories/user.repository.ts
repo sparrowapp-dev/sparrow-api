@@ -80,6 +80,7 @@ export class UserRepository {
       .collection<User>(Collections.USER)
       .insertOne({
         ...payload,
+        isEmailVerified: false,
         password: createHmac("sha256", payload.password).digest("hex"),
         teams: [],
         workspaces: [],
@@ -198,6 +199,7 @@ export class UserRepository {
           oAuthId,
         },
       ],
+      isEmailVerified: true,
       refresh_tokens: [],
       workspaces: [],
       createdAt: new Date(Date.now()),
@@ -225,6 +227,22 @@ export class UserRepository {
           verificationCode,
           verificationCodeTimeStamp: new Date(),
           isVerificationCodeActive: true,
+        },
+      },
+    );
+  }
+
+  async updateEmailVerificationCode(
+    email: string,
+    emailVerificationCode: string,
+  ): Promise<void> {
+    await this.db.collection<User>(Collections.USER).findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          isEmailVerified: false,
+          emailVerificationCode,
+          emailVerificationCodeTimeStamp: new Date(),
         },
       },
     );
@@ -259,5 +277,17 @@ export class UserRepository {
       .find({ _id: { $in: IdArray } })
       .toArray();
     return response;
+  }
+
+  async updateUserEmailVerificationStatus(email: string): Promise<void> {
+    await this.db.collection<User>(Collections.USER).findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          isEmailVerified: true,
+          emailVerificationCode: "",
+        },
+      },
+    );
   }
 }
