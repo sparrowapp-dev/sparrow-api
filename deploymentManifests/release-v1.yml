@@ -1,0 +1,247 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: release-api-v1
+  name: release-api-v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: release-api-v1
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: release-api-v1
+    spec:
+      containers:
+        - image: sparrowprod.azurecr.io/release-api-v1:_BUILD__ID_
+          name: release-api-v1
+          imagePullPolicy: Always
+          resources: {}
+          ports:
+            - containerPort: 80
+          env:
+            - name: PORT
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: PORT
+            - name: APP_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: APP_ENV
+            - name: APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: APP_URL
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: JWT_SECRET_KEY
+            - name: EMAIL_VALIDATION_CODE_EXPIRY_TIME
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: EMAIL_VALIDATION_CODE_EXPIRY_TIME
+            - name: JWT_EXPIRATION_TIME
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: JWT_EXPIRATION_TIME
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: DB_URL
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_CONNECTION_STRING
+            - name: REFRESH_TOKEN_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: REFRESH_TOKEN_SECRET_KEY
+            - name: REFRESH_TOKEN_EXPIRATION_TIME
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: REFRESH_TOKEN_EXPIRATION_TIME
+            - name: REFRESH_TOKEN_MAX_LIMIT
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: REFRESH_TOKEN_MAX_LIMIT
+            - name: SMTP_SENDER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: SMTP_SENDER_EMAIL
+            - name: SMTP_SENDER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: SMTP_SENDER_PASSWORD
+            - name: SMTP_MAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: SMTP_MAIL_HOST
+            - name: SMTP_MAIL_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: SMTP_MAIL_PORT
+            - name: SMTP_MAIL_SECURE
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: SMTP_MAIL_SECURE
+            - name: SMTP_USER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: SMTP_USER_NAME
+            - name: LOGIN_REDIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: LOGIN_REDIRECT_URL
+            - name: GOOGLE_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: GOOGLE_APP_URL
+            - name: GOOGLE_ACCESS_TYPE
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: GOOGLE_ACCESS_TYPE
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: GOOGLE_CLIENT_SECRET
+            - name: KAFKA_BROKER
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: KAFKA_BROKER
+            - name: REFRESH_TOKEN_MAX_LIMIT
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: REFRESH_TOKEN_MAX_LIMIT
+            - name: APP_UPDATE_AVAILABLE
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: APP_UPDATE_AVAILABLE
+            - name: APP_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: APP_VERSION
+            - name: WINDOWS_APP_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: WINDOWS_APP_SIGNATURE
+            - name: WINDOWS_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: WINDOWS_APP_URL
+            - name: MAC_APPLE_SILICON_APP_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: MAC_APPLE_SILICON_APP_SIGNATURE
+            - name: MAC_APPLE_SILICON_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: MAC_APPLE_SILICON_APP_URL
+            - name: MAC_INTEL_APP_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: MAC_INTEL_APP_SIGNATURE
+            - name: MAC_INTEL_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: MAC_INTEL_APP_URL
+            - name: SPARROW_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: SPARROW_EMAIL
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_CONNECTION_STRING
+            - name: FEEDBACK_BLOB_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: FEEDBACK_BLOB_CONTAINER
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_OPENAI_ENDPOINT
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_OPENAI_API_KEY
+            - name: AZURE_OPENAI_DEPLOYMENT
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_OPENAI_DEPLOYMENT
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_OPENAI_API_VERSION
+            - name: AZURE_OPENAI_MAX_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_OPENAI_MAX_TOKENS
+            - name: AZURE_INSIGHTS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v1-secret
+                  key: AZURE_INSIGHTS_CONNECTION_STRING
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-api-v1
+  labels:
+    run: release-api-v1
+spec:
+  type: ClusterIP
+  selector:
+    app: release-api-v1
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9000
