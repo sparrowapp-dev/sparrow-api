@@ -74,6 +74,10 @@ export class AuthController {
       const [accessToken, refreshToken] = await Promise.all(tokenPromises);
       userAccessToken = accessToken;
       userRefreshToken = refreshToken;
+    } else {
+      await this.userService.sendUserVerificationEmail({
+        email: payload.email,
+      });
     }
 
     const data = {

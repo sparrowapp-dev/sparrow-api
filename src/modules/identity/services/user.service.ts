@@ -200,7 +200,7 @@ export class UserService {
   ): Promise<void> {
     const userDetails = await this.getUserByEmail(verificationPayload.email);
     if (userDetails?.isEmailVerified) {
-      throw new BadRequestException(ErrorMessages.BadRequestError);
+      throw new BadRequestException("Email Already Verified");
     }
     const transporter = this.emailService.createTransporter();
 
@@ -331,7 +331,7 @@ export class UserService {
   ) {
     const user = await this.getUserByEmail(email);
     if (user?.emailVerificationCode !== verificationCode.toUpperCase()) {
-      throw new BadRequestException("Email Already Verified");
+      throw new UnauthorizedException("Wrong Code");
     }
     if (
       (Date.now() - user.emailVerificationCodeTimeStamp.getTime()) / 1000 >
