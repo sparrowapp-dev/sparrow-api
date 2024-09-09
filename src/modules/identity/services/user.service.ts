@@ -111,15 +111,6 @@ export class UserService {
     }
     await this.userRepository.createUser(payload);
 
-    // const tokenPromises = [
-    //   this.authService.createToken(createdUser.insertedId),
-    //   this.authService.createRefreshToken(createdUser.insertedId),
-    // ];
-    // const [accessToken, refreshToken] = await Promise.all(tokenPromises);
-    // const data = {
-    //   accessToken,
-    //   refreshToken,
-    // };
     const data = {
       isUserCreated: true,
       isEmailVerified: false,
@@ -195,6 +186,15 @@ export class UserService {
     await Promise.all(promise);
   }
 
+  /**
+   * Sends a verification email to the user if their email is not already verified.
+   * The email includes a verification code and other necessary information.
+   * Also updates the user's verification code in the database.
+   *
+   * @param verificationPayload - The payload containing the user's email for verification.
+   * @throws If the email is already verified.
+   * @returns Resolves when the email is sent and the verification code is updated.
+   */
   async sendUserVerificationEmail(
     verificationPayload: VerificationPayload,
   ): Promise<void> {
@@ -202,6 +202,7 @@ export class UserService {
     if (userDetails?.isEmailVerified) {
       throw new BadRequestException("Email Already Verified");
     }
+    // Create an email transporter using the email service
     const transporter = this.emailService.createTransporter();
 
     const verificationCode = this.generateEmailVerificationCode().toUpperCase();
@@ -324,6 +325,16 @@ export class UserService {
     return;
   }
 
+  /**
+   * Verifies the user's email verification code and updates the user's email verification status.
+   * If the code is valid and not expired, generates and returns access and refresh tokens.
+   *
+   * @param email - The email address of the user who is verifying the code.
+   * @param verificationCode - The verification code sent to the user.
+   * @param expireTime - The time (in seconds) after which the verification code expires.
+   * @throws  If the verification code is wrong or expired.
+   * @returns  An object containing the access and refresh tokens.
+   */
   async verifyUserEmailVerificationCode(
     email: string,
     verificationCode: string,
