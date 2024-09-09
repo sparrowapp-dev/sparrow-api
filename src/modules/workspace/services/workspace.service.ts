@@ -11,6 +11,7 @@ import {
 } from "../payloads/workspace.payload";
 import {
   Workspace,
+  WorkspaceDto,
   WorkspaceWithNewInviteTag,
 } from "@src/modules/common/models/workspace.model";
 import { ContextService } from "@src/modules/common/services/context.service";
@@ -972,5 +973,37 @@ export class WorkspaceService {
 
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
+  }
+
+  async updateTeamDetailsInWorkspace(
+    teamId: string,
+    teamName: string,
+    workspaceArray: WorkspaceDto[],
+  ) {
+    const updatedIdArray = [];
+    for (const item of workspaceArray) {
+      if (!isString(item.id)) {
+        updatedIdArray.push(item.id);
+        continue;
+      }
+      updatedIdArray.push(new ObjectId(item.id));
+    }
+    const workspaceDataArray =
+      await this.workspaceRepository.findWorkspacesByIdArray(updatedIdArray);
+    for (let index = 0; index < workspaceDataArray.length; index++) {
+      if (workspaceDataArray[index].team.id === teamId) {
+        workspaceDataArray[index].team.name = teamName;
+      }
+    }
+    const workspaceDataPromises = [];
+    for (const item of workspaceDataArray) {
+      workspaceDataPromises.push(
+        this.workspaceRepository.updateWorkspaceById(
+          new ObjectId(item._id),
+          item,
+        ),
+      );
+    }
+    await Promise.all(workspaceDataPromises);
   }
 }
