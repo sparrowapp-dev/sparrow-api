@@ -344,6 +344,9 @@ export class UserService {
     if (user?.emailVerificationCode !== verificationCode.toUpperCase()) {
       throw new UnauthorizedException("Wrong Code");
     }
+    if (user?.isEmailVerified) {
+      throw new BadRequestException("Email Already Verified");
+    }
     if (
       (Date.now() - user.emailVerificationCodeTimeStamp.getTime()) / 1000 >
       expireTime
