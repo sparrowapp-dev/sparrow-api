@@ -64,16 +64,26 @@ export class AuthController {
     const user = await this.authService.validateUser(payload);
     // Removing refresh token limit check until refresh token flow is fixed - Nayan (Feb 28, 2024)
     // await this.authService.checkRefreshTokenLimit(user);
-
-    const tokenPromises = [
-      this.authService.createToken(user._id),
-      this.authService.createRefreshToken(user._id),
-    ];
-    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+    let userAccessToken;
+    let userRefreshToken;
+    if (user?.isEmailVerified) {
+      const tokenPromises = [
+        this.authService.createToken(user._id),
+        this.authService.createRefreshToken(user._id),
+      ];
+      const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+      userAccessToken = accessToken;
+      userRefreshToken = refreshToken;
+    } else {
+      await this.userService.sendUserVerificationEmail({
+        email: payload.email,
+      });
+    }
 
     const data = {
-      accessToken,
-      refreshToken,
+      accessToken: userAccessToken,
+      refreshToken: userRefreshToken,
+      isEmailVerified: user?.isEmailVerified ? true : false,
     };
     const responseData = new ApiResponseService(
       "Login Successful",

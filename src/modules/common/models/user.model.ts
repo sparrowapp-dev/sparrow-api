@@ -88,6 +88,19 @@ export class User {
   @IsBoolean()
   @IsOptional()
   isVerificationCodeActive?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isEmailVerified?: boolean;
+
+  @IsString()
+  @MaxLength(6)
+  @IsOptional()
+  emailVerificationCode?: string;
+
+  @IsDate()
+  @IsOptional()
+  emailVerificationCodeTimeStamp?: Date;
 }
 
 export class UserDto {

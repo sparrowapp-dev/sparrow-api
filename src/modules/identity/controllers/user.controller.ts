@@ -32,6 +32,7 @@ import { RefreshTokenGuard } from "@src/modules/common/guards/refresh-token.guar
 import { RefreshTokenRequest } from "./auth.controller";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
+import { VerificationPayload } from "../payloads/verification.payload";
 /**
  * User Controller
  */
@@ -150,6 +151,25 @@ export class UserController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post("send-user-verification-email")
+  @ApiOperation({
+    summary: "Send a Verification Email",
+    description:
+      "Sending a Verification Email containing a Verification Code for email verification of user.",
+  })
+  async sendUserVerificationEmail(
+    @Body() verificationPayload: VerificationPayload,
+    @Res() res: FastifyReply,
+  ) {
+    await this.userService.sendUserVerificationEmail(verificationPayload);
+    const responseData = new ApiResponseService(
+      "Email Sent Successfully",
+      HttpStatusCode.OK,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Post("send-welcome-email")
   @ApiOperation({
     summary: "Send Welcome Email",
@@ -220,6 +240,35 @@ export class UserController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post("verify-user-email")
+  @ApiOperation({
+    summary: "Verify Verification Code for email verification of user",
+    description:
+      "Verify the validity of a verification code sent for email verification of user account.",
+  })
+  @ApiResponse({ status: 200, description: "Email Verified" })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async verifyUserEmail(
+    @Res() res: FastifyReply,
+    @Body() verifyEmailPayload: VerifyEmailPayload,
+  ) {
+    const expireTime = this.configService.get(
+      "app.emailValidationCodeExpirationTime",
+    );
+    const data = await this.userService.verifyUserEmailVerificationCode(
+      verifyEmailPayload.email.toLowerCase(),
+      verifyEmailPayload.verificationCode,
+      expireTime,
+    );
+    const responseData = new ApiResponseService(
+      "Email Verified Successfully",
+      HttpStatusCode.OK,
+      data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Post("change-password")
   @ApiOperation({
     summary: "Update User Password",

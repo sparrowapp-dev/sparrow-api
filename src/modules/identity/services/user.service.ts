@@ -22,6 +22,7 @@ import path from "path";
 import { TeamService } from "./team.service";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { EmailService } from "@src/modules/common/services/email.service";
+import { VerificationPayload } from "../payloads/verification.payload";
 export interface IGenericMessageBody {
   message: string;
 }
@@ -108,16 +109,11 @@ export class UserService {
         "The account with the provided email currently exists. Please choose another one.",
       );
     }
-    const createdUser = await this.userRepository.createUser(payload);
+    await this.userRepository.createUser(payload);
 
-    const tokenPromises = [
-      this.authService.createToken(createdUser.insertedId),
-      this.authService.createRefreshToken(createdUser.insertedId),
-    ];
-    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
     const data = {
-      accessToken,
-      refreshToken,
+      isUserCreated: true,
+      isEmailVerified: false,
     };
     const firstName = await this.getFirstName(payload.name);
     const teamName = {
@@ -126,6 +122,7 @@ export class UserService {
     };
     await this.teamService.create(teamName);
     await this.sendSignUpEmail(firstName, payload.email);
+    await this.sendUserVerificationEmail({ email: payload.email });
     return data;
   }
 
@@ -183,6 +180,53 @@ export class UserService {
       transporter.sendMail(mailOptions),
       this.userRepository.updateVerificationCode(
         resetPasswordDto.email,
+        verificationCode,
+      ),
+    ];
+    await Promise.all(promise);
+  }
+
+  /**
+   * Sends a verification email to the user if their email is not already verified.
+   * The email includes a verification code and other necessary information.
+   * Also updates the user's verification code in the database.
+   *
+   * @param verificationPayload - The payload containing the user's email for verification.
+   * @throws If the email is already verified.
+   * @returns Resolves when the email is sent and the verification code is updated.
+   */
+  async sendUserVerificationEmail(
+    verificationPayload: VerificationPayload,
+  ): Promise<void> {
+    const userDetails = await this.getUserByEmail(verificationPayload.email);
+    if (userDetails?.isEmailVerified) {
+      throw new BadRequestException("Email Already Verified");
+    }
+    // Create an email transporter using the email service
+    const transporter = this.emailService.createTransporter();
+
+    const verificationCode = this.generateEmailVerificationCode().toUpperCase();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: verificationPayload.email,
+      text: "Email Verification Code",
+      template: "signUpVerifyEmail",
+      context: {
+        name: userDetails.name.split(" ")[0],
+        verificationCode,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Your Sparrow Verification Code Inside - Let’s Get You Started!`,
+    };
+    const promise = [
+      transporter.sendMail(mailOptions),
+      this.userRepository.updateEmailVerificationCode(
+        verificationPayload.email,
         verificationCode,
       ),
     ];
@@ -279,6 +323,49 @@ export class UserService {
       throw new UnauthorizedException(ErrorMessages.VerificationCodeExpired);
     }
     return;
+  }
+
+  /**
+   * Verifies the user's email verification code and updates the user's email verification status.
+   * If the code is valid and not expired, generates and returns access and refresh tokens.
+   *
+   * @param email - The email address of the user who is verifying the code.
+   * @param verificationCode - The verification code sent to the user.
+   * @param expireTime - The time (in seconds) after which the verification code expires.
+   * @throws  If the verification code is wrong or expired.
+   * @returns  An object containing the access and refresh tokens.
+   */
+  async verifyUserEmailVerificationCode(
+    email: string,
+    verificationCode: string,
+    expireTime: number,
+  ) {
+    const user = await this.getUserByEmail(email);
+    if (user?.emailVerificationCode !== verificationCode.toUpperCase()) {
+      throw new UnauthorizedException("Wrong Code");
+    }
+    if (user?.isEmailVerified) {
+      throw new BadRequestException("Email Already Verified");
+    }
+    if (
+      (Date.now() - user.emailVerificationCodeTimeStamp.getTime()) / 1000 >
+      expireTime
+    ) {
+      throw new UnauthorizedException(ErrorMessages.VerificationCodeExpired);
+    }
+    if (verificationCode === user.emailVerificationCode) {
+      await this.userRepository.updateUserEmailVerificationStatus(email);
+    }
+    const tokenPromises = [
+      this.authService.createToken(user._id),
+      this.authService.createRefreshToken(user._id),
+    ];
+    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+    const data = {
+      accessToken,
+      refreshToken,
+    };
+    return data;
   }
 
   async expireVerificationCode(email: string): Promise<void> {
