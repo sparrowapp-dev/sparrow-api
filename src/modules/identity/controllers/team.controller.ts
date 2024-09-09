@@ -57,7 +57,8 @@ export class TeamController {
       type: "object",
       properties: {
         image: {
-          type: "file",
+          type: "string", // Use string instead of file for OpenAPI 3.0
+          format: "binary",
         },
         name: {
           type: "string",
@@ -116,7 +117,8 @@ export class TeamController {
       type: "object",
       properties: {
         image: {
-          type: "file",
+          type: "string",
+          format: "binary",
         },
         name: {
           type: "string",
