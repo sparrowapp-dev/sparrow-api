@@ -975,12 +975,23 @@ export class WorkspaceService {
     await Promise.all(promise);
   }
 
+  /**
+   * Updates the team name for all workspaces associated with a given team ID.
+   * Finds the workspaces by their IDs, updates the team name if the workspace contains the target team,
+   * and then saves the updated workspaces to the database.
+   *
+   * @param teamId - The ID of the team whose name is being updated.
+   * @param teamName - The new name of the team.
+   * @param workspaceArray - An array of workspace DTOs, containing the workspaces to be updated.
+   * @returns Resolves when all workspaces have been updated in the database.
+   */
   async updateTeamDetailsInWorkspace(
     teamId: string,
     teamName: string,
     workspaceArray: WorkspaceDto[],
   ) {
     const updatedIdArray = [];
+    // Iterate over each workspace in the array to validate or convert workspace IDs
     for (const item of workspaceArray) {
       if (!isString(item.id)) {
         updatedIdArray.push(item.id);
