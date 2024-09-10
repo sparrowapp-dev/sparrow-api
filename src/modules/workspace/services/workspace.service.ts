@@ -11,6 +11,7 @@ import {
 } from "../payloads/workspace.payload";
 import {
   Workspace,
+  WorkspaceDto,
   WorkspaceWithNewInviteTag,
 } from "@src/modules/common/models/workspace.model";
 import { ContextService } from "@src/modules/common/services/context.service";
@@ -972,5 +973,48 @@ export class WorkspaceService {
 
     const promise = [transporter.sendMail(mailOptions)];
     await Promise.all(promise);
+  }
+
+  /**
+   * Updates the team name for all workspaces associated with a given team ID.
+   * Finds the workspaces by their IDs, updates the team name if the workspace contains the target team,
+   * and then saves the updated workspaces to the database.
+   *
+   * @param teamId - The ID of the team whose name is being updated.
+   * @param teamName - The new name of the team.
+   * @param workspaceArray - An array of workspace DTOs, containing the workspaces to be updated.
+   * @returns Resolves when all workspaces have been updated in the database.
+   */
+  async updateTeamDetailsInWorkspace(
+    teamId: string,
+    teamName: string,
+    workspaceArray: WorkspaceDto[],
+  ) {
+    const updatedIdArray = [];
+    // Iterate over each workspace in the array to validate or convert workspace IDs
+    for (const item of workspaceArray) {
+      if (!isString(item.id)) {
+        updatedIdArray.push(item.id);
+        continue;
+      }
+      updatedIdArray.push(new ObjectId(item.id));
+    }
+    const workspaceDataArray =
+      await this.workspaceRepository.findWorkspacesByIdArray(updatedIdArray);
+    for (let index = 0; index < workspaceDataArray.length; index++) {
+      if (workspaceDataArray[index].team.id === teamId) {
+        workspaceDataArray[index].team.name = teamName;
+      }
+    }
+    const workspaceDataPromises = [];
+    for (const item of workspaceDataArray) {
+      workspaceDataPromises.push(
+        this.workspaceRepository.updateWorkspaceById(
+          new ObjectId(item._id),
+          item,
+        ),
+      );
+    }
+    await Promise.all(workspaceDataPromises);
   }
 }
