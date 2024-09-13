@@ -157,6 +157,16 @@ export class TeamService {
       };
     }
     const data = await this.teamRepository.update(id, team);
+    if (teamData?.name) {
+      const team = {
+        teamId: teamDetails._id.toString(),
+        teamName: teamData.name,
+        teamWorkspaces: teamDetails.workspaces,
+      };
+      await this.producerService.produce(TOPIC.TEAM_DETAILS_UPDATED_TOPIC, {
+        value: JSON.stringify(team),
+      });
+    }
     return data;
   }
 

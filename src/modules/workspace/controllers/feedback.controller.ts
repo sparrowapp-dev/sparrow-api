@@ -69,7 +69,7 @@ export class FeedbackController {
         files: {
           type: "array",
           items: {
-            type: "file",
+            type: "string",
             format: "binary",
           },
           maxItems: 5,
@@ -128,7 +128,7 @@ export class FeedbackController {
         files: {
           type: "array",
           items: {
-            type: "file",
+            type: "string",
             format: "binary",
           },
           maxItems: 5,
