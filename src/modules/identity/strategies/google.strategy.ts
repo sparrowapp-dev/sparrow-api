@@ -13,13 +13,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
         "oauth.google.appUrl",
       )}/api/auth/google/callback`,
       scope: ["email", "profile"],
-      accessType: configService.get("oauth.google.accessType"),
     });
   }
 
   authorizationParams() {
     return {
-      prompt: "consent", // Add prompt parameter here
+      prompt: "consent",
+      accessType: "offline",
     };
   }
 
