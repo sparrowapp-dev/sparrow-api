@@ -34,6 +34,17 @@ export enum BodyModeEnum {
   "text/html" = "text/html",
 }
 
+export enum PostmanBodyModeEnum {
+  "none" = "none",
+  "json" = "application/json",
+  "xml" = "application/xml",
+  "urlencoded" = "application/x-www-form-urlencoded",
+  "formdata" = "multipart/form-data",
+  "javascript" = "application/javascript",
+  "text" = "text/plain",
+  "html" = "text/html",
+}
+
 export enum AuthModeEnum {
   "No Auth" = "No Auth",
   "API Key" = "API Key",

@@ -2,6 +2,7 @@ import {
   AuthModeEnum,
   BodyModeEnum,
   ItemTypeEnum,
+  PostmanBodyModeEnum,
   SourceTypeEnum,
 } from "./collection.model";
 
@@ -19,24 +20,30 @@ export interface TransformedRequest {
   name: string;
   description?: string;
   type: ItemTypeEnum;
-  request: {
-    selectedRequestBodyType?: BodyModeEnum;
-    selectedRequestAuthType?: AuthModeEnum;
-    method: string;
-    url: string;
-    body: {
-      raw?: string;
-      urlencoded?: KeyValue[];
-      formdata?: FormData;
-    };
-    headers?: KeyValue[];
-    queryParams?: KeyValue[];
-    auth?: Auth;
-  };
+  request: SparrowRequest;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
   updatedBy: string;
+  items?: TransformedRequest[];
+}
+
+export interface SparrowRequest {
+  selectedRequestBodyType?: BodyModeEnum | PostmanBodyModeEnum;
+  selectedRequestAuthType?: AuthModeEnum;
+  method: string;
+  url: string;
+  body: SparrowRequestBody;
+  headers?: KeyValue[];
+  queryParams?: KeyValue[];
+  auth?: Auth;
+}
+
+// Define the RequestBody type
+export interface SparrowRequestBody {
+  raw?: string;
+  urlencoded?: KeyValue[];
+  formdata?: FormData;
 }
 
 interface FormData {
@@ -44,7 +51,7 @@ interface FormData {
   file: FormDataFileEntry[];
 }
 
-interface KeyValue {
+export interface KeyValue {
   key: string;
   value: string | unknown;
   checked: boolean;
