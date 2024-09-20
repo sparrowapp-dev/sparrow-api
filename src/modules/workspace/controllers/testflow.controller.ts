@@ -1,3 +1,4 @@
+// Libraries
 import {
   Body,
   Controller,
@@ -16,22 +17,55 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { FastifyReply } from "fastify";
+
+// ---- Service
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
-import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
-import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { TestflowService } from "../services/testflow.service";
+
+// ---- Enum
+import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
+
+// ---- Guard
+import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+
+// ---- Payload
 import {
   CreateTestflowDto,
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
 
+/**
+ * Controller responsible for handling Testflow operations
+ * and updates within a Workspace. It supports CRUD operations like
+ * creating, fetching, updating, and deleting Testflows.
+ *
+ * This controller is secured using JWT authentication.
+ *
+ * @class TestflowController
+ * @implements {TestflowService}
+ */
 @ApiBearerAuth()
 @ApiTags("testflow")
 @Controller("api/workspace")
 @UseGuards(JwtAuthGuard)
 export class TestflowController {
+  /**
+   * Creates an instance of TestflowController.
+   *
+   * @param {TestflowService} testflowService - Service for Testflow operations.
+   */
   constructor(private readonly testflowService: TestflowService) {}
 
+  /**
+   * Create a new Testflow and add it to the user's Workspace.
+   *
+   * @param {CreateTestflowDto} createTestflowDto - Data Transfer Object for creating a Testflow.
+   * @param {FastifyReply} res - Fastify reply object to send the response.
+   * @returns Response with the created Testflow details.
+   *
+   * @description This will create a Testflow based on the input data and add it to the current user's Workspace.
+   * Returns the created Testflow object in the response.
+   */
   @Post("testflow")
   @ApiOperation({
     summary: "Create A Testflow",
@@ -55,6 +89,16 @@ export class TestflowController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  /**
+   * Fetch an individual Testflow by ID.
+   *
+   * @param {string} testflowId - The ID of the Testflow to retrieve.
+   * @param {FastifyReply} res - Fastify reply object to send the response.
+   * @returns Response containing the Testflow details.
+   *
+   * @description This will retrieve a specific Testflow using its ID,
+   * returning the Testflow object if found.
+   */
   @Get("testflow/:testflowId")
   @ApiOperation({
     summary: "Get Individual Testflow",
@@ -78,6 +122,17 @@ export class TestflowController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  /**
+   * Update an existing Testflow in the Workspace.
+   *
+   * @param {string} workspaceId - The ID of the Workspace where the Testflow exists.
+   * @param {string} testflowId - The ID of the Testflow to update.
+   * @param {Partial<UpdateTestflowDto>} updateTestflowDto - Data Transfer Object for updating the Testflow.
+   * @param {FastifyReply} res - Fastify reply object to send the response.
+   * @returns Response with the updated Testflow details.
+   *
+   * @description Updates the Testflow's details based on the provided data and returns the updated Testflow object.
+   */
   @Put(":workspaceId/testflow/:testflowId")
   @ApiOperation({
     summary: "Update An Testflow",
@@ -104,6 +159,17 @@ export class TestflowController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  /**
+   * Delete a specific Testflow from the Workspace.
+   *
+   * @param {string} workspaceId - The ID of the Workspace where the Testflow exists.
+   * @param {string} testflowId - The ID of the Testflow to delete.
+   * @param {FastifyReply} res - Fastify reply object to send the response.
+   * @returns Response confirming the removal of the Testflow.
+   *
+   * @description Removes the specified Testflow from the Workspace,
+   * returning a confirmation message in the response.
+   */
   @Delete(":workspaceId/testflow/:testflowId")
   @ApiOperation({
     summary: "Delete a Testflow",
@@ -128,6 +194,16 @@ export class TestflowController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  /**
+   * Get all Testflows for a specific Workspace.
+   *
+   * @param {string} workspaceId - The ID of the Workspace to retrieve Testflows for.
+   * @param {FastifyReply} res - Fastify reply object to send the response.
+   * @returns Response containing all Testflows in the Workspace.
+   *
+   * @description Fetches all Testflows associated with the given Workspace ID,
+   * returning an array of Testflow objects.
+   */
   @Get(":workspaceId/testflow")
   @ApiOperation({
     summary: "Get All Testflows",

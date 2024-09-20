@@ -1,3 +1,4 @@
+// ---- Libraries
 import {
   IsString,
   IsArray,
@@ -8,11 +9,21 @@ import {
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
+
+// ---- Model
 import {
   TestflowEdges,
   TestflowNodes,
 } from "@src/modules/common/models/testflow.model";
 
+/**
+ * Data Transfer Object (DTO) for creating a new Testflow.
+ * This class defines the structure of the request body that
+ * will be used when creating a Testflow, including optional
+ * and required properties such as name, workspaceId, edges, and nodes.
+ *
+ * @class CreateTestflowDto
+ */
 export class CreateTestflowDto {
   @IsString()
   @ApiProperty({ required: false, example: "New Testflow name" })
@@ -66,6 +77,14 @@ export class CreateTestflowDto {
   nodes?: TestflowNodes[];
 }
 
+/**
+ * Data Transfer Object (DTO) for updating an existing Testflow.
+ * This class defines the structure of the request body that
+ * will be used when updating a Testflow, including optional
+ * properties such as name, edges, and nodes.
+ *
+ * @class UpdateTestflowDto
+ */
 export class UpdateTestflowDto {
   @IsString()
   @ApiProperty({ required: false, example: "New Testflow name" })

@@ -11,6 +11,9 @@ import {
   ValidateNested,
 } from "class-validator";
 
+/**
+ * Represents the edges of a Testflow which tell the connection between nodes.
+ */
 export class TestflowEdges {
   @IsString()
   @IsNotEmpty()
@@ -29,6 +32,9 @@ export class TestflowEdges {
   target: string;
 }
 
+/**
+ * Represents the position of a node in a Testflow graph.
+ */
 export class NodePosition {
   @IsNumber()
   @IsNotEmpty()
@@ -39,6 +45,9 @@ export class NodePosition {
   y: number;
 }
 
+/**
+ * Represents the data associated with a node in a Testflow like requestId.
+ */
 export class NodeData {
   @IsString()
   @IsNotEmpty()
@@ -56,6 +65,9 @@ export class NodeData {
   collectionId?: string;
 }
 
+/**
+ * Represents the nodes of the API blocks in a Testflow .
+ */
 export class TestflowNodes {
   @IsString()
   @IsNotEmpty()
@@ -74,6 +86,9 @@ export class TestflowNodes {
   data?: NodeData;
 }
 
+/**
+ * Represents a Testflow, containing nodes and edges.
+ */
 export class Testflow {
   @IsString()
   @IsNotEmpty()
@@ -112,6 +127,9 @@ export class Testflow {
   updatedBy?: string;
 }
 
+/**
+ * Represents a DTO containing brief information about a Testflow.
+ */
 export class TestflowInfoDto {
   @IsMongoId()
   @IsNotEmpty()
