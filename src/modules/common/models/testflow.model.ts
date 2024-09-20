@@ -19,10 +19,6 @@ export class TestflowEdges {
   @IsNotEmpty()
   id: string;
 
-  @IsBoolean()
-  @IsNotEmpty()
-  selected: boolean;
-
   @IsString()
   @IsNotEmpty()
   source: string;

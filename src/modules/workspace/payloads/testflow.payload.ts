@@ -42,7 +42,6 @@ export class CreateTestflowDto {
         id: "id",
         source: "1",
         target: "2",
-        selected: true,
       },
     ],
   })
@@ -98,7 +97,6 @@ export class UpdateTestflowDto {
         id: "id",
         source: "1",
         target: "2",
-        selected: true,
       },
     ],
   })
