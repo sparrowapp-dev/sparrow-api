@@ -13,8 +13,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
         "oauth.google.appUrl",
       )}/api/auth/google/callback`,
       scope: ["email", "profile"],
-      prompt: "select_account",
     });
+  }
+
+  authorizationParams() {
+    return {
+      prompt: "consent",
+      accessType: "offline",
+    };
   }
 
   async validate(
