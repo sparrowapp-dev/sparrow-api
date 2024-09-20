@@ -16,6 +16,7 @@ import {
 import { ContextService } from "../../common/services/context.service";
 import { CollectionDto } from "@src/modules/common/models/collection.model";
 import { EnvironmentDto } from "@src/modules/common/models/environment.model";
+import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 /**
  * Models a typical response for a crud operation
  */
@@ -195,5 +196,50 @@ export class WorkspaceRepository {
         { _id, "environments.id": environment_id },
         { $set: { "environments.$.name": name } },
       );
+  }
+
+  async addTestflowInWorkspace(
+    workspaceId: string,
+    testflow: TestflowInfoDto,
+  ): Promise<UpdateResult> {
+    const _id = new ObjectId(workspaceId);
+    const response = await this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id },
+      {
+        $push: {
+          testflows: {
+            id: testflow.id,
+            name: testflow.name,
+          },
+        },
+      },
+    );
+    return response;
+  }
+
+  async deleteTestflowInWorkspace(
+    workspaceId: string,
+    testflowsArray: TestflowInfoDto[],
+  ): Promise<UpdateResult> {
+    const _id = new ObjectId(workspaceId);
+    const response = await this.db
+      .collection(Collections.WORKSPACE)
+      .updateOne({ _id }, { $set: { testflows: testflowsArray } });
+    return response;
+  }
+
+  async updateTestflowInWorkspace(
+    workspaceId: string,
+    testflowId: string,
+    name: string,
+  ): Promise<UpdateResult> {
+    const _id = new ObjectId(workspaceId);
+    const response = await this.db
+      .collection(Collections.WORKSPACE)
+      .updateOne(
+        { _id, "testflows.id": testflowId },
+        { $set: { "testflows.$.name": name } },
+      );
+    return response;
   }
 }
