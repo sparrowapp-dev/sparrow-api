@@ -13,6 +13,7 @@ import {
   KeyValue,
   SparrowRequestBody,
 } from "../../models/collection.rxdb.model";
+import { v4 as uuidv4 } from "uuid";
 
 export function convertItems(items: any[]): CollectionItem[] {
   return items
@@ -45,6 +46,7 @@ function convertItem(item: any): CollectionItem[] {
 
 function createCollectionItem(item: any): CollectionItem {
   return {
+    id: uuidv4(),
     name: item.name || "",
     description: item.description || "",
     type: item.item ? ItemTypeEnum.FOLDER : ItemTypeEnum.REQUEST,
@@ -79,8 +81,11 @@ function convertRequest(request: any): RequestMetaData {
 function createEmptyBody(): SparrowRequestBody {
   return {
     raw: "",
-    urlencoded: [],
-    formdata: { text: [], file: [] },
+    urlencoded: [{ key: "", value: "", checked: false }],
+    formdata: {
+      text: [{ key: "", value: "", checked: false }],
+      file: [],
+    },
   };
 }
 
@@ -156,7 +161,8 @@ function mapKeyValuePairs(data: any[]): KeyValue[] {
 }
 
 function convertParams(params: any[]): KeyValue[] {
-  if (!params) return [];
+  if (!params || !params.length)
+    return [{ key: "", value: "", checked: false }];
   return params.map((param) => ({
     key: param.key || param.name || "",
     value: param.value || "",

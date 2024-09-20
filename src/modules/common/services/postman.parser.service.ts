@@ -21,12 +21,12 @@ export class PostmanParserService {
       name: info.name,
       description: info.description || "",
       items: convertItems(items).map((item) => {
-        item.createdBy = user._id;
-        items.updatedBy = user._id;
+        item.createdBy = user.name;
+        items.updatedBy = user.name;
         return item;
       }),
       totalRequests: countTotalRequests(items),
-      createdBy: user._id,
+      createdBy: user.name,
       updatedBy: {
         id: user._id,
         name: user.name,
