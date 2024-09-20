@@ -42,6 +42,7 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ObjectId } from "mongodb";
 import { FastifyRequest } from "fastify/types/request";
 import { BodyModeEnum } from "@src/modules/common/models/collection.model";
+import { PostmanParserService } from "@src/modules/common/services/postman.parser.service";
 
 /**
  * Workspace Controller
@@ -54,6 +55,7 @@ export class WorkSpaceController {
   constructor(
     private readonly workspaceService: WorkspaceService,
     private readonly parserService: ParserService,
+    private readonly postmanParserService: PostmanParserService,
     private readonly collectionService: CollectionService,
   ) {}
 
@@ -338,7 +340,7 @@ export class WorkSpaceController {
       collectionObj.collection._id.toString(),
     );
     const responseData = new ApiResponseService(
-      "Collection Imported",
+      "Postman Collection Imported",
       HttpStatusCode.OK,
       collection,
     );
@@ -448,4 +450,44 @@ export class WorkSpaceController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post(":workspaceId/importPostman/collection")
+  @ApiOperation({
+    summary: "Import a collection From A Postman v2.1 collection JSON",
+    description: "You can import a collection that is exported from postman",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Postman collection imported successfully",
+  })
+  @ApiResponse({ status: 400, description: "Failed to Import  Collection" })
+  async importPostmanCollection(
+    @Req() request: FastifyRequest,
+    @Param("workspaceId") workspaceId: string,
+    @Res() res: FastifyReply,
+    @Body() jsonObj: string,
+  ) {
+    const responseType = request.headers["content-type"];
+    const dataObj =
+      responseType === BodyModeEnum["application/json"]
+        ? jsonObj
+        : (yml.load(jsonObj) as string);
+    const collectionObj =
+      await this.postmanParserService.parsePostmanCollection(dataObj);
+    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
+      id: new ObjectId(collectionObj.collection._id),
+      name: collectionObj.collection.name,
+    });
+
+    const collection = await this.collectionService.getCollection(
+      collectionObj.collection._id.toString(),
+    );
+    const responseData = new ApiResponseService(
+      "Postman Collection Imported",
+      HttpStatusCode.OK,
+      collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }
+

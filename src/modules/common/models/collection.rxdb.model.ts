@@ -40,7 +40,7 @@ export interface SparrowRequest {
 }
 
 // Define the RequestBody type
-export interface SparrowRequestBody {
+export class SparrowRequestBody {
   raw?: string;
   urlencoded?: KeyValue[];
   formdata?: FormData;
@@ -51,7 +51,7 @@ interface FormData {
   file: FormDataFileEntry[];
 }
 
-export interface KeyValue {
+export class KeyValue {
   key: string;
   value: string | unknown;
   checked: boolean;
@@ -64,7 +64,7 @@ interface FormDataFileEntry {
   base: string;
 }
 
-interface Auth {
+export class Auth {
   bearerToken?: string;
   basicAuth?: {
     username: string;

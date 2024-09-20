@@ -4,50 +4,33 @@ import {
   AuthModeEnum,
   SourceTypeEnum,
   PostmanBodyModeEnum,
-  SparrowCollection,
+  CollectionItem,
+  RequestMetaData,
 } from "@common/models/collection.model";
 import { HTTPMethods } from "fastify";
 import {
-  TransformedRequest,
   AddTo,
   KeyValue,
-  SparrowRequest,
   SparrowRequestBody,
-} from "../models/collection.rxdb.model";
+} from "../../models/collection.rxdb.model";
 
-// Main function to convert Postman Collection to the new schema
-export function convertPostmanToMySchema(
-  postmanCollection: any,
-): SparrowCollection {
-  const { info, item: items } = postmanCollection;
-
-  return {
-    name: info.name,
-    description: info.description || "",
-    items: flattenItems(items),
-    totalRequests: countTotalRequests(items),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-}
-
-function flattenItems(items: any[]): TransformedRequest[] {
+export function convertItems(items: any[]): CollectionItem[] {
   return items
     .flatMap((item) => convertItem(item))
-    .filter(Boolean) as TransformedRequest[];
+    .filter(Boolean) as CollectionItem[];
 }
 
-function countTotalRequests(items: any[]): number {
-  return flattenItems(items).filter((i) => i.type === ItemTypeEnum.REQUEST)
+export function countTotalRequests(items: any[]): number {
+  return convertItems(items).filter((i: any) => i.type === ItemTypeEnum.REQUEST)
     .length;
 }
 
-function convertItem(item: any): TransformedRequest[] {
-  const collectionItems: TransformedRequest[] = [];
-  const collectionItem: TransformedRequest = createCollectionItem(item);
+function convertItem(item: any): CollectionItem[] {
+  const collectionItems: CollectionItem[] = [];
+  const collectionItem: CollectionItem = createCollectionItem(item);
 
   if (collectionItem.type === ItemTypeEnum.FOLDER) {
-    collectionItem.items = flattenItems(item.item || []);
+    collectionItem.items = convertItems(item.item || []);
     collectionItems.push(collectionItem);
   } else if (
     collectionItem.type === ItemTypeEnum.REQUEST &&
@@ -60,7 +43,7 @@ function convertItem(item: any): TransformedRequest[] {
   return collectionItems;
 }
 
-function createCollectionItem(item: any): TransformedRequest {
+function createCollectionItem(item: any): CollectionItem {
   return {
     name: item.name || "",
     description: item.description || "",
@@ -75,7 +58,7 @@ function createCollectionItem(item: any): TransformedRequest {
   };
 }
 
-function convertRequest(request: any): SparrowRequest {
+function convertRequest(request: any): RequestMetaData {
   const body = request.body
     ? convertRequestBody(request.body)
     : createEmptyBody();
@@ -87,7 +70,8 @@ function convertRequest(request: any): SparrowRequest {
     headers: convertParams(request.header),
     queryParams: convertParams(request.url.query),
     auth: createDefaultAuth(),
-    selectedRequestBodyType: getRequestBodyType(request.body),
+    operationId: "",
+    selectedRequestBodyType: getRequestBodyType(request.body, request.header),
     selectedRequestAuthType: AuthModeEnum["No Auth"],
   };
 }
@@ -108,12 +92,18 @@ function createDefaultAuth(): any {
   };
 }
 
-function getRequestBodyType(body: any): BodyModeEnum | undefined {
-  if (!body) return BodyModeEnum.none;
+function getRequestBodyType(body: any, headers: any): BodyModeEnum | undefined {
+  let contentType = null;
+  contentType = headers.find((header: any) => header.key === "Content-Type");
+  if (!body && !contentType) return BodyModeEnum.none;
 
   let mode = body.mode;
   if (mode === "raw") {
-    mode = body.options.raw.language;
+    if (body.options) {
+      mode = body.options.raw.language;
+    } else {
+      return contentType.value;
+    }
   }
   // @ts-ignore
   return PostmanBodyModeEnum[mode];

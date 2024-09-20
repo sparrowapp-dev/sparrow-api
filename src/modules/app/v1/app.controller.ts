@@ -19,11 +19,11 @@ import {
 } from "@nestjs/swagger";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AppService } from "./app.service";
-import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
-import { ParserService } from "../common/services/parser.service";
-import { ApiResponseService } from "../common/services/api-response.service";
-import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
-import { curlDto } from "./payloads/curl.payload";
+import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { ParserService } from "../../common/services/parser.service";
+import { ApiResponseService } from "../../common/services/api-response.service";
+import { HttpStatusCode } from "../../common/enum/httpStatusCode.enum";
+import { curlDto } from "../payloads/curl.payload";
 
 /**
  * App Controller

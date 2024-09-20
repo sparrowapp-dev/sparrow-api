@@ -1,18 +1,18 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
-import { UpdaterJsonResponsePayload } from "./payloads/updaterJson.payload";
+import { HttpStatusCode } from "../../common/enum/httpStatusCode.enum";
+import { UpdaterJsonResponsePayload } from "../payloads/updaterJson.payload";
 import {
   AuthModeEnum,
   BodyModeEnum,
   ItemTypeEnum,
   SourceTypeEnum,
-} from "../common/models/collection.model";
+} from "../../common/models/collection.model";
 import {
   AddTo,
   TransformedRequest,
-} from "../common/models/collection.rxdb.model";
-import { ContextService } from "../common/services/context.service";
+} from "../../common/models/collection.rxdb.model";
+import { ContextService } from "../../common/services/context.service";
 
 /**
  * Application Service

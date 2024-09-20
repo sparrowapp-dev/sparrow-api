@@ -33,9 +33,7 @@ import { RefreshTokenRequest } from "./auth.controller";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { VerificationPayload } from "../payloads/verification.payload";
-import { convertPostmanToMySchema } from "@src/modules/common/util/postman.util";
-// import { postmanMock } from "./postman_mock_2.1";
-import { postmanMock } from "./postman_mock_2.1_2";
+
 /**
  * User Controller
  */
@@ -80,17 +78,6 @@ export class UserController {
       data,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
-  }
-
-  @Get("/postman")
-  @ApiOperation({
-    summary: "Convert Postman Collection",
-    description:
-      "This function will change a postman collection to sparrow schema",
-  })
-  async convertPostmanCollection(@Res() res: FastifyReply) {
-    const convertedObject = convertPostmanToMySchema(postmanMock);
-    return res.status(200).send(convertedObject);
   }
 
   @Get("email/:email")
