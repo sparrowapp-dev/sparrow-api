@@ -16,6 +16,7 @@ import { HTTPMethods } from "fastify";
 import { ObjectId } from "mongodb";
 import { SchemaObject } from "./openapi303.model";
 import { ApiProperty } from "@nestjs/swagger";
+import { TransformedRequest } from "./collection.rxdb.model";
 export enum ItemTypeEnum {
   FOLDER = "FOLDER",
   REQUEST = "REQUEST",
@@ -379,6 +380,77 @@ export class Collection {
   @ValidateNested({ each: true })
   @Type(() => CollectionItem)
   items: CollectionItem[];
+
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  activeSync?: boolean;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  activeSyncUrl?: string;
+
+  @ApiProperty({ type: [CollectionBranch] })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CollectionBranch)
+  branches?: CollectionBranch[] | TransformedRequest[];
+
+  @IsOptional()
+  @IsDateString()
+  createdAt?: Date;
+
+  @IsOptional()
+  @IsDateString()
+  updatedAt?: Date;
+
+  @IsString()
+  @IsOptional()
+  createdBy?: string;
+
+  @IsOptional()
+  @Type(() => UpdaterDetails)
+  updatedBy?: UpdaterDetails;
+}
+
+export class SparrowCollection {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  description?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  primaryBranch?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  localRepositoryPath?: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsNotEmpty()
+  totalRequests: number;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  uuid?: string;
+
+  @ApiProperty({ type: [TransformedRequest] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TransformedRequest)
+  items: TransformedRequest[];
 
   @ApiProperty()
   @IsBoolean()

@@ -34,7 +34,8 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { VerificationPayload } from "../payloads/verification.payload";
 import { convertPostmanToMySchema } from "@src/modules/common/util/postman.util";
-import { postmanMock } from "./postman_mock_2.1";
+// import { postmanMock } from "./postman_mock_2.1";
+import { postmanMock } from "./postman_mock_2.1_2";
 /**
  * User Controller
  */
@@ -90,8 +91,6 @@ export class UserController {
   async convertPostmanCollection(@Res() res: FastifyReply) {
     const convertedObject = convertPostmanToMySchema(postmanMock);
     return res.status(200).send(convertedObject);
-    // const convertedObject2 = convertPostmanToSparrow(postmanMock);
-    // return res.status(200).send(convertedObject2);
   }
 
   @Get("email/:email")

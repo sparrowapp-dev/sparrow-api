@@ -11,7 +11,7 @@ export enum AddTo {
   QueryParameter = "Query Parameter",
 }
 
-export interface TransformedRequest {
+export class TransformedRequest {
   id?: string;
   tag?: string;
   operationId?: string;

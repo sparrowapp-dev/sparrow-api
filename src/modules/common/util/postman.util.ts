@@ -1,10 +1,10 @@
 import {
-  Collection,
   ItemTypeEnum,
   BodyModeEnum,
   AuthModeEnum,
   SourceTypeEnum,
   PostmanBodyModeEnum,
+  SparrowCollection,
 } from "@common/models/collection.model";
 import { HTTPMethods } from "fastify";
 import {
@@ -15,69 +15,39 @@ import {
   SparrowRequestBody,
 } from "../models/collection.rxdb.model";
 
-// Utility function to convert Postman Collection to the new schema
-export function convertPostmanToMySchema(postmanCollection: any): Collection {
-  const collection = new Collection();
-  collection.name = postmanCollection.info.name;
-  collection.description = postmanCollection.info.description || "";
-  collection.items = (postmanCollection.item || []).flatMap((item: any) =>
-    convertItem(item),
-  );
-  collection.totalRequests = collection.items.filter(
-    (i) => i.type === ItemTypeEnum.REQUEST,
-  ).length;
-  collection.createdAt = new Date();
-  collection.updatedAt = new Date();
-  return collection;
+// Main function to convert Postman Collection to the new schema
+export function convertPostmanToMySchema(
+  postmanCollection: any,
+): SparrowCollection {
+  const { info, item: items } = postmanCollection;
+
+  return {
+    name: info.name,
+    description: info.description || "",
+    items: flattenItems(items),
+    totalRequests: countTotalRequests(items),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+function flattenItems(items: any[]): TransformedRequest[] {
+  return items
+    .flatMap((item) => convertItem(item))
+    .filter(Boolean) as TransformedRequest[];
+}
+
+function countTotalRequests(items: any[]): number {
+  return flattenItems(items).filter((i) => i.type === ItemTypeEnum.REQUEST)
+    .length;
 }
 
 function convertItem(item: any): TransformedRequest[] {
   const collectionItems: TransformedRequest[] = [];
-  const requestObj: SparrowRequest = {
-    method: "",
-    url: "",
-    body: {
-      raw: "",
-      urlencoded: [],
-      formdata: {
-        text: [],
-        file: [],
-      },
-    },
-    headers: [],
-    queryParams: [],
-    auth: {
-      bearerToken: "",
-      basicAuth: {
-        username: "",
-        password: "",
-      },
-      apiKey: {
-        authKey: "",
-        authValue: "",
-        addTo: AddTo.Header,
-      },
-    },
-    selectedRequestBodyType: BodyModeEnum.none,
-    selectedRequestAuthType: AuthModeEnum["No Auth"],
-  };
-  const collectionItem: TransformedRequest = {
-    name: item.name || "",
-    description: item.description || "",
-    type: item.item ? ItemTypeEnum.FOLDER : ItemTypeEnum.REQUEST,
-    source: SourceTypeEnum.SPEC,
-    request: item.item ? null : requestObj,
-    items: item.item || [],
-    createdBy: "user.name",
-    updatedBy: "user.name",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  const collectionItem: TransformedRequest = createCollectionItem(item);
 
   if (collectionItem.type === ItemTypeEnum.FOLDER) {
-    collectionItem.items
-      .filter((subItem: any) => !subItem.item)
-      .flatMap((subItem: any) => convertItem(subItem));
+    collectionItem.items = flattenItems(item.item || []);
     collectionItems.push(collectionItem);
   } else if (
     collectionItem.type === ItemTypeEnum.REQUEST &&
@@ -90,55 +60,57 @@ function convertItem(item: any): TransformedRequest[] {
   return collectionItems;
 }
 
-function convertRequest(request: any): SparrowRequest {
-  const emptyBody: SparrowRequestBody = {
-    raw: "",
-    urlencoded: [],
-    formdata: {
-      text: [],
-      file: [],
-    },
+function createCollectionItem(item: any): TransformedRequest {
+  return {
+    name: item.name || "",
+    description: item.description || "",
+    type: item.item ? ItemTypeEnum.FOLDER : ItemTypeEnum.REQUEST,
+    source: SourceTypeEnum.SPEC,
+    request: null,
+    items: item.item || [],
+    createdBy: "user.name",
+    updatedBy: "user.name",
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
-  const requestMetaData: SparrowRequest = {
-    method: "",
-    url: "",
-    body: emptyBody,
-    headers: [],
-    queryParams: [],
-    auth: {
-      bearerToken: "",
-      basicAuth: {
-        username: "",
-        password: "",
-      },
-      apiKey: {
-        authKey: "",
-        authValue: "",
-        addTo: AddTo.Header,
-      },
-    },
-    selectedRequestBodyType: BodyModeEnum["none"],
-    selectedRequestAuthType: AuthModeEnum["No Auth"],
-  };
-  requestMetaData.method = request.method.toUpperCase() as HTTPMethods;
-  requestMetaData.url = request.url.raw;
-  requestMetaData.body = request.body
-    ? convertRequestBody(request.body)
-    : emptyBody;
-
-  if (request.body) {
-    requestMetaData.selectedRequestBodyType = getRequestBodyType(request.body);
-  }
-
-  requestMetaData.selectedRequestAuthType = AuthModeEnum["No Auth"];
-  requestMetaData.queryParams = convertParams(request.url.query);
-  // requestMetaData.pathParams = convertParams(request.url.path);
-  requestMetaData.headers = convertParams(request.header);
-  return requestMetaData;
 }
 
-// @ts-ignore
-function getRequestBodyType(body) {
+function convertRequest(request: any): SparrowRequest {
+  const body = request.body
+    ? convertRequestBody(request.body)
+    : createEmptyBody();
+
+  return {
+    method: request.method.toUpperCase() as HTTPMethods,
+    url: request.url.raw,
+    body,
+    headers: convertParams(request.header),
+    queryParams: convertParams(request.url.query),
+    auth: createDefaultAuth(),
+    selectedRequestBodyType: getRequestBodyType(request.body),
+    selectedRequestAuthType: AuthModeEnum["No Auth"],
+  };
+}
+
+function createEmptyBody(): SparrowRequestBody {
+  return {
+    raw: "",
+    urlencoded: [],
+    formdata: { text: [], file: [] },
+  };
+}
+
+function createDefaultAuth(): any {
+  return {
+    bearerToken: "",
+    basicAuth: { username: "", password: "" },
+    apiKey: { authKey: "", authValue: "", addTo: AddTo.Header },
+  };
+}
+
+function getRequestBodyType(body: any): BodyModeEnum | undefined {
+  if (!body) return BodyModeEnum.none;
+
   let mode = body.mode;
   if (mode === "raw") {
     mode = body.options.raw.language;
@@ -147,9 +119,8 @@ function getRequestBodyType(body) {
   return PostmanBodyModeEnum[mode];
 }
 
-// Utility function to convert Postman request body to Sparrow schema
 function convertRequestBody(body: any): SparrowRequestBody {
-  const requestBody: SparrowRequestBody = {};
+  const requestBody: SparrowRequestBody = createEmptyBody();
 
   switch (body.mode.toLowerCase()) {
     case "raw":
@@ -158,30 +129,13 @@ function convertRequestBody(body: any): SparrowRequestBody {
 
     case "formdata":
       requestBody.formdata = {
-        text: (body.formdata || [])
-          .filter((item: any) => item.type === "text")
-          .map((item: any) => ({
-            key: item.key || "",
-            value: item.value || "",
-            checked: item.type === "text" ? false : true,
-          })),
-        file: (body.formdata || [])
-          .filter((item: any) => item.type === "file")
-          .map((item: any) => ({
-            key: item.key || "",
-            value: item.src || "",
-            checked: false,
-            base: item.base || "",
-          })),
+        text: filterAndMap(body.formdata, "text"),
+        file: filterAndMap(body.formdata, "file"),
       };
       break;
 
     case "urlencoded":
-      requestBody.urlencoded = (body.urlencoded || []).map((item: any) => ({
-        key: item.key || "",
-        value: item.value || "",
-        checked: false,
-      }));
+      requestBody.urlencoded = mapKeyValuePairs(body.urlencoded);
       break;
 
     default:
@@ -191,9 +145,29 @@ function convertRequestBody(body: any): SparrowRequestBody {
 
   return requestBody;
 }
+
+function filterAndMap(data: any[], type: string): any[] {
+  return (data || [])
+    .filter((item) => item.type === type)
+    .map((item) => ({
+      key: item.key || "",
+      value: type === "file" ? item.src || "" : item.value || "",
+      checked: false,
+      base: item.base || "",
+    }));
+}
+
+function mapKeyValuePairs(data: any[]): KeyValue[] {
+  return (data || []).map((item) => ({
+    key: item.key || "",
+    value: item.value || "",
+    checked: false,
+  }));
+}
+
 function convertParams(params: any[]): KeyValue[] {
   if (!params) return [];
-  return params.map((param: any) => ({
+  return params.map((param) => ({
     key: param.key || param.name || "",
     value: param.value || "",
     checked: false,
@@ -201,12 +175,6 @@ function convertParams(params: any[]): KeyValue[] {
 }
 
 function isValidMethod(method: string): boolean {
-  const validMethods: Set<string> = new Set([
-    "GET",
-    "POST",
-    "PUT",
-    "DELETE",
-    "PATCH",
-  ]);
+  const validMethods = new Set(["GET", "POST", "PUT", "DELETE", "PATCH"]);
   return validMethods.has(method.toUpperCase());
 }
