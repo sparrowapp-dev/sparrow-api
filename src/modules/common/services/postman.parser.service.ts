@@ -16,15 +16,16 @@ export class PostmanParserService {
   }> {
     const user = await this.contextService.get("user");
     const { info, item: items } = postmanCollection;
-
+    let convertedItems = convertItems(items);
+    convertedItems = convertedItems.map((item) => {
+      item.createdBy = user.name;
+      items.updatedBy = user.name;
+      return item;
+    });
     const collection: Collection = {
       name: info.name,
       description: info.description || "",
-      items: convertItems(items).map((item) => {
-        item.createdBy = user.name;
-        items.updatedBy = user.name;
-        return item;
-      }),
+      items: convertedItems,
       totalRequests: countTotalRequests(items),
       createdBy: user.name,
       updatedBy: {

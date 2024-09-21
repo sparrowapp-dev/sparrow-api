@@ -102,16 +102,17 @@ function getRequestBodyType(body: any, headers: any): BodyModeEnum | undefined {
   contentType = headers.find((header: any) => header.key === "Content-Type");
   if (!body && !contentType) return BodyModeEnum.none;
 
-  let mode = body.mode;
-  if (mode === "raw") {
-    if (body.options) {
-      mode = body.options.raw.language;
-    } else {
-      return contentType.value;
+  if (body) {
+    let mode = body.mode;
+    if (mode === "raw") {
+      if (body.options) {
+        mode = body.options.raw.language;
+      }
     }
+    // @ts-ignore
+    return PostmanBodyModeEnum[mode];
   }
-  // @ts-ignore
-  return PostmanBodyModeEnum[mode];
+  return contentType.value;
 }
 
 function convertRequestBody(body: any): SparrowRequestBody {
