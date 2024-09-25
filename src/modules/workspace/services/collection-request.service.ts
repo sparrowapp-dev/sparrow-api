@@ -185,7 +185,7 @@ export class CollectionRequestService {
         return item;
       }
       if (item?.items && item.items.length > 0) {
-        const found = this.findItemById(item.items, id);
+        const found = await this.findItemById(item.items, id);
         if (found) {
           return found;
         }
