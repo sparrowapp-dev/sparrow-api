@@ -176,6 +176,7 @@ export class UserService {
       },
       subject: `Reset your Sparrow account password`,
     };
+    console.log("Inside Send Verificatgion EMail Service", verificationCode);
     const promise = [
       transporter.sendMail(mailOptions),
       this.userRepository.updateVerificationCode(
@@ -310,16 +311,21 @@ export class UserService {
     expireTime: number,
   ): Promise<void> {
     const user = await this.getUserByEmail(email);
+    console.log("user details before error", user);
     if (!user?.isVerificationCodeActive) {
+      console.log("Inside isVerificationCodeActive");
+
       throw new UnauthorizedException(ErrorMessages.Unauthorized);
     }
     if (user?.verificationCode !== verificationCode.toUpperCase()) {
+      console.log("Inside code not matches");
       throw new UnauthorizedException(ErrorMessages.Unauthorized);
     }
     if (
       (Date.now() - user.verificationCodeTimeStamp.getTime()) / 1000 >
       expireTime
     ) {
+      console.log("Inside code expire");
       throw new UnauthorizedException(ErrorMessages.VerificationCodeExpired);
     }
     return;
@@ -375,6 +381,7 @@ export class UserService {
 
   async refreshVerificationCode(email: string): Promise<string> {
     const verificationCode = this.generateEmailVerificationCode().toUpperCase();
+    console.log("inside refresh verification code");
     await this.userRepository.updateVerificationCode(email, verificationCode);
     return verificationCode;
   }
