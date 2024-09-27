@@ -185,7 +185,7 @@ export class CollectionRequestService {
         return item;
       }
       if (item?.items && item.items.length > 0) {
-        const found = this.findItemById(item.items, id);
+        const found = await this.findItemById(item.items, id);
         if (found) {
           return found;
         }
@@ -490,7 +490,9 @@ export class CollectionRequestService {
     await this.checkPermission(websocket.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(websocket.collectionId);
     const uuid = uuidv4();
-    await this.collectionReposistory.getCollection(websocket.collectionId);
+    const collection = await this.collectionReposistory.getCollection(
+      websocket.collectionId,
+    );
     const websocketObj: CollectionItem = {
       id: uuid,
       name: websocket.items.name,
@@ -503,6 +505,7 @@ export class CollectionRequestService {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    let updateMessage = ``;
     if (websocket.items.type === ItemTypeEnum.WEBSOCKET) {
       websocketObj.websocket = websocket.items.websocket;
       await this.collectionReposistory.addWebSocket(
@@ -510,6 +513,14 @@ export class CollectionRequestService {
         websocketObj,
         noOfRequests,
       );
+      updateMessage = `New WebSocket "${websocket.items.name}" is created under "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.WEBSOCKET,
+          workspaceId: websocket.workspaceId,
+        }),
+      });
       return websocketObj;
     } else {
       websocketObj.items = [
@@ -532,6 +543,14 @@ export class CollectionRequestService {
         noOfRequests,
         websocket?.folderId,
       );
+      updateMessage = `New WebSocket "${websocket.items.items.name}" is created under "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.WEBSOCKET,
+          workspaceId: websocket.workspaceId,
+        }),
+      });
       return websocketObj.items[0];
     }
   }
@@ -556,6 +575,17 @@ export class CollectionRequestService {
       websocketId,
       websocket,
     );
+    const collectionData = await this.collectionReposistory.getCollection(
+      websocket.collectionId,
+    );
+    const updateMessage = `WebSocket "${websocket?.items?.name}" is updated under "${collectionData.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.WEBSOCKET,
+        workspaceId: websocket.workspaceId,
+      }),
+    });
     return collection;
   }
 
@@ -577,12 +607,27 @@ export class CollectionRequestService {
     const user = await this.contextService.get("user");
     await this.checkPermission(websocketDto.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(websocketDto.collectionId);
+    const collectionData = await this.collectionReposistory.getCollection(
+      websocketDto.collectionId,
+    );
+    const websocketData = await this.findItemById(
+      collectionData.items,
+      websocketId,
+    );
     const collection = await this.collectionReposistory.deleteWebSocket(
       websocketDto.collectionId,
       websocketId,
       noOfRequests,
       websocketDto?.folderId,
     );
+    const updateMessage = `WebSocket "${websocketData?.name}" is deleted from "${collectionData?.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.WEBSOCKET,
+        workspaceId: websocketDto.workspaceId,
+      }),
+    });
     return collection;
   }
 }

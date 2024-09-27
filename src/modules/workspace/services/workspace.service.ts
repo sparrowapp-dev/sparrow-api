@@ -49,6 +49,7 @@ import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { EmailService } from "@src/modules/common/services/email.service";
+import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 
 /**
  * Workspace Service
@@ -1016,5 +1017,64 @@ export class WorkspaceService {
       );
     }
     await Promise.all(workspaceDataPromises);
+  }
+
+  /**
+   * Adds a new testflow to a workspace
+   * @param workspaceId - Id of workspace you want to insert into it.
+   * @param testflow - new testflow object to be inserted in workspace
+   */
+  async addTestflowInWorkSpace(
+    workspaceId: string,
+    testflow: TestflowInfoDto,
+  ): Promise<UpdateResult<Document>> {
+    await this.IsWorkspaceAdminOrEditor(workspaceId);
+    const response = await this.workspaceRepository.addTestflowInWorkspace(
+      workspaceId,
+      testflow,
+    );
+    return response;
+  }
+
+  /**
+   * deletes an existing testflow from a workspace
+   * @param workspaceId - Id of workspace you want to delete from it.
+   * @param testflowId - Id of testflow you want to delete.
+   */
+  async deleteTestflowInWorkSpace(
+    workspaceId: string,
+    testflowId: string,
+  ): Promise<UpdateResult<Document>> {
+    await this.IsWorkspaceAdminOrEditor(workspaceId);
+    const data = await this.get(workspaceId);
+
+    const filteredTestflows = data.testflows.filter((flow) => {
+      return flow.id.toString() !== testflowId;
+    });
+    const response = await this.workspaceRepository.deleteTestflowInWorkspace(
+      workspaceId,
+      filteredTestflows,
+    );
+    return response;
+  }
+
+  /**
+   * updates an existing testflow from a workspace
+   * @param workspaceId - Id of workspace you want to update into it.
+   * @param testflowId - Id of testflow you want to update.
+   * @param name - updated name of the testflow .
+   */
+  async updateTestflowInWorkSpace(
+    workspaceId: string,
+    testflowId: string,
+    name: string,
+  ): Promise<UpdateResult<Document>> {
+    await this.IsWorkspaceAdminOrEditor(workspaceId);
+    const response = await this.workspaceRepository.updateTestflowInWorkspace(
+      workspaceId,
+      testflowId,
+      name,
+    );
+    return response;
   }
 }

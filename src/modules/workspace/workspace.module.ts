@@ -9,6 +9,7 @@ import { FeedbackController } from "./controllers/feedback.controller";
 import { UpdatesController } from "./controllers/updates.controller";
 import { AiAssistantController } from "./controllers/ai-assistant.controller";
 import { ChatbotStatsController } from "./controllers/chatbot-stats.controller";
+import { TestflowController } from "./controllers/testflow.controller";
 
 // ---- Repository
 import { WorkspaceRepository } from "./repositories/workspace.repository";
@@ -20,6 +21,7 @@ import { BranchRepository } from "./repositories/branch.repository";
 import { UpdatesRepository } from "./repositories/updates.repository";
 import { AiAssistantRepository } from "./repositories/ai-assistant.repository";
 import { ChatbotStatsRepository } from "./repositories/chatbot-stats.repositoy";
+import { TestflowRepository } from "./repositories/testflow.repository";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -32,6 +34,7 @@ import { PromoteAdminHandler } from "./handlers/promoteAdmin.handlers";
 import { DemoteAdminHandler } from "./handlers/demoteAdmin.handlers";
 import { UpdatesHandler } from "./handlers/updates.handler";
 import { ChatbotTokenHandler } from "./handlers/chatbot-token.handler";
+import { TeamUpdatedHandler } from "./handlers/teamUpdated.handler";
 
 // ---- Services
 import { CollectionService } from "./services/collection.service";
@@ -45,8 +48,10 @@ import { FeedbackService } from "./services/feedback.service";
 import { UpdatesService } from "./services/updates.service";
 import { AiAssistantService } from "./services/ai-assistant.service";
 import { ChatbotStatsService } from "./services/chatbot-stats.service";
+import { TestflowService } from "./services/testflow.service";
+
+// ---- Gateway
 import { AiAssistantGateway } from "./controllers/ai-assistant.gateway";
-import { TeamUpdatedHandler } from "./handlers/teamUpdated.handler";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -84,6 +89,8 @@ import { TeamUpdatedHandler } from "./handlers/teamUpdated.handler";
     ChatbotStatsRepository,
     AiAssistantGateway,
     TeamUpdatedHandler,
+    TestflowService,
+    TestflowRepository,
   ],
   exports: [
     CollectionService,
@@ -101,6 +108,8 @@ import { TeamUpdatedHandler } from "./handlers/teamUpdated.handler";
     UpdatesRepository,
     ChatbotStatsService,
     ChatbotStatsRepository,
+    TestflowService,
+    TestflowRepository,
   ],
   controllers: [
     WorkSpaceController,
@@ -111,6 +120,7 @@ import { TeamUpdatedHandler } from "./handlers/teamUpdated.handler";
     UpdatesController,
     AiAssistantController,
     ChatbotStatsController,
+    TestflowController,
   ],
 })
 export class WorkspaceModule {}

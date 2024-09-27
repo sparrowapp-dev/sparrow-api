@@ -16,6 +16,7 @@ import {
 import { ContextService } from "../../common/services/context.service";
 import { CollectionDto } from "@src/modules/common/models/collection.model";
 import { EnvironmentDto } from "@src/modules/common/models/environment.model";
+import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 /**
  * Models a typical response for a crud operation
  */
@@ -195,5 +196,78 @@ export class WorkspaceRepository {
         { _id, "environments.id": environment_id },
         { $set: { "environments.$.name": name } },
       );
+  }
+
+  /**
+   * Adds a Testflow to the specified Workspace.
+   *
+   * @param {string} workspaceId - The MongoDB ObjectId of the Workspace where the Testflow will be added.
+   * @param {TestflowInfoDto} testflow - The Testflow data containing the id and name to be added to the Workspace.
+   * @returns {Promise<UpdateResult>} - The result of the update operation.
+   *
+   * @description This method pushes a new Testflow entry (id and name) to the `testflows` array of the specified Workspace.
+   */
+  async addTestflowInWorkspace(
+    workspaceId: string,
+    testflow: TestflowInfoDto,
+  ): Promise<UpdateResult> {
+    const _id = new ObjectId(workspaceId);
+    const response = await this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id },
+      {
+        $push: {
+          testflows: {
+            id: testflow.id,
+            name: testflow.name,
+          },
+        },
+      },
+    );
+    return response;
+  }
+
+  /**
+   * Deletes Testflows in the specified Workspace.
+   *
+   * @param {string} workspaceId - The MongoDB ObjectId of the Workspace where the Testflows will be removed.
+   * @param {TestflowInfoDto[]} testflowsArray - The array of remaining Testflow data (id and name) after deletion.
+   * @returns {Promise<UpdateResult>} - The result of the update operation.
+   *
+   * @description This method sets the `testflows` array to the provided list in the specified Workspace, effectively removing the Testflows that are not present in the new array.
+   */
+  async deleteTestflowInWorkspace(
+    workspaceId: string,
+    testflowsArray: TestflowInfoDto[],
+  ): Promise<UpdateResult> {
+    const _id = new ObjectId(workspaceId);
+    const response = await this.db
+      .collection(Collections.WORKSPACE)
+      .updateOne({ _id }, { $set: { testflows: testflowsArray } });
+    return response;
+  }
+
+  /**
+   * Updates the name of a specific Testflow in the Workspace.
+   *
+   * @param {string} workspaceId - The MongoDB ObjectId of the Workspace where the Testflow is located.
+   * @param {string} testflowId - The id of the Testflow whose name needs to be updated.
+   * @param {string} name - The new name to update the Testflow with.
+   * @returns {Promise<UpdateResult>} - The result of the update operation.
+   *
+   * @description This method updates the name of a Testflow in the `testflows` array in the specified Workspace, identified by the Testflow's id.
+   */
+  async updateTestflowInWorkspace(
+    workspaceId: string,
+    testflowId: string,
+    name: string,
+  ): Promise<UpdateResult> {
+    const _id = new ObjectId(workspaceId);
+    const response = await this.db
+      .collection(Collections.WORKSPACE)
+      .updateOne(
+        { _id, "testflows.id": testflowId },
+        { $set: { "testflows.$.name": name } },
+      );
+    return response;
   }
 }

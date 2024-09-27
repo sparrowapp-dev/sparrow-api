@@ -15,6 +15,7 @@ import {
 import { CollectionDto } from "./collection.model";
 import { ObjectId } from "mongodb";
 import { EnvironmentDto } from "./environment.model";
+import { TestflowInfoDto } from "./testflow.model";
 
 export enum WorkspaceType {
   PERSONAL = "PERSONAL",
@@ -97,6 +98,12 @@ export class Workspace {
   @ValidateNested({ each: true })
   @IsOptional()
   environments?: EnvironmentDto[];
+
+  @IsArray()
+  @Type(() => TestflowInfoDto)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  testflows?: TestflowInfoDto[];
 
   @IsArray()
   @Type(() => AdminDto)

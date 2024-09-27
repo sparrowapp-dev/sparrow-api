@@ -152,7 +152,9 @@ export class UserService {
   async sendVerificationEmail(
     resetPasswordDto: ResetPasswordPayload,
   ): Promise<void> {
-    const userDetails = await this.getUserByEmail(resetPasswordDto.email);
+    const userDetails = await this.getUserByEmail(
+      resetPasswordDto.email.toLowerCase(),
+    );
     if (!userDetails) {
       throw new UnauthorizedException(ErrorMessages.BadRequestError);
     }
@@ -179,7 +181,7 @@ export class UserService {
     const promise = [
       transporter.sendMail(mailOptions),
       this.userRepository.updateVerificationCode(
-        resetPasswordDto.email,
+        resetPasswordDto.email.toLowerCase(),
         verificationCode,
       ),
     ];
@@ -198,7 +200,9 @@ export class UserService {
   async sendUserVerificationEmail(
     verificationPayload: VerificationPayload,
   ): Promise<void> {
-    const userDetails = await this.getUserByEmail(verificationPayload.email);
+    const userDetails = await this.getUserByEmail(
+      verificationPayload.email.toLowerCase(),
+    );
     if (userDetails?.isEmailVerified) {
       throw new BadRequestException("Email Already Verified");
     }
@@ -226,7 +230,7 @@ export class UserService {
     const promise = [
       transporter.sendMail(mailOptions),
       this.userRepository.updateEmailVerificationCode(
-        verificationPayload.email,
+        verificationPayload.email.toLowerCase(),
         verificationCode,
       ),
     ];

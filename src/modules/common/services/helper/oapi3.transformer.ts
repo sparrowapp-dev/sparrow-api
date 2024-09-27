@@ -437,6 +437,6 @@ export function getBaseUrl(openApiDocument: OpenAPI20 | OpenAPI303) {
   if (openApiDocument.host) {
     return "https://" + openApiDocument.host + basePath;
   } else {
-    return "http://localhost:{{PORT}}" + basePath;
+    return "{{BASE_URL}}" + basePath;
   }
 }
