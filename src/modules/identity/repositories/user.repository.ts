@@ -220,19 +220,16 @@ export class UserRepository {
     email: string,
     verificationCode: string,
   ): Promise<void> {
-    const response = await this.db
-      .collection<User>(Collections.USER)
-      .findOneAndUpdate(
-        { email },
-        {
-          $set: {
-            verificationCode,
-            verificationCodeTimeStamp: new Date(),
-            isVerificationCodeActive: true,
-          },
+    await this.db.collection<User>(Collections.USER).findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          verificationCode,
+          verificationCodeTimeStamp: new Date(),
+          isVerificationCodeActive: true,
         },
-      );
-    console.log("Inside Send Verificatgion EMail Repo", response);
+      },
+    );
   }
 
   async updateEmailVerificationCode(
