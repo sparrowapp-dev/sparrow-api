@@ -18,6 +18,7 @@ import { ParserService } from "./services/parser.service";
 import { ContextService } from "./services/context.service";
 import { EmailService } from "./services/email.service";
 import { InsightsService } from "./services/insights.service";
+import { PostmanParserService } from "./services/postman.parser.service";
 
 /**
  * Common Module provides global services and configurations used across the application.
@@ -73,6 +74,7 @@ import { InsightsService } from "./services/insights.service";
     ContextService,
     ApiResponseService,
     ParserService,
+    PostmanParserService,
     LoggingExceptionsFilter,
     ProducerService,
     ConsumerService,
@@ -85,6 +87,7 @@ import { InsightsService } from "./services/insights.service";
     ContextService,
     ApiResponseService,
     ParserService,
+    PostmanParserService,
     LoggingExceptionsFilter,
     ProducerService,
     ConsumerService,
