@@ -168,9 +168,16 @@ export class AuthController {
     const [accessToken, refreshToken] = await Promise.all(tokenPromises);
 
     const url = encodeURI(this.configService.get("oauth.google.redirectUrl"));
+    const urlWithToken = `${url}?accessToken=${accessToken.token}&refreshToken=${refreshToken.token}`;
+    let urlWithTokenAndSource = urlWithToken + "&source=";
+    if (isUserExists) {
+      urlWithTokenAndSource = urlWithTokenAndSource + "login";
+    } else {
+      urlWithTokenAndSource = urlWithTokenAndSource + "register";
+    }
     return res.redirect(
       HttpStatusCode.MOVED_PERMANENTLY,
-      `${url}?accessToken=${accessToken.token}&refreshToken=${refreshToken.token}`,
+      urlWithTokenAndSource,
     );
   }
 }
