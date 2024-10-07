@@ -21,6 +21,7 @@ import {
 // ---- Services
 import { ContextService } from "@src/modules/common/services/context.service";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { ChatbotStatsService } from "./chatbot-stats.service";
 
 // ---- Enums
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
@@ -37,6 +38,7 @@ export class AiAssistantService {
   private apiVersion: string;
   private maxTokens: number;
   private assistantsClient: AzureOpenAI;
+  private monthlyTokenLimit: number;
   // Default assistant configuration
   private assistant = {
     name: "API Instructor",
@@ -52,6 +54,7 @@ export class AiAssistantService {
     private readonly contextService: ContextService,
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
+    private readonly chatbotStatsService: ChatbotStatsService,
   ) {
     // Retrieve configuration from environment variables
     this.endpoint = this.configService.get("ai.endpoint");
@@ -59,6 +62,7 @@ export class AiAssistantService {
     this.deployment = this.configService.get("ai.deployment");
     this.apiVersion = this.configService.get("ai.apiVersion");
     this.maxTokens = this.configService.get("ai.maxTokens");
+    this.monthlyTokenLimit = this.configService.get("ai.monthlyTokenLimit");
 
     // Initialize the AzureOpenAI client
     this.assistantsClient = this.getClient();
@@ -103,6 +107,18 @@ export class AiAssistantService {
    * @throws BadRequestException if the assistant cannot be created.
    */
   public async generateText(data: PromptPayload): Promise<AIResponseDto> {
+    const user = this.contextService.get("user");
+    const stat = await this.chatbotStatsService.getIndividualStat(
+      user?._id?.toString(),
+    );
+    const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
+    if (
+      stat?.tokenStats &&
+      stat.tokenStats?.yearMonth === currentYearMonth &&
+      stat.tokenStats.tokenUsage > this.monthlyTokenLimit
+    ) {
+      throw new BadRequestException("Monthly AI Usage exceeded");
+    }
     const { text: prompt, threadId, instructions } = data;
     const assistantId = await this.createAssistant(instructions);
     if (!assistantId) {

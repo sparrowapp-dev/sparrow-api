@@ -229,6 +229,11 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: AZURE_INSIGHTS_CONNECTION_STRING
+            - name: AZURE_OPENAI_MONTHLY_TOKEN_LIMIT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_MONTHLY_TOKEN_LIMIT
 
 ---
 apiVersion: v1
