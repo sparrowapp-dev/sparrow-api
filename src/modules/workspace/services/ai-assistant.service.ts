@@ -117,7 +117,7 @@ export class AiAssistantService {
       stat.tokenStats?.yearMonth === currentYearMonth &&
       stat.tokenStats.tokenUsage > this.monthlyTokenLimit
     ) {
-      throw new BadRequestException("Monthly AI Usage exceeded");
+      throw new BadRequestException("Limit reached");
     }
     const { text: prompt, threadId, instructions } = data;
     const assistantId = await this.createAssistant(instructions);
