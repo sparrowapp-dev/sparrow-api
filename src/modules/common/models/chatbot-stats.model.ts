@@ -94,7 +94,6 @@ export class ChatBotStats {
    * This field is optional.
    */
   @ApiProperty({ type: TokenStats })
-  @ValidateNested()
   @Type(() => TokenStats)
   @IsOptional()
   tokenStats?: TokenStats;
