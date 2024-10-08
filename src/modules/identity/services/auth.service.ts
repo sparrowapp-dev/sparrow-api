@@ -146,7 +146,7 @@ export class AuthService {
       payload.password,
     );
     if (!user) {
-      throw new UnauthorizedException(
+      throw new BadRequestException(
         "Could not authenticate. Please try again.",
       );
     }

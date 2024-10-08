@@ -1,7 +1,12 @@
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { FastifyRequest } from "fastify";
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
@@ -31,7 +36,7 @@ export class RefreshTokenStrategy extends PassportStrategy(
     const refreshToken = req.headers.authorization.replace("Bearer", "").trim();
     const timeDiff = exp - Date.now() / 1000;
     if (timeDiff <= 0) {
-      throw new UnauthorizedException(ErrorMessages.ExpiredToken);
+      throw new BadRequestException(ErrorMessages.ExpiredToken);
     }
     const user = await this.db.collection(Collections.USER).findOne(
       {

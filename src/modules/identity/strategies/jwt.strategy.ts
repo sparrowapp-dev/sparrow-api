@@ -1,6 +1,11 @@
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { PassportStrategy } from "@nestjs/passport";
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Db, ObjectId } from "mongodb";
 import { JwtPayload } from "../payloads/jwt.payload";
@@ -40,7 +45,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate({ exp, _id }: JwtPayload) {
     const timeDiff = exp - Date.now() / 1000;
     if (timeDiff <= 0) {
-      throw new UnauthorizedException(ErrorMessages.ExpiredToken);
+      throw new BadRequestException(ErrorMessages.ExpiredToken);
     }
     const user = await this.db.collection(Collections.USER).findOne(
       {
