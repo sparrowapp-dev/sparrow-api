@@ -317,7 +317,7 @@ export class UserService {
     if (!user?.isVerificationCodeActive) {
       throw new UnauthorizedException(ErrorMessages.Unauthorized);
     }
-    if (user?.verificationCode !== verificationCode.toUpperCase()) {
+    if (user?.verificationCode !== verificationCode) {
       throw new UnauthorizedException(ErrorMessages.Unauthorized);
     }
     if (
@@ -345,7 +345,7 @@ export class UserService {
     expireTime: number,
   ) {
     const user = await this.getUserByEmail(email);
-    if (user?.emailVerificationCode !== verificationCode.toUpperCase()) {
+    if (user?.emailVerificationCode !== verificationCode) {
       throw new UnauthorizedException("Wrong Code");
     }
     if (user?.isEmailVerified) {
