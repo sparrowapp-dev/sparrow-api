@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ExecutionContext,
   Injectable,
   UnauthorizedException,
@@ -16,9 +15,9 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
   handleRequest(err: any, user: any, info: any) {
     if (err || !user) {
       if (info.name === ErrorMessages.TokenExpiredError) {
-        throw new BadRequestException(ErrorMessages.ExpiredToken);
+        throw new UnauthorizedException(ErrorMessages.ExpiredToken);
       }
-      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+      throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
 
     return user;

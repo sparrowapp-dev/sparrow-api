@@ -7,6 +7,7 @@ export enum ErrorMessages {
   BadRequestError = "Bad Request",
   PasswordExist = "Old Password and New Password cannot be same",
   InvalidFile = "Invalid File Type",
+  JWTFailed = "JWT Failed",
 }
 
 export enum FeedbackErrorMessages {

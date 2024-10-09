@@ -173,7 +173,7 @@ export class AuthService {
       .findOne({ _id });
 
     if (!user) {
-      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+      throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
     const oldRefreshToken = user.refresh_tokens.filter((token) => {
       if (createHmac("sha256", refreshToken).digest("hex") === token) {
