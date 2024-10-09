@@ -8,6 +8,7 @@ import {
   Put,
   Res,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -33,6 +34,11 @@ import {
 import { CollectionRequestService } from "../services/collection-request.service";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import {
+  FileInterceptor,
+  MemoryStorageFile,
+  UploadedFile,
+} from "@blazity/nest-file-fastify";
 
 @ApiBearerAuth()
 @ApiTags("collection")
@@ -471,6 +477,50 @@ export class collectionController {
     );
     const responseData = new ApiResponseService(
       "Success",
+      HttpStatusCode.OK,
+      collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Imports a Postman collection from a v2.1 collection JSON file.
+   *
+   * @param workspaceId - The ID of the workspace where the collection will be imported.
+   * @param res - The Fastify reply object used to send responses.
+   * @param file - The uploaded file containing the Postman collection JSON.
+   *
+   * @returns - A promise that resolves to the Fastify reply object
+   *                                    with the import result.
+   *
+   * @throws If the JSON parsing fails or the collection import fails, an error will be thrown.
+   */
+  @Post(":workspaceId/importPostmanCollection")
+  @ApiOperation({
+    summary: "Import a collection From A Postman v2.1 collection JSON",
+    description: "You can import a collection that is exported from postman",
+  })
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiResponse({
+    status: 201,
+    description: "Postman collection imported successfully",
+  })
+  @ApiResponse({ status: 400, description: "Failed to Import Collection" })
+  async importPostmanCollection(
+    @Param("workspaceId") workspaceId: string,
+    @Res() res: FastifyReply,
+    @UploadedFile()
+    file: MemoryStorageFile,
+  ) {
+    const dataBuffer = file.buffer;
+    const dataString = dataBuffer.toString("utf8");
+    const dataObj = JSON.parse(dataString);
+    const collection = await this.collectionService.importPostmanCollection(
+      dataObj,
+      workspaceId,
+    );
+    const responseData = new ApiResponseService(
+      "Postman Collection Imported",
       HttpStatusCode.OK,
       collection,
     );

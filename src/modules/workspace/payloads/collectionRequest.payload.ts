@@ -16,6 +16,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import {
   BodyModeEnum,
   ItemTypeEnum,
+  RequestMetaData,
   SourceTypeEnum,
 } from "@src/modules/common/models/collection.model";
 
@@ -243,10 +244,10 @@ export class CollectionRequestItem {
   @IsOptional()
   items?: CollectionRequestItem;
 
-  @ApiProperty({ type: CollectionRequestMetaData })
+  @ApiProperty({ type: RequestMetaData })
   @IsOptional()
-  @Type(() => CollectionRequestMetaData)
-  request?: CollectionRequestMetaData;
+  @Type(() => RequestMetaData)
+  request?: RequestMetaData;
 
   @ApiProperty({ type: CollectionWebSocketMetaData })
   @IsOptional()

@@ -148,7 +148,9 @@ export class UserService {
   async sendVerificationEmail(
     resetPasswordDto: ResetPasswordPayload,
   ): Promise<void> {
-    const userDetails = await this.getUserByEmail(resetPasswordDto.email);
+    const userDetails = await this.getUserByEmail(
+      resetPasswordDto.email.toLowerCase(),
+    );
     if (!userDetails) {
       throw new BadRequestException(ErrorMessages.BadRequestError);
     }
@@ -175,7 +177,7 @@ export class UserService {
     const promise = [
       transporter.sendMail(mailOptions),
       this.userRepository.updateVerificationCode(
-        resetPasswordDto.email,
+        resetPasswordDto.email.toLowerCase(),
         verificationCode,
       ),
     ];
@@ -194,7 +196,9 @@ export class UserService {
   async sendUserVerificationEmail(
     verificationPayload: VerificationPayload,
   ): Promise<void> {
-    const userDetails = await this.getUserByEmail(verificationPayload.email);
+    const userDetails = await this.getUserByEmail(
+      verificationPayload.email.toLowerCase(),
+    );
     if (userDetails?.isEmailVerified) {
       throw new BadRequestException("Email Already Verified");
     }
@@ -222,7 +226,7 @@ export class UserService {
     const promise = [
       transporter.sendMail(mailOptions),
       this.userRepository.updateEmailVerificationCode(
-        verificationPayload.email,
+        verificationPayload.email.toLowerCase(),
         verificationCode,
       ),
     ];
@@ -309,7 +313,7 @@ export class UserService {
     if (!user?.isVerificationCodeActive) {
       throw new BadRequestException(ErrorMessages.Unauthorized);
     }
-    if (user?.verificationCode !== verificationCode.toUpperCase()) {
+    if (user?.verificationCode !== verificationCode) {
       throw new BadRequestException(ErrorMessages.Unauthorized);
     }
     if (
@@ -337,7 +341,7 @@ export class UserService {
     expireTime: number,
   ) {
     const user = await this.getUserByEmail(email);
-    if (user?.emailVerificationCode !== verificationCode.toUpperCase()) {
+    if (user?.emailVerificationCode !== verificationCode) {
       throw new BadRequestException("Wrong Code");
     }
     if (user?.isEmailVerified) {

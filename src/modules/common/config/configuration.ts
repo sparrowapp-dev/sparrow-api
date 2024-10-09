@@ -83,5 +83,6 @@ export default () => ({
     deployment: process.env.AZURE_OPENAI_DEPLOYMENT,
     apiVersion: process.env.AZURE_OPENAI_API_VERSION,
     maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS),
+    monthlyTokenLimit: parseInt(process.env.AZURE_OPENAI_MONTHLY_TOKEN_LIMIT),
   },
 });

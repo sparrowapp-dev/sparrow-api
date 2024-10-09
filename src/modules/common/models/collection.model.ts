@@ -16,6 +16,12 @@ import { HTTPMethods } from "fastify";
 import { ObjectId } from "mongodb";
 import { SchemaObject } from "./openapi303.model";
 import { ApiProperty } from "@nestjs/swagger";
+import {
+  Auth,
+  KeyValue,
+  SparrowRequestBody,
+  TransformedRequest,
+} from "./collection.rxdb.model";
 export enum ItemTypeEnum {
   FOLDER = "FOLDER",
   REQUEST = "REQUEST",
@@ -34,11 +40,29 @@ export enum BodyModeEnum {
   "text/html" = "text/html",
 }
 
+export enum PostmanBodyModeEnum {
+  "none" = "none",
+  "json" = "application/json",
+  "xml" = "application/xml",
+  "urlencoded" = "application/x-www-form-urlencoded",
+  "formdata" = "multipart/form-data",
+  "javascript" = "application/javascript",
+  "text" = "text/plain",
+  "html" = "text/html",
+}
+
 export enum AuthModeEnum {
   "No Auth" = "No Auth",
   "API Key" = "API Key",
   "Bearer Token" = "Bearer Token",
   "Basic Auth" = "Basic Auth",
+}
+
+export enum PostmanAuthModeEnum {
+  "noauth" = "No Auth",
+  "apikey" = "API Key",
+  "bearer" = "Bearer Token",
+  "basic" = "Basic Auth",
 }
 
 export enum SourceTypeEnum {
@@ -117,11 +141,11 @@ export class RequestMetaData {
   @IsNotEmpty()
   url: string;
 
-  @ApiProperty({ type: [RequestBody] })
-  @Type(() => RequestBody)
+  @ApiProperty({ type: [SparrowRequestBody] })
+  @Type(() => SparrowRequestBody)
   @ValidateNested({ each: true })
   @IsOptional()
-  body?: RequestBody[];
+  body?: SparrowRequestBody;
 
   @ApiProperty({
     enum: [
@@ -156,13 +180,13 @@ export class RequestMetaData {
     },
   })
   @IsArray()
-  @Type(() => Params)
+  @Type(() => KeyValue)
   @ValidateNested({ each: true })
   @IsOptional()
-  queryParams?: Params[];
+  queryParams?: KeyValue[];
 
   @ApiProperty({
-    type: [Params],
+    type: [KeyValue],
     example: {
       name: "userID",
       description: "The unique identifier of the user",
@@ -171,23 +195,35 @@ export class RequestMetaData {
     },
   })
   @IsArray()
-  @Type(() => Params)
+  @Type(() => KeyValue)
   @ValidateNested({ each: true })
   @IsOptional()
-  pathParams?: Params[];
+  pathParams?: KeyValue[];
 
   @ApiProperty({
-    type: [Params],
+    type: [KeyValue],
     example: {
       name: "Authorization",
       description: "Bearer token for authentication",
     },
   })
   @IsArray()
-  @Type(() => Params)
+  @Type(() => KeyValue)
   @ValidateNested({ each: true })
   @IsOptional()
-  headers?: Params[];
+  headers?: KeyValue[];
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      bearerToken: "Bearer xyz",
+    },
+  })
+  @IsArray()
+  @Type(() => Auth)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  auth?: Auth;
 }
 
 /**
@@ -384,7 +420,7 @@ export class Collection {
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CollectionBranch)
-  branches?: CollectionBranch[];
+  branches?: CollectionBranch[] | TransformedRequest[];
 
   @IsOptional()
   @IsDateString()

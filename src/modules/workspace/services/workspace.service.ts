@@ -323,12 +323,14 @@ export class WorkspaceService {
 
     const userDetails = await this.userRepository.getUserById(teamData.owner);
 
-    await this.newWorkspaceEmail(
-      userDetails.name,
-      workspaceData.name,
-      teamData.name,
-      userDetails.email,
-    );
+    if (!workspaceData?.firstWorkspace) {
+      await this.newWorkspaceEmail(
+        userDetails.name,
+        workspaceData.name,
+        teamData.name,
+        userDetails.email,
+      );
+    }
 
     return response;
   }
