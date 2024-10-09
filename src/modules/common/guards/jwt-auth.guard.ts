@@ -17,7 +17,7 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
       if (info.name === ErrorMessages.TokenExpiredError) {
         throw new UnauthorizedException(ErrorMessages.ExpiredToken);
       }
-      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+      throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
 
     return user;

@@ -14,7 +14,7 @@ export class RefreshTokenGuard extends AuthGuard("jwt-refresh") {
 
   handleRequest(err: any, user: any) {
     if (err || !user) {
-      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+      throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
     return user;
   }

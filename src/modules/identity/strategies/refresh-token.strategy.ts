@@ -41,7 +41,7 @@ export class RefreshTokenStrategy extends PassportStrategy(
     );
 
     if (!user) {
-      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+      throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
     this.contextService.set("user", user);
 

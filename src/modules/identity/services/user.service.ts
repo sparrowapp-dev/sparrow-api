@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { RegisteredWith, UpdateUserDto } from "../payloads/user.payload";
 import { UserRepository } from "../repositories/user.repository";
 import { RegisterPayload } from "../payloads/register.payload";
@@ -156,7 +152,7 @@ export class UserService {
       resetPasswordDto.email.toLowerCase(),
     );
     if (!userDetails) {
-      throw new UnauthorizedException(ErrorMessages.BadRequestError);
+      throw new BadRequestException(ErrorMessages.BadRequestError);
     }
     const transporter = this.emailService.createTransporter();
 
@@ -315,16 +311,16 @@ export class UserService {
   ): Promise<void> {
     const user = await this.getUserByEmail(email);
     if (!user?.isVerificationCodeActive) {
-      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+      throw new BadRequestException(ErrorMessages.Unauthorized);
     }
     if (user?.verificationCode !== verificationCode) {
-      throw new UnauthorizedException(ErrorMessages.Unauthorized);
+      throw new BadRequestException(ErrorMessages.Unauthorized);
     }
     if (
       (Date.now() - user.verificationCodeTimeStamp.getTime()) / 1000 >
       expireTime
     ) {
-      throw new UnauthorizedException(ErrorMessages.VerificationCodeExpired);
+      throw new BadRequestException(ErrorMessages.VerificationCodeExpired);
     }
     return;
   }
@@ -346,7 +342,7 @@ export class UserService {
   ) {
     const user = await this.getUserByEmail(email);
     if (user?.emailVerificationCode !== verificationCode) {
-      throw new UnauthorizedException("Wrong Code");
+      throw new BadRequestException("Wrong Code");
     }
     if (user?.isEmailVerified) {
       throw new BadRequestException("Email Already Verified");
@@ -355,7 +351,7 @@ export class UserService {
       (Date.now() - user.emailVerificationCodeTimeStamp.getTime()) / 1000 >
       expireTime
     ) {
-      throw new UnauthorizedException(ErrorMessages.VerificationCodeExpired);
+      throw new BadRequestException(ErrorMessages.VerificationCodeExpired);
     }
     if (verificationCode === user.emailVerificationCode) {
       await this.userRepository.updateUserEmailVerificationStatus(email);
@@ -387,7 +383,7 @@ export class UserService {
     const user = await this.getUserByEmailAndPass(email, password);
 
     if (user) {
-      throw new UnauthorizedException(ErrorMessages.PasswordExist);
+      throw new BadRequestException(ErrorMessages.PasswordExist);
     }
     await this.userRepository.updatePassword(email, password);
     await this.expireVerificationCode(email);
