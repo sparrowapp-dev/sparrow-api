@@ -24,6 +24,7 @@ import { GoogleOAuthGuard } from "@src/modules/common/guards/google-oauth.guard"
 import { UserService } from "../services/user.service";
 import { ObjectId } from "mongodb";
 import { ConfigService } from "@nestjs/config";
+import { HubSpotService } from "../services/hubspot.service";
 /**
  * Authentication Controller
  */
@@ -46,6 +47,7 @@ export class AuthController {
     private readonly contextService: ContextService,
     private readonly userService: UserService,
     private readonly configService: ConfigService,
+    private readonly hubspotService: HubSpotService,
   ) {}
 
   /**
@@ -160,6 +162,9 @@ export class AuthController {
         email,
       });
       id = user.insertedId;
+      if (this.configService.get("hubspot.hubspotEnabled") === "true") {
+        await this.hubspotService.createContact(email, name);
+      }
     }
     const tokenPromises = [
       this.authService.createToken(id),
