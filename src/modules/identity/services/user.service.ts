@@ -119,7 +119,8 @@ export class UserService {
       firstTeam: true,
     };
     await this.teamService.create(teamName);
-    await this.sendSignUpEmail(firstName, payload.email);
+    // Disabling the welcome email due to hubspot integration
+    // await this.sendSignUpEmail(firstName, payload.email);
     await this.sendUserVerificationEmail({ email: payload.email });
     return data;
   }
