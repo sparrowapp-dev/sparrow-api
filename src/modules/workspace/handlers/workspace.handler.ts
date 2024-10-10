@@ -56,7 +56,12 @@ export class WorkspaceHandler implements OnModuleInit {
               type: EnvironmentType.LOCAL,
             },
           );
-          // await this.collectionService.createCollection();
+          const collection =
+            await this.collectionService.createDefaultCollection();
+          await this.workspaceService.addCollectionInWorkSpace(
+            workspace.insertedId.toString(),
+            { id: collection.insertedId, name: "Sample Collection" },
+          );
         }, this.configService.get("app.kafkaHitTimeInterval"));
       },
       onError: async (error) => {

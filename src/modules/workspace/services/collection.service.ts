@@ -74,6 +74,24 @@ export class CollectionService {
     return collection;
   }
 
+  async createDefaultCollection(): Promise<InsertOneResult> {
+    const user = await this.contextService.get("user");
+
+    const newCollection: Collection = {
+      name: "Sample Collection",
+      totalRequests: 1,
+      createdBy: user.name,
+      items: [],
+      updatedBy: user.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const collection = await this.collectionRepository.addCollection(
+      newCollection,
+    );
+    return collection;
+  }
+
   async getCollection(id: string): Promise<WithId<Collection>> {
     return await this.collectionRepository.get(id);
   }
