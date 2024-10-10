@@ -19,6 +19,7 @@ import { TeamService } from "./team.service";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { VerificationPayload } from "../payloads/verification.payload";
+import { HubSpotService } from "./hubspot.service";
 export interface IGenericMessageBody {
   message: string;
 }
@@ -34,6 +35,7 @@ export class UserService {
     private readonly teamService: TeamService,
     private readonly contextService: ContextService,
     private readonly emailService: EmailService,
+    private readonly hubspotService: HubSpotService,
   ) {}
 
   /**
@@ -365,6 +367,9 @@ export class UserService {
       accessToken,
       refreshToken,
     };
+    if (this.configService.get("hubspot.hubspotEnabled") === "true") {
+      await this.hubspotService.createContact(user.email, user.name);
+    }
     return data;
   }
 

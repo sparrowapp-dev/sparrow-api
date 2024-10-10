@@ -85,4 +85,8 @@ export default () => ({
     maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS),
     monthlyTokenLimit: parseInt(process.env.AZURE_OPENAI_MONTHLY_TOKEN_LIMIT),
   },
+  hubspot: {
+    appToken: process.env.HUBSPOT_PRIVATE_APP_TOKEN,
+    hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,
+  },
 });

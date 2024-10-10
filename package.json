@@ -33,6 +33,7 @@
     "@fastify/multipart": "^8.0.0",
     "@fastify/rate-limit": "^8.0.3",
     "@fastify/static": "^6.10.2",
+    "@hubspot/api-client": "^12.0.1",
     "@nestjs/common": "10.1.3",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.1.3",

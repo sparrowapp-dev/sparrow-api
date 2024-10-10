@@ -234,6 +234,16 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: AZURE_OPENAI_MONTHLY_TOKEN_LIMIT
+            - name: HUBSPOT_PRIVATE_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: HUBSPOT_PRIVATE_APP_TOKEN
+            - name: HUBSPOT_INTEGRATION_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: HUBSPOT_INTEGRATION_ENABLED
 
 ---
 apiVersion: v1
