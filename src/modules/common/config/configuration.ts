@@ -86,7 +86,9 @@ export default () => ({
     monthlyTokenLimit: parseInt(process.env.AZURE_OPENAI_MONTHLY_TOKEN_LIMIT),
   },
   hubspot: {
-    appToken: process.env.HUBSPOT_PRIVATE_APP_TOKEN,
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,
+    formId: process.env.HUBSPOT_FORMID,
+    portalId: process.env.HUBSPOT_PORTALID,
+    baseURL: process.env.HUBSPOT_BASEURL,
   },
 });

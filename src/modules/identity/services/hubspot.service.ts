@@ -1,12 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { Client } from "@hubspot/api-client";
 import { ConfigService } from "@nestjs/config";
 import { InsightsService } from "@src/modules/common/services/insights.service";
-
+import axios from "axios";
 @Injectable()
 export class HubSpotService {
-  private hubspotClient: Client;
-
   constructor(
     private readonly configService: ConfigService,
     private readonly insightsService: InsightsService,
@@ -43,7 +40,7 @@ export class HubSpotService {
   };
 
   /**
-   * Creates a contact in HubSpot with the given email and name.
+   * Submits a contact in form inside a portal HubSpot with the given email and name.
    *
    * @param email - The email address of the contact.
    * @param name - The full name of the contact.
@@ -52,23 +49,48 @@ export class HubSpotService {
    */
   async createContact(email: string, name: string) {
     try {
-      // Initialize the HubSpot client with an access token from config
-      this.hubspotClient = new Client({
-        accessToken: this.configService.get("hubspot.appToken"),
-      });
+      const formId = this.configService.get("hubspot.formId");
+      const portalId = this.configService.get("hubspot.portalId");
+      const baseURL = this.configService.get("hubspot.baseURL");
+      const url = `${baseURL}/submissions/v3/integration/submit/${portalId}/${formId}`;
       const nameData = this.splitName(name);
-      const contact = {
-        properties: {
-          email,
-          firstname: nameData.firstName,
-          lastname: nameData.lastName,
+      // Prepare the submission data
+      const data = {
+        fields: [
+          {
+            name: "email",
+            value: email,
+          },
+          {
+            name: "firstname",
+            value: nameData.firstName,
+          },
+          {
+            name: "lastname",
+            value: nameData.lastName,
+          },
+        ],
+        legalConsentOptions: {
+          consent: {
+            consentToProcess: true,
+            text: "I agree to allow Sparrow to store and process my personal data.",
+            communications: [
+              {
+                value: "",
+                subscriptionTypeId: 999,
+                text: "I agree to receive marketing communications from Techdome.",
+              },
+            ],
+          },
         },
       };
-      // Send the contact data to HubSpot's API and return the result
-      const result = await this.hubspotClient.crm.contacts.basicApi.create(
-        contact,
-      );
-      return result;
+      const response = await axios.post(url, data, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      return response;
     } catch (error) {
       console.error("Error creating contact in HubSpot:", error);
       const client = this.insightsService.getClient();
