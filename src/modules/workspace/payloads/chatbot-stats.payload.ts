@@ -1,5 +1,8 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { ChatbotFeedback } from "@src/modules/common/models/chatbot-stats.model";
+import {
+  ChatbotFeedback,
+  TokenStats,
+} from "@src/modules/common/models/chatbot-stats.model";
 import { Type } from "class-transformer";
 import {
   IsArray,
@@ -52,6 +55,16 @@ export class UpdateChatbotDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  /**
+   * An object holding the current month's token usage statistics.
+   * This field is optional.
+   */
+  @ApiProperty({ type: TokenStats })
+  @ValidateNested()
+  @Type(() => TokenStats)
+  @IsOptional()
+  tokenStats?: TokenStats;
 
   /**
    * An array of feedback entries provided by users on chatbot messages.

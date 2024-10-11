@@ -45,6 +45,28 @@ export class ChatbotFeedback {
 }
 
 /**
+ * TokenStats class is used to store the monthly token usage of user.
+ */
+export class TokenStats {
+  /**
+   * The year and month for which the token usage is recorded.
+   * Format: YYYY-MM (e.g., 2024-09).
+   */
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  yearMonth?: string;
+
+  /**
+   * The total number of tokens used during the specified year and month.
+   */
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  tokenUsage?: number;
+}
+
+/**
  * ChatBotStats class is used to store statistics and feedback related to chatbot interactions.
  */
 export class ChatBotStats {
@@ -66,6 +88,15 @@ export class ChatBotStats {
   @IsNotEmpty()
   @IsString()
   userId: string;
+
+  /**
+   * An object holding the current month's token usage statistics.
+   * This field is optional.
+   */
+  @ApiProperty({ type: TokenStats })
+  @Type(() => TokenStats)
+  @IsOptional()
+  tokenStats?: TokenStats;
 
   /**
    * An array of feedback entries provided by users on chatbot messages.

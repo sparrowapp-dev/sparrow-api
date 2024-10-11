@@ -27,6 +27,7 @@ import { ConfigService } from "@nestjs/config";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { PostmanParserService } from "@src/modules/common/services/postman.parser.service";
 
 @Injectable()
 export class CollectionService {
@@ -38,6 +39,7 @@ export class CollectionService {
     private readonly workspaceService: WorkspaceService,
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
+    private readonly postmanParserService: PostmanParserService,
   ) {}
 
   async createCollection(
@@ -69,6 +71,24 @@ export class CollectionService {
         workspaceId: createCollectionDto.workspaceId,
       }),
     });
+    return collection;
+  }
+
+  async createDefaultCollection(): Promise<InsertOneResult> {
+    const user = await this.contextService.get("user");
+
+    const newCollection: Collection = {
+      name: "Sample Collection",
+      totalRequests: 1,
+      createdBy: user.name,
+      items: [],
+      updatedBy: user.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const collection = await this.collectionRepository.addCollection(
+      newCollection,
+    );
     return collection;
   }
 
@@ -256,5 +276,31 @@ export class CollectionService {
       updatedBranch,
     );
     return branch;
+  }
+
+  /**
+   * Imports a Postman collection from a JSON object and add it to a workspace.
+   *
+   * @param jsonObj - The Postman collection JSON object as a string.
+   * @param workspaceId - The ID of the workspace to which the collection will be added.
+   *
+   * @returns A promise that resolves to the details of the imported collection and return the collection.
+   *
+   */
+  async importPostmanCollection(
+    jsonObj: string,
+    workspaceId: string,
+  ): Promise<WithId<Collection>> {
+    const updatedCollection =
+      await this.postmanParserService.parsePostmanCollection(jsonObj);
+    const newCollection = await this.importCollection(updatedCollection);
+    const collectionDetails = await this.getCollection(
+      newCollection.insertedId.toString(),
+    );
+    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
+      id: new ObjectId(collectionDetails._id),
+      name: collectionDetails.name,
+    });
+    return collectionDetails;
   }
 }

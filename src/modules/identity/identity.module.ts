@@ -14,6 +14,7 @@ import { TeamRepository } from "./repositories/team.repository";
 import { TeamController } from "./controllers/team.controller";
 import { GoogleStrategy } from "./strategies/google.strategy";
 import { RefreshTokenStrategy } from "./strategies/refresh-token.strategy";
+import { HubSpotService } from "./services/hubspot.service";
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { RefreshTokenStrategy } from "./strategies/refresh-token.strategy";
     TeamUserService,
     TeamRepository,
     GoogleStrategy,
+    HubSpotService,
   ],
   exports: [
     PassportModule.register({ defaultStrategy: "jwt" }),
@@ -57,6 +59,7 @@ import { RefreshTokenStrategy } from "./strategies/refresh-token.strategy";
     TeamService,
     TeamUserService,
     TeamRepository,
+    HubSpotService,
   ],
   controllers: [AuthController, UserController, TeamController],
 })

@@ -22,6 +22,7 @@ import { ParserService } from "../common/services/parser.service";
 import { ApiResponseService } from "../common/services/api-response.service";
 import { HttpStatusCode } from "../common/enum/httpStatusCode.enum";
 import { curlDto } from "./payloads/curl.payload";
+import { PostmanParserService } from "../common/services/postman.parser.service";
 
 /**
  * App Controller
@@ -32,6 +33,7 @@ export class AppController {
   constructor(
     private parserService: ParserService,
     private appService: AppService,
+    private postmanParserSerivce: PostmanParserService,
   ) {}
 
   @Get("updater/:target/:arch/:currentVersion")
@@ -114,6 +116,68 @@ export class AppController {
       return res
         .status(HttpStatus.BAD_REQUEST)
         .send({ valid: false, msg: "Provided OAPI is invalid." });
+    }
+  }
+
+  @Post("/validate/file")
+  @ApiHeader({
+    name: "x-oapi-url",
+    description: "Pass the JSON.",
+    allowEmptyValue: false,
+  })
+  @ApiBody({
+    description: "Paste your JSON of Postman Collection or OAPI",
+    required: false,
+  })
+  @ApiOperation({
+    summary: "Validate JSON OAPI specification and Postman Collection.",
+    description: "You can import a collection from jsonObj.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Provided OAPI/Postman Collection is a valid.",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Provided OAPI/Postman Collection is invalid.",
+  })
+  /**
+   * Validates the provided OAPI or Postman Collection .
+   * First, it tries to validate the OAPI specification. If that fails,
+   * it attempts to validate the Postman Collection.
+   *
+   * @param request - The incoming request containing the OAPI/Postman data.
+   * @param res - The response object to send the result.
+   * @returns {Promise<FastifyReply>} The result of the validation (valid or invalid).
+   * @throws {HttpStatus.BAD_REQUEST} If both OAPI and Postman formats are invalid.
+   */
+  async validateFile(@Req() request: FastifyRequest, @Res() res: FastifyReply) {
+    try {
+      // Attempt to validate the OAPI specification in the request
+      await this.parserService.validateOapi(request);
+      return res.status(HttpStatus.OK).send({
+        valid: true,
+        msg: "Provided OAPI is a valid specification.",
+        type: "OAPI",
+      });
+    } catch (error) {
+      // If OAPI validation fails, attempt to validate the Postman collection
+      try {
+        const body = request.body;
+        await this.postmanParserSerivce.parsePostmanCollection(body);
+        return res.status(HttpStatus.OK).send({
+          valid: true,
+          msg: "Provided Postman Collection is valid.",
+          type: "POSTMAN",
+        });
+      } catch (error) {
+        // If both OAPI and Postman validations fail, return a 400 status with an error message
+        return res.status(HttpStatus.BAD_REQUEST).send({
+          valid: false,
+          msg: "Provided OAPI and Postman Collection format is invalid.",
+          error: error,
+        });
+      }
     }
   }
 
