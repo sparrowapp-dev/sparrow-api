@@ -1,0 +1,272 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: sparrow-api
+  name: sparrow-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sparrow-api
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: sparrow-api
+    spec:
+      containers:
+        - image: sparrowprod.azurecr.io/sparrow-api:_BUILD__ID_
+          name: sparrow-api
+          imagePullPolicy: Always
+          resources: {}
+          ports:
+            - containerPort: 80
+          env:
+            - name: PORT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: PORT
+            - name: APP_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: APP_ENV
+            - name: APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: APP_URL
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: JWT_SECRET_KEY
+            - name: EMAIL_VALIDATION_CODE_EXPIRY_TIME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: EMAIL_VALIDATION_CODE_EXPIRY_TIME
+            - name: JWT_EXPIRATION_TIME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: JWT_EXPIRATION_TIME
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DB_URL
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_CONNECTION_STRING
+            - name: REFRESH_TOKEN_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: REFRESH_TOKEN_SECRET_KEY
+            - name: REFRESH_TOKEN_EXPIRATION_TIME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: REFRESH_TOKEN_EXPIRATION_TIME
+            - name: REFRESH_TOKEN_MAX_LIMIT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: REFRESH_TOKEN_MAX_LIMIT
+            - name: SMTP_SENDER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SMTP_SENDER_EMAIL
+            - name: SMTP_SENDER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SMTP_SENDER_PASSWORD
+            - name: SMTP_MAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SMTP_MAIL_HOST
+            - name: SMTP_MAIL_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SMTP_MAIL_PORT
+            - name: SMTP_MAIL_SECURE
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SMTP_MAIL_SECURE
+            - name: SMTP_USER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SMTP_USER_NAME
+            - name: LOGIN_REDIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: LOGIN_REDIRECT_URL
+            - name: GOOGLE_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: GOOGLE_APP_URL
+            - name: GOOGLE_ACCESS_TYPE
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: GOOGLE_ACCESS_TYPE
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: GOOGLE_CLIENT_SECRET
+            - name: KAFKA_BROKER
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: KAFKA_BROKER
+            - name: REFRESH_TOKEN_MAX_LIMIT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: REFRESH_TOKEN_MAX_LIMIT
+            - name: APP_UPDATE_AVAILABLE
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: APP_UPDATE_AVAILABLE
+            - name: APP_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: APP_VERSION
+            - name: WINDOWS_APP_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: WINDOWS_APP_SIGNATURE
+            - name: WINDOWS_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: WINDOWS_APP_URL
+            - name: MAC_APPLE_SILICON_APP_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: MAC_APPLE_SILICON_APP_SIGNATURE
+            - name: MAC_APPLE_SILICON_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: MAC_APPLE_SILICON_APP_URL
+            - name: MAC_INTEL_APP_SIGNATURE
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: MAC_INTEL_APP_SIGNATURE
+            - name: MAC_INTEL_APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: MAC_INTEL_APP_URL
+            - name: SPARROW_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SPARROW_EMAIL
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_CONNECTION_STRING
+            - name: FEEDBACK_BLOB_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: FEEDBACK_BLOB_CONTAINER
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_ENDPOINT
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_API_KEY
+            - name: AZURE_OPENAI_DEPLOYMENT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_DEPLOYMENT
+            - name: AZURE_OPENAI_API_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_API_VERSION
+            - name: AZURE_OPENAI_MAX_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_MAX_TOKENS
+            - name: AZURE_INSIGHTS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_INSIGHTS_CONNECTION_STRING
+            - name: AZURE_OPENAI_MONTHLY_TOKEN_LIMIT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_MONTHLY_TOKEN_LIMIT
+            - name: HUBSPOT_BASEURL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: HUBSPOT_BASEURL
+            - name: HUBSPOT_INTEGRATION_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: HUBSPOT_INTEGRATION_ENABLED
+            - name: HUBSPOT_PORTALID
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: HUBSPOT_PORTALID
+            - name: HUBSPOT_FORMID
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: HUBSPOT_FORMID
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sparrow-api
+  labels:
+    run: sparrow-api
+spec:
+  type: ClusterIP
+  selector:
+    app: sparrow-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9000
