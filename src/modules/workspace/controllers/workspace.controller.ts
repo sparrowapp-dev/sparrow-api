@@ -23,6 +23,7 @@ import {
   UpdateWorkspaceDto,
 } from "../payloads/workspace.payload";
 import {
+  AddUsersWithRolesInWorkspaceDto,
   AddWorkspaceUserDto,
   UserWorkspaceRoleDto,
 } from "../payloads/workspaceUser.payload";
@@ -251,6 +252,47 @@ export class WorkSpaceController {
       data,
     );
     res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Adds multiple users with specific roles to a workspace.
+   *
+   * @param workspaceId - The unique identifier of the workspace.
+   * @param payload - The payload containing user details and their respective roles.
+   * @param res - The Fastify reply object used to send the response.
+   *
+   * @returns Sends a response with the updated workspace details.
+   *
+   * @throws Throws an error if adding users or retrieving the workspace fails.
+   */
+  @Post(":workspaceId/users/roles")
+  @ApiOperation({
+    summary: "Add Users with roles in Workspace",
+    description: "You can add multiple users with multiple to your Workspace",
+  })
+  @ApiResponse({ status: 201, description: "Users Added Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Add Users" })
+  async addUsersWithRolesInWorkspace(
+    @Param("workspaceId") workspaceId: string,
+    @Body() payload: AddUsersWithRolesInWorkspaceDto,
+    @Res() res: FastifyReply,
+  ) {
+    // Call the workspace service to add users with roles in the workspace
+    const response = await this.workspaceService.addUsersWithRolesInWorkspace(
+      payload,
+      workspaceId,
+    );
+    const workspace = await this.workspaceService.get(workspaceId);
+    const data = {
+      ...workspace,
+      ...response,
+    };
+    const responseData = new ApiResponseService(
+      "User Added",
+      HttpStatusCode.OK,
+      data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 
   @Put(":workspaceId/user/:userId")

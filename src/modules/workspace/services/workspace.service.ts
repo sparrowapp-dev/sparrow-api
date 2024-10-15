@@ -37,8 +37,11 @@ import { EnvironmentService } from "./environment.service";
 import { TeamService } from "@src/modules/identity/services/team.service";
 import {
   AddUserInWorkspaceDto,
+  AddUsersWithRolesInWorkspaceDto,
   UserRoleInWorkspcaeDto,
+  UsersWithRolesDto,
   WorkspaceInviteMailDto,
+  WorkspaceInviteMailWIthRoleDto,
   removeUserFromWorkspaceDto,
 } from "../payloads/workspaceUser.payload";
 import { User } from "@src/modules/common/models/user.model";
@@ -1077,6 +1080,155 @@ export class WorkspaceService {
       testflowId,
       name,
     );
+    return response;
+  }
+
+  /**
+   * Send the invitation to users with roles in a workspace.
+   *
+   * @param payload - The payload containing users and workspace information.
+   */
+  async inviteUsersWithRolesInWorkspaceEmail(
+    payload: WorkspaceInviteMailWIthRoleDto,
+  ) {
+    const currentUser = await this.contextService.get("user");
+    // Create an email transporter instance
+    const transporter = this.emailService.createTransporter();
+    const promiseArray = [];
+    // Loop through each user to send an invite email
+    for (const user of payload.users) {
+      const mailOptions = {
+        from: this.configService.get("app.senderEmail"),
+        to: user.email,
+        text: "User Invited",
+        template: "inviteWorkspaceEmail",
+        context: {
+          firstname: user.name.split(" ")[0],
+          username: currentUser.name.split(" ")[0],
+          userRole: user.role.charAt(0).toUpperCase() + user.role.slice(1),
+          workspacename: payload.workspaceName,
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName: this.configService.get(
+            "support.sparrowWebsiteName",
+          ),
+        },
+        subject: `You've been invited to contribute to ${payload.workspaceName} workspace on Sparrow!`,
+      };
+      promiseArray.push(transporter.sendMail(mailOptions));
+    }
+    await Promise.all(promiseArray);
+  }
+
+  /**
+   * Validates if the provided roles are valid, throwing an error if any user has the admin role.
+   *
+   * @param users - Array of users with roles.
+   * @returns Returns true if all roles are valid.
+   */
+  async isRolesValid(users: UsersWithRolesDto[]): Promise<boolean> {
+    for (const user of users) {
+      if (user.role === WorkspaceRole.ADMIN) {
+        throw new BadRequestException(
+          "You cannot add or switch as Admin's role",
+        );
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Adds multiple users with roles to a workspace, updates the repository, and sends invites.
+   *
+   * @param payload - Payload containing users and their roles.
+   * @param workspaceId - The ID of the workspace to which users are being added.
+   * @returns Returns an object with the results of the operation.
+   */
+  async addUsersWithRolesInWorkspace(
+    payload: AddUsersWithRolesInWorkspaceDto,
+    workspaceId: string,
+  ): Promise<object> {
+    let workspaceData = await this.workspaceRepository.get(workspaceId);
+    await this.checkAdminRole(workspaceId);
+    await this.isRolesValid(payload.users);
+    const usersExist: UsersWithRolesDto[] = [];
+    const usersNotExist = [];
+    const alreadyWorkspaceMember = [];
+    for (const users of payload.users) {
+      const teamMember = await this.isTeamMember(
+        workspaceData.team.id,
+        users.user.toLowerCase(),
+      );
+      if (teamMember) {
+        const workspaceMember = await this.isWorkspaceMember(
+          workspaceId,
+          teamMember,
+        );
+        if (workspaceMember) {
+          alreadyWorkspaceMember.push(users.user.toLowerCase());
+        } else {
+          usersExist.push(users);
+        }
+      } else {
+        usersNotExist.push(users.user.toLowerCase());
+      }
+    }
+    for (const users of usersExist) {
+      workspaceData = await this.workspaceRepository.get(workspaceId);
+      const userData = await this.userRepository.getUserByEmail(
+        users.user.toLowerCase(),
+      );
+      const userWorkspaces = [...userData.workspaces];
+      userWorkspaces.push({
+        workspaceId: workspaceData._id.toString(),
+        teamId: workspaceData.team.id,
+        name: workspaceData.name,
+        isNewInvite: true,
+      });
+      const updatedUserParams = {
+        workspaces: userWorkspaces,
+      };
+      await this.userRepository.updateUserById(userData._id, updatedUserParams);
+      const workspaceUsers = [...workspaceData.users];
+      workspaceUsers.push({
+        role: users.role,
+        id: userData._id.toString(),
+        name: userData.name,
+        email: userData.email,
+      });
+      const updatedWorkspaceParams = {
+        users: workspaceUsers,
+      };
+      await this.workspaceRepository.updateWorkspaceById(
+        new ObjectId(workspaceId),
+        updatedWorkspaceParams,
+      );
+      const updateMessage = `"${userData?.name}" is added to "${workspaceData?.name}" workspace`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.WORKSPACE,
+          workspaceId: workspaceId,
+        }),
+      });
+    }
+    const userExistData = [];
+    for (const users of usersExist) {
+      const userData = await this.userRepository.getUserByEmail(
+        users.user.toLowerCase(),
+      );
+      userExistData.push({ ...userData, role: users.role });
+    }
+
+    await this.inviteUsersWithRolesInWorkspaceEmail({
+      users: userExistData,
+      workspaceName: workspaceData.name,
+    });
+    const response = {
+      notExistInTeam: usersNotExist,
+      existInWorkspace: alreadyWorkspaceMember,
+    };
     return response;
   }
 }
