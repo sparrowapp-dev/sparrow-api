@@ -94,6 +94,23 @@ export class WorkspaceService {
       });
       workspaces.push(workspaceData);
     }
+    if (!workspaces.length) {
+      const teams = await this.teamService.getAllTeams(userId);
+      for (const team of teams) {
+        if (team.owner === userId) {
+          const workspace = await this.create({
+            id: team._id.toString(),
+            name: "My Workspace",
+          });
+          if (workspace) {
+            const workspaceData: WithId<WorkspaceWithNewInviteTag> =
+              await this.get(workspace.insertedId.toString());
+            workspaces.push(workspaceData);
+          }
+          break;
+        }
+      }
+    }
     return workspaces;
   }
   async getAllTeamWorkSpaces(teamId: string): Promise<Workspace[]> {
