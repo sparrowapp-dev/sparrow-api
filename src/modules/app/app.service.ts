@@ -275,7 +275,9 @@ export class AppService {
           BodyModeEnum["application/x-www-form-urlencoded"];
       } else {
         console.warn(`Unsupported Content-Type: ${contentType}`);
-        transformedObject.request.body.raw = requestObject.data;
+        transformedObject.request.body.raw = JSON.stringify(
+          requestObject?.data,
+        );
         transformedObject.request.selectedRequestBodyType =
           BodyModeEnum["text/plain"];
       }
