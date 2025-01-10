@@ -51,6 +51,13 @@ npm i -g pnpm
 
 # Create and setup environments file
 cp .env.example .env
+
+# Edit the .env File
+Open the .env file in a text editor and carefully review its contents.
+
+# Mandatory Configuration
+You need to uncomment and customize the required sections for Database (Line 14) and Kafka (Line 25) based on your setup.
+
 ```
 
 ### Docker Method
@@ -79,7 +86,7 @@ cp .env.example .env
 
 ### Access swagger on localhost:
 
-Go to http://localhost:{PORT}/api/docs
+Go to http://localhost:9000/api/docs
 
 ### Default User for Login:
 
