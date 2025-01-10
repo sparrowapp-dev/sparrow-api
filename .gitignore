@@ -19,7 +19,6 @@ yarn-error.log
 
 # environment
 .env
-.env-*
 
 # build
 /dist
