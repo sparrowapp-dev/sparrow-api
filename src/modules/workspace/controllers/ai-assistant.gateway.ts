@@ -18,9 +18,13 @@ const AI_ASSISTANT_SOCKET_PORT = 9002;
  * Handles WebSocket connections, disconnections, and incoming messages
  * for the AI Assistant service.
  */
-@WebSocketGateway(AI_ASSISTANT_SOCKET_PORT, {
-  cors: true,
-  path: "/ai-assistant",
+@WebSocketGateway({
+  namespace: "/ai-assistant",
+  cors: {
+    origin: "*",
+  },
+  transports: ["websocket"],
+  methods: ["GET", "POST"],
 })
 export class AiAssistantGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -33,7 +37,7 @@ export class AiAssistantGateway
   /**
    * Lifecycle hook that runs when the WebSocket gateway is initialized.
    */
-  async afterInit() {
+  async afterInit(server: Server) {
     console.log("WebSocket Gateway initialized!");
   }
 

@@ -53,7 +53,7 @@ const { PORT } = process.env;
   );
 
   // Use the custom WebSocket adapter to handle both WS and SocketIo
-  app.useWebSocketAdapter(new CustomWebSocketAdapter(app));
+  // app.useWebSocketAdapter(new CustomWebSocketAdapter(app));
 
   // Configure Swagger options for API documentation
   const options = new DocumentBuilder()
