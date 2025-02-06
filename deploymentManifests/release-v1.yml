@@ -263,12 +263,12 @@ spec:
             - name: BEEHIIV_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: sparrow-api-secret
+                  name: release-api-v1-secret
                   key: BEEHIIV_API_KEY
             - name: BEEHIIV_PUBLICATION_ID
               valueFrom:
                 secretKeyRef:
-                  name: sparrow-api-secret
+                  name: release-api-v1-secret
                   key: BEEHIIV_PUBLICATION_ID
 
 ---
