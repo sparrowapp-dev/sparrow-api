@@ -98,6 +98,41 @@ export class StreamPromptPayload {
   tabId: string;
 
   /**
+   * Additional instructions for the assistant which will
+   * decide the context for a particular thread.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "instructions to your assistant" })
+  instructions: string;
+}
+
+export class ChatBotPayload {
+  /**
+   * The prompt or command.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "prompt" })
+  @IsNotEmpty()
+  text: string;
+
+  /**
+   * The thread ID associated with the prompt.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "thread id" })
+  threadId: string;
+
+  /**
+   * The tab id where that thread belongs.
+   */
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "tab id" })
+  tabId: string;
+
+  /**
    * The email id to check the limit.
    */
   @IsString()
