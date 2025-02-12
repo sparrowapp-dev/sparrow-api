@@ -15,11 +15,12 @@ import { TeamController } from "./controllers/team.controller";
 import { RefreshTokenStrategy } from "./strategies/refresh-token.strategy";
 import { HubSpotService } from "./services/hubspot.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
+import { MicrosoftStrategy } from "./strategies/microsoft.strategy";
 
 @Module({
   imports: [
     ConfigModule,
-    PassportModule.register({ defaultStrategy: "jwt" }),
+    PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -61,9 +62,10 @@ import { GoogleStrategy } from "./strategies/google.strategy";
       inject: [ConfigService],
     },
     HubSpotService,
+    MicrosoftStrategy,
   ],
   exports: [
-    PassportModule.register({ defaultStrategy: "jwt" }),
+    // PassportModule.register({ defaultStrategy: "jwt" }),
     AuthService,
     UserService,
     UserRepository,

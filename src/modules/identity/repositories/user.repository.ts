@@ -207,6 +207,31 @@ export class UserRepository {
     };
     return await this.db.collection<User>(Collections.USER).insertOne(user);
   }
+  // created repository for createMicrosoftAuthUser
+  async createMicrosoftAuthUser(
+    oAuthId: string,
+    name: string,
+    email: string,
+  ): Promise<InsertOneResult> {
+    const user: User = {
+      name,
+      email,
+      teams: [],
+      authProviders: [
+        {
+          name: EmailServiceProvider.MICROSOFT,
+          oAuthId,
+        },
+      ],
+      isEmailVerified: true,
+      refresh_tokens: [],
+      workspaces: [],
+      createdAt: new Date(Date.now()),
+      updatedAt: new Date(Date.now()),
+    };
+    return await this.db.collection<User>(Collections.USER).insertOne(user);
+  }
+
   async saveEarlyAccessEmail(email: string): Promise<void> {
     await this.db
       .collection<EarlyAccessEmail>(Collections.EARLYACCESS)

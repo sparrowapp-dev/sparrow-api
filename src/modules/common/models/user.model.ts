@@ -17,6 +17,7 @@ import { TeamDto } from "./team.model";
 export enum EmailServiceProvider {
   GMAIL = "GMAIL",
   OUTLOOK = "OUTLOOK",
+  MICROSOFT = "microsoft",
 }
 
 export class EarlyAccessEmail {

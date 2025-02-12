@@ -1,3 +1,4 @@
+//auth.controller.ts
 import {
   Controller,
   Body,
@@ -21,6 +22,7 @@ import { RefreshTokenGuard } from "@src/modules/common/guards/refresh-token.guar
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { GoogleOAuthGuard } from "@src/modules/common/guards/google-oauth.guard";
+import { MicrosoftOAuthGuard } from "@src/modules/common/guards/microsoft-oauth.guard";
 import { UserService } from "../services/user.service";
 import { ObjectId } from "mongodb";
 import { ConfigService } from "@nestjs/config";
@@ -133,6 +135,15 @@ export class AuthController {
   @UseGuards(GoogleOAuthGuard)
   async googlelogin() {}
 
+  //initializes Microsoft authentication
+  @Get("microsoft")
+  @ApiOperation({
+    summary: "Initializes Microsoft Authentication",
+    description: "This will help us to authenticate user with Microsoft",
+  })
+  @UseGuards(MicrosoftOAuthGuard)
+  async microsoftLogin() {}
+
   //google calls this after authentication
   @Get("google/callback")
   @ApiOperation({
@@ -142,6 +153,7 @@ export class AuthController {
   })
   @UseGuards(GoogleOAuthGuard)
   async googleCallback(@Req() req: any, @Res() res: FastifyReply) {
+    console.log("req google============================", req.user);
     if (req.user === "access_denied") {
       const url = encodeURI(this.configService.get("oauth.google.redirectUrl"));
       const urlWithToken = `${url}?accessToken=&refreshToken=`;
@@ -191,6 +203,91 @@ export class AuthController {
     } else {
       urlWithTokenAndSource = urlWithTokenAndSource + "register";
     }
+    return res.redirect(
+      HttpStatusCode.MOVED_PERMANENTLY,
+      urlWithTokenAndSource,
+    );
+  }
+  // microsoft calls this after authentication
+  @Get("microsoft/callback")
+  @ApiOperation({
+    summary: "Microsoft Callback",
+    description:
+      "This will help us to get User Details to create User after Microsoft Authentication",
+  })
+  @UseGuards(MicrosoftOAuthGuard)
+  async microsoftCallback(@Req() req: any, @Res() res: FastifyReply) {
+    console.log("req============================", req.user);
+    if (!req.user || !req.user.email) {
+      throw new Error("No user profile received from Microsoft");
+    }
+    if (req.user === "access_denied") {
+      const url = encodeURI(
+        this.configService.get("oauth.microsoft.redirectUrl"),
+      );
+      const urlWithToken = `${url}?accessToken=&refreshToken=`;
+      const urlWithTokenAndSource = urlWithToken + "&source=";
+
+      return res.redirect(
+        HttpStatusCode.MOVED_PERMANENTLY,
+        urlWithTokenAndSource,
+      );
+    }
+
+    const { microsoftId, name, email } = req.user;
+    const isUserExists = await this.userService.getUserByEmail(email);
+    let id: ObjectId;
+
+    if (isUserExists) {
+      id = isUserExists._id;
+      this.contextService.set("user", isUserExists);
+
+      // Remove comment for refresh token limit check if it's needed
+      // await this.authService.checkRefreshTokenLimit(isUserExists);
+    } else {
+      const user = await this.userService.createMicrosoftAuthUser(
+        microsoftId,
+        name,
+        email,
+      );
+      console.log(
+        "<----------------------User created------------------------------>: ",
+        user,
+      );
+      await this.contextService.set("user", {
+        _id: user.insertedId,
+        name,
+        email,
+      });
+      id = user.insertedId;
+
+      // HubSpot integration
+      if (this.configService.get("hubspot.hubspotEnabled") === "true") {
+        await this.hubspotService.createContact(email, name);
+      }
+    }
+
+    // Token generation
+    const tokenPromises = [
+      this.authService.createToken(id),
+      this.authService.createRefreshToken(id),
+    ];
+    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+
+    // Redirect URL
+    const url = encodeURI(
+      this.configService.get("oauth.microsoft.redirectUrl"),
+    );
+    const urlWithToken = `${url}?accessToken=${accessToken.token}&refreshToken=${refreshToken.token}`;
+    let urlWithTokenAndSource = urlWithToken + "&source=";
+
+    // Determine if the user is logging in or registering
+    if (isUserExists) {
+      urlWithTokenAndSource = urlWithTokenAndSource + "login";
+    } else {
+      urlWithTokenAndSource = urlWithTokenAndSource + "register";
+    }
+
     return res.redirect(
       HttpStatusCode.MOVED_PERMANENTLY,
       urlWithTokenAndSource,

@@ -1,3 +1,4 @@
+//configuration.ts
 import { Env } from "@common/config/env.validation";
 
 export default () => ({
@@ -40,6 +41,14 @@ export default () => ({
       appUrl: process.env.GOOGLE_APP_URL,
       redirectUrl: process.env.LOGIN_REDIRECT_URL,
       accessType: process.env.GOOGLE_ACCESS_TYPE,
+    },
+    microsoft: {
+      enableMicrosoftAuth: process.env.ENABLE_MICROSOFT_AUTH,
+      clientId: process.env.MICROSOFT_CLIENT_ID,
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+      appUrl: process.env.MICROSOFT_APP_URL,
+      redirectUrl: process.env.LOGIN_REDIRECT_URL,
+      accessType: process.env.MICROSOFT_ACCESS_TYPE,
     },
   },
   kafka: {

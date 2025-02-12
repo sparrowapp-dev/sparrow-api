@@ -58,6 +58,10 @@ export class UserService {
    * @returns {Promise<IUser>} queried user data
    */
   async getUserByEmail(email: string): Promise<WithId<User>> {
+    if (!email) {
+      throw new Error("Email is required");
+    }
+    // console.log("-------------------------------------------------------" , email)
     return await this.userRepository.getUserByEmail(email.toLowerCase());
   }
 
@@ -373,6 +377,44 @@ export class UserService {
     return createdUser;
   }
 
+  // creating the MicrosoftAuthUser
+  async createMicrosoftAuthUser(
+    microsoftId: string,
+    name: string,
+    email: string,
+  ): Promise<InsertOneResult> {
+    console.log(
+      "Creating user with microsoft ID: ",
+      microsoftId,
+      " Name: ",
+      name,
+      " Email: ",
+      email,
+    );
+    const createdUser = await this.userRepository.createMicrosoftAuthUser(
+      microsoftId,
+      name,
+      email,
+    );
+    const user = {
+      _id: createdUser.insertedId,
+      name: name,
+      email: email,
+    };
+    this.contextService.set("user", user);
+    const firstName = await this.getFirstName(name);
+    const teamName = {
+      name: firstName + this.configService.get("app.defaultTeamNameSuffix"),
+      firstTeam: true,
+    };
+
+    // Create the team
+    await this.teamService.create(teamName);
+    console.log("Team created with name: ", teamName.name);
+    // Return the created user data
+    return createdUser;
+  }
+
   async verifyVerificationCode(
     email: string,
     verificationCode: string,
@@ -467,8 +509,12 @@ export class UserService {
   }
 
   async getFirstName(name: string): Promise<string> {
-    const nameArray = name.split(" ");
-    return nameArray[0];
+    if (!name) {
+      throw new Error("fullName is undefined or empty");
+    }
+    // const nameArray = name.split(" ");
+    // return nameArray[0];
+    return name.split(" ")[0];
   }
 
   async sendSignUpEmail(firstname: string, email: string): Promise<void> {

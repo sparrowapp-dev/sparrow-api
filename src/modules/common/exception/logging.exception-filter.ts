@@ -45,12 +45,14 @@ export class LoggingExceptionsFilter implements ExceptionFilter {
       } else {
         console.error("Application Insights client is not initialized.");
       }
+      console.log("-------------------------", exception);
       return response.status(status).send({
         statusCode: status,
         message: exception.message,
         error: exception.name,
       });
     } else {
+      console.log("-------------------------2", exception);
       throw new BadRequestException(exception);
     }
   }

@@ -10,20 +10,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
     const googleClientSecret = configService.get("oauth.google.clientSecret");
     const googleAppUrl = configService.get("oauth.google.appUrl");
     const callbackUrl = `${googleAppUrl}/api/auth/google/callback`;
-
     super({
       clientID: googleClientId,
       clientSecret: googleClientSecret,
       callbackURL: callbackUrl,
       scope: ["email", "profile"],
     });
-  }
-
-  authorizationParams() {
-    return {
-      prompt: "consent",
-      accessType: "offline",
-    };
   }
 
   async validate(
