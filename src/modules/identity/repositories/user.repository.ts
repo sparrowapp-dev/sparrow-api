@@ -5,6 +5,7 @@ import { createHmac } from "crypto";
 import { RegisterPayload } from "../payloads/register.payload";
 import { UpdateUserDto, UserDto } from "../payloads/user.payload";
 import {
+  AuthServiceProvider,
   EarlyAccessEmail,
   EmailServiceProvider,
   User,
@@ -219,7 +220,7 @@ export class UserRepository {
       teams: [],
       authProviders: [
         {
-          name: EmailServiceProvider.MICROSOFT,
+          name: AuthServiceProvider.MICROSOFT,
           oAuthId,
         },
       ],

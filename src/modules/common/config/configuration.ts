@@ -49,6 +49,7 @@ export default () => ({
       appUrl: process.env.MICROSOFT_APP_URL,
       redirectUrl: process.env.LOGIN_REDIRECT_URL,
       accessType: process.env.MICROSOFT_ACCESS_TYPE,
+      allowedDomains: process.env.ALLOWED_DOMAINS,
     },
   },
   kafka: {

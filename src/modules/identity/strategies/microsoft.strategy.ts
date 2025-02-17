@@ -19,35 +19,36 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, "microsoft") {
       callbackURL: callbackUrl,
       // redirect: "http://localhost:1421/redirect",
       scope: ["openid", "profile", "email", "User.Read"],
-      tenant: "40c986a0-6b01-47a2-bc81-405e7fa011a7",
+      tenant: "common",
       identityMetadata:
         "https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration",
       responseType: "code",
       responseMode: "query",
       validateIssuer: false,
       passReqToCallback: false,
+      prompt: "consent",
     });
   }
 
-  authorizationParams() {
-    return {
-      prompt: "consent",
-      accessType: "offline",
-    };
-  }
+  // authorizationParams() {
+  //   return {
+  //     prompt: "consent",
+  //     accessType: "offline",
+  //   };
+  // }
 
   async validate(accessToken: string, refreshToken: string, profile: any) {
-    debugger;
     if (!profile) {
       throw new Error("Profile not received from Microsoft");
     }
+    const { id, emails, displayName } = profile;
     const user = {
-      email: profile.emails[0].value,
-      name: profile.name.givenName + " " + profile.name.familyName,
-      microsoftId: profile.id,
+      microsoftId: id,
+      name: displayName,
+      email: emails[0].value,
     };
 
-    console.log("user-----------------------------", user);
+    console.log("user in microsoft-strategy", user.name);
     return user;
   }
 }

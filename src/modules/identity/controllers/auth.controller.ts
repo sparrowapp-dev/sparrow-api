@@ -39,6 +39,9 @@ export interface RefreshTokenRequest {
 @Controller("api/auth")
 @ApiTags("authentication")
 export class AuthController {
+  private isAllowedDomain(email: string): boolean {
+    return email.endsWith("@techdome.net.in") || email.endsWith("@google.com");
+  }
   private readonly OAUTH_SIGNUP_DELAY_MS = 5000;
   /**
    * Constructor
@@ -217,7 +220,7 @@ export class AuthController {
   })
   @UseGuards(MicrosoftOAuthGuard)
   async microsoftCallback(@Req() req: any, @Res() res: FastifyReply) {
-    console.log("req============================", req.user);
+    console.log("user in microsoft callback ====================", req.user);
     if (!req.user || !req.user.email) {
       throw new Error("No user profile received from Microsoft");
     }
@@ -235,6 +238,14 @@ export class AuthController {
     }
 
     const { microsoftId, name, email } = req.user;
+    if (!this.isAllowedDomain(email)) {
+      // Redirect with an error message or to a specific error page
+      const url = encodeURI(
+        this.configService.get("oauth.microsoft.redirectUrl"),
+      );
+      const errorUrl = `${url}?error=unauthorized_domain`;
+      return res.redirect(HttpStatusCode.MOVED_PERMANENTLY, errorUrl);
+    }
     const isUserExists = await this.userService.getUserByEmail(email);
     let id: ObjectId;
 
@@ -266,7 +277,6 @@ export class AuthController {
         await this.hubspotService.createContact(email, name);
       }
     }
-
     // Token generation
     const tokenPromises = [
       this.authService.createToken(id),

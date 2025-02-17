@@ -17,9 +17,12 @@ import { TeamDto } from "./team.model";
 export enum EmailServiceProvider {
   GMAIL = "GMAIL",
   OUTLOOK = "OUTLOOK",
-  MICROSOFT = "microsoft",
+  // MICROSOFT = "microsoft",
 }
-
+export enum AuthServiceProvider {
+  GOOGLE = "GOOGLE",
+  MICROSOFT = "MICROSOFT",
+}
 export class EarlyAccessEmail {
   @IsEmail()
   @IsNotEmpty()

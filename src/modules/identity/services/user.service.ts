@@ -362,6 +362,7 @@ export class UserService {
       name,
       email,
     );
+
     const user = {
       _id: createdUser.insertedId,
       name: name,
@@ -391,6 +392,7 @@ export class UserService {
       " Email: ",
       email,
     );
+
     const createdUser = await this.userRepository.createMicrosoftAuthUser(
       microsoftId,
       name,

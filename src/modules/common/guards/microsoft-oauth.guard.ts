@@ -19,9 +19,9 @@ export class MicrosoftOAuthGuard extends AuthGuard("microsoft") {
   handleRequest(err: string, user: any, info: any, context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     console.log("handleRequest invoked");
-    console.log("Error:", err);
-    console.log("User:", user);
-    console.log("Info:", info);
+    console.log("< -----Error ---- >:", err);
+    console.log("< ----User: ---->", user);
+    console.log("> ----Info: ---- >", info);
 
     const error = request.query.error;
 
