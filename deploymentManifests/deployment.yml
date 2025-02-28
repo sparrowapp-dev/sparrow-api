@@ -20,10 +20,36 @@ spec:
         - image: sparrowprod.azurecr.io/sparrow-api:_BUILD__ID_
           name: sparrow-api
           imagePullPolicy: Always
-          resources: {}
+          resources:
+            requests:
+              memory: "1024Mi"
+              # cpu: "250m"
+            limits:
+              memory: "1648Mi"
+              # cpu: "500m"
           ports:
             - containerPort: 80
             - containerPort: 9001
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 40
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
 
           env:
             - name: PORT
