@@ -26,7 +26,7 @@ export class PostmanParserService {
    * @param postmanCollection - The Postman Collection object to be parsed.
    * @returns The processed and flattened Postman Collection.
    */
-  async parsePostmanCollection(postmanCollection: any) {
+  async parsePostmanCollection(postmanCollection: any, _workspaceId?: string) {
     const user = await this.contextService.get("user");
 
     // Destructure the 'info' and 'item' properties from the Postman collection
@@ -46,6 +46,7 @@ export class PostmanParserService {
       name: info.name,
       description: info.description ?? "",
       items: convertedItems,
+      workspaceId: _workspaceId,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
       totalRequests: countTotalRequests(items),
       createdBy: user?.name,

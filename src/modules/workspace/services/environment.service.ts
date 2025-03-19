@@ -73,6 +73,7 @@ export class EnvironmentService {
         name: createEnvironmentDto.name,
         variable: createEnvironmentDto.variable,
         type,
+        workspaceId: createEnvironmentDto.workspaceId,
         createdBy: user.name,
         updatedBy: user.name,
         createdAt: new Date(),
@@ -141,13 +142,9 @@ export class EnvironmentService {
     await this.checkPermission(id, user._id);
 
     const workspace = await this.workspaceReposistory.get(id);
-    const environments = [];
-    for (let i = 0; i < workspace.environments?.length; i++) {
-      const environment = await this.environmentRepository.get(
-        workspace.environments[i].id.toString(),
-      );
-      environments.push(environment);
-    }
+    const environments = await this.environmentRepository.getAll(
+      workspace._id.toString(),
+    );
     return environments;
   }
 

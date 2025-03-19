@@ -672,6 +672,11 @@ export class Collection {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  workspaceId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
   description?: string;
 
   @ApiProperty({

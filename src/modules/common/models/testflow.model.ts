@@ -1,7 +1,6 @@
 import { Type } from "class-transformer";
 import {
   IsArray,
-  IsBoolean,
   IsDate,
   IsMongoId,
   IsNotEmpty,

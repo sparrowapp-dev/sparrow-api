@@ -69,6 +69,17 @@ export class TestflowRepository {
     return data;
   }
 
+  async getAll(id: string): Promise<WithId<Testflow>[]> {
+    const data = await this.db
+      .collection<Testflow>(Collections.TESTFLOW)
+      .find({ workspaceId: id })
+      .toArray();
+    if (!data) {
+      throw new BadRequestException("Testflow Not Found");
+    }
+    return data;
+  }
+
   /**
    * Deletes a Testflow document by its ID.
    *

@@ -39,6 +39,17 @@ export class EnvironmentRepository {
     return data;
   }
 
+  async getAll(id: string): Promise<WithId<Environment>[]> {
+    const data = await this.db
+      .collection<Environment>(Collections.ENVIRONMENT)
+      .find({ workspaceId: id })
+      .toArray();
+    if (!data) {
+      throw new BadRequestException("Environment Not Found");
+    }
+    return data;
+  }
+
   async delete(id: string): Promise<DeleteResult> {
     const _id = new ObjectId(id);
     const data = await this.db

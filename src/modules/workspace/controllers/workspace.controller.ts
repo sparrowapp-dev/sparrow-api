@@ -370,7 +370,11 @@ export class WorkSpaceController {
       file.mimetype === BodyModeEnum["application/json"]
         ? JSON.parse(dataString)
         : yml.load(dataString);
-    const collectionObj = await this.parserService.parse(dataObj);
+    const collectionObj = await this.parserService.parse(
+      dataObj,
+      false,
+      workspaceId,
+    );
 
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
       id: new ObjectId(collectionObj.collection._id),
@@ -451,7 +455,11 @@ export class WorkSpaceController {
       responseType === BodyModeEnum["application/json"]
         ? jsonObj
         : (yml.load(jsonObj) as string);
-    const collectionObj = await this.parserService.parse(dataObj);
+    const collectionObj = await this.parserService.parse(
+      dataObj,
+      false,
+      workspaceId,
+    );
     await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
       id: new ObjectId(collectionObj.collection._id),
       name: collectionObj.collection.name,

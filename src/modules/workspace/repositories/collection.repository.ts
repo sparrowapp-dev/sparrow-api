@@ -50,6 +50,18 @@ export class CollectionRepository {
     }
     return data;
   }
+
+  async getAll(id: string): Promise<WithId<Collection>[]> {
+    const data = await this.db
+      .collection<Collection>(Collections.COLLECTION)
+      .find({ workspaceId: id })
+      .toArray();
+    if (!data) {
+      throw new BadRequestException("Collection Not Found");
+    }
+    return data;
+  }
+
   async update(
     id: string,
     updateCollectionDto: Partial<UpdateCollectionDto>,

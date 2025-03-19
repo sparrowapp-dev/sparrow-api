@@ -57,7 +57,9 @@ export class WorkspaceHandler implements OnModuleInit {
             },
           );
           const collection =
-            await this.collectionService.createDefaultCollection();
+            await this.collectionService.createDefaultCollection(
+              workspace.insertedId.toString(),
+            );
           await this.workspaceService.addCollectionInWorkSpace(
             workspace.insertedId.toString(),
             { id: collection.insertedId, name: "Sample Collection" },

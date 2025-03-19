@@ -39,6 +39,10 @@ export class Environment {
   @IsNotEmpty()
   name: string;
 
+  @IsString()
+  @IsNotEmpty()
+  workspaceId: string;
+
   @IsArray()
   @Type(() => VariableDto)
   @ValidateNested({ each: true })

@@ -237,8 +237,42 @@ export class WorkspaceService {
     } else {
       teamData = await this.teamService.isTeamOwnerOrAdmin(teamId);
     }
+
+    const adminInfo = [];
+    const usersInfo = [];
+    for (const user of teamData.users) {
+      if (user.role !== TeamRole.MEMBER) {
+        adminInfo.push({
+          id: user.id.toString(),
+          name: user.name,
+        });
+        usersInfo.push({
+          role: WorkspaceRole.ADMIN,
+          id: user.id.toString(),
+          name: user.name,
+          email: user.email,
+        });
+      }
+    }
+    const params: any = {
+      name: workspaceData.name,
+      description: "",
+      team: {
+        id: teamData._id.toString(),
+        name: teamData.name,
+      },
+      users: usersInfo,
+      admins: adminInfo,
+      environments: [],
+      createdAt: new Date(),
+      createdBy: userId,
+      updatedAt: new Date(),
+      updatedBy: userId,
+    };
+    const response = await this.workspaceRepository.addWorkspace(params);
     const createEnvironmentDto: CreateEnvironmentDto = {
       name: DefaultEnvironment.GLOBAL,
+      workspaceId: response.insertedId.toString(),
       variable: [
         {
           key: "",
@@ -257,44 +291,12 @@ export class WorkspaceService {
     const { _id: id, name, type } = environment;
     const environmentDto: EnvironmentDto = { id, name, type };
 
-    const adminInfo = [];
-    const usersInfo = [];
-    for (const user of teamData.users) {
-      if (user.role !== TeamRole.MEMBER) {
-        adminInfo.push({
-          id: user.id.toString(),
-          name: user.name,
-        });
-        usersInfo.push({
-          role: WorkspaceRole.ADMIN,
-          id: user.id.toString(),
-          name: user.name,
-          email: user.email,
-        });
-      }
-    }
-    const params = {
-      name: workspaceData.name,
-      description: "",
-      team: {
-        id: teamData._id.toString(),
-        name: teamData.name,
-      },
-      users: usersInfo,
-      admins: adminInfo,
-      environments: [
-        {
-          id: environmentDto.id,
-          name: environmentDto.name,
-          type: environmentDto.type,
-        },
-      ],
-      createdAt: new Date(),
-      createdBy: userId,
-      updatedAt: new Date(),
-      updatedBy: userId,
-    };
-    const response = await this.workspaceRepository.addWorkspace(params);
+    await this.addEnvironmentInWorkSpace(response.insertedId.toString(), {
+      id: environmentDto.id,
+      name: environmentDto.name,
+      type: environmentDto.type,
+    });
+
     const teamWorkspaces = [...teamData.workspaces];
     teamWorkspaces.push({
       id: response.insertedId,

@@ -61,6 +61,7 @@ export class CollectionService {
       totalRequests: 0,
       createdBy: user.name,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
+      workspaceId: createCollectionDto.workspaceId,
       items: [],
       updatedBy: user.name,
       createdAt: new Date(),
@@ -342,7 +343,7 @@ export class CollectionService {
     return sampleRequests;
   }
 
-  async createDefaultCollection(): Promise<InsertOneResult> {
+  async createDefaultCollection(workspaceId: string): Promise<InsertOneResult> {
     const user = await this.contextService.get("user");
     const newCollection: Collection = {
       name: "Sample Collection",
@@ -350,6 +351,7 @@ export class CollectionService {
       createdBy: user.name,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
       items: await this.createSampleData(user),
+      workspaceId: workspaceId,
       updatedBy: user.name,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -368,13 +370,10 @@ export class CollectionService {
     await this.checkPermission(id, user._id);
 
     const workspace = await this.workspaceRepository.get(id);
-    const collections = [];
-    for (let i = 0; i < workspace.collection?.length; i++) {
-      const collection = await this.collectionRepository.get(
-        workspace.collection[i].id.toString(),
-      );
-      collections.push(collection);
-    }
+
+    const collections = await this.collectionRepository.getAll(
+      workspace._id.toString(),
+    );
     return collections;
   }
 
@@ -557,7 +556,10 @@ export class CollectionService {
     workspaceId: string,
   ): Promise<WithId<Collection>> {
     const updatedCollection =
-      await this.postmanParserService.parsePostmanCollection(jsonObj);
+      await this.postmanParserService.parsePostmanCollection(
+        jsonObj,
+        workspaceId,
+      );
     const newCollection = await this.importCollection(updatedCollection);
     const collectionDetails = await this.getCollection(
       newCollection.insertedId.toString(),

@@ -140,13 +140,10 @@ export class TestflowService {
     await this.checkPermission(id, user._id);
 
     const workspace = await this.workspaceService.get(id);
-    const testflows = [];
-    for (let i = 0; i < workspace.testflows?.length; i++) {
-      const testflow = await this.testflowRepository.get(
-        workspace.testflows[i].id.toString(),
-      );
-      testflows.push(testflow);
-    }
+    const testflows = await this.testflowRepository.getAll(
+      workspace._id.toString(),
+    );
+
     return testflows;
   }
 
