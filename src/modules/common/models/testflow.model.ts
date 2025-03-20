@@ -9,6 +9,7 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
+import { ObjectId } from "mongodb";
 
 /**
  * Represents the edges of a Testflow which tell the connection between nodes.
@@ -128,7 +129,7 @@ export class Testflow {
 export class TestflowInfoDto {
   @IsMongoId()
   @IsNotEmpty()
-  id: string;
+  id: ObjectId;
 
   @IsString()
   @IsNotEmpty()

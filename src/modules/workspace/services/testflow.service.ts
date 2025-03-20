@@ -79,7 +79,7 @@ export class TestflowService {
     const testflowData = await this.testflowRepository.addTestflow(newTestflow);
     await this.workspaceService.addTestflowInWorkSpace(
       createTestflowDto.workspaceId,
-      { name: createTestflowDto.name, id: testflowData.insertedId.toString() },
+      { name: createTestflowDto.name, id: testflowData.insertedId },
     );
     const testflow = await this.testflowRepository.get(
       testflowData.insertedId.toString(),

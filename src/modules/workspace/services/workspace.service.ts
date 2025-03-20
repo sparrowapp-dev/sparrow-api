@@ -290,7 +290,6 @@ export class WorkspaceService {
     );
     const { _id: id, name, type } = environment;
     const environmentDto: EnvironmentDto = { id, name, type };
-
     await this.addEnvironmentInWorkSpace(response.insertedId.toString(), {
       id: environmentDto.id,
       name: environmentDto.name,
