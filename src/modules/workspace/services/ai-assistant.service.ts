@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Socket } from "socket.io";
+import { Server, WebSocket, MessageEvent } from "ws";
 
 // ---- OpenAI
 import { AzureOpenAI } from "openai";
@@ -326,7 +327,7 @@ export class AiAssistantService {
    * @returns A promise that resolves with the generated text, thread ID, and message ID.
    * @throws BadRequestException if the assistant cannot be created.
    */
-  public async generateTextChatBot(
+  public async generateTextChatBotOld(
     data: ChatBotPayload,
     client: Socket,
   ): Promise<void> {
@@ -510,4 +511,128 @@ export class AiAssistantService {
       );
     }
   }
+
+  public async generateTextChatBot(client: WebSocket): Promise<void> {
+    try {
+
+      while (client.readyState === WebSocket.OPEN) {
+
+        // Receive message from the client
+        const message = await this.receiveMessage(client);
+
+        let parsedData: ChatBotPayload;
+        try {
+          parsedData = JSON.parse(message);
+        } catch (err) {
+          client.send(JSON.stringify({ event: "error", message: "Invalid JSON format." }));
+          continue;
+        }
+
+        const text = parsedData.userInput;
+        let threadId = parsedData.threadId;
+        const tabId = parsedData.tabId;
+        const emailId = parsedData.emailId;
+        const apiData = parsedData.apiData || "Data not available";
+
+        // Fetch user details
+        const user = await this.userService.getUserByEmail(emailId);
+        const stat = await this.chatbotStatsService.getIndividualStat(user?._id?.toString());
+        const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
+
+        // Check if user exceeded token limit
+        if (
+          stat?.tokenStats &&
+          stat.tokenStats?.yearMonth === currentYearMonth &&
+          stat.tokenStats.tokenUsage > (this.monthlyTokenLimit || 0)
+        ) {
+          client.send(JSON.stringify({
+            messages: "Limit Reached. Please try again later.",
+          }));
+          throw new BadRequestException("Limit reached");
+        }
+        
+        // Validate user input
+        if (!text) {
+          throw new BadRequestException("Invalid input: 'text' field is required.");
+        }
+        
+        if (!this.assistantsClient) {
+          throw new InternalServerErrorException("AI assistant client is not initialized.");
+        }
+        
+        if (!threadId) {
+          const assistantThread = await this.assistantsClient.beta.threads.create({});
+          threadId = assistantThread.id;
+        }
+
+        // Run Assistant Logic
+        const assistantReply = await this.runAssistant(client, text, apiData, threadId, tabId);
+
+        // Send AI Response back to the client
+        client.send(JSON.stringify({
+          messages: assistantReply,
+          thread_Id: threadId,
+          tab_id: tabId
+        }));
+      }
+    } catch (error) {
+      console.error("Error in WebSocket loop:", error);
+      client.send(JSON.stringify({ event: "error", message: "An error occurred." }));
+    }
+  }
+
+  private receiveMessage(client: WebSocket): Promise<string> {
+    return new Promise((resolve) => {
+      const onMessage = (event: MessageEvent) => {
+        resolve(event.data.toString("utf-8"));
+        client.removeEventListener("message", onMessage);
+      };
+      client.addEventListener("message", onMessage);
+    });
+  }
+  
+  private async runAssistant(client: WebSocket, text: string, apiData: string, threadId: string | undefined, tabId: string) {
+    try {
+
+      // Send user message to AI
+      await this.assistantsClient.beta.threads.messages.create(threadId, {
+        role: "user",
+        content: `{Text: ${text}, API data: ${apiData}}`,
+      });
+
+      // Retrieve assistant response
+      const assistantResponse = await this.assistantsClient.beta.assistants.retrieve(this.assistantId);
+      const runResponse = await this.assistantsClient.beta.threads.runs.create(threadId, {
+        assistant_id: assistantResponse.id,
+      });
+
+      // Wait for assistant response
+      let runStatus = runResponse.status;
+      while (runStatus === "queued" || runStatus === "in_progress") {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        const runStatusResponse = await this.assistantsClient.beta.threads.runs.retrieve(threadId, runResponse.id);
+        runStatus = runStatusResponse.status;
+      }
+
+      // Process AI response
+      if (runStatus === "completed") {
+        const messagesResponse = await this.assistantsClient.beta.threads.messages.list(threadId);
+        const latestAssistantMessage = messagesResponse.data
+          .filter((message) => message.role === "assistant")
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+        return latestAssistantMessage.content
+          .filter((item) => item.type === "text")
+          .map((item) => item.text.value)
+          .join(" ");
+      } else {
+        console.error(`Run status is ${runStatus}, unable to fetch messages.`);
+        throw new InternalServerErrorException("Assistant could not complete the request.");
+      }
+    } catch (error) {
+      console.error("Error in AI Assistant:", error);
+      return "An error occurred while processing your request. Please try again.";
+    }
+  }
+
 }

@@ -31,6 +31,7 @@ export class CustomWebSocketAdapter implements WebSocketAdapter {
   ): HybridWebsocketServer {
     switch (options.path) {
       case SocketServerType.WEBSOCKET:
+      case SocketServerType.AI_ASSISTANT:
         return new WebSocket.Server({
           server: this.app.getHttpServer(),
           ...options,

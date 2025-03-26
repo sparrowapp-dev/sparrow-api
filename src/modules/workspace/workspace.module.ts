@@ -53,7 +53,7 @@ import { TestflowService } from "./services/testflow.service";
 // ---- Gateway
 import {
   AiAssistantGateway,
-  DummyGateway,
+  // DummyGateway,
 } from "./controllers/ai-assistant.gateway";
 
 /**
@@ -91,7 +91,7 @@ import {
     ChatbotStatsService,
     ChatbotStatsRepository,
     AiAssistantGateway,
-    DummyGateway,
+    // DummyGateway,
     TeamUpdatedHandler,
     TestflowService,
     TestflowRepository,
