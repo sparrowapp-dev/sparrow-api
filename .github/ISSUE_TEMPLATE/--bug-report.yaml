@@ -1,0 +1,66 @@
+name: Bug report
+description: Create a bug report to help us improve Sparrow
+title: "[bug]: "
+labels: [bug]
+assignees: [LordNayan]
+type: Bug
+projects: [Sparrow]
+body:
+- type: markdown
+  attributes:
+    value: |
+      Thank you for taking your time out to fill this bug report.
+- type: checkboxes
+  attributes:
+    label: Is there an existing issue for this?
+    description: Please search to see if an issue already exists for the bug you encountered
+    options:
+    - label: I have searched the existing issues
+      required: true
+- type: textarea
+  attributes:
+    label: Description
+    description: A brief description of what you are experiencing (Optional)
+    placeholder: |
+      Provide a brief description on the issue. For example: When I do <X>, <Y> happens and I see the error as below
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Expected Result
+    description: What is the expected result for this issue?
+    placeholder: |
+      I expect <Z> to happen in place of <Y> or This is what is the expected behavior
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Actual Result
+    description: What is the actual result which you noticed which needs a fix?
+    placeholder: |
+      <Z> behavior is happening in place of <Y> or This is what is happening currently in the application
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps to reproduce
+    description: Add steps to reproduce this behaviour, include console or network logs and screenshots in case possible
+    placeholder: |
+      1. Go to '...'
+      2. Click on '....'
+      3. Scroll down to '....'
+      4. See error
+  validations:
+    required: true
+- type: dropdown
+  id: os
+  attributes:
+    label: Operating System
+    options:
+      - Windows 10
+      - Windows 11
+      - Mac - Intel
+      - Mac - M1
+      - Others
+  validations:
+    required: true

@@ -86,6 +86,7 @@ export default () => ({
     apiVersion: process.env.AZURE_OPENAI_API_VERSION,
     maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS),
     monthlyTokenLimit: parseInt(process.env.AZURE_OPENAI_MONTHLY_TOKEN_LIMIT),
+    assistantId: process.env.AZURE_OPENAI_ASSISTANT_ID,
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,

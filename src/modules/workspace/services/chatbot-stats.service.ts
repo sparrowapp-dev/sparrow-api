@@ -71,13 +71,17 @@ export class ChatbotStatsService {
       ) {
         monthlyToken = userStat.tokenStats.tokenUsage + payload.tokenCount;
       }
-      await this.chatbotStatsRepository.updateStats(userStat._id, {
-        tokenCount: token,
-        tokenStats: {
-          yearMonth: currentYearMonth,
-          tokenUsage: monthlyToken,
+      await this.chatbotStatsRepository.updateStats(
+        userStat._id,
+        {
+          tokenCount: token,
+          tokenStats: {
+            yearMonth: currentYearMonth,
+            tokenUsage: monthlyToken,
+          },
         },
-      });
+        payload.userId,
+      );
     } else {
       // if it doesn't exist, add the stat in DB.
       const stat = {
@@ -88,7 +92,7 @@ export class ChatbotStatsService {
           tokenUsage: payload.tokenCount,
         },
         createdAt: new Date(),
-        createdBy: this.contextService.get("user")._id,
+        createdBy: this.contextService.get("user")?._id ?? payload.userId,
       };
       await this.chatbotStatsRepository.addStats(stat);
     }

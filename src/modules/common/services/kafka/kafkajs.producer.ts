@@ -31,6 +31,31 @@ export class KafkajsProducer implements IProducer {
     }
   }
 
+  /**
+   * This function is to check if kafka is able to connect and send message or not.
+   * @returns Boolean value to reflect if kafka is connected or not.
+   */
+  async isKafkaConnected(): Promise<boolean> {
+    try {
+      await this.connect();
+      if (!this.producer) {
+        console.log("Kafka producer is not initialized.");
+        return false;
+      }
+
+      // Try sending a dummy message to verify Kafka connection
+      await this.producer.send({
+        topic: this.topic,
+        messages: [{ key: "health-check", value: "ping" }],
+      });
+
+      return true;
+    } catch (error) {
+      console.log("Kafka connection error:", error);
+      return false;
+    }
+  }
+
   async disconnect() {
     await this.producer.disconnect();
   }

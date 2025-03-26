@@ -275,6 +275,11 @@ spec:
                 secretKeyRef:
                   name: release-api-v1-secret
                   key: BEEHIIV_PUBLICATION_ID
+            - name: AZURE_OPENAI_ASSISTANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AZURE_OPENAI_ASSISTANT_ID
 
 ---
 apiVersion: v1

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Socket } from "socket.io";
 
@@ -16,12 +20,15 @@ import {
   AIResponseDto,
   PromptPayload,
   StreamPromptPayload,
+  ChatBotPayload,
+  ErrorResponsePayload,
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
 import { ContextService } from "@src/modules/common/services/context.service";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { ChatbotStatsService } from "./chatbot-stats.service";
+import { UserService } from "../../identity/services/user.service";
 
 // ---- Enums
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
@@ -39,6 +46,7 @@ export class AiAssistantService {
   private maxTokens: number;
   private assistantsClient: AzureOpenAI;
   private monthlyTokenLimit: number;
+  private assistantId: string;
   // Default assistant configuration
   private assistant = {
     name: "API Instructor",
@@ -55,6 +63,7 @@ export class AiAssistantService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly chatbotStatsService: ChatbotStatsService,
+    private readonly userService: UserService,
   ) {
     // Retrieve configuration from environment variables
     this.endpoint = this.configService.get("ai.endpoint");
@@ -63,6 +72,7 @@ export class AiAssistantService {
     this.apiVersion = this.configService.get("ai.apiVersion");
     this.maxTokens = this.configService.get("ai.maxTokens");
     this.monthlyTokenLimit = this.configService.get("ai.monthlyTokenLimit");
+    this.assistantId = this.configService.get("ai.assistantId");
 
     // Initialize the AzureOpenAI client
     try {
@@ -308,5 +318,196 @@ export class AiAssistantService {
     await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
       value: JSON.stringify(kafkaMessage),
     });
+  }
+
+  /**
+   * Generates stream wise response based on a given prompt using an assistant.
+   * @param data - Prompt input data to generate a response.
+   * @returns A promise that resolves with the generated text, thread ID, and message ID.
+   * @throws BadRequestException if the assistant cannot be created.
+   */
+  public async generateTextChatBot(
+    data: ChatBotPayload,
+    client: Socket,
+  ): Promise<void> {
+    try {
+      const parsedData = typeof data === "string" ? JSON.parse(data) : data;
+      const text = parsedData.userInput;
+      let threadId = parsedData.threadId;
+      const tabId = parsedData.tabId;
+      const emailId = parsedData.emailId;
+      const apiData = parsedData.apiData || "Data not available";
+
+      const user = await this.userService.getUserByEmail(emailId);
+      const stat = await this.chatbotStatsService.getIndividualStat(
+        user?._id?.toString(),
+      );
+      const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
+      if (
+        stat?.tokenStats &&
+        stat.tokenStats?.yearMonth === currentYearMonth &&
+        stat.tokenStats.tokenUsage > (this.monthlyTokenLimit || 0)
+      ) {
+        client.emit(`assistant-response_${tabId}`, {
+          messages: "Limit Reached. Can you please try again after some time.",
+        });
+        throw new BadRequestException("Limit reached");
+      }
+
+      // Validate payload
+      if (!text) {
+        throw new BadRequestException(
+          "Invalid input: 'text' field is required.",
+        );
+      }
+
+      if (!this.assistantsClient) {
+        throw new InternalServerErrorException(
+          "AI assistant client is not initialized.",
+        );
+      }
+
+      const runAssistant = async () => {
+        try {
+          if (!threadId) {
+            console.log("Creating a new thread");
+            const assistantThread =
+              await this.assistantsClient.beta.threads.create({});
+            threadId = assistantThread.id;
+          }
+
+          await this.assistantsClient.beta.threads.messages.create(threadId, {
+            role: "user",
+            content: `{Text: ${text} , API data: ${apiData} }`,
+          });
+
+          const assistantResponse =
+            await this.assistantsClient.beta.assistants.retrieve(
+              this.assistantId,
+            );
+          const runResponse =
+            await this.assistantsClient.beta.threads.runs.create(threadId, {
+              assistant_id: assistantResponse.id,
+            });
+
+          let runStatus = runResponse.status;
+          while (runStatus === "queued" || runStatus === "in_progress") {
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            const runStatusResponse =
+              await this.assistantsClient.beta.threads.runs.retrieve(
+                threadId,
+                runResponse.id,
+              );
+            runStatus = runStatusResponse.status;
+          }
+
+          if (runStatus === "completed") {
+            const messagesResponse =
+              await this.assistantsClient.beta.threads.messages.list(threadId);
+
+            const completedRun =
+              await this.assistantsClient.beta.threads.runs.retrieve(
+                threadId,
+                runResponse.id,
+              );
+            const tokenUsage = completedRun.usage || {
+              prompt_tokens: 0,
+              completion_tokens: 0,
+              total_tokens: 0,
+            };
+
+            const latestAssistantMessage = messagesResponse.data
+              .filter((message) => message.role === "assistant")
+              .sort(
+                (a, b) =>
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime(),
+              )[0];
+
+            const assistantReply = latestAssistantMessage.content
+              .filter((item) => item.type === "text")
+              .map((item) => item.text.value)
+              .join(" ");
+
+            client.emit(`assistant-response_${tabId}`, {
+              messages: assistantReply,
+              thread_Id: threadId,
+            });
+
+            const id = user._id.toString();
+
+            const kafkaMessage = {
+              userId: id,
+              tokenCount: tokenUsage,
+            };
+            await this.producerService.produce(
+              TOPIC.AI_RESPONSE_GENERATED_TOPIC,
+              {
+                value: JSON.stringify(kafkaMessage),
+              },
+            );
+          } else {
+            console.error(
+              `Run status is ${runStatus}, unable to fetch messages.`,
+            );
+            throw new InternalServerErrorException(
+              "Assistant could not complete the request.",
+            );
+          }
+        } catch (error) {
+          client.emit(`assistant-response_${tabId}`, {
+            messages:
+              "Some Issue Occurred in Processing your Request. Please try again",
+            thread_Id: threadId,
+          });
+        }
+      };
+
+      runAssistant();
+    } catch (error) {
+      client.emit("assistant-response", {
+        messages: "Please try again",
+        thread_Id: null,
+      });
+    }
+  }
+
+  public async specificError(text: ErrorResponsePayload): Promise<string> {
+    try {
+      if (!text) {
+        throw new BadRequestException(
+          "Invalid input: 'text' field is required.",
+        );
+      }
+
+      const curl = text.curl;
+      const error = text.error;
+
+      const prompt =
+        "You are provided with two things. One is cURL and second is the error message. You need to provide the solution for the error message.";
+
+      const userMessage = `This is the cURL: ${curl} and this is the Error: ${error}`;
+
+      const messages: { role: "system" | "user"; content: string }[] = [
+        { role: "system", content: prompt },
+        { role: "user", content: userMessage },
+      ];
+
+      const response = await this.assistantsClient.chat.completions.create({
+        model: "sparrow",
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+      });
+
+      const result =
+        response.choices[response.choices.length - 1].message.content.trim();
+      return result;
+    } catch (error) {
+      console.error("Error processing specificError:", error);
+      throw new InternalServerErrorException(
+        "An error occurred while processing the request.",
+      );
+    }
   }
 }

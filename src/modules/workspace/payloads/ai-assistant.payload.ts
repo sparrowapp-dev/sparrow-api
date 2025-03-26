@@ -106,3 +106,63 @@ export class StreamPromptPayload {
   @ApiProperty({ required: true, example: "instructions to your assistant" })
   instructions: string;
 }
+
+export class ChatBotPayload {
+  /**
+   * The prompt or command.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "user input" })
+  @IsNotEmpty()
+  userInput: string;
+
+  /**
+   * The thread ID associated with the prompt.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "thread id" })
+  threadId: string;
+
+  /**
+   * The tab id where that thread belongs.
+   */
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "tab id" })
+  tabId: string;
+
+  /**
+   * The email id to check the limit.
+   */
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "emailId" })
+  emailId: string;
+
+  /**
+   * The Api data.
+   */
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "Api Data" })
+  apiData: string;
+}
+
+export class ErrorResponsePayload {
+  /**
+   * The cURL.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "curl -X" })
+  @IsNotEmpty()
+  curl: string;
+
+  /**
+   * The error.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "error" })
+  @IsNotEmpty()
+  error: string;
+}

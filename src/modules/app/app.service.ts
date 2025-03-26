@@ -18,8 +18,9 @@ import {
 } from "../common/models/collection.rxdb.model";
 import { ContextService } from "../common/services/context.service";
 import { Kafka } from "kafkajs";
-import { MongoClient } from "mongodb";
 import axios from "axios";
+import { AppRepository } from "./app.repository";
+import { KafkajsProducer } from "../common/services/kafka/kafkajs.producer";
 
 /**
  * Application Service
@@ -28,7 +29,6 @@ import axios from "axios";
 export class AppService {
   private curlconverterPromise: any = null;
   private kafka: Kafka;
-  private mongoClient: MongoClient;
   /**
    * Constructor
    * @param {ConfigService} config configuration service
@@ -36,6 +36,7 @@ export class AppService {
   constructor(
     private config: ConfigService,
     private contextService: ContextService,
+    private readonly appRepository: AppRepository,
   ) {}
 
   importCurlConverter() {
@@ -495,41 +496,24 @@ export class AppService {
    * @returns {Promise<boolean>} - A promise that resolves to `true` if the connection is successful, or `false` if it fails.
    */
   async checkKafkaConnection(): Promise<boolean> {
-    try {
-      this.kafka = new Kafka({
-        brokers: [this.config.get("kafka.broker")],
-      });
-      const admin = this.kafka.admin();
-      await admin.connect();
-      await admin.disconnect();
-      return true;
-    } catch (error) {
-      console.error("Kafka connection error:", error);
-      return false;
-    }
+    const kafkaBroker = [this.config.get("kafka.broker")];
+    const producer = new KafkajsProducer("health-check", kafkaBroker);
+    const isKafkaConnected = await producer.isKafkaConnected();
+    return isKafkaConnected;
   }
 
   /**
    * Checks the connection to the MongoDB database.
    *
-   * This method attempts to create a client and connect to the MongoDB server.
-   * It sends a ping to the server to verify the connection. If the connection is successful,
-   * the client is closed and the method returns `true`. If the connection fails, the error is logged,
+   * This method sends a ping to the server to verify the connection. If the connection is successful,
+   * the method returns `true`. If the connection fails, the error is logged,
    * and the method returns `false`.
    *
    * @returns {Promise<boolean>} - A promise that resolves to `true` if the connection is successful, or `false` if it fails.
    */
   async checkMongoConnection(): Promise<boolean> {
-    try {
-      this.mongoClient = new MongoClient(this.config.get("db.url"));
-      await this.mongoClient.connect();
-      await this.mongoClient.db().admin().ping();
-      await this.mongoClient.close();
-      return true;
-    } catch (error) {
-      console.error("MongoDB connection error:", error);
-      return false;
-    }
+    const isDBConnected = await this.appRepository.isMongoConnected();
+    return isDBConnected;
   }
 
   /**Users can subscribe to Sparrow through email. This is for Sparrow-docs.*/

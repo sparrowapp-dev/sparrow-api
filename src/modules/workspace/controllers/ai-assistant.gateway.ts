@@ -10,7 +10,10 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { AiAssistantService } from "../services/ai-assistant.service";
-import { StreamPromptPayload } from "../payloads/ai-assistant.payload";
+import {
+  StreamPromptPayload,
+  ChatBotPayload,
+} from "../payloads/ai-assistant.payload";
 
 const AI_ASSISTANT_SOCKET_PORT = 9002;
 /**
@@ -69,6 +72,14 @@ export class AiAssistantGateway
     @MessageBody() promptPayload: StreamPromptPayload,
   ) {
     await this.aiAssistantService.generateTextStream(promptPayload, client);
+  }
+
+  @SubscribeMessage("sendMessage")
+  async handleChatBotMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() promptPayload: ChatBotPayload,
+  ) {
+    await this.aiAssistantService.generateTextChatBot(promptPayload, client);
   }
 }
 

@@ -21,6 +21,7 @@ import {
   PrometheusModule,
 } from "@willsoto/nestjs-prometheus";
 import { CustomMetricsMiddleware } from "./middleware/metrics.middleware";
+import { AppRepository } from "./app.repository";
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { CustomMetricsMiddleware } from "./middleware/metrics.middleware";
       labelNames: ["method", "origin", "status", "environment"],
     }),
     AppService,
+    AppRepository,
     {
       provide: EnvironmentVariables,
       useValue: transformAndValidateSync(EnvironmentVariables, process.env),

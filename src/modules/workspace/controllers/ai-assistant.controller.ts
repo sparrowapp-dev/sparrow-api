@@ -10,7 +10,10 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
-import { PromptPayload } from "../payloads/ai-assistant.payload";
+import {
+  PromptPayload,
+  ErrorResponsePayload,
+} from "../payloads/ai-assistant.payload";
 
 @ApiBearerAuth()
 @ApiTags("AI Support")
@@ -37,6 +40,20 @@ export class AiAssistantController {
     const data = await this.aiAssistantService.generateText(prompt);
     const response = new ApiResponseService(
       "AI Reposonse Generated",
+      HttpStatusCode.CREATED,
+      data,
+    );
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @Post("specific-error")
+  async CurlError(
+    @Body() errorResponse: ErrorResponsePayload,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.aiAssistantService.specificError(errorResponse);
+    const response = new ApiResponseService(
+      "AI Error Handler Reposonse Generated",
       HttpStatusCode.CREATED,
       data,
     );
