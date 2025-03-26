@@ -27,6 +27,10 @@ import { HubSpotService } from "./hubspot.service";
 export interface IGenericMessageBody {
   message: string;
 }
+export interface TeamDetails {
+  teamName: string;
+  teamMembers: number;
+}
 /**
  * User Service
  */
@@ -504,6 +508,17 @@ export class UserService {
    */
   async verifyMagicCode(email: string, magicCode: string, expireTime: number) {
     const user = await this.getUserByEmail(email);
+    const team = await this.teamService.getAllTeams(user._id.toString());
+    const userTeams: TeamDetails[] = [];
+    for (let i = 0; i < team.length; i++) {
+      const teamName = team[i].name;
+      const teamMembers = team[i].users.length;
+      const teamDetails: TeamDetails = {
+        teamName: teamName,
+        teamMembers: teamMembers,
+      };
+      userTeams.push(teamDetails);
+    }
     if (user?.magicCode !== magicCode) {
       throw new BadRequestException("Wrong Code");
     }
@@ -522,6 +537,7 @@ export class UserService {
     const data = {
       accessToken,
       refreshToken,
+      userTeams,
       isEmailVerified: true,
     };
     return data;
