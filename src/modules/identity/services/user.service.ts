@@ -30,6 +30,13 @@ export interface IGenericMessageBody {
 export interface TeamDetails {
   teamName: string;
   teamMembers: number;
+  teamLogo: TeamLogo;
+}
+export interface TeamLogo {
+  bufferString?: string;
+  encoding?: string;
+  mimetype?: string;
+  size?: number;
 }
 /**
  * User Service
@@ -513,9 +520,16 @@ export class UserService {
     for (let i = 0; i < team.length; i++) {
       const teamName = team[i].name;
       const teamMembers = team[i].users.length;
+      const teamLogo = team[i]?.logo || {
+        bufferString: "",
+        encoding: "",
+        mimetype: "",
+        size: 0,
+      };
       const teamDetails: TeamDetails = {
         teamName: teamName,
         teamMembers: teamMembers,
+        teamLogo: teamLogo,
       };
       userTeams.push(teamDetails);
     }
