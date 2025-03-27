@@ -283,6 +283,8 @@ export class collectionController {
       user.name,
       requestDto?.folderId,
     );
+    // update the updateAt timestamp
+    await this.workSpaceService.update(workspaceId, {});
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -316,7 +318,8 @@ export class collectionController {
       requestId,
       requestDto,
     );
-
+    // update the updateAt timestamp
+    await this.workSpaceService.update(workspaceId, {});
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -354,7 +357,8 @@ export class collectionController {
       requestDto,
     );
     const collection = await this.collectionService.getCollection(collectionId);
-
+    // update the updateAt timestamp
+    await this.workSpaceService.update(workspaceId, {});
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,

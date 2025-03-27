@@ -126,6 +126,9 @@ export class WorkspaceRepository {
             activeSync: collection.activeSync,
           },
         },
+        $set: {
+          updatedAt: new Date(),
+        },
       },
     );
   }
@@ -137,21 +140,28 @@ export class WorkspaceRepository {
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
     const collection_id = new ObjectId(collectionId);
-    return this.db
-      .collection(Collections.WORKSPACE)
-      .updateOne(
-        { _id, "collection.id": collection_id },
-        { $set: { "collection.$.name": name } },
-      );
+    return this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id, "collection.id": collection_id },
+      {
+        $set: { "collection.$.name": name },
+        updatedAt: new Date(),
+      },
+    );
   }
   async deleteCollectioninWorkspace(
     workspaceId: string,
     collectionsArray: CollectionDto[],
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    return this.db
-      .collection(Collections.WORKSPACE)
-      .updateOne({ _id }, { $set: { collection: collectionsArray } });
+    return this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id },
+      {
+        $set: {
+          collection: collectionsArray,
+          updatedAt: new Date(),
+        },
+      },
+    );
   }
 
   async addEnvironmentInWorkspace(
@@ -169,6 +179,9 @@ export class WorkspaceRepository {
             type: environment.type,
           },
         },
+        $set: {
+          updatedAt: new Date(),
+        },
       },
     );
   }
@@ -178,9 +191,15 @@ export class WorkspaceRepository {
     environmentsArray: EnvironmentDto[],
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    return this.db
-      .collection(Collections.WORKSPACE)
-      .updateOne({ _id }, { $set: { environments: environmentsArray } });
+    return this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id },
+      {
+        $set: {
+          environments: environmentsArray,
+          updatedAt: new Date(),
+        },
+      },
+    );
   }
 
   async updateEnvironmentinWorkspace(
@@ -190,12 +209,15 @@ export class WorkspaceRepository {
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
     const environment_id = new ObjectId(environmentId);
-    return this.db
-      .collection(Collections.WORKSPACE)
-      .updateOne(
-        { _id, "environments.id": environment_id },
-        { $set: { "environments.$.name": name } },
-      );
+    return this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id, "environments.id": environment_id },
+      {
+        $set: {
+          "environments.$.name": name,
+          updatedAt: new Date(),
+        },
+      },
+    );
   }
 
   /**
@@ -221,6 +243,9 @@ export class WorkspaceRepository {
             name: testflow.name,
           },
         },
+        $set: {
+          updatedAt: new Date(),
+        },
       },
     );
     return response;
@@ -240,9 +265,15 @@ export class WorkspaceRepository {
     testflowsArray: TestflowInfoDto[],
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    const response = await this.db
-      .collection(Collections.WORKSPACE)
-      .updateOne({ _id }, { $set: { testflows: testflowsArray } });
+    const response = await this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id },
+      {
+        $set: {
+          testflows: testflowsArray,
+          updatedAt: new Date(),
+        },
+      },
+    );
     return response;
   }
 
@@ -262,12 +293,15 @@ export class WorkspaceRepository {
     name: string,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    const response = await this.db
-      .collection(Collections.WORKSPACE)
-      .updateOne(
-        { _id, "testflows.id": testflowId },
-        { $set: { "testflows.$.name": name } },
-      );
+    const response = await this.db.collection(Collections.WORKSPACE).updateOne(
+      { _id, "testflows.id": testflowId },
+      {
+        $set: {
+          "testflows.$.name": name,
+          updatedAt: new Date(),
+        },
+      },
+    );
     return response;
   }
 }
