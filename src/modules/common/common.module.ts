@@ -40,6 +40,7 @@ import { CreateUserMigration } from "migrations/create-test-user.migration";
         insightsService: InsightsService,
       ): Promise<Db> => {
         try {
+          // Connect to MongoDB using the URL from ConfigService
           const client = await MongoClient.connect(configService.get("db.url"));
 
           // Periodic health check
