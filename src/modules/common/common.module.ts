@@ -19,7 +19,7 @@ import { ContextService } from "./services/context.service";
 import { EmailService } from "./services/email.service";
 import { InsightsService } from "./services/insights.service";
 import { PostmanParserService } from "./services/postman.parser.service";
-import { CreateUserMigration } from "migrations/create-test-user.migration";
+// import { CreateUserMigration } from "migrations/create-test-user.migration";
 
 /**
  * Common Module provides global services and configurations used across the application.
@@ -31,7 +31,7 @@ import { CreateUserMigration } from "migrations/create-test-user.migration";
   controllers: [],
   providers: [
     InsightsService,
-    CreateUserMigration,
+    // CreateUserMigration,
     {
       provide: "DATABASE_CONNECTION",
       inject: [ConfigService, InsightsService],
@@ -40,8 +40,36 @@ import { CreateUserMigration } from "migrations/create-test-user.migration";
         insightsService: InsightsService,
       ): Promise<Db> => {
         try {
-          // Connect to MongoDB using the URL from ConfigService
           const client = await MongoClient.connect(configService.get("db.url"));
+
+          // Periodic health check
+          let intervalId: NodeJS.Timeout | undefined = undefined; // Store the interval ID
+          const checkConnection = async () => {
+            try {
+              await client.db("sparrow").command({ ping: 1 }); // Use the sparrow database
+            } catch (error) {
+              console.log("ERROR =====> ", error);
+              const client = await insightsService.getClient();
+              if (client) {
+                client.trackException({
+                  exception: error,
+                  properties: {
+                    status: 500,
+                    message: "MongoDB connection failure",
+                  },
+                });
+              } else {
+                console.error(
+                  "Application Insights client is not initialized.",
+                );
+              }
+              clearInterval(intervalId); // Clear the interval on connection loss
+            }
+          };
+
+          // Set up a heartbeat interval (e.g., every 60 seconds)
+          intervalId = setInterval(checkConnection, 60000);
+
           return client.db("sparrow");
         } catch (e) {
           console.log("ERROR =====> ", e);
