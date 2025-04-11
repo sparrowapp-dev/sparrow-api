@@ -548,7 +548,6 @@ export class AiAssistantService {
           client.send(JSON.stringify({
             messages: "Limit Reached. Please try again later.",
           }));
-          throw new BadRequestException("Limit reached");
         }
         
         // Validate user input
@@ -577,7 +576,7 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("Error in WebSocket loop:", error);
-      client.send(JSON.stringify({ event: "error", message: "An error occurred." }));
+      client.send(JSON.stringify({ event: "error", message: "Some Issue Occurred in Processing your Request. Please try again" }));
     }
   }
 
