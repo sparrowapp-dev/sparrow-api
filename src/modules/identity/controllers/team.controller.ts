@@ -346,32 +346,19 @@ export class TeamController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Post(":teamId/invite/user/accept")
+  @Post("accept-team-invite/:teamId/:inviteId")
   @ApiOperation({
     summary: "Accept an invite to join a team",
-    description: "Accept a team invite by inviteId and teamId",
+    description: "Accept a team invite by inviteId and teamId from URL params",
   })
   @ApiResponse({ status: 201, description: "User Accepted Team Invitation." })
   @ApiResponse({ status: 404, description: "Please provide correct details." })
   @ApiResponse({ status: 400, description: "Failed to accept team invite." })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        inviteId: {
-          type: "string",
-          description: "The ID of the invite being accepted",
-        },
-      },
-      required: ["inviteId"],
-    },
-  })
   async acceptInvite(
     @Param("teamId") teamId: string,
-    @Body() body: { inviteId: string },
+    @Param("inviteId") inviteId: string,
     @Res() res: FastifyReply,
   ) {
-    const { inviteId } = body;
     if (!inviteId) {
       return res.status(400).send({
         success: false,
@@ -382,7 +369,7 @@ export class TeamController {
     const responseData = {
       success: true,
       message: "Invite accepted successfully",
-      data: response,
+      response,
     };
     return res.status(response.status || 201).send(responseData);
   }
@@ -444,5 +431,33 @@ export class TeamController {
       message: "Invite role updated successfully",
     };
     return res.status(response.status || 200).send(responseData);
+  }
+
+  @Delete(":teamId/invite/:inviteId")
+  @ApiOperation({
+    summary: "Remove an invite from a team",
+    description:
+      "Find and remove an invite by inviteId from the specified team",
+  })
+  @ApiResponse({ status: 200, description: "Invite removed successfully." })
+  @ApiResponse({ status: 404, description: "Invite or Team not found." })
+  @ApiResponse({ status: 400, description: "Failed to remove invite." })
+  async removeInvite(
+    @Param("teamId") teamId: string,
+    @Param("inviteId") inviteId: string,
+    @Res() res: FastifyReply,
+  ) {
+    try {
+      await this.teamUserService.removeInvite(inviteId, teamId);
+      return res.status(200).send({
+        success: true,
+        message: "Invite removed successfully",
+      });
+    } catch (error) {
+      return res.status(400).send({
+        success: false,
+        message: error.message || "Failed to remove invite",
+      });
+    }
   }
 }

@@ -75,7 +75,7 @@ export class TeamUserService {
         from: this.configService.get("app.senderEmail"),
         to: user.email,
         text: "User Invited",
-        template: "inviteTeamEmail",
+        template: "teamInviteRegisteredReciever",
         context: {
           firstname: user.name.split(" ")[0],
           username: currentUser.name.split(" ")[0],
@@ -946,7 +946,6 @@ export class TeamUserService {
     if (!user) {
       throw new Error("User not found");
     }
-    // Prevent duplicate memberships
     const isAlreadyMember = teamData.users.some(
       (u: any) => u.id === user._id.toString(),
     );
@@ -986,12 +985,22 @@ export class TeamUserService {
       isNewInvite: true,
     });
     const inviteWorkspaces = matchedInvite.workspaces || [];
-    for (const ws of inviteWorkspaces) {
-      userWorkspaces.push({
-        teamId: teamId,
-        workspaceId: ws.id,
-        name: ws.name,
-      });
+    if (inviteWorkspaces.length > 0) {
+      for (const ws of inviteWorkspaces) {
+        userWorkspaces.push({
+          teamId: teamId,
+          workspaceId: ws.id,
+          name: ws.name,
+        });
+      }
+    } else if (matchedInvite.role === TeamRole.ADMIN) {
+      for (const ws of teamData.workspaces || []) {
+        userWorkspaces.push({
+          teamId: teamId,
+          workspaceId: ws.id.toString(),
+          name: ws.name,
+        });
+      }
     }
     const updateUserParams = {
       teams: userTeams,
@@ -1017,8 +1026,8 @@ export class TeamUserService {
    * Admin or Owner can Change Invite role of a user in a Team.
    * @param {string} inviteId - The Role select by the Inviter.
    * @param {string} role - The Role select by the admin or owner.
-   * @param {ObjectId} teamId - We will send this TeamId a Invite
-   * * @param {ObjectId} userId - We will send this TeamId a Invite
+   * @param {string} teamId - We will send this TeamId a Invite
+   * @param {string} userId - We will send this userId a Invite
    * @returns Result of the invite operation
    */
   async updateInvite(
@@ -1027,9 +1036,9 @@ export class TeamUserService {
     role: string,
     userId?: string,
   ): Promise<any> {
-    const allowedRoles = ["admin", "editor", "member"];
+    const allowedRoles = ["admin", "editor", "viewer"];
     if (!allowedRoles.includes(role)) {
-      throw new Error("Invalid role. Allowed roles are: admin, editor, member");
+      throw new Error("Invalid role. Allowed roles are: admin and Owner");
     }
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
@@ -1063,6 +1072,30 @@ export class TeamUserService {
       success: true,
       message: "Invite updated with new role",
       data: response,
+    };
+  }
+
+  /**
+   * Admin or Owner can Remove Invite role of a user in a Team.
+   * @param {string} inviteId - The Role select by the Inviter.
+   * @param {string} teamId - We will send this TeamId a Invite
+   * @returns Result of the invite operation
+   */
+  async removeInvite(inviteId: string, teamId: string): Promise<any> {
+    const teamObjectId = new ObjectId(teamId);
+    const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
+    if (!teamData) {
+      throw new Error("Team not found");
+    }
+    const originalInvites = teamData.invites || [];
+    const updatedInvites = originalInvites.filter(
+      (invite: any) => invite.inviteId !== inviteId,
+    );
+    teamData.invites = updatedInvites;
+    await this.teamRepository.updateTeamById(teamObjectId, teamData);
+    return {
+      success: true,
+      message: "Invite removed successfully",
     };
   }
 }
