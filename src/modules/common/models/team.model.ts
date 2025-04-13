@@ -114,6 +114,16 @@ export class TeamDto {
   isNewInvite?: boolean;
 }
 
+export class SelectedWorkspaces {
+  @IsNotEmpty()
+  @IsString()
+  id: string;
+
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+}
+
 export class Invite {
   @IsUUID()
   @IsNotEmpty()
@@ -132,6 +142,10 @@ export class Invite {
 
   @IsDateString()
   createdAt: Date;
+
+  @IsArray()
+  @IsOptional()
+  workspaces?: SelectedWorkspaces[];
 
   @IsDateString()
   updatedAt: Date;

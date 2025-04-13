@@ -3,6 +3,7 @@ import { TeamRepository } from "../repositories/team.repository";
 import {
   AddTeamUserDto,
   CreateOrUpdateTeamUserDto,
+  SelectedWorkspaces,
   TeamInviteMailDto,
 } from "../payloads/teamUser.payload";
 import { ObjectId, WithId } from "mongodb";
@@ -837,6 +838,7 @@ export class TeamUserService {
     role: string,
     teamId: ObjectId,
     senderId?: ObjectId,
+    workspaces?: SelectedWorkspaces[],
   ) {
     const teamFilter = new ObjectId(teamId);
     const userData = await this.userRepository.getUserByEmail(email);
@@ -859,6 +861,7 @@ export class TeamUserService {
       createdAt: now,
       updatedAt: now,
       createdBy: senderId,
+      workspaces: workspaces,
       expiresAt,
     };
     const updatedInvites = [...(team.invites || []), userInvite];
@@ -873,16 +876,48 @@ export class TeamUserService {
   }
 
   /**
-   * send user Invites to join the Team.
+   * send request users Invites to join the Team.
    * @param {AddTeamUserDto} payload
    * @returns {Promise<void>} Result of the invite operation
    */
   async sendInvite(payload: AddTeamUserDto): Promise<any[]> {
     const teamFilter = new ObjectId(payload.teamId);
     const senderId = new ObjectId(payload.userId);
+
+    // Create invites for all users
     for (const userEmail of payload.users) {
-      await this.createInvite(userEmail, payload.role, teamFilter, senderId);
+      await this.createInvite(
+        userEmail,
+        payload.role,
+        teamFilter,
+        senderId,
+        payload.workspaces,
+      );
     }
+    const usersExist = [];
+    const teamData = await this.teamRepository.get(payload.teamId);
+    for (const emailId of payload.users) {
+      const user = await this.userRepository.getUserByEmail(
+        emailId.toLowerCase(),
+      );
+      if (user) {
+        const isMember = await this.teamService.isTeamMember(
+          user._id.toString(),
+          teamData.users,
+        );
+        if (!isMember) {
+          usersExist.push(user);
+        }
+      }
+    }
+    // Send invite email only to existing users
+    await this.inviteUserInTeamEmail(
+      {
+        users: usersExist,
+        teamName: teamData.name,
+      },
+      payload.role,
+    );
     return;
   }
 
@@ -911,28 +946,29 @@ export class TeamUserService {
     if (!user) {
       throw new Error("User not found");
     }
-    // Check if user already in the team
+    // Prevent duplicate memberships
     const isAlreadyMember = teamData.users.some(
       (u: any) => u.id === user._id.toString(),
     );
     if (isAlreadyMember) {
       throw new Error("User is already a member of the team");
     }
+    // Remove the accepted invite
     const updatedInvites = allInvites.filter(
       (invite: any) => invite.inviteId !== inviteId,
     );
+    // Add user to team
     const teamUsers = [...teamData.users];
     const teamAdmins = [...teamData.admins];
+    const newRole =
+      matchedInvite.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER;
     teamUsers.push({
       id: user._id.toString(),
       email: user.email.toLowerCase(),
       name: user.name,
-      role:
-        matchedInvite.role === TeamRole.ADMIN
-          ? TeamRole.ADMIN
-          : TeamRole.MEMBER,
+      role: newRole,
     });
-    if (matchedInvite.role === TeamRole.ADMIN) {
+    if (newRole === TeamRole.ADMIN) {
       teamAdmins.push(user._id.toString());
     }
     const updatedTeamParams: Partial<TeamDto> = {
@@ -943,41 +979,37 @@ export class TeamUserService {
     await this.teamRepository.updateTeamById(teamObjectId, updatedTeamParams);
     const userTeams = [...user.teams];
     const userWorkspaces = [...user.workspaces];
-
     userTeams.push({
       id: teamObjectId,
       name: teamData.name,
-      role: matchedInvite.role,
+      role: newRole,
       isNewInvite: true,
     });
-
-    if (matchedInvite.role === TeamRole.ADMIN) {
-      for (const ws of teamData.workspaces) {
-        userWorkspaces.push({
-          teamId: teamId,
-          workspaceId: ws.id.toString(),
-          name: ws.name,
-        });
-      }
+    const inviteWorkspaces = matchedInvite.workspaces || [];
+    for (const ws of inviteWorkspaces) {
+      userWorkspaces.push({
+        teamId: teamId,
+        workspaceId: ws.id,
+        name: ws.name,
+      });
     }
     const updateUserParams = {
       teams: userTeams,
       workspaces: userWorkspaces,
     };
     await this.userRepository.updateUserById(user._id, updateUserParams);
+    // Trigger Kafka or other messaging
     await this.producerService.produce(TOPIC.USER_ADDED_TO_TEAM_TOPIC, {
       value: JSON.stringify({
-        teamWorkspaces:
-          matchedInvite.role === TeamRole.ADMIN ? [...teamData.workspaces] : [],
+        teamWorkspaces: inviteWorkspaces,
         userId: user._id,
-        role: matchedInvite.role,
+        role: newRole,
       }),
     });
-
     return {
       success: true,
       message: "User successfully added to the team",
-      role: matchedInvite.role,
+      role: newRole,
     };
   }
 
@@ -986,33 +1018,40 @@ export class TeamUserService {
    * @param {string} inviteId - The Role select by the Inviter.
    * @param {string} role - The Role select by the admin or owner.
    * @param {ObjectId} teamId - We will send this TeamId a Invite
+   * * @param {ObjectId} userId - We will send this TeamId a Invite
    * @returns Result of the invite operation
    */
   async updateInvite(
     inviteId: string,
     teamId: string,
     role: string,
+    userId?: string,
   ): Promise<any> {
+    const allowedRoles = ["admin", "editor", "member"];
+    if (!allowedRoles.includes(role)) {
+      throw new Error("Invalid role. Allowed roles are: admin, editor, member");
+    }
     const teamObjectId = new ObjectId(teamId);
-    // Fetch the team
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
       throw new Error("Team not found");
     }
     const invites = teamData.invites || [];
-    // Check if invite exists
     const inviteIndex = invites.findIndex(
       (invite: any) => invite.inviteId === inviteId,
     );
     if (inviteIndex === -1) {
       throw new Error("Invite not found");
     }
-    // Update the role
-    invites[inviteIndex] = {
+    const updatedInvite = {
       ...invites[inviteIndex],
-      role: role,
+      role,
       updatedAt: new Date(),
     };
+    if (userId) {
+      updatedInvite.updatedBy = new ObjectId(userId);
+    }
+    invites[inviteIndex] = updatedInvite;
     const updatedData: Partial<TeamDto> = {
       invites,
     };

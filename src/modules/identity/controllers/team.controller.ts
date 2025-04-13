@@ -32,6 +32,7 @@ import {
   UploadedFile,
 } from "@blazity/nest-file-fastify";
 import { UserService } from "../services/user.service";
+import { BadRequestError } from "openai";
 /**
  * Team Controller
  */
@@ -347,8 +348,101 @@ export class TeamController {
 
   @Post(":teamId/invite/user/accept")
   @ApiOperation({
-    summary: "Create a Invite",
-    description: "",
+    summary: "Accept an invite to join a team",
+    description: "Accept a team invite by inviteId and teamId",
   })
-  async createNewInvite() {}
+  @ApiResponse({ status: 201, description: "User Accepted Team Invitation." })
+  @ApiResponse({ status: 404, description: "Please provide correct details." })
+  @ApiResponse({ status: 400, description: "Failed to accept team invite." })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        inviteId: {
+          type: "string",
+          description: "The ID of the invite being accepted",
+        },
+      },
+      required: ["inviteId"],
+    },
+  })
+  async acceptInvite(
+    @Param("teamId") teamId: string,
+    @Body() body: { inviteId: string },
+    @Res() res: FastifyReply,
+  ) {
+    const { inviteId } = body;
+    if (!inviteId) {
+      return res.status(400).send({
+        success: false,
+        message: "Invite ID is required",
+      });
+    }
+    const response = await this.teamUserService.acceptInvite(inviteId, teamId);
+    const responseData = {
+      success: true,
+      message: "Invite accepted successfully",
+      data: response,
+    };
+    return res.status(response.status || 201).send(responseData);
+  }
+
+  @Put(":teamId/invite/userRole")
+  @ApiOperation({
+    summary: "Update role for an invited user",
+    description: "Updates the role of an invited user in a team",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Invite role updated successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Invite ID and Role are required",
+  })
+  @ApiResponse({
+    status: 404,
+    description: "Invite or Team not found",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        inviteId: {
+          type: "string",
+          description: "ID of the invite to update",
+        },
+        role: {
+          type: "string",
+          description: "New role to assign",
+          enum: ["member", "admin", "owner"],
+        },
+      },
+      required: ["inviteId", "role"],
+    },
+  })
+  async updateInvite(
+    @Param("teamId") teamId: string,
+    @Body() body: { inviteId: string; role: string; userId?: string },
+    @Res() res: FastifyReply,
+  ) {
+    const { inviteId, role, userId } = body;
+    if (!inviteId || !role) {
+      return res.status(400).send({
+        success: false,
+        message: "Invite ID and Role are required",
+      });
+    }
+    const response = await this.teamUserService.updateInvite(
+      inviteId,
+      teamId,
+      role,
+      userId,
+    );
+    const responseData = {
+      success: true,
+      message: "Invite role updated successfully",
+    };
+    return res.status(response.status || 200).send(responseData);
+  }
 }
