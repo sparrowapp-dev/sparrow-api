@@ -33,16 +33,6 @@ export class EarlyAccessEmail {
   updatedAt?: Date;
 }
 
-export class TeamInvites {
-  @IsString()
-  @IsNotEmpty()
-  email: string;
-
-  @IsArray()
-  @IsString()
-  teamIds: string[];
-}
-
 export class User {
   @IsString()
   @IsNotEmpty()
@@ -66,11 +56,6 @@ export class User {
   @Type(() => TeamDto)
   @ValidateNested({ each: true })
   teams: TeamDto[];
-
-  @ValidateNested()
-  @Type(() => TeamInvites)
-  @IsOptional()
-  teamInvites?: TeamInvites;
 
   @IsArray()
   @Type(() => UserWorkspaceDto)

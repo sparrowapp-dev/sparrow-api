@@ -23,6 +23,7 @@ import { ConfigService } from "@nestjs/config";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { TeamDto } from "../payloads/team.payload";
 import { v4 as uuidv4 } from "uuid";
+import { UserInvitesRepository } from "../repositories/userInvites.repository";
 /**
  * Team User Service
  */
@@ -30,6 +31,7 @@ import { v4 as uuidv4 } from "uuid";
 export class TeamUserService {
   constructor(
     private readonly teamRepository: TeamRepository,
+    private readonly userInvitesRepository: UserInvitesRepository,
     private readonly contextService: ContextService,
     private readonly userRepository: UserRepository,
     private readonly producerService: ProducerService,
@@ -917,21 +919,7 @@ export class TeamUserService {
     const updatedData: Partial<TeamDto> = {
       invites: updatedInvites,
     };
-
-    if (userData) {
-      const existingTeamIds = userData.teamInvites?.teamIds || [];
-      const shouldAddTeamId = !existingTeamIds.includes(teamId);
-      const updatedTeamIds = shouldAddTeamId
-        ? [...existingTeamIds, teamId]
-        : existingTeamIds;
-      const updateUserParams = {
-        teamInvites: {
-          email: userData.email,
-          teamIds: updatedTeamIds,
-        },
-      };
-      await this.userRepository.updateUserById(userData._id, updateUserParams);
-    }
+    await this.addInvite(email, teamId);
     const response = await this.teamRepository.updateTeamById(
       teamFilter,
       updatedData,
@@ -960,6 +948,7 @@ export class TeamUserService {
           inviteId: inviteId,
           teamId: teamId,
           email: email,
+          role: role,
         },
         subject: `${sender.name} has invited you to the hub “${team.name}”`,
       };
@@ -1009,28 +998,49 @@ export class TeamUserService {
       }
       return true;
     });
-    await this.removeUserTeamInvites(teamId, email);
+    await this.removeInvite(email, teamId);
     const updatedData: Partial<TeamDto> = {
       invites: updatedInvites,
     };
     await this.teamRepository.updateTeamById(team._id, updatedData);
   }
 
-  async removeUserTeamInvites(teamId: string, email: string) {
-    const userData = await this.userRepository.getUserByEmail(email);
-    if (userData?.teamInvites) {
-      const existingTeamIds = userData.teamInvites?.teamIds || [];
-      const updatedTeamIds = existingTeamIds.filter(
-        (id: string) => id !== teamId,
-      );
-      const updateUserParams = {
-        teamInvites: {
-          email: userData.email,
-          teamIds: updatedTeamIds,
-        },
+  async addInvite(email: string, teamId: string) {
+    const nonUserData = await this.userInvitesRepository.getByEmail(email);
+    let response;
+    if (nonUserData) {
+      let existingTeamIds = nonUserData.teamIds || [];
+      if (!existingTeamIds.includes(teamId)) {
+        existingTeamIds.push(teamId);
+      }
+      const payload = {
+        email,
+        teamIds: existingTeamIds,
       };
-      await this.userRepository.updateUserById(userData._id, updateUserParams);
+      response = await this.userInvitesRepository.update(payload);
+    } else {
+      const payload = {
+        email,
+        teamIds: [teamId],
+      };
+      response = await this.userInvitesRepository.create(payload);
     }
+    return response;
+  }
+
+  async removeInvite(email: string, teamId: string) {
+    const nonUserData = await this.userInvitesRepository.getByEmail(email);
+    let response;
+    if (nonUserData) {
+      let existingTeamIds = nonUserData.teamIds || [];
+      const updatedTeamIds = existingTeamIds.filter((id) => id !== teamId);
+      const payload = {
+        email,
+        teamIds: updatedTeamIds,
+      };
+      response = await this.userInvitesRepository.update(payload);
+    }
+    return response;
   }
 
   /**
@@ -1089,19 +1099,6 @@ export class TeamUserService {
     );
     if (!user) {
       // non registered user
-      // const updatedInvites = allInvites.map((invite: any) => {
-      //   if (invite.inviteId === inviteId) {
-      //     invite.isAccepted = true;
-      //   }
-      //   return invite;
-      // });
-      // const updatedData: Partial<TeamDto> = {
-      //   invites: updatedInvites,
-      // };
-      // await this.teamRepository.updateTeamById(
-      //   new ObjectId(teamId),
-      //   updatedData,
-      // );
       throw new NotFoundException("User doesn't exist");
     }
     // Check if user already in the team
