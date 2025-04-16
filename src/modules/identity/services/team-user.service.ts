@@ -1235,11 +1235,18 @@ export class TeamUserService {
     return isOwnerOrAdmin;
   }
 
-  async removeInviteByemail(teamId: string, email?: string) {
+  async removeInviteByOwner(teamId: string, email?: string) {
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
       throw new NotFoundException("Team not found");
+    }
+    const sender = this.contextService.get("user");
+    const isOwnerOrAdmin = this.isCheckOwnerOrAdmin(sender, teamId);
+    if (!isOwnerOrAdmin) {
+      throw new UnauthorizedException(
+        "Access Denied: Only an Admin or Owner can send the invitation.",
+      );
     }
     const allInvites = teamData.invites || [];
     const matchedInvite = allInvites.find(
@@ -1249,6 +1256,24 @@ export class TeamUserService {
       throw new NotFoundException("Invite not found");
     }
     const data = await this.removeTeamInvite(teamId, email);
+    return data;
+  }
+
+  async removeInviteUser(teamId: string) {
+    const teamObjectId = new ObjectId(teamId);
+    const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
+    if (!teamData) {
+      throw new NotFoundException("Team not found");
+    }
+    const sender = this.contextService.get("user");
+    const allInvites = teamData.invites || [];
+    const matchedInvite = allInvites.find(
+      (invite: Invite) => invite.email === sender.email,
+    );
+    if (!matchedInvite) {
+      throw new NotFoundException("Invite not found");
+    }
+    const data = await this.removeTeamInvite(teamId, sender.email);
     return data;
   }
 
