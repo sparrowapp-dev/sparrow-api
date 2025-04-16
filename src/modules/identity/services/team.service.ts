@@ -20,6 +20,7 @@ import { ContextService } from "@src/modules/common/services/context.service";
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { User } from "@src/modules/common/models/user.model";
+import { UserInvitesRepository } from "../repositories/userInvites.repository";
 
 /**
  * Team Service
@@ -30,6 +31,7 @@ export class TeamService {
     private readonly teamRepository: TeamRepository,
     private readonly producerService: ProducerService,
     private readonly configService: ConfigService,
+    private readonly userInvitesRepository: UserInvitesRepository,
     private readonly userRepository: UserRepository,
     private readonly contextService: ContextService,
   ) {}
@@ -257,11 +259,13 @@ export class TeamService {
 
       teams.push(teamData);
     }
-    const teamIds = user?.teamInvites?.teamIds;
+    const existingTeams = await this.userInvitesRepository.getByEmail(
+      user.email,
+    );
+    const teamIds = existingTeams?.teamIds || [];
     if (teamIds) {
       for (const teamId of teamIds) {
         const teamData: WithId<TeamWithNewInviteTag> = await this.get(teamId);
-
         const team: any = {
           _id: teamId,
           logo: teamData.logo,
