@@ -376,12 +376,40 @@ export class TeamController {
   })
   @ApiResponse({ status: 400, description: "Failed to Accept Invite." })
   @ApiResponse({ status: 404, description: "Team or Request not Found." })
-  async createNewInvite(
+  async acceptInvitebyEmail(
     @Param("teamId") teamId: string,
     @Param("inviteId") inviteId: string,
     @Res() res: FastifyReply,
   ) {
-    const data = await this.teamUserService.acceptInvite(inviteId, teamId);
+    const data = await this.teamUserService.acceptInviteByEmail(
+      inviteId,
+      teamId,
+    );
+    const responseData = new ApiResponseService(
+      "User joined the hub",
+      HttpStatusCode.OK,
+      data,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post(":teamId/invite/user/accept")
+  @ApiOperation({
+    summary: "It is to Accept the Invite.",
+    description: "",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Invite successfully accepted and added to the team.",
+  })
+  @ApiResponse({ status: 400, description: "Failed to Accept Invite." })
+  @ApiResponse({ status: 404, description: "Team or Request not Found." })
+  async acceptInvite(
+    @Param("teamId") teamId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.teamUserService.acceptInvite(teamId);
     const responseData = new ApiResponseService(
       "User joined the hub",
       HttpStatusCode.OK,

@@ -33,7 +33,7 @@ export class UserInvitesRepository {
   }
 
   /**
-   * Updates a non-user's teamIds by pushing all provided teamIds
+   * Updates a invite-user's teamIds by pushing all provided teamIds
    * @param payload {UpdateInviteUser}
    * @returns {Promise<UpdateResult>}
    */
@@ -50,7 +50,7 @@ export class UserInvitesRepository {
   }
 
   /**
-   * Retrieves a non-user by their email
+   * Retrieves a invite-user by their email
    * @param email {string}
    * @returns {Promise<UserInvites | null>}
    */
