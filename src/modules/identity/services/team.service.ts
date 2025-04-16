@@ -257,7 +257,7 @@ export class TeamService {
 
       teams.push(teamData);
     }
-    const teamIds = user.teamInvites.teamIds;
+    const teamIds = user?.teamInvites?.teamIds;
     if (teamIds) {
       for (const teamId of teamIds) {
         const teamData: WithId<TeamWithNewInviteTag> = await this.get(teamId);

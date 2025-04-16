@@ -409,9 +409,11 @@ export class TeamController {
     @Res() res: FastifyReply,
   ) {
     await this.teamUserService.removeInviteByemail(teamId, email);
+    const data = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "Removed Invite from hub",
       HttpStatusCode.OK,
+      data,
     );
 
     return res.status(responseData.httpStatusCode).send(responseData);
@@ -434,7 +436,8 @@ export class TeamController {
     @Param("email") email: string,
     @Res() res: FastifyReply,
   ) {
-    const data = await this.teamUserService.resendInvite(teamId, email);
+    await this.teamUserService.resendInvite(teamId, email);
+    const data = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "Resend Invite to the hub",
       HttpStatusCode.OK,

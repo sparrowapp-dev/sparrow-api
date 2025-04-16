@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from "@nestjs/common";
 import { TeamRepository } from "../repositories/team.repository";
 import {
@@ -1041,13 +1040,14 @@ export class TeamUserService {
   async sendInvite(payload: AddTeamUserDto): Promise<any[]> {
     const teamFilter = payload.teamId;
     // check if inviter is admin or owner
-    const sender = this.contextService.get("user");
-    const isOwnerOrAdmin = this.isCheckOwnerOrAdmin(sender, payload.teamId);
-    if (!isOwnerOrAdmin) {
-      throw new UnauthorizedException(
-        "Access Denied: Only an Admin or Owner can send the invitation.",
-      );
-    }
+    // const sender = this.contextService.get("user");
+    // const isOwnerOrAdmin = this.isCheckOwnerOrAdmin(sender, payload.teamId);
+    // if (!isOwnerOrAdmin) {
+    //   throw new UnauthorizedException(
+    //     "Access Denied: Only an Admin or Owner can send the invitation.",
+    //   );
+    // }
+    await this.teamService.isTeamOwnerOrAdmin(new ObjectId(payload.teamId));
     for (const userEmail of payload.users) {
       await this.createInvite(
         userEmail,
@@ -1268,12 +1268,8 @@ export class TeamUserService {
       throw new NotFoundException("Team not found");
     }
     const sender = this.contextService.get("user");
-    const isOwnerOrAdmin = this.isCheckOwnerOrAdmin(sender, teamId);
-    if (!isOwnerOrAdmin) {
-      throw new UnauthorizedException(
-        "Access Denied: Only an Admin or Owner can send the invitation.",
-      );
-    }
+
+    await this.teamService.isTeamOwnerOrAdmin(new ObjectId(teamId));
     const invites = teamData.invites || [];
     const inviteIndex = invites.findIndex(
       (invite: any) => invite.email === email,
