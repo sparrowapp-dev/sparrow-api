@@ -405,11 +405,13 @@ export class TeamController {
   })
   @ApiResponse({ status: 400, description: "Failed to Accept Invite." })
   @ApiResponse({ status: 404, description: "Team or Request not Found." })
+  @UseGuards(JwtAuthGuard)
   async acceptInvite(
     @Param("teamId") teamId: string,
     @Res() res: FastifyReply,
   ) {
-    const data = await this.teamUserService.acceptInvite(teamId);
+    await this.teamUserService.acceptInvite(teamId);
+    const data = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "User joined the hub",
       HttpStatusCode.OK,
@@ -431,17 +433,42 @@ export class TeamController {
   @ApiResponse({ status: 400, description: "Failed to Remove Invitation." })
   @ApiResponse({ status: 404, description: "Team or Request not Found." })
   @UseGuards(JwtAuthGuard)
-  async removeNewInvite(
+  async removeNewInviteByOwner(
     @Param("teamId") teamId: string,
     @Param("email") email: string,
     @Res() res: FastifyReply,
   ) {
-    await this.teamUserService.removeInviteByemail(teamId, email);
+    await this.teamUserService.removeInviteByOwner(teamId, email);
     const data = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "Removed Invite from hub",
       HttpStatusCode.OK,
       data,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Delete(":teamId/invite/not-accepted")
+  @ApiOperation({
+    summary: "Remove the Invite",
+    description: "",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Invitation Removed from Team Successfully",
+  })
+  @ApiResponse({ status: 400, description: "Failed to Remove Invitation." })
+  @ApiResponse({ status: 404, description: "Team or Request not Found." })
+  @UseGuards(JwtAuthGuard)
+  async removeNewInvite(
+    @Param("teamId") teamId: string,
+    @Res() res: FastifyReply,
+  ) {
+    await this.teamUserService.removeInviteUser(teamId);
+    const responseData = new ApiResponseService(
+      "Removed Invite from hub",
+      HttpStatusCode.OK,
     );
 
     return res.status(responseData.httpStatusCode).send(responseData);
