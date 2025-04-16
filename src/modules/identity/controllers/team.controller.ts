@@ -391,7 +391,7 @@ export class TeamController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Delete(":teamId/invite/not-accepted/:inviteId")
+  @Delete(":teamId/invite/not-accepted/:email")
   @ApiOperation({
     summary: "Remove the Invite",
     description: "",
@@ -402,12 +402,13 @@ export class TeamController {
   })
   @ApiResponse({ status: 400, description: "Failed to Remove Invitation." })
   @ApiResponse({ status: 404, description: "Team or Request not Found." })
+  @UseGuards(JwtAuthGuard)
   async removeNewInvite(
     @Param("teamId") teamId: string,
-    @Param("inviteId") inviteId: string,
+    @Param("email") email: string,
     @Res() res: FastifyReply,
   ) {
-    await this.teamUserService.removeInviteById(teamId, inviteId);
+    await this.teamUserService.removeInviteByemail(teamId, email);
     const responseData = new ApiResponseService(
       "Removed Invite from hub",
       HttpStatusCode.OK,
@@ -416,7 +417,7 @@ export class TeamController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Post(":teamId/invite/resend/:inviteId")
+  @Post(":teamId/invite/resend/:email")
   @ApiOperation({
     summary: "Resend Invite",
     description: "",
@@ -427,12 +428,13 @@ export class TeamController {
   })
   @ApiResponse({ status: 400, description: "Failed to Remove Invitation." })
   @ApiResponse({ status: 404, description: "Team or Request not Found." })
+  @UseGuards(JwtAuthGuard)
   async resendNewInvite(
     @Param("teamId") teamId: string,
-    @Param("inviteId") inviteId: string,
+    @Param("email") email: string,
     @Res() res: FastifyReply,
   ) {
-    const data = await this.teamUserService.resendInvite(teamId, inviteId);
+    const data = await this.teamUserService.resendInvite(teamId, email);
     const responseData = new ApiResponseService(
       "Resend Invite to the hub",
       HttpStatusCode.OK,

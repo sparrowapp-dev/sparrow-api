@@ -1,6 +1,9 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { TeamDto } from "@src/modules/common/models/team.model";
-import { UserWorkspaceDto } from "@src/modules/common/models/user.model";
+import {
+  TeamInvites,
+  UserWorkspaceDto,
+} from "@src/modules/common/models/user.model";
 import { Type } from "class-transformer";
 import {
   IsArray,
@@ -47,6 +50,11 @@ export class UserDto {
   @IsOptional()
   @ValidateNested({ each: true })
   workspaces?: UserWorkspaceDto[];
+
+  @ValidateNested()
+  @Type(() => TeamInvites)
+  @IsOptional()
+  teamInvites?: TeamInvites;
 }
 
 export class RegisteredWith {

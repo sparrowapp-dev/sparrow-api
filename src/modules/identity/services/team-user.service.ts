@@ -917,6 +917,21 @@ export class TeamUserService {
     const updatedData: Partial<TeamDto> = {
       invites: updatedInvites,
     };
+
+    if (userData) {
+      const existingTeamIds = userData.teamInvites?.teamIds || [];
+      const shouldAddTeamId = !existingTeamIds.includes(teamId);
+      const updatedTeamIds = shouldAddTeamId
+        ? [...existingTeamIds, teamId]
+        : existingTeamIds;
+      const updateUserParams = {
+        teamInvites: {
+          email: userData.email,
+          teamIds: updatedTeamIds,
+        },
+      };
+      await this.userRepository.updateUserById(userData._id, updateUserParams);
+    }
     const response = await this.teamRepository.updateTeamById(
       teamFilter,
       updatedData,
@@ -994,10 +1009,28 @@ export class TeamUserService {
       }
       return true;
     });
+    await this.removeUserTeamInvites(teamId, email);
     const updatedData: Partial<TeamDto> = {
       invites: updatedInvites,
     };
     await this.teamRepository.updateTeamById(team._id, updatedData);
+  }
+
+  async removeUserTeamInvites(teamId: string, email: string) {
+    const userData = await this.userRepository.getUserByEmail(email);
+    if (userData?.teamInvites) {
+      const existingTeamIds = userData.teamInvites?.teamIds || [];
+      const updatedTeamIds = existingTeamIds.filter(
+        (id: string) => id !== teamId,
+      );
+      const updateUserParams = {
+        teamInvites: {
+          email: userData.email,
+          teamIds: updatedTeamIds,
+        },
+      };
+      await this.userRepository.updateUserById(userData._id, updateUserParams);
+    }
   }
 
   /**
@@ -1211,7 +1244,7 @@ export class TeamUserService {
     return isOwnerOrAdmin;
   }
 
-  async removeInviteById(teamId: string, inviteId: string) {
+  async removeInviteByemail(teamId: string, email?: string) {
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
@@ -1219,16 +1252,16 @@ export class TeamUserService {
     }
     const allInvites = teamData.invites || [];
     const matchedInvite = allInvites.find(
-      (invite: any) => invite.inviteId === inviteId,
+      (invite: Invite) => invite.email === email,
     );
     if (!matchedInvite) {
       throw new NotFoundException("Invite not found");
     }
-    const data = await this.removeTeamInvite(teamId, matchedInvite.email);
+    const data = await this.removeTeamInvite(teamId, email);
     return data;
   }
 
-  async resendInvite(teamId: string, inviteId: string) {
+  async resendInvite(teamId: string, email: string) {
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
@@ -1243,8 +1276,9 @@ export class TeamUserService {
     }
     const invites = teamData.invites || [];
     const inviteIndex = invites.findIndex(
-      (invite: any) => invite.inviteId === inviteId,
+      (invite: any) => invite.email === email,
     );
+    const matchInvite = teamData.invites[inviteIndex].inviteId;
     if (inviteIndex === -1) {
       throw new NotFoundException("Invite not found");
     }
@@ -1285,7 +1319,7 @@ export class TeamUserService {
             "support.sparrowWebsiteName",
           ),
           authUrl: this.configService.get("auth.baseURL"),
-          inviteId: inviteId,
+          inviteId: matchInvite,
           teamId: teamId,
           email: inviteEmail,
         },
@@ -1311,7 +1345,7 @@ export class TeamUserService {
             "support.sparrowWebsiteName",
           ),
           marketingUrl: this.configService.get("marketing.baseURL"),
-          inviteId: inviteId,
+          inviteId: matchInvite,
           teamId: teamId,
           email: inviteEmail,
         },
