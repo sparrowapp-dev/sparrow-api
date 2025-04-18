@@ -875,6 +875,8 @@ export class TeamUserService {
     // need to check, if user already exist in the team
     // add your code here
     const teamMember = team.users.some((user) => {
+      console.log(user.email, email);
+
       if (user.email === email) {
         return true;
       }
@@ -887,7 +889,7 @@ export class TeamUserService {
     // need to check, if user already exist in the invites array
     if (team.invites) {
       const emailAlreadyInvited = team.invites.some(
-        (invite) => invite.email === email,
+        (invite) => invite.email.toLowerCase() === email.toLowerCase(),
       );
 
       if (emailAlreadyInvited) {
