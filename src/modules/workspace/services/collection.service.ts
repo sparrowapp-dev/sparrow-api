@@ -34,6 +34,7 @@ import { ProducerService } from "@src/modules/common/services/kafka/producer.ser
 import { PostmanParserService } from "@src/modules/common/services/postman.parser.service";
 import { v4 as uuidv4 } from "uuid";
 import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
+import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
 @Injectable()
 export class CollectionService {
   constructor(
@@ -68,6 +69,18 @@ export class CollectionService {
     };
     const collection =
       await this.collectionRepository.addCollection(newCollection);
+    const currentWorkspaceObject = new ObjectId(
+      createCollectionDto.workspaceId,
+    );
+    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
+      id: currentWorkspaceObject.toString(),
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
+
     const updateMessage = `New Collection "${createCollectionDto.name}" is added in "${workspace.name}" workspace`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
@@ -424,6 +437,15 @@ export class CollectionService {
       collectionId,
       updateCollectionDto,
     );
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
+      id: currentWorkspaceObject.toString(),
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     if (updateCollectionDto?.name) {
       const updateMessage = `"${collection.name}" collection is renamed to "${updateCollectionDto.name}" in "${workspace.name}" workspace`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -473,6 +495,15 @@ export class CollectionService {
     await this.checkPermission(workspaceId, user._id);
     const collection = await this.getCollection(id);
     const data = await this.collectionRepository.delete(id);
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
+      id: currentWorkspaceObject.toString(),
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     const updateMessage = `"${collection.name}" collection is deleted from "${workspace.name}" workspace`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({

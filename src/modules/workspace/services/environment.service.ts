@@ -29,6 +29,7 @@ import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
+import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
 
 /**
  * Environment Service
@@ -80,6 +81,17 @@ export class EnvironmentService {
       };
       const environment =
         await this.environmentRepository.addEnvironment(newEnvironment);
+      const currentWorkspaceObject = new ObjectId(
+        createEnvironmentDto.workspaceId,
+      );
+      const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
+        id: currentWorkspaceObject.toString(),
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       return environment;
     } catch (error) {
       throw new BadRequestException(error);
@@ -122,6 +134,15 @@ export class EnvironmentService {
     const environment = await this.environmentRepository.get(id);
     const data = await this.environmentRepository.delete(id);
     const updateMessage = `"${environment.name}" environment is deleted from "${workspace.name}" workspace`;
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
+      id: currentWorkspaceObject.toString(),
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
@@ -181,6 +202,15 @@ export class EnvironmentService {
         }),
       });
     }
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
+      id: currentWorkspaceObject.toString(),
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return data;
   }
 
