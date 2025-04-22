@@ -949,7 +949,7 @@ export class TeamUserService {
           email: email,
           role: role,
         },
-        subject: `${userData.name} has invited you to the hub “${team.name}”`,
+        subject: `${sender.name} has invited you to the hub “${team.name}”`,
       };
 
       const promise = [this.emailService.sendEmail(transporter, mailOptions)];
