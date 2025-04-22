@@ -948,6 +948,7 @@ export class TeamUserService {
           teamId: teamId,
           email: email,
           role: role,
+          senderName: sender.name,
         },
         subject: `${sender.name} has invited you to the hub “${team.name}”`,
       };
