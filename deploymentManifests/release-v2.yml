@@ -17,7 +17,7 @@ spec:
         app: release-api-v2
     spec:
       containers:
-        - image: sparrowprod.azurecr.io/release-api-v2:_BUILD__ID_
+        - image: sparrowapi/sparrow-api:_BUILD__ID_
           name: release-api-v2
           imagePullPolicy: Always
           resources: {}
