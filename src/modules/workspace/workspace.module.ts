@@ -20,6 +20,7 @@ import { FeedbackRepository } from "./repositories/feedback.repository";
 import { BranchRepository } from "./repositories/branch.repository";
 import { UpdatesRepository } from "./repositories/updates.repository";
 import { AiAssistantRepository } from "./repositories/ai-assistant.repository";
+import { LlmModelRepository } from "./repositories/llm-model.repository";
 import { ChatbotStatsRepository } from "./repositories/chatbot-stats.repositoy";
 import { TestflowRepository } from "./repositories/testflow.repository";
 
@@ -95,6 +96,7 @@ import { MockServerService } from "./services/mock-server.service";
     UpdatesHandler,
     AiAssistantService,
     AiAssistantRepository,
+    LlmModelRepository,
     ChatbotTokenHandler,
     ChatbotStatsService,
     ChatbotStatsRepository,

@@ -13,6 +13,7 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import {
   PromptPayload,
   ErrorResponsePayload,
+  LlmConfigPayload
 } from "../payloads/ai-assistant.payload";
 
 @ApiBearerAuth()
@@ -54,6 +55,20 @@ export class AiAssistantController {
     const data = await this.aiAssistantService.specificError(errorResponse);
     const response = new ApiResponseService(
       "AI Error Handler Reposonse Generated",
+      HttpStatusCode.CREATED,
+      data,
+    );
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @Post("llm-model-selection")
+  async ModelSelected(
+    @Body() payload: LlmConfigPayload,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.aiAssistantService.modelConfig(payload);
+    const response = new ApiResponseService(
+      "Model Configutation Retrieved",
       HttpStatusCode.CREATED,
       data,
     );

@@ -27,6 +27,7 @@ import {
   StreamPromptPayload,
   ChatBotPayload,
   ErrorResponsePayload,
+  LlmConfigPayload
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
@@ -34,6 +35,8 @@ import { ContextService } from "@src/modules/common/services/context.service";
 import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { ChatbotStatsService } from "./chatbot-stats.service";
 import { UserService } from "../../identity/services/user.service";
+
+import { LlmModelRepository } from "../repositories/llm-model.repository";
 
 // ---- Enums
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
@@ -79,6 +82,7 @@ export class AiAssistantService {
     private readonly producerService: ProducerService,
     private readonly chatbotStatsService: ChatbotStatsService,
     private readonly userService: UserService,
+    private readonly llmrepository: LlmModelRepository
   ) {
     // Retrieve configuration from environment variables
     this.endpoint = this.configService.get("ai.endpoint");
@@ -1080,4 +1084,25 @@ export class AiAssistantService {
       );
     }
   }
+
+  public async modelConfig(data: LlmConfigPayload): Promise<string> {
+    try {
+      if (!data) {
+        throw new BadRequestException(
+          "Invalid input: 'data' is required.",
+        );
+      }
+
+      const config = await this.llmrepository.getModelConfig(data)
+
+      return config
+
+    } catch (error) {
+      console.error("Error processing Model Config:", error);
+      throw new BadRequestException(
+        "An error occurred while processing the request.",
+      );
+    }
+  }
+
 }

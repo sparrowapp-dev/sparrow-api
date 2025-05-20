@@ -270,3 +270,22 @@ export class ErrorResponsePayload {
   @IsNotEmpty()
   error: string;
 }
+
+
+export class LlmConfigPayload {
+  /**
+   * The Model
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "OpenAI or Anthropic" })
+  @IsNotEmpty()
+  model: string;
+
+  /**
+   * The Model Version
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "gpt-4o or deepseek v3" })
+  @IsNotEmpty()
+  modelVersion: string;
+}
