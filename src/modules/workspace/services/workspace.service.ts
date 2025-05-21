@@ -359,7 +359,7 @@ export class WorkspaceService {
     const userDetails = await this.userRepository.getUserById(teamData.owner);
 
     if (!workspaceData?.firstWorkspace) {
-      await this.newWorkspaceEmail(
+      this.newWorkspaceEmail(
         userDetails.name.split(" ")[0],
         workspaceData.name,
         teamData.name,
