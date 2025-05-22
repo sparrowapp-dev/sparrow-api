@@ -295,6 +295,21 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: SENTRY_APP_ENVIRONMENT
+            - name: DEEPSEEK_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: DEEPSEEK_ENDPOINT
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: DEEPSEEK_API_KEY
+            - name: DEEPSEEK_API_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: DEEPSEEK_API_VERSION
 
 ---
 apiVersion: v1

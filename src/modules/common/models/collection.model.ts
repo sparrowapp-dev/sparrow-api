@@ -29,6 +29,7 @@ export enum ItemTypeEnum {
   SOCKETIO = "SOCKETIO",
   GRAPHQL = "GRAPHQL",
   REQUEST_RESPONSE = "REQUEST_RESPONSE",
+  MOCK_REQUEST = "MOCK_REQUEST",
 }
 
 export enum BodyModeEnum {
@@ -69,6 +70,11 @@ export enum CollectionAuthModeEnum {
   "API Key" = "API Key",
   "Bearer Token" = "Bearer Token",
   "Basic Auth" = "Basic Auth",
+}
+
+export enum CollectionTypeEnum {
+  MOCK = "MOCK",
+  STANDARD = "STANDARD",
 }
 
 export enum AuthModeEnum {
@@ -415,6 +421,118 @@ export class RequestResponseMetaData {
   selectedResponseBodyType?: ResponseBodyModeEnum;
 }
 
+export class MockRequestMetaData {
+  @ApiProperty({ example: "put" })
+  @IsNotEmpty()
+  method: HTTPMethods;
+
+  @ApiProperty({ example: "/pet" })
+  @IsString()
+  @IsNotEmpty()
+  url: string;
+
+  @ApiProperty({ type: [SparrowRequestBody] })
+  @Type(() => SparrowRequestBody)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  body?: SparrowRequestBody;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ BodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedRequestBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    example: {
+      name: "search",
+      description: "The search term to filter results",
+      required: false,
+      schema: {},
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  queryParams?: KeyValue[];
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "userID",
+      description: "The unique identifier of the user",
+      required: true,
+      schema: {},
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  pathParams?: KeyValue[];
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  headers?: KeyValue[];
+
+  @ApiProperty({ example: "body" })
+  @IsString()
+  @IsOptional()
+  responseBody?: string;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  responseHeaders?: KeyValue[];
+
+  @ApiProperty({ example: "200 OK" })
+  @IsString()
+  @IsOptional()
+  responseStatusCode?: string;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ ResponseBodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedResponseBodyType?: ResponseBodyModeEnum;
+}
+
 /**
  * Data Transfer Object representing the metadata for a WebSocket connection.
  */
@@ -633,6 +751,11 @@ export class CollectionItem {
   @Type(() => RequestResponseMetaData)
   requestResponse?: RequestResponseMetaData;
 
+  @ApiProperty({ type: MockRequestMetaData })
+  @IsOptional()
+  @Type(() => MockRequestMetaData)
+  mockRequest?: MockRequestMetaData;
+
   @ApiProperty({ type: WebSocketMetaData })
   @IsOptional()
   @Type(() => WebSocketMetaData)
@@ -697,6 +820,24 @@ export class Collection {
   @IsString()
   @IsNotEmpty()
   description?: string;
+
+  @ApiProperty({
+    enum: CollectionTypeEnum,
+  })
+  @IsEnum({ CollectionTypeEnum })
+  @IsString()
+  @IsOptional()
+  collectionType?: CollectionTypeEnum;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  mockCollectionUrl?: string;
+
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  isMockCollectionRunning?: boolean;
 
   @ApiProperty({
     enum: CollectionAuthModeEnum,

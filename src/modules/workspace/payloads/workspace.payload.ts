@@ -45,6 +45,14 @@ export class CreateWorkspaceDto {
   @IsBoolean()
   @IsOptional()
   firstWorkspace?: boolean;
+
+  @ApiProperty({
+    example: "This is the default workspace for the team.",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
 
 export class UpdateWorkspaceDto {

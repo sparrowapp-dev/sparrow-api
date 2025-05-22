@@ -113,8 +113,8 @@ export class ChatBotPayload {
    */
   @IsString()
   @ApiProperty({ required: true, example: "user input" })
-  @IsNotEmpty()
-  userInput: string;
+  @IsOptional()
+  userInput?: string;
 
   /**
    * The thread ID associated with the prompt.
@@ -122,47 +122,39 @@ export class ChatBotPayload {
   @IsString()
   @IsOptional()
   @ApiProperty({ required: true, example: "thread id" })
-  threadId: string;
+  threadId?: string;
 
   /**
    * The tab id where that thread belongs.
    */
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({ required: true, example: "tab id" })
-  tabId: string;
+  tabId?: string;
 
   /**
    * The email id to check the limit.
    */
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({ required: true, example: "emailId" })
-  emailId: string;
+  emailId?: string;
 
   /**
    * The Api data.
    */
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({ required: true, example: "Api Data" })
-  apiData: string;
-
-  /**
-   * Model.
-   */
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ required: true, example: "gpt-4o or deepseek" })
-  model: string;
+  apiData?: string;
 
   /**
    * Conversation.
    */
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({ required: true, example: '[{"role": "user", "content": "Hello!"}, {"role": "assistant", "content": "Hi there! How can I help you?"}]' })
-  conversation: string;
+  conversation?: string;
 
   /**
    * User Activity.
@@ -170,8 +162,95 @@ export class ChatBotPayload {
   @IsString()
   @IsOptional()
   @ApiProperty({ required: true, example: "user activity" })
-  activity: string;
+  activity?: string;
 
+  /**
+   * The model name to be used for the prompt.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "OpenAI or Anthropic" })
+  @IsOptional()
+  model?: string;
+
+  /**
+   * The model version.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "gpt-4o or deepseek v3" })
+  @IsOptional()
+  modelVersion?: string;
+
+  /**
+   * Auth key.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "Auth Token" })
+  authKey?: string;
+
+  /**
+   * The System prompt to be used for the model.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "System Prompt" })
+  systemPrompt?: string;
+
+  /**
+   * Stream Response.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "true or false" })
+  streamResponse?: boolean;
+
+  /**
+   * JSON Response Format.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "true or false" })
+  jsonResponseFormat?: boolean;
+
+  /**
+   * Temperature.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "0.0 to 1.0" })
+  temperature?: number;
+
+  /**
+   * Presence Penalty.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "0.0 to 1.0" })
+  presencePenalty?: number;
+
+  /**
+   * Frequence Penalty.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "0.0 to 1.0" })
+  frequencePenalty?: number;
+
+  /**
+   * Max Tokens.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "-1 to 4096" })
+  maxTokens?: number;
+
+  /**
+   * Feature selected
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "sparrow-ai OR llm-evaluation" })
+  feature?: string;
 }
 
 export class ErrorResponsePayload {

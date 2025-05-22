@@ -17,6 +17,7 @@ import {
   BodyModeEnum,
   Events,
   ItemTypeEnum,
+  MockRequestMetaData,
   RequestMetaData,
   RequestResponseMetaData,
   ResponseBodyModeEnum,
@@ -371,6 +372,11 @@ export class CollectionRequestItem {
   @IsOptional()
   @Type(() => CollectionGraphQLMetaData)
   graphql?: CollectionGraphQLMetaData;
+
+  @ApiProperty({ type: MockRequestMetaData })
+  @IsOptional()
+  @Type(() => MockRequestMetaData)
+  mockRequest?: MockRequestMetaData;
 }
 
 export class CollectionRequest {

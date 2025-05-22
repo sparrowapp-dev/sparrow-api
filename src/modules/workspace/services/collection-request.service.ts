@@ -1109,4 +1109,165 @@ export class CollectionRequestService {
     });
     return collection;
   }
+
+  async addMockRequest(
+    collectionId: string,
+    request: Partial<CollectionRequestDto>,
+    noOfRequests: number,
+    userName: string,
+    folderId?: string,
+  ): Promise<CollectionItem> {
+    const uuid = uuidv4();
+    const collection =
+      await this.collectionReposistory.getCollection(collectionId);
+    const requestObj: CollectionItem = {
+      id: uuid,
+      name: request.items.name,
+      type: request.items.type,
+      description: request.items.description,
+      mockRequest: { ...request.items.mockRequest },
+      source: request.source ?? SourceTypeEnum.USER,
+      isDeleted: false,
+      createdBy: userName,
+      updatedBy: userName,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    let updateMessage = ``;
+    if (request.items.type === ItemTypeEnum.MOCK_REQUEST) {
+      requestObj.request = request.items.request;
+      await this.collectionReposistory.addMockRequest(
+        collectionId,
+        requestObj,
+        noOfRequests,
+      );
+      updateMessage = `New Mock API request "${request.items.name}" is saved in "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.MOCK_REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+      return requestObj;
+    } else {
+      requestObj.items = [
+        {
+          id: uuidv4(),
+          name: request.items.items.name,
+          type: request.items.items.type,
+          description: request.items.items.description,
+          mockRequest: { ...request.items.items.mockRequest },
+          source: SourceTypeEnum.USER,
+          createdBy: userName,
+          updatedBy: userName,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      await this.collectionReposistory.addMockRequestInFolder(
+        collectionId,
+        requestObj,
+        noOfRequests,
+        folderId,
+      );
+
+      updateMessage = `New Mock API request "${request.items.items.name}" is saved in "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.MOCK_REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+      return requestObj.items[0];
+    }
+  }
+
+  async updateMockRequest(
+    collectionId: string,
+    requestId: string,
+    request: Partial<CollectionRequestDto>,
+  ): Promise<CollectionRequestItem> {
+    const collectionData =
+      await this.collectionReposistory.getCollection(collectionId);
+    const requestData = await this.findItemById(
+      collectionData.items,
+      requestId,
+    );
+    const collection = await this.collectionReposistory.updateMockRequest(
+      collectionId,
+      requestId,
+      request,
+    );
+
+    if (
+      requestData?.name !== request?.items?.name &&
+      requestData?.name &&
+      request?.items?.name
+    ) {
+      const updateMessage = `"${requestData?.name}" API is renamed to "${request?.items?.name}" in "${collectionData.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.MOCK_REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+    }
+    if (requestData?.description === "" && request?.items?.description) {
+      const updateMessage = `API documentation is added for "${request.items.name}" API in "${collectionData.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.MOCK_REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+    } else if (
+      requestData?.description !== request?.items?.description &&
+      request?.items?.description
+    ) {
+      const updateMessage = `API documentation is updated for "${request.items.name}" API in "${collectionData.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          type: UpdatesType.MOCK_REQUEST,
+          workspaceId: request.workspaceId,
+        }),
+      });
+    }
+    return collection;
+  }
+
+  async deleteMockRequest(
+    collectionId: string,
+    requestId: string,
+    noOfRequests: number,
+    requestDto: Partial<CollectionRequestDto>,
+  ): Promise<UpdateResult<Collection>> {
+    const collectionData =
+      await this.collectionReposistory.getCollection(collectionId);
+    const requestData = await this.findItemById(
+      collectionData.items,
+      requestId,
+    );
+    const collection = await this.collectionReposistory.deleteMockRequest(
+      collectionId,
+      requestId,
+      noOfRequests,
+      requestDto?.folderId,
+    );
+
+    const updateMessage = `Mock API request "${requestData?.name}" is deleted from "${collectionData?.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        type: UpdatesType.MOCK_REQUEST,
+        workspaceId: requestDto.workspaceId,
+      }),
+    });
+    return collection;
+  }
 }

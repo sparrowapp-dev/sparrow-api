@@ -12,6 +12,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import {
   CollectionAuthModeEnum,
   CollectionItem,
+  CollectionTypeEnum,
   ItemTypeEnum,
   QueryParams,
   RequestBody,
@@ -85,6 +86,14 @@ export class CreateCollectionDto {
   @IsNotEmpty()
   workspaceId: string;
 
+  @ApiProperty({
+    enum: CollectionTypeEnum,
+  })
+  @IsEnum({ CollectionTypeEnum })
+  @IsString()
+  @IsOptional()
+  collectionType?: CollectionTypeEnum;
+
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()
   @IsOptional()
@@ -130,6 +139,13 @@ export class UpdateCollectionDto {
   @IsOptional()
   @Type(() => CollectionItem)
   items?: CollectionItem[];
+}
+
+export class UpdateMockCollectionStatusDto {
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  isMockCollectionRunning?: boolean;
 }
 
 export class ImportCollectionDto {

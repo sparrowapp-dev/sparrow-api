@@ -18,7 +18,6 @@ export class LoggingExceptionsFilter implements ExceptionFilter {
   ) {}
 
   catch(exception: HttpException, host: ArgumentsHost) {
-    Sentry.captureException(exception);
     if (exception instanceof HttpException) {
       const ctx = host.switchToHttp();
       const response = ctx.getResponse<FastifyReply>();
@@ -53,6 +52,7 @@ export class LoggingExceptionsFilter implements ExceptionFilter {
         error: exception.name,
       });
     } else {
+      Sentry.captureException(exception);
       throw new BadRequestException(exception);
     }
   }

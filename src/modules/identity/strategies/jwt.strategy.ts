@@ -37,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @param {any} done callback to resolve the request user with
    * @returns {Promise<boolean>} whether or not to validate the jwt token
    */
-  async validate({ exp, _id }: JwtPayload) {
+  async validate({ exp, _id, role }: JwtPayload) {
     const timeDiff = exp - Date.now() / 1000;
     if (timeDiff <= 0) {
       throw new UnauthorizedException(ErrorMessages.ExpiredToken);
@@ -53,6 +53,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
     this.contextService.set("user", user);
+
+    // if admin role exists we return the whole obj (this is only used for admin api's)
+    if (role) {
+      return {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        role: role,
+      };
+    }
 
     return user._id;
   }

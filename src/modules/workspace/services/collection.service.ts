@@ -24,6 +24,7 @@ import {
   CollectionAuthModeEnum,
   CollectionBranch,
   CollectionItem,
+  CollectionTypeEnum,
   ItemTypeEnum,
 } from "@src/modules/common/models/collection.model";
 import { ContextService } from "@src/modules/common/services/context.service";
@@ -63,6 +64,10 @@ export class CollectionService {
 
     const newCollection: Collection = {
       name: createCollectionDto.name,
+      collectionType:
+        createCollectionDto?.collectionType === CollectionTypeEnum.MOCK
+          ? CollectionTypeEnum.MOCK
+          : CollectionTypeEnum.STANDARD,
       totalRequests: 0,
       createdBy: user.name,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
@@ -82,6 +87,31 @@ export class CollectionService {
       }),
     });
     return collection;
+  }
+
+  async updateMockCollectionUrl(id: string): Promise<UpdateResult<Collection>> {
+    const baseUrl = this.configService.get("app.url");
+    const mockUrl = `${baseUrl}/api/mock/${id}`;
+    const data = await this.collectionRepository.updateCollection(id, {
+      mockCollectionUrl: mockUrl,
+      isMockCollectionRunning: false,
+    });
+    return data;
+  }
+
+  async updateMockCollectionRunningStatus(
+    workspaceId: string,
+    collectionId: string,
+    status: boolean,
+  ): Promise<UpdateResult<Collection>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    const data = await this.collectionRepository.updateCollection(
+      collectionId,
+      {
+        isMockCollectionRunning: status,
+      },
+    );
+    return data;
   }
 
   async createSampleData(user: any): Promise<CollectionItem[]> {

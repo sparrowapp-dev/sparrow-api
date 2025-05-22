@@ -80,6 +80,16 @@ const { PORT } = process.env;
   // Get the underlying FastifyInstance for additional customizations
   const fastifyInstance: FastifyInstance = app.getHttpAdapter().getInstance();
 
+  // Add default parser for everything — just pass raw buffer and skip parsing
+  fastifyInstance.addContentTypeParser(
+    "*",
+    { parseAs: "buffer" },
+    (req, body, done) => {
+      // Do not parse; just pass raw Buffer
+      done(null, body);
+    },
+  );
+
   // Extend Fastify reply with custom methods
   fastifyInstance
     .decorateReply("setHeader", function (name: string, value: unknown) {

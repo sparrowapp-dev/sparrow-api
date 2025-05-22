@@ -441,7 +441,7 @@ export class AppService {
     // Handle headers and populate auth details
     if (requestObject.headers) {
       for (const [key, value] of Object.entries(requestObject.headers)) {
-        if (!(isFormData && key === "Content-Type")) {
+        if (!(isFormData && (key === "Content-Type" || key === "content-type"))) {
           transformedObject.request.headers.push({ key, value, checked: true });
         }
 

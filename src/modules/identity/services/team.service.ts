@@ -163,6 +163,13 @@ export class TeamService {
    */
   async get(id: string): Promise<WithId<Team>> {
     const data = await this.teamRepository.get(id);
+    const validInvites = data?.invites?.filter((invite) => {
+      if (new Date(invite?.expiresAt) > new Date()) {
+        return true;
+      }
+      return false;
+    });
+    data.invites = validInvites || [];
     data?.invites?.forEach((invite) => {
       delete invite.inviteId;
       delete invite.isAccepted;
@@ -293,7 +300,7 @@ export class TeamService {
           name: teamData.name,
           hubUrl: teamData.hubUrl,
           workspaces: [],
-          description: senderData.name || "No creator found",
+          description: senderData?.name || "No creator found",
         };
         // Add the team object to the teams array
         teams.push(team);

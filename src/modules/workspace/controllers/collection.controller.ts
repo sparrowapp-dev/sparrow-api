@@ -20,6 +20,7 @@ import {
 import {
   CreateCollectionDto,
   UpdateCollectionDto,
+  UpdateMockCollectionStatusDto,
 } from "../payloads/collection.payload";
 import { FastifyReply } from "fastify";
 import { CollectionService } from "../services/collection.service";
@@ -44,6 +45,7 @@ import {
   MemoryStorageFile,
   UploadedFile,
 } from "@blazity/nest-file-fastify";
+import { CollectionTypeEnum } from "@src/modules/common/models/collection.model";
 
 @ApiBearerAuth()
 @ApiTags("collection")
@@ -72,6 +74,11 @@ export class collectionController {
     const workspaceId = createCollectionDto.workspaceId;
     const data =
       await this.collectionService.createCollection(createCollectionDto);
+    if (createCollectionDto?.collectionType === CollectionTypeEnum.MOCK) {
+      await this.collectionService.updateMockCollectionUrl(
+        data.insertedId.toString(),
+      );
+    }
     const collection = await this.collectionService.getCollection(
       data.insertedId.toString(),
     );
@@ -79,6 +86,7 @@ export class collectionController {
       id: collection._id,
       name: createCollectionDto.name,
     });
+
     const responseData = new ApiResponseService(
       "Collection Created",
       HttpStatusCode.CREATED,
@@ -171,6 +179,39 @@ export class collectionController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Patch(":collectionId/workspace/:workspaceId/mock-status")
+  @ApiOperation({
+    summary: "Update Mock Collections State",
+    description: "This will update a mock collection running status",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Mock Collection Updated Successfully",
+  })
+  @ApiResponse({ status: 400, description: "Failed to Update Mock Collection" })
+  async updateMockCollectionState(
+    @Param("collectionId") collectionId: string,
+    @Param("workspaceId") workspaceId: string,
+    @Body() updateCollectionDto: Partial<UpdateMockCollectionStatusDto>,
+    @Res() res: FastifyReply,
+  ) {
+    await this.collectionService.updateMockCollectionRunningStatus(
+      workspaceId,
+      collectionId,
+      updateCollectionDto.isMockCollectionRunning,
+    );
+
+    const collection = await this.collectionService.getCollection(collectionId);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Delete(":collectionId/workspace/:workspaceId")
   @ApiOperation({
     summary: "Delete a Collections",
@@ -865,6 +906,120 @@ export class collectionController {
     const collection = await this.collectionService.getCollection(
       requestResponseDto.collectionId,
     );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post("mock-request")
+  @ApiOperation({
+    summary: "Add A Mock Request",
+    description:
+      "This will add a mock request which will be individual request or folder based request in mock collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Mock Request Added Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to add a mock request" })
+  async addMockRequest(
+    @Body() requestDto: Partial<CollectionRequestDto>,
+    @Res() res: FastifyReply,
+  ) {
+    const collectionId = requestDto.collectionId;
+    const workspaceId = requestDto.workspaceId;
+    const user = await this.contextService.get("user");
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(
+      requestDto.workspaceId,
+    );
+    await this.collectionRequestService.checkPermission(workspaceId, user._id);
+    const noOfRequests =
+      await this.collectionRequestService.getNoOfRequest(collectionId);
+    const requestObj = await this.collectionRequestService.addMockRequest(
+      collectionId,
+      requestDto,
+      noOfRequests,
+      user.name,
+      requestDto?.folderId,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      requestObj,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Put("mock-request/:requestId")
+  @ApiOperation({
+    summary: "Update A Mock Request",
+    description:
+      "This will update a mock request which will be individual request or folder based request in mock collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Mock Request saved Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to save mock request" })
+  async updateMockRequest(
+    @Param("requestId") requestId: string,
+    @Body() requestDto: Partial<CollectionRequestDto>,
+    @Res() res: FastifyReply,
+  ) {
+    const collectionId = requestDto.collectionId;
+    const workspaceId = requestDto.workspaceId;
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(
+      requestDto.workspaceId,
+    );
+    const user = await this.contextService.get("user");
+    await this.collectionRequestService.checkPermission(workspaceId, user._id);
+    const request = await this.collectionRequestService.updateMockRequest(
+      collectionId,
+      requestId,
+      requestDto,
+    );
+
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      request,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Delete("mock-request/:requestId")
+  @ApiOperation({
+    summary: "Delete A Mock Request",
+    description:
+      "This will delete a mock request which will be individual request or folder based request in mock collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Mock Request Deleted Successfully",
+  })
+  @ApiResponse({ status: 400, description: "Failed to delete mock request" })
+  async deleteMockRequest(
+    @Param("requestId") requestId: string,
+    @Body() requestDto: Partial<CollectionRequestDto>,
+    @Res() res: FastifyReply,
+  ) {
+    const collectionId = requestDto.collectionId;
+    const workspaceId = requestDto.workspaceId;
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(
+      requestDto.workspaceId,
+    );
+    const user = await this.contextService.get("user");
+    await this.collectionRequestService.checkPermission(workspaceId, user._id);
+    const noOfRequests =
+      await this.collectionRequestService.getNoOfRequest(collectionId);
+    await this.collectionRequestService.deleteMockRequest(
+      collectionId,
+      requestId,
+      noOfRequests,
+      requestDto,
+    );
+    const collection = await this.collectionService.getCollection(collectionId);
+
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,

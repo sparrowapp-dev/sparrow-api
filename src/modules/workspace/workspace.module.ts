@@ -60,6 +60,8 @@ import { AiLogHandler } from "./handlers/ai-log.handler";
 import { AiLogService } from "./services/ai-log.service";
 import { ConsumerService } from "../common/services/kafka/consumer.service";
 import { AiLogRepository } from "./repositories/ai-log.repository";
+import { MockServerController } from "./controllers/mock-server.controller";
+import { MockServerService } from "./services/mock-server.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -104,7 +106,8 @@ import { AiLogRepository } from "./repositories/ai-log.repository";
     AiLogHandler,
     AiLogService,
     AiLogRepository,
-    ConsumerService
+    ConsumerService,
+    MockServerService,
   ],
   exports: [
     CollectionService,
@@ -135,6 +138,7 @@ import { AiLogRepository } from "./repositories/ai-log.repository";
     AiAssistantController,
     ChatbotStatsController,
     TestflowController,
+    MockServerController,
   ],
 })
 export class WorkspaceModule {}

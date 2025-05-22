@@ -16,6 +16,7 @@ import {
   Collection,
   CollectionItem,
   ItemTypeEnum,
+  CollectionTypeEnum,
 } from "@src/modules/common/models/collection.model";
 import {
   CollectionGraphQLDto,
@@ -1168,5 +1169,191 @@ export class CollectionRepository {
           },
         );
     }
+  }
+
+  async addMockRequest(
+    collectionId: string,
+    request: CollectionItem,
+    noOfRequests: number,
+  ): Promise<UpdateResult<Collection>> {
+    const _id = new ObjectId(collectionId);
+    const data = await this.db
+      .collection<Collection>(Collections.COLLECTION)
+      .updateOne(
+        { _id },
+        {
+          $push: {
+            items: request,
+          },
+          $set: {
+            totalRequests: noOfRequests + 1,
+          },
+        },
+      );
+    return data;
+  }
+
+  async addMockRequestInFolder(
+    collectionId: string,
+    request: CollectionItem,
+    noOfRequests: number,
+    folderId: string,
+  ): Promise<UpdateResult<Collection>> {
+    const _id = new ObjectId(collectionId);
+    const collection = await this.getCollection(collectionId);
+    const isFolderExists = collection.items.some((item) => {
+      return item.id === folderId;
+    });
+    if (isFolderExists) {
+      return await this.db
+        .collection<Collection>(Collections.COLLECTION)
+        .updateOne(
+          { _id, "items.name": request.name },
+          {
+            $push: { "items.$.items": request.items[0] },
+            $set: {
+              totalRequests: noOfRequests + 1,
+            },
+          },
+        );
+    } else {
+      throw new BadRequestException(ErrorMessages.Unauthorized);
+    }
+  }
+  async updateMockRequest(
+    collectionId: string,
+    mockRequestId: string,
+    request: Partial<CollectionRequestDto>,
+  ): Promise<CollectionRequestItem> {
+    const _id = new ObjectId(collectionId);
+    const defaultParams = {
+      updatedAt: new Date(),
+      updatedBy: this.contextService.get("user").name,
+    };
+    if (request.items.type === ItemTypeEnum.MOCK_REQUEST) {
+      request.items = { ...request.items, ...defaultParams };
+      await this.db.collection<Collection>(Collections.COLLECTION).updateOne(
+        { _id, "items.id": mockRequestId },
+        {
+          $set: {
+            "items.$.name": request.items.name,
+            "items.$.description": request.items.description,
+            "items.$.mockRequest": request.items.mockRequest,
+            "items.$.updatedAt": new Date(),
+            updatedAt: new Date(),
+            updatedBy: {
+              id: this.contextService.get("user")._id,
+              name: this.contextService.get("user").name,
+            },
+          },
+        },
+      );
+      return { ...request.items, id: mockRequestId };
+    } else {
+      request.items.items = { ...request.items.items, ...defaultParams };
+      await this.db.collection<Collection>(Collections.COLLECTION).updateOne(
+        {
+          _id,
+          "items.id": request.folderId,
+          "items.items.id": mockRequestId,
+        },
+        {
+          $set: {
+            "items.$[i].items.$[j].name": request.items.items.name,
+            "items.$[i].items.$[j].description":
+              request.items.items.description,
+            "items.$[i].items.$[j].mockRequest":
+              request.items.items.mockRequest,
+            "items.$[i].items.$[j].updatedAt": new Date(),
+            updatedAt: new Date(),
+            updatedBy: {
+              id: this.contextService.get("user")._id,
+              name: this.contextService.get("user").name,
+            },
+          },
+        },
+        {
+          arrayFilters: [
+            { "i.id": request.folderId },
+            { "j.id": mockRequestId },
+          ],
+        },
+      );
+      return { ...request.items.items, id: mockRequestId };
+    }
+  }
+
+  async deleteMockRequest(
+    collectionId: string,
+    mockRequestId: string,
+    noOfRequests: number,
+    folderId?: string,
+  ): Promise<UpdateResult<Collection>> {
+    const _id = new ObjectId(collectionId);
+    if (folderId) {
+      return await this.db
+        .collection<Collection>(Collections.COLLECTION)
+        .updateOne(
+          {
+            _id,
+          },
+          {
+            $pull: {
+              "items.$[i].items": {
+                id: mockRequestId,
+              },
+            },
+            $set: {
+              totalRequests: noOfRequests - 1,
+              updatedAt: new Date(),
+              updatedBy: {
+                id: this.contextService.get("user")._id,
+                name: this.contextService.get("user").name,
+              },
+            },
+          },
+          {
+            arrayFilters: [{ "i.id": folderId }],
+          },
+        );
+    } else {
+      return await this.db
+        .collection<Collection>(Collections.COLLECTION)
+        .updateOne(
+          { _id },
+          {
+            $pull: {
+              items: {
+                id: mockRequestId,
+              },
+            },
+            $set: {
+              totalRequests: noOfRequests - 1,
+              updatedAt: new Date(),
+              updatedBy: {
+                id: this.contextService.get("user")._id,
+                name: this.contextService.get("user").name,
+              },
+            },
+          },
+        );
+    }
+  }
+
+  /**
+   * Fetches the mock collection from DB
+   * @param _id mock collection id
+   * @returns Mock collection or null
+   */
+  async getMockCollection(_id: ObjectId): Promise<Collection | null> {
+    const data = await this.db
+      .collection<Collection>(Collections.COLLECTION)
+      .findOne({
+        _id,
+        collectionType: CollectionTypeEnum.MOCK,
+        isMockCollectionRunning: true,
+      });
+
+    return data;
   }
 }
