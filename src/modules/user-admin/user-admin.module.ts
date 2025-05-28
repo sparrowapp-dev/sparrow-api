@@ -22,6 +22,8 @@ import { AdminMembersRepository } from "./repositories/user-admin.members.reposi
 import { AdminUsersController } from "./controllers/user-admin.enterprise-user.controller";
 import { AdminUsersService } from "./services/user-admin.enterprise-user.service";
 import { AdminUpdatesRepository } from "./repositories/user-admin.updates.repository";
+import { AdminBillingController } from "./controllers/user-admin.billing.controller";
+import { AdminBillingService } from "./services/user-admin.billing.service";
 
 /**
  * Admin Module provides all necessary services, handlers, repositories,
@@ -43,6 +45,7 @@ import { AdminUpdatesRepository } from "./repositories/user-admin.updates.reposi
     AdminMembersService,
     AdminUsersService,
     AdminUpdatesRepository,
+    AdminBillingService,
   ],
   exports: [],
   controllers: [
@@ -51,6 +54,7 @@ import { AdminUpdatesRepository } from "./repositories/user-admin.updates.reposi
     AdminAuthController,
     AdminMembersController,
     AdminUsersController,
+    AdminBillingController,
   ],
 })
 export class UserAdminModule {}

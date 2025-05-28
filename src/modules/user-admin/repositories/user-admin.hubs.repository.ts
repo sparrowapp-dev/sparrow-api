@@ -1,7 +1,8 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { Team } from "@src/modules/common/models/team.model";
-import { Db, ObjectId, WithId } from "mongodb";
+import { BillingAddressDto } from "@src/modules/workspace/payloads/user-admin-billing.payload";
+import { Db, ObjectId, UpdateResult, WithId } from "mongodb";
 
 @Injectable()
 export class AdminHubsRepository {
@@ -117,5 +118,21 @@ export class AdminHubsRepository {
     };
 
     return await this.findTeamsByQuery(query);
+  }
+
+  async saveTeamBillingAddressInfo(
+    teamId: string,
+    billingAddress: BillingAddressDto,
+  ): Promise<UpdateResult<Team>> {
+    const _id = new ObjectId(teamId);
+
+    return await this.db.collection<Team>(Collections.TEAM).updateOne(
+      { _id },
+      {
+        $set: {
+          billingAddress,
+        },
+      },
+    );
   }
 }

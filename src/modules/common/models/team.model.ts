@@ -18,6 +18,7 @@ import { Type } from "class-transformer";
 import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
+import { BillingAddressDto } from "@src/modules/workspace/payloads/user-admin-billing.payload";
 
 export class logoDto {
   @IsString()
@@ -102,6 +103,10 @@ export class Team {
   @IsString()
   @IsOptional()
   updatedBy?: string;
+
+  @IsObject()
+  @IsOptional()
+  billingAddress?: BillingAddressDto;
 }
 
 export class TeamWithNewInviteTag extends Team {
