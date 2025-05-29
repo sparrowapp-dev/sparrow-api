@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsMongoId, IsOptional, IsString } from "class-validator";
+import { IsArray, IsMongoId, IsOptional, IsString } from "class-validator";
 export class BillingAddressDto {
   @ApiProperty({
     example: "John Doe",
@@ -29,6 +29,7 @@ export class BillingAddressDto {
   @IsString()
   zipCode?: string;
 
-  @IsString()
-  userId: string;
+  @IsArray()
+  @IsOptional()
+  customerId?: string[];
 }

@@ -42,8 +42,12 @@ export class AdminBillingController {
     if (!userId) {
       throw new UnauthorizedException("User ID is missing from token");
     }
+    const billingAddressWithUser = {
+      ...body,
+      userId: userId,
+    };
     const data = await this.adminBillingService.saveBillingAddressDetails(
-      body,
+      billingAddressWithUser,
       teamId,
     );
     const responseData = new ApiResponseService(

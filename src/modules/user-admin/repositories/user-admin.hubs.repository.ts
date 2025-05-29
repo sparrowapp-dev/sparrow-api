@@ -123,16 +123,28 @@ export class AdminHubsRepository {
   async saveTeamBillingAddressInfo(
     teamId: string,
     billingAddress: BillingAddressDto,
-  ): Promise<UpdateResult<Team>> {
+  ): Promise<Team> {
     const _id = new ObjectId(teamId);
 
-    return await this.db.collection<Team>(Collections.TEAM).updateOne(
+    await this.db.collection<Team>(Collections.TEAM).updateOne(
       { _id },
       {
         $set: {
           billingAddress,
+          updatedAt: new Date(),
         },
       },
     );
+
+    // Fetch and return the updated team document
+    const updatedTeam = await this.db
+      .collection<Team>(Collections.TEAM)
+      .findOne({ _id });
+
+    if (!updatedTeam) {
+      throw new Error("Team not found after update");
+    }
+
+    return updatedTeam;
   }
 }
