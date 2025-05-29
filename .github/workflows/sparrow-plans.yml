@@ -2,7 +2,7 @@ name: sparrow-plans
 on:
   push:
     branches:
-      - feat/sparrow-plans
+      - infra/sparrow-plans
 
 jobs:
    build:
