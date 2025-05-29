@@ -344,9 +344,9 @@ spec:
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: DB_NAME   
-                  
+
       imagePullSecrets:
         - name: acr-secret
 
