@@ -7,6 +7,8 @@ import {
   Post,
   Body,
   UnauthorizedException,
+  Req,
+  UseGuards,
 } from "@nestjs/common";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -14,6 +16,8 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuthService } from "../services/user-admin.auth.service";
+import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { RolesGuard } from "@src/modules/common/guards/roles.guard";
 
 /**
  * Interface for refresh token request
@@ -102,5 +106,41 @@ export class AdminAuthController {
 
       return res.status(responseData.httpStatusCode).send(responseData);
     }
+  }
+  @Get("get-user-role")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: "get User Role",
+    description: "Return user role in a team or workspace",
+  })
+  @ApiResponse({ status: 200, description: "User Role fetched succesfull" })
+  @ApiResponse({ status: 401, description: "Unable to fetch User Role" })
+  async getUserRole(
+    @Query("teamId") teamId: string,
+    @Query("workspaceId") workspaceId: string,
+    @Req() req: any,
+    @Res() res: FastifyReply,
+  ) {
+    const userId = req.user._id;
+    if (!userId) {
+      throw new BadRequestException("User ID is required");
+    }
+    if (!teamId && !workspaceId) {
+      throw new BadRequestException("Either teamId or workspaceId is required");
+    }
+
+    const data = await this.adminAuthService.getUserRole(
+      userId,
+      teamId,
+      workspaceId,
+    );
+
+    const responseData = new ApiResponseService(
+      "Roles fetched succesfully",
+      HttpStatusCode.OK,
+      data,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

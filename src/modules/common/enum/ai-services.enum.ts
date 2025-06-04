@@ -8,22 +8,22 @@ export enum Models {
   Google = "google",
   OpenAI = "openai",
   DeepSeek = "deepseek",
-  GPT = "gpt"
+  GPT = "gpt"           // For AzureOpenai
 }
 
 export enum ClaudeModelVersion {
-    Claude_3_Opus = "",
-    Claude_3_Sonnet = "",
-    Claude_3_Haiku = "",
-    Claude_3_5_Sonnet = "",
-    Claude_3_5_Haiku = ""
+    Claude_3_Opus = "claude-3-opus-20240229",
+    Claude_3_Sonnet = "claude-3-5-sonnet-20240620", // Claude Sonnet 3 is Claude 3.5 Sonnet (Old)
+    Claude_3_Haiku = "claude-3-haiku-20240307",
+    Claude_3_5_Sonnet = "claude-3-5-sonnet-20241022",
+    Claude_3_5_Haiku = "claude-3-5-haiku-20241022"
 }
 
 export enum GoogleModelVersion {
-    Gemini_1_5_Flash =  "",
-    Gemini_1_5_Flash_8b= "",
-    Gemini_1_5_Pro = "",
-    Gemini_2_0_Flash = ""
+    Gemini_1_5_Flash =  "gemini-1.5-flash",
+    Gemini_1_5_Flash_8b= "gemini-1.5-flash-8b",
+    Gemini_1_5_Pro = "gemini-1.5-pro",
+    Gemini_2_0_Flash = "gemini-2.0-flash"
 }
 
 export enum OpenAIModelVersion {
@@ -40,6 +40,13 @@ export enum OpenAIModelVersion {
 }
 
 export enum DeepSeepModelVersion {
-    DeepSeek_R1 = "",
-    DeepSeek_V3 = ""
+    DeepSeek_R1 = "deepseek-reasoner",
+    DeepSeek_V3 = "deepseek-chat"
+}
+
+export enum Roles {
+  system = "system",
+  user = "user",
+  assistant = "assistant",
+  model = "model"
 }

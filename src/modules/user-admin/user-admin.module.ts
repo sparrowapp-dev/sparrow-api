@@ -18,7 +18,10 @@ import { JwtService } from "@nestjs/jwt";
 import { TeamService } from "../identity/services/team.service";
 import { AdminMembersService } from "./services/user-admin.members.service";
 import { AdminMembersController } from "./controllers/user-admin.members.controller";
-import { AdminMembersRepository } from "./repositories/user.admin.members.repository";
+import { AdminMembersRepository } from "./repositories/user-admin.members.repository";
+import { AdminUsersController } from "./controllers/user-admin.enterprise-user.controller";
+import { AdminUsersService } from "./services/user-admin.enterprise-user.service";
+import { AdminUpdatesRepository } from "./repositories/user-admin.updates.repository";
 
 /**
  * Admin Module provides all necessary services, handlers, repositories,
@@ -38,6 +41,8 @@ import { AdminMembersRepository } from "./repositories/user.admin.members.reposi
     TeamService,
     AdminMembersRepository,
     AdminMembersService,
+    AdminUsersService,
+    AdminUpdatesRepository,
   ],
   exports: [],
   controllers: [
@@ -45,6 +50,7 @@ import { AdminMembersRepository } from "./repositories/user.admin.members.reposi
     AdminWorkspaceController,
     AdminAuthController,
     AdminMembersController,
+    AdminUsersController,
   ],
 })
 export class UserAdminModule {}

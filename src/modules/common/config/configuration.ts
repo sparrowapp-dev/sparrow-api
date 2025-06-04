@@ -95,7 +95,8 @@ export default () => ({
     assistantId: process.env.AZURE_OPENAI_ASSISTANT_ID,
     deepseekEndpoint: process.env.DEEPSEEK_ENDPOINT,
     deepseekApiKey: process.env.DEEPSEEK_API_KEY,
-    deepseekApiVersion: process.env.DEEPSEEK_API_VERSION
+    deepseekApiVersion: process.env.DEEPSEEK_API_VERSION,
+    deepseekURL: "https://api.deepseek.com"
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,

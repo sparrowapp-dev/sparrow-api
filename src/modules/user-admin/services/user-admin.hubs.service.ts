@@ -51,6 +51,7 @@ export class AdminHubsService {
   }
 
   private async buildHubSummary(hubs: any[]) {
+    // Map to store highest role for each unique user
     const userHighestRoleMap = new Map<string, "admin" | "member">();
     let totalWorkspaces = 0;
     let privateWorkspaces = 0;
@@ -59,7 +60,7 @@ export class AdminHubsService {
     // First pass: determine each user's highest role globally
     for (const hub of hubs) {
       for (const user of hub.users) {
-        const userId = user.id;
+        const userId = user.id.toString();
         const role =
           user.role === "owner" || user.role === "admin" ? "admin" : "member";
 
@@ -74,10 +75,7 @@ export class AdminHubsService {
       }
     }
 
-    let adminCount = 0;
-    let memberCount = 0;
-
-    // Second pass: count per-hub contributions using highest global role
+    // Count workspaces
     for (const hub of hubs) {
       totalWorkspaces += hub.workspaces.length;
 
@@ -100,18 +98,19 @@ export class AdminHubsService {
           );
         }
       }
-
-      for (const user of hub.users) {
-        const userId = user.id;
-        const globalRole = userHighestRoleMap.get(userId);
-
-        if (globalRole === "admin") {
-          adminCount++;
-        } else {
-          memberCount++;
-        }
-      }
     }
+
+    // Count unique admins and members based on their highest role
+    let adminCount = 0;
+    let memberCount = 0;
+
+    userHighestRoleMap.forEach((role) => {
+      if (role === "admin") {
+        adminCount++;
+      } else {
+        memberCount++;
+      }
+    });
 
     return {
       totalHubs: hubs.length,
@@ -145,7 +144,6 @@ export class AdminHubsService {
         sortOptions.sortBy,
         sortOptions.sortOrder,
       );
-
       if (!teams?.data?.length) {
         return {
           totalpages: 0,

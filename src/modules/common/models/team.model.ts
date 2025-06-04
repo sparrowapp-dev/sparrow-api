@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsDate,
   IsDateString,
   IsEmail,
   IsMongoId,
@@ -125,6 +126,10 @@ export class TeamDto {
   @IsBoolean()
   @IsOptional()
   isNewInvite?: boolean;
+
+  @IsOptional()
+  @IsDate()
+  joinedAt?: Date;
 }
 
 export class Invite {

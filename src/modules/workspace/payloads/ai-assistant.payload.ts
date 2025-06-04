@@ -221,6 +221,14 @@ export class ChatBotPayload {
   temperature?: number;
 
   /**
+   * Top p.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "0.0 to 1.0" })
+  topP?: number;
+
+  /**
    * Presence Penalty.
    */
   @IsString()
@@ -261,6 +269,24 @@ export class ErrorResponsePayload {
   @ApiProperty({ required: true, example: "curl -X" })
   @IsNotEmpty()
   curl: string;
+
+  /**
+   * The error.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "error" })
+  @IsNotEmpty()
+  error: string;
+}
+
+export class GeneratePromptPayload {
+  /**
+   * Auth Key
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "Authorization Key" })
+  @IsNotEmpty()
+  authKey: string;
 
   /**
    * The error.

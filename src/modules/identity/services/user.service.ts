@@ -575,4 +575,7 @@ export class UserService {
     );
     return data.value;
   }
+  async updateLastActive(userId: string) {
+    await this.userRepository.updateLastActiveQuietly(userId);
+  }
 }

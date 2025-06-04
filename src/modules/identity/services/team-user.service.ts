@@ -143,6 +143,7 @@ export class TeamUserService {
         id: userData._id.toString(),
         email: userData.email.toLowerCase(),
         name: userData.name,
+        joinedAt: new Date(),
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
       });
@@ -151,6 +152,7 @@ export class TeamUserService {
       userTeams.push({
         id: new ObjectId(payload.teamId),
         name: teamData.name,
+        joinedAt: new Date(),
         role:
           payload.role === TeamRole.ADMIN ? TeamRole.ADMIN : TeamRole.MEMBER,
         isNewInvite: true,

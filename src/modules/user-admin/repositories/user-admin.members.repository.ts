@@ -1,4 +1,5 @@
 import { Injectable, Inject } from "@nestjs/common";
+import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { Db, ObjectId } from "mongodb";
 
 @Injectable()
@@ -18,7 +19,7 @@ export class AdminMembersRepository {
 
       // Find the user in the users collection
       const user = await this.db
-        .collection("user")
+        .collection(Collections.USER)
         .findOne({ _id: memberIdObj }, { projection: { workspaces: 1 } });
 
       if (!user || !user.workspaces) {
@@ -38,6 +39,22 @@ export class AdminMembersRepository {
         error,
       );
       return 0;
+    }
+  }
+
+  /**
+   * Find users by ID array
+   */
+  async findUsersByIds(userIds: ObjectId[]): Promise<any[]> {
+    try {
+      return await this.db
+        .collection(Collections.USER)
+        .find({ _id: { $in: userIds } })
+        .project({ _id: 1, name: 1, email: 1 })
+        .toArray();
+    } catch (error) {
+      console.error("Error finding users by IDs:", error);
+      throw error;
     }
   }
 }

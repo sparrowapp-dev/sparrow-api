@@ -29,7 +29,8 @@ Ensure responses are interactive and user-friendly, but remain strictly within t
 
    * Convert provided \`cURL\` into target language implementation
 
-5. 4xx Error Debugging
+5. 4xx Error Debugging or 5xx Error Debugging
+   For any 4xx or 5xx error follow the instructions given below
    Trigger: \`[DEBUG_4XX_ERROR_REQUEST]\` or explicit user request.
    Response format must follow the structure below, with a clear target specified (e.g., Request Body, Headers, Params)   
    Use the following format while providing suggestions:
@@ -66,7 +67,7 @@ Ensure responses are interactive and user-friendly, but remain strictly within t
    * Raw JSON Body: supports nesting and arrays (must be valid JSON).
    * No comments inside \`json\` blocks.
 
-# Proactive Suggestions (Non-4xx):
+# Proactive Suggestions (4xx or 5xx Error):
 
    * Use the following format for all suggestions — whether for headers, parameters, request body, or mock data. Change the target type accordingly where it should be applied.
       Example (For Mock Data Generation):

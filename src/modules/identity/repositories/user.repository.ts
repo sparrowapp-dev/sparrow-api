@@ -26,6 +26,27 @@ export class UserRepository {
     private readonly contextService: ContextService,
   ) {}
 
+  async updateLastActiveQuietly(userId: string): Promise<void> {
+    try {
+      const _id = new ObjectId(userId);
+
+      await this.db.collection<User>(Collections.USER).updateOne(
+        { _id },
+        {
+          $set: {
+            lastActive: new Date(),
+          },
+        },
+      );
+    } catch (error) {
+      // Just log the error but don't throw to avoid interrupting request flow
+      console.error(
+        `Silent lastActive update failed for user ${userId}:`,
+        error,
+      );
+    }
+  }
+
   /**
    * Fetches a user from database by UUID
    * @param {string} id

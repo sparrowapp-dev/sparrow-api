@@ -299,4 +299,62 @@ export class WorkspaceRepository {
 
     return response.value;
   }
+
+  /**
+   * Retrieves a paginated list of public workspaces.
+   * @param page - The page number (1-based).
+   * @param pageSize - The number of items per page.
+   * @returns A list of public workspaces and total count.
+   */
+  async getPaginatedPublicWorkspaces(
+    page: number,
+    pageSize: number,
+  ): Promise<{ workspaces: WithId<Workspace>[]; total: number }> {
+    const skip = (page - 1) * pageSize;
+    const collection = this.db.collection<Workspace>(Collections.WORKSPACE);
+    const [workspaces, total] = await Promise.all([
+      collection
+        .find({ workspaceType: WorkspaceType.PUBLIC })
+        .skip(skip)
+        .limit(pageSize)
+        .sort({ createdAt: -1 })
+        .toArray(),
+      collection.countDocuments({ workspaceType: WorkspaceType.PUBLIC }),
+    ]);
+    return { workspaces, total };
+  }
+
+  /**
+   * Searches public workspaces by name, team name, and description.
+   * @param searchTerm - The search term to match against workspace names, team names, and descriptions.
+   * @param page - The page number for pagination.
+   * @param pageSize - The number of results per page.
+   * @returns An object containing the list of workspaces and total count.
+   */
+  async searchPublicWorkspacesByName(
+    searchTerm: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ workspaces: WithId<Workspace>[]; total: number }> {
+    const collection = this.db.collection<Workspace>(Collections.WORKSPACE);
+    const searchQuery = {
+      workspaceType: WorkspaceType.PUBLIC,
+      $or: [
+        { name: { $regex: searchTerm, $options: "i" } },
+        { "team.name": { $regex: searchTerm, $options: "i" } },
+        { description: { $regex: searchTerm, $options: "i" } },
+      ],
+    };
+
+    const skip = (page - 1) * pageSize;
+    const total = await collection.countDocuments(searchQuery);
+    const workspaces = await collection
+      .find(searchQuery)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize)
+      .toArray();
+
+    return { workspaces, total };
+  }
 }

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
-import { AdminMembersRepository } from "../repositories/user.admin.members.repository";
+import { AdminMembersRepository } from "../repositories/user-admin.members.repository";
 import { WorkspaceService } from "@src/modules/workspace/services/workspace.service";
 
 @Injectable()

@@ -109,6 +109,7 @@ export class AdminWorkspaceRepository {
     const pipeline: any[] = [
       { $match: matchStage },
       { $addFields: { createdByObjId: { $toObjectId: "$createdBy" } } },
+      { $addFields: { updatedByObjId: { $toObjectId: "$updatedBy" } } },
       { $sort: { [sortBy]: sortOrder } },
     ];
 
@@ -127,6 +128,14 @@ export class AdminWorkspaceRepository {
         },
       },
       {
+        $lookup: {
+          from: "user",
+          localField: "updatedByObjId",
+          foreignField: "_id",
+          as: "updatedByUser",
+        },
+      },
+      {
         $project: {
           _id: 1,
           name: 1,
@@ -134,6 +143,7 @@ export class AdminWorkspaceRepository {
           updatedBy: 1,
           nodes: 1,
           createdByUser: 1,
+          updatedByUser: 1,
         },
       },
     );

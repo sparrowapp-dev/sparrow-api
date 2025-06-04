@@ -104,12 +104,14 @@ export class AdminWorkspaceService {
               sort: sort,
             });
 
-          const mappedCollections = collections.map((item) => ({
-            resourceType: "collection",
+          const mappedCollections = collections.map((item: any) => ({
+            resourceType: "collections",
             keyStats: item?.items?.length,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdBy,
+            updatedBy: item?.updatedBy,
+            id: item?.id,
           }));
 
           allResources.push(...mappedCollections);
@@ -127,11 +129,12 @@ export class AdminWorkspaceService {
             });
 
           const mappedTestflows = testflows.map((item) => ({
-            resourceType: "testflow",
+            resourceType: "testflows",
             keyStats: item?.nodes?.length,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdByUser?.[0]?.name,
+            updatedBy: item?.updatedByUser?.[0]?.name,
             id: item._id,
           }));
 
@@ -149,12 +152,14 @@ export class AdminWorkspaceService {
               sort: sort,
             });
 
-          const mappedEnvironments = environments.map((item) => ({
-            resourceType: "environment",
+          const mappedEnvironments = environments.map((item: any) => ({
+            resourceType: "environments",
             keyStats: item?.variable?.length,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdBy,
+            updatedBy: item?.updatedBy,
+            id: item?.id,
           }));
 
           allResources.push(...mappedEnvironments);
@@ -162,18 +167,22 @@ export class AdminWorkspaceService {
 
         //  Manual Sort
         if (sort.sortBy === "resources") {
-          allResources.sort((a, b) => a.name.localeCompare(b.name));
+          allResources.sort((a, b) => {
+            const comparison = a.name.localeCompare(b.name);
+            return sort.sortOrder === "asc" ? comparison : -comparison;
+          });
         } else if (sort.sortBy === "createdBy") {
           allResources.sort((a, b) => {
             const aBy = a.createdBy?.toLowerCase?.() || "";
             const bBy = b.createdBy?.toLowerCase?.() || "";
-            return aBy.localeCompare(bBy);
+            const comparison = aBy.localeCompare(bBy);
+            return sort.sortOrder === "asc" ? comparison : -comparison;
           });
         } else {
           allResources.sort((a, b) => {
             const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
             const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-            return dateB - dateA;
+            return sort.sortOrder === "asc" ? dateA - dateB : dateB - dateA;
           });
         }
 
@@ -199,12 +208,14 @@ export class AdminWorkspaceService {
               limit,
             });
 
-          const mappedCollections = collections.map((item) => ({
-            resourceType: "collection",
+          const mappedCollections = collections.map((item: any) => ({
+            resourceType: "collections",
             keyStats: item?.items?.length,
             name: item?.name,
             updatedAt: item?.updatedAt,
-            cretaedBy: item?.createdBy,
+            createdBy: item?.createdBy,
+            updatedBy: item?.updatedBy,
+            id: item?.id,
           }));
 
           return { resources: mappedCollections, totalCount };
@@ -225,11 +236,13 @@ export class AdminWorkspaceService {
             });
 
           const mappedTestflows = testflows.map((item) => ({
-            resourceType: "testflow",
+            resourceType: "testflows",
             keyStats: item?.nodes?.length,
             name: item?.name,
             updatedAt: item?.updatedAt,
             updatedBy: item?.updatedByUser?.[0]?.name,
+            createdBy: item?.createdBy,
+            id: item?.id,
           }));
 
           return { resources: mappedTestflows, totalCount };
@@ -249,12 +262,14 @@ export class AdminWorkspaceService {
               limit,
             });
 
-          const mappedEnvironments = environments.map((item) => ({
-            resourceType: "environment",
+          const mappedEnvironments = environments.map((item: any) => ({
+            resourceType: "environments",
             keyStats: item?.variable?.length,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdBy,
+            updatedBy: item?.updatedBy,
+            id: item?.id,
           }));
 
           return { resources: mappedEnvironments, totalCount };

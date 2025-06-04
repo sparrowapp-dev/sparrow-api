@@ -404,7 +404,7 @@ export class RequestResponseMetaData {
   @ApiProperty({ example: "200 OK" })
   @IsString()
   @IsOptional()
-  responseStatusCode?: string;
+  responseStatus?: string;
 
   @ApiProperty({
     enum: [
@@ -516,7 +516,7 @@ export class MockRequestMetaData {
   @ApiProperty({ example: "200 OK" })
   @IsString()
   @IsOptional()
-  responseStatusCode?: string;
+  responseStatus?: string;
 
   @ApiProperty({
     enum: [
@@ -810,6 +810,110 @@ export class UpdaterDetails {
   id?: string;
 }
 
+export class MockRequestHistory {
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @ApiProperty({ description: "Timestamp when the request was made" })
+  @IsDate()
+  timestamp: Date;
+
+  @ApiProperty({ description: "Name of the mock request" })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: "Endpoint of the mock request" })
+  @IsString()
+  url: string;
+
+  @ApiProperty({ example: "put" })
+  @IsNotEmpty()
+  method: HTTPMethods;
+
+  @ApiProperty({ example: "200 OK" })
+  @IsString()
+  @IsOptional()
+  responseStatus?: string;
+
+  @ApiProperty({
+    description: "Duration of request processing in milliseconds",
+  })
+  @IsNumber()
+  duration: number;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      key: "key",
+      value: "value",
+      checked: true,
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  requestHeaders?: KeyValue[];
+
+  @ApiProperty({ type: [SparrowRequestBody] })
+  @Type(() => SparrowRequestBody)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  requestBody?: SparrowRequestBody;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ BodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedRequestBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ BodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedResponseBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  responseHeaders?: KeyValue[];
+
+  @ApiProperty({ example: "body" })
+  @IsString()
+  @IsOptional()
+  responseBody?: string;
+}
+
 export class Collection {
   @ApiProperty()
   @IsString()
@@ -878,6 +982,11 @@ export class Collection {
   @IsString()
   @IsOptional()
   uuid?: string;
+
+  @ApiProperty({ type: [MockRequestHistory] })
+  @IsArray()
+  @IsOptional()
+  mockRequestHistory?: MockRequestHistory[];
 
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()

@@ -126,6 +126,10 @@ export class User {
   @IsBoolean()
   @IsOptional()
   isCoolDownActive?: boolean;
+
+  @IsOptional()
+  @IsDate()
+  lastActive?: Date;
 }
 
 export class UserDto {
@@ -144,6 +148,10 @@ export class UserDto {
   @IsString()
   @IsNotEmpty()
   role: string;
+
+  @IsOptional()
+  @IsDate()
+  joinedAt?: Date;
 }
 
 class AuthProvider {

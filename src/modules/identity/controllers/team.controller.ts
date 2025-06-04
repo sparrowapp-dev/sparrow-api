@@ -108,6 +108,23 @@ export class TeamController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  @Get("public/:teamId")
+  @ApiOperation({
+    summary: "Retrieve Public Team Details",
+    description: "This will retrieve Public team details",
+  })
+  @ApiResponse({ status: 200, description: "Fetch Team Request Received" })
+  @ApiResponse({ status: 400, description: "Fetch Team Request Failed" })
+  async getPublicTeam(@Param("teamId") teamId: string, @Res() res: FastifyReply) {
+    const data = await this.teamService.getPublic(teamId);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Put(":teamId")
   @UseGuards(JwtAuthGuard)
   @ApiOperation({

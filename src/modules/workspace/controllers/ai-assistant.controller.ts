@@ -13,6 +13,7 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import {
   PromptPayload,
   ErrorResponsePayload,
+  ChatBotPayload
 } from "../payloads/ai-assistant.payload";
 
 @ApiBearerAuth()
@@ -59,4 +60,19 @@ export class AiAssistantController {
     );
     return res.status(response.httpStatusCode).send(response);
   }
+
+  @Post("generate-prompt")
+  async GeneratePrompt(
+    @Body() payload: ChatBotPayload,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.aiAssistantService.promptGeneration(payload);
+    const response = new ApiResponseService(
+      "Prompt Generated",
+      HttpStatusCode.CREATED,
+      data,
+    );
+    return res.status(response.httpStatusCode).send(response);
+  }
+
 }
