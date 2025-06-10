@@ -24,6 +24,7 @@ import { CustomMetricsMiddleware } from "./middleware/metrics.middleware";
 import { AppRepository } from "./app.repository";
 import { SentryModule } from "@sentry/nestjs/setup";
 import { UserAdminModule } from "../user-admin/user-admin.module";
+import { UserMetricsModule } from "../user-metrics/user-metrics.module";
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { UserAdminModule } from "../user-admin/user-admin.module";
     IdentityModule,
     WorkspaceModule,
     UserAdminModule,
+    UserMetricsModule,
     CommonModule,
     ProxyModule,
   ],
@@ -80,6 +82,21 @@ import { UserAdminModule } from "../user-admin/user-admin.module";
       name: "app_duration_metrics",
       help: "Duration of HTTP requests in milliseconds",
       labelNames: ["method", "origin", "status", "environment"],
+    }),
+    makeGaugeProvider({
+      name: "unique_users_total",
+      help: "Total number of unique users that have accessed the system",
+      labelNames: ["environment"],
+    }),
+    makeCounterProvider({
+      name: "user_requests_total",
+      help: "Total number of requests per user",
+      labelNames: ["user_id", "method", "origin", "status", "environment"],
+    }),
+    makeGaugeProvider({
+      name: "active_users_current",
+      help: "Number of users active in the current time window",
+      labelNames: ["time_window", "environment"],
     }),
     AppService,
     AppRepository,

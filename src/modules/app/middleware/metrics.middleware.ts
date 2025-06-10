@@ -2,6 +2,8 @@ import { Injectable, NestMiddleware } from "@nestjs/common";
 import { InjectMetric } from "@willsoto/nestjs-prometheus";
 import { FastifyRequest, FastifyReply } from "fastify";
 import { Counter, Gauge, Registry } from "prom-client";
+import { UserMetricsService } from "../../user-metrics/services/user-metrics.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @Injectable()
 export class CustomMetricsMiddleware implements NestMiddleware {
@@ -13,6 +15,7 @@ export class CustomMetricsMiddleware implements NestMiddleware {
     @InjectMetric("count") private readonly appCounter: Counter<string>,
     @InjectMetric("gauge") private readonly appGauge: Gauge<string>,
     @InjectMetric("app_duration_metrics") private readonly durationGauge: Gauge,
+    private readonly userMetricsService: UserMetricsService,
   ) {
     // Create a new registry
     this.registry = new Registry();
@@ -42,6 +45,9 @@ export class CustomMetricsMiddleware implements NestMiddleware {
       // Get the request method and path
       const method = req.method || "UNKNOWN";
       const origin = req.url || "/unknown";
+
+      // Extract user ID from JWT token if present
+      const userId = this.extractUserIdFromRequest(req);
 
       // Create initial labels object
       const initialLabels = {
@@ -98,6 +104,21 @@ export class CustomMetricsMiddleware implements NestMiddleware {
           if (statusCode >= 400) {
             this.customErrorsCounter.inc(finalLabels);
           }
+
+          // Track user activity if user ID is available
+          if (userId) {
+            this.userMetricsService
+              .trackUserActivity(userId, {
+                method,
+                origin: req.url || "/unknown",
+                status: statusCode.toString(),
+                timestamp: new Date(),
+                environment: process.env.APP_ENV || "development",
+              })
+              .catch((err: any) => {
+                console.error("Error tracking user activity:", err);
+              });
+          }
         } catch (err) {
           console.error("Error updating metrics:", err);
         }
@@ -111,6 +132,49 @@ export class CustomMetricsMiddleware implements NestMiddleware {
       this.appGauge.dec();
       console.error("Error in metrics middleware:", error);
       next();
+    }
+  }
+
+  /**
+   * Extract user ID from JWT token in the Authorization header
+   */
+  private extractUserIdFromRequest(req: FastifyRequest["raw"]): string | null {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return null;
+      }
+
+      const token = authHeader.substring(7); // Remove "Bearer " prefix
+      if (!token) {
+        return null;
+      }
+
+      // Decode JWT token (without verification since we just need the user ID)
+      // The token will be properly verified later by the JWT guard
+      const payload = this.decodeJwtPayload(token);
+      return payload?._id || null;
+    } catch (error) {
+      // Silently fail - this is not critical for metrics
+      return null;
+    }
+  }
+
+  /**
+   * Decode JWT payload without verification (for metrics purposes only)
+   */
+  private decodeJwtPayload(token: string): any {
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      const payload = parts[1];
+      const decoded = Buffer.from(payload, "base64").toString("utf8");
+      return JSON.parse(decoded);
+    } catch (error) {
+      return null;
     }
   }
 }
