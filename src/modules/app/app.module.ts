@@ -24,6 +24,8 @@ import { CustomMetricsMiddleware } from "./middleware/metrics.middleware";
 import { AppRepository } from "./app.repository";
 import { SentryModule } from "@sentry/nestjs/setup";
 import { UserAdminModule } from "../user-admin/user-admin.module";
+import { UserMetricsService } from "./services/user-metrics.service";
+import { UserMetricsController } from "./controllers/user-metrics.controller";
 
 @Module({
   imports: [
@@ -63,7 +65,7 @@ import { UserAdminModule } from "../user-admin/user-admin.module";
     CommonModule,
     ProxyModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, UserMetricsController],
   providers: [
     CustomMetricsMiddleware,
     makeCounterProvider({
@@ -81,8 +83,24 @@ import { UserAdminModule } from "../user-admin/user-admin.module";
       help: "Duration of HTTP requests in milliseconds",
       labelNames: ["method", "origin", "status", "environment"],
     }),
+    makeGaugeProvider({
+      name: "unique_users_total",
+      help: "Total number of unique users that have accessed the system",
+      labelNames: ["environment"],
+    }),
+    makeCounterProvider({
+      name: "user_requests_total",
+      help: "Total number of requests per user",
+      labelNames: ["user_id", "method", "status", "environment"],
+    }),
+    makeGaugeProvider({
+      name: "active_users_current",
+      help: "Number of currently active users (within last 30 minutes)",
+      labelNames: ["environment"],
+    }),
     AppService,
     AppRepository,
+    UserMetricsService,
     {
       provide: EnvironmentVariables,
       useValue: transformAndValidateSync(EnvironmentVariables, process.env),
