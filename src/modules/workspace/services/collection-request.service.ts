@@ -126,6 +126,10 @@ export class CollectionRequestService {
     const index = await this.checkFolderExist(collection, payload.folderId);
     const updateMessage = `"${collection.items[index].name}" folder is renamed to "${payload.name}" in "${collection.name}" collection`;
     collection.items[index].name = payload.name ?? collection.items[index].name;
+    const currentUpdatedAt = new Date();
+    const currentUpdatedBy = user._id.toString();
+    collection.items[index].updatedAt = currentUpdatedAt;
+    collection.items[index].updatedBy = currentUpdatedBy;
     collection.items[index].description =
       payload.description ?? collection.items[index].description;
     await this.collectionReposistory.updateCollection(

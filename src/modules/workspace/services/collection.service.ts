@@ -26,6 +26,7 @@ import {
   CollectionItem,
   CollectionTypeEnum,
   ItemTypeEnum,
+  ResponseBodyModeEnum,
 } from "@src/modules/common/models/collection.model";
 import { ContextService } from "@src/modules/common/services/context.service";
 import { WorkspaceService } from "./workspace.service";
@@ -619,5 +620,238 @@ export class CollectionService {
       name: collectionDetails.name,
     });
     return collectionDetails;
+  }
+
+  async createMockCollectionFromExisting(
+    collectionId: string,
+    workspaceId: string,
+  ): Promise<InsertOneResult> {
+    const workspace =
+      await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+
+    const originalCollection =
+      await this.collectionRepository.get(collectionId);
+
+    if (!originalCollection) {
+      throw new BadRequestException("Collection not found");
+    }
+
+    const mockItems = this.processItemsForMockCollection(
+      originalCollection.items,
+    );
+
+    const newMockCollection: Collection = {
+      name: originalCollection.name,
+      collectionType: CollectionTypeEnum.MOCK,
+      totalRequests: this.countValidRequests(mockItems),
+      createdBy: originalCollection.createdBy,
+      selectedAuthType: CollectionAuthModeEnum["No Auth"],
+      items: mockItems,
+      updatedBy: { name: originalCollection.createdBy },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isMockCollectionRunning: false,
+      activeSync: false,
+    };
+
+    const mockCollection =
+      await this.collectionRepository.addCollection(newMockCollection);
+
+    await this.updateMockCollectionUrl(mockCollection.insertedId.toString());
+
+    const insertedCollection = await this.collectionRepository.get(
+      mockCollection.insertedId.toString(),
+    );
+
+    if (insertedCollection && insertedCollection.mockCollectionUrl) {
+      insertedCollection.items = this.replaceMockRequestUrls(
+        insertedCollection.items,
+        insertedCollection.mockCollectionUrl,
+      );
+
+      await this.collectionRepository.updateCollection(
+        insertedCollection._id.toString(),
+        { items: insertedCollection.items },
+      );
+    }
+
+    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
+      id: insertedCollection._id,
+      name: newMockCollection.name,
+    });
+
+    return mockCollection;
+  }
+
+  private processItemsForMockCollection(
+    items: CollectionItem[],
+  ): CollectionItem[] {
+    const processedItems: CollectionItem[] = [];
+
+    for (const item of items) {
+      if (item.type === ItemTypeEnum.REQUEST) {
+        const mockRequest = this.convertRequestToMockRequest(item);
+        if (mockRequest) {
+          processedItems.push(mockRequest);
+        }
+      } else if (item.type === ItemTypeEnum.FOLDER) {
+        const mockFolder = this.processFolderForMockCollection(item);
+        if (mockFolder && mockFolder.items && mockFolder.items.length > 0) {
+          processedItems.push(mockFolder);
+        }
+      }
+    }
+
+    return processedItems;
+  }
+
+  private processFolderForMockCollection(
+    folder: CollectionItem,
+  ): CollectionItem | null {
+    if (!folder.items || folder.items.length === 0) {
+      return null;
+    }
+
+    const mockRequests: CollectionItem[] = [];
+
+    for (const item of folder.items) {
+      if (item.type === ItemTypeEnum.REQUEST) {
+        const mockRequest = this.convertRequestToMockRequest(item);
+        if (mockRequest) {
+          mockRequests.push(mockRequest);
+        }
+      }
+    }
+
+    if (mockRequests.length === 0) {
+      return null;
+    }
+
+    return {
+      ...folder,
+      id: uuidv4(),
+      type: ItemTypeEnum.FOLDER,
+      items: mockRequests,
+    };
+  }
+
+  private convertRequestToMockRequest(
+    request: CollectionItem,
+  ): CollectionItem | null {
+    if (!request.request) {
+      return null;
+    }
+
+    const selectedResponse = this.getMostRecentResponse(request.items || []);
+
+    if (!selectedResponse) {
+      return {
+        ...request,
+        id: uuidv4(),
+        type: ItemTypeEnum.MOCK_REQUEST,
+        request: null as null,
+        items: [] as CollectionItem[],
+        mockRequest: {
+          ...request.request,
+          responseHeaders: [{ key: "", value: "", checked: false }],
+          responseBody: "",
+          responseStatus: "",
+          selectedResponseBodyType: ResponseBodyModeEnum["none"],
+        },
+      };
+    }
+
+    const mockRequest = {
+      ...request,
+      id: uuidv4(),
+      type: ItemTypeEnum.MOCK_REQUEST,
+      request: null as null,
+      items: [] as CollectionItem[],
+      mockRequest: {
+        ...request.request,
+        responseHeaders:
+          selectedResponse.requestResponse?.responseHeaders || [],
+        responseBody: selectedResponse.requestResponse?.responseBody || "",
+        responseStatus:
+          selectedResponse.requestResponse?.responseStatus?.split(" ")[0] || "",
+        selectedResponseBodyType:
+          selectedResponse.requestResponse?.selectedResponseBodyType ||
+          ResponseBodyModeEnum["none"],
+      },
+    };
+
+    return mockRequest;
+  }
+
+  private getMostRecentResponse(
+    items: CollectionItem[],
+  ): CollectionItem | null {
+    if (!items || items.length === 0) {
+      return null;
+    }
+
+    return items[0];
+  }
+
+  private countValidRequests(items: CollectionItem[]): number {
+    let count = 0;
+
+    for (const item of items) {
+      if (item.type === ItemTypeEnum.MOCK_REQUEST) {
+        count++;
+      } else if (item.type === ItemTypeEnum.FOLDER && item.items) {
+        count += this.countValidRequests(item.items);
+      }
+    }
+
+    return count;
+  }
+
+  private replaceMockRequestUrls(
+    items: CollectionItem[],
+    mockCollectionUrl: string,
+  ): CollectionItem[] {
+    return items.map((item) => {
+      if (item.type === ItemTypeEnum.MOCK_REQUEST && item.mockRequest) {
+        const originalUrl = item.mockRequest.url;
+        let newUrl = originalUrl;
+
+        if (originalUrl) {
+          if (originalUrl.startsWith("{{")) {
+            const pathMatch = originalUrl.match(/}}(.*)$/);
+            newUrl = mockCollectionUrl + (pathMatch?.[1] || "");
+          } else {
+            try {
+              const urlObj = new URL(originalUrl);
+              const pathAndQuery =
+                urlObj.pathname + urlObj.search + urlObj.hash;
+              newUrl = mockCollectionUrl + pathAndQuery;
+            } catch (error) {
+              const pathMatch = originalUrl.match(/^https?:\/\/[^\/]+(.*)$/);
+              if (pathMatch) {
+                newUrl = mockCollectionUrl + pathMatch[1];
+              } else {
+                newUrl = mockCollectionUrl;
+              }
+            }
+          }
+        }
+
+        return {
+          ...item,
+          mockRequest: {
+            ...item.mockRequest,
+            url: newUrl,
+          },
+        };
+      } else if (item.type === ItemTypeEnum.FOLDER && item.items) {
+        return {
+          ...item,
+          items: this.replaceMockRequestUrls(item.items, mockCollectionUrl),
+        };
+      }
+
+      return item;
+    });
   }
 }

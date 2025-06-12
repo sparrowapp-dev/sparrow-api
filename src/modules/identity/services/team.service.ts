@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { CreateOrUpdateTeamDto, UpdateTeamDto } from "../payloads/team.payload";
+import {
+  CreateOrUpdateTeamDto,
+  GetTeamDto,
+  UpdateTeamDto,
+} from "../payloads/team.payload";
 import { TeamRepository } from "../repositories/team.repository";
 import {
   DeleteResult,
@@ -22,6 +26,7 @@ import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { User } from "@src/modules/common/models/user.model";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { PlanRepository } from "../repositories/plan.repository";
+import { EmailService } from "@src/modules/common/services/email.service";
 
 /**
  * Team Service
@@ -36,6 +41,7 @@ export class TeamService {
     private readonly userRepository: UserRepository,
     private readonly contextService: ContextService,
     private readonly planRepository: PlanRepository,
+    private readonly emailService: EmailService,
   ) {}
 
   async isImageSizeValid(size: number) {
@@ -181,19 +187,45 @@ export class TeamService {
    */
   async get(id: string): Promise<WithId<Team>> {
     const data = await this.teamRepository.get(id);
-    const validInvites = data?.invites?.filter((invite) => {
-      if (new Date(invite?.expiresAt) > new Date()) {
-        return true;
-      }
-      return false;
-    });
-    data.invites = validInvites || [];
+    // const validInvites = data?.invites?.filter((invite) => {
+    //   if (new Date(invite?.expiresAt) > new Date()) {
+    //     return true;
+    //   }
+    //   return false;
+    // });
+    // data.invites = validInvites || [];
     data?.invites?.forEach((invite) => {
       delete invite.inviteId;
       delete invite.isAccepted;
       delete invite.workspaces;
     });
     return data;
+  }
+
+  /**
+   * Fetches a public team from database by UUID
+   * @param {string} id
+   * @returns {Promise<Team>} queried team data
+   */
+  async getPublic(id: string): Promise<WithId<GetTeamDto>> {
+    const data = await this.teamRepository.get(id);
+    const owner = data.users?.filter((user) => user.role === "owner") || [];
+    return {
+      _id: data._id,
+      name: data.name,
+      description: data.description,
+      hubUrl: data.hubUrl,
+      linkedinUrl: data.linkedinUrl,
+      xUrl: data.xUrl,
+      githubUrl: data.githubUrl,
+      users: owner,
+      owner: data.owner,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      logo: data.logo,
+      createdBy: data.createdBy,
+      updatedBy: data.updatedBy,
+    };
   }
 
   /**
@@ -268,6 +300,11 @@ export class TeamService {
     return data;
   }
 
+  public isInviteExpired(expiresAt: Date): boolean {
+    const now = new Date();
+    return new Date(expiresAt) < now;
+  }
+
   async getAllTeams(userId: string): Promise<WithId<Team>[]> {
     const user = await this.userRepository.getUserById(userId);
     if (!user) {
@@ -284,13 +321,9 @@ export class TeamService {
       const teamData: WithId<TeamWithNewInviteTag> = await this.get(
         id.toString(),
       );
-
-      teamData.workspaces = teamData.workspaces.filter((_workspace) => {
-        if (userWorkspaceIds.includes(_workspace.id.toString())) {
-          return true;
-        }
-        return false;
-      });
+      teamData.workspaces = teamData.workspaces.filter((_workspace) =>
+        userWorkspaceIds.includes(_workspace.id.toString()),
+      );
 
       teamData.isNewInvite = isNewInvite;
 
@@ -300,17 +333,15 @@ export class TeamService {
       user.email,
     );
     const teamIds = existingTeams?.teamIds || [];
-    if (teamIds) {
-      for (const teamId of teamIds) {
-        const teamData: WithId<TeamWithNewInviteTag> = await this.get(teamId);
-        // Find the invite that matches the user's email (or another criterion)
-        const specificInvite = teamData.invites.find(
-          (invite) => invite.email === user.email,
-        );
-        let createdById = null;
-        if (specificInvite) {
-          createdById = specificInvite.createdBy.toString();
-        }
+    for (const teamId of teamIds) {
+      const teamData: WithId<TeamWithNewInviteTag> = await this.get(teamId);
+      const specificInvite = teamData.invites.find(
+        (invite) => invite.email === user.email,
+      );
+      const isValidInvite =
+        specificInvite && !this.isInviteExpired(specificInvite.expiresAt);
+      if (isValidInvite) {
+        const createdById = specificInvite.createdBy.toString();
         const senderData = await this.userRepository.getUserById(createdById);
         const team: any = {
           _id: teamId,
@@ -399,5 +430,33 @@ export class TeamService {
       return false;
     });
     return teamDetails;
+  }
+
+  async teamPlanUpgradeOwner(teamId: string) {
+    const teamDetails = await this.teamRepository.get(teamId);
+    const isTeamOwnerId = teamDetails?.owner;
+    if (isTeamOwnerId) {
+      const userDetails = await this.userRepository.getUserById(isTeamOwnerId);
+      const transporter = this.emailService.createTransporter();
+      const mailOptions = {
+        from: this.configService.get("app.senderEmail"),
+        to: userDetails?.email,
+        text: "Rquest for Plan Upgrade",
+        template: "planUpgradeOwnerEmail",
+        context: {
+          teamName: teamDetails?.name,
+          userName: userDetails?.name || userDetails?.email,
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName: this.configService.get(
+            "support.sparrowWebsiteName",
+          ),
+        },
+        subject: `Request to Upgrade Plan`,
+      };
+
+      const promise = [this.emailService.sendEmail(transporter, mailOptions)];
+      Promise.all(promise);
+    }
   }
 }

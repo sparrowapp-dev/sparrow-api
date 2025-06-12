@@ -5,6 +5,8 @@ import { ObjectId } from "mongodb";
 import { UnauthorizedException } from "@nestjs/common";
 import { AdminAuthRepository } from "../repositories/user-admin.auth.repository";
 import { createHmac } from "crypto";
+import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
+import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.repository";
 
 @Injectable()
 export class AdminAuthService {
@@ -12,6 +14,8 @@ export class AdminAuthService {
     private readonly jwtService: JwtService,
     private readonly adminAuthRepository: AdminAuthRepository,
     private readonly configService: ConfigService,
+    private readonly adminHubsRepository: AdminHubsRepository,
+    private readonly adminWorkspaceRepository: AdminWorkspaceRepository,
   ) {}
 
   // Create access token
@@ -140,6 +144,24 @@ export class AdminAuthService {
         throw error;
       }
       throw new UnauthorizedException("Invalid refresh token");
+    }
+  }
+  async getUserRole(userId: string, teamId: string, workspaceId: string) {
+    if (teamId) {
+      const team = await this.adminHubsRepository.findHubById(teamId);
+      const userTeamRole = team.users.find(
+        (user: any) => user.id.toString() === userId.toString(),
+      ).role;
+      return userTeamRole;
+    }
+
+    if (workspaceId) {
+      const workspace =
+        await this.adminWorkspaceRepository.findWorkspaceById(workspaceId);
+      const userRole = workspace.users.find(
+        (user: any) => user.id.toString() === userId.toString(),
+      )?.role;
+      return userRole;
     }
   }
 }

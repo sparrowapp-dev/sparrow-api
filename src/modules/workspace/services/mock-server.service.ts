@@ -69,7 +69,9 @@ export class MockServerService {
               ) {
                 const responseData = {
                   status:
-                    mock.responseStatus !== "" ? mock.responseStatus : 200,
+                    mock?.responseStatus && mock.responseStatus !== ""
+                      ? mock.responseStatus
+                      : 200,
                   body: mock.responseBody ?? "",
                   contentType: mock.selectedResponseBodyType,
                 };
@@ -95,7 +97,7 @@ export class MockServerService {
                   selectedRequestBodyType: mock.selectedRequestBodyType,
                   selectedResponseBodyType: mock.selectedResponseBodyType,
                   responseHeaders: mock.responseHeaders,
-                  responseBody: mock.responseBody,
+                  responseBody: mock?.responseBody ?? "",
                 };
 
                 await this.storeRequestHistory(collectionId, historyEntry);

@@ -139,11 +139,6 @@ export class AppService {
       const stringifiedCurl = toJsonString(updatedCurl);
       const parsedCurl = JSON.parse(stringifiedCurl);
 
-      // Fallback: Manually extracting query params, in case "curlConverter" isn't able to process query params
-      if (!parsedCurl.queries || parsedCurl.url.includes("?")) {
-        parsedCurl.queries = this.extractQueryParamsFromUrl(parsedCurl.url);
-      }
-
       // Match all -F flags with their key-value pairs
       const formDataMatches = curl.match(/-F\s+'([^=]+)=@([^;]+)/g);
       const formDataItems = formDataMatches
@@ -200,7 +195,7 @@ export class AppService {
     ) {
       method = "INVALID";
     }
-    const url = await this.handleFormatUrl(requestObject.url);
+    const url = await this.handleFormatUrl(requestObject.raw_url);
     const transformedObject: TransformedRequest = {
       name: url || "",
       description: "",
@@ -240,11 +235,16 @@ export class AppService {
       updatedAt: new Date(),
     };
 
-    // Handle URL with query parameters
-    if (requestObject.queries) {
-      const queryParams = [];
-      for (const [key, value] of Object.entries(requestObject.queries)) {
+    // Extract the query parameter from the URL
+    const queryString = url.split("?")[1];
+    const queryParams = [];
+    if (queryString) {
+      const pairs = queryString.split("&");
+      for (const pair of pairs) {
+        const [key, rawValue] = pair.split("=");
+        const value = rawValue || "";
         queryParams.push({ key, value, checked: true });
+
         if (
           key.toLowerCase() === "api-key" ||
           key.toLowerCase() === "x-api-key"
@@ -258,8 +258,10 @@ export class AppService {
             AuthModeEnum["API Key"];
         }
       }
-      transformedObject.request.url = url;
+      queryParams.push({ key: "", value: "", checked: false });
+
       transformedObject.request.queryParams = queryParams;
+      transformedObject.request.url = url;
     }
     let isFormData = false;
 
@@ -441,7 +443,9 @@ export class AppService {
     // Handle headers and populate auth details
     if (requestObject.headers) {
       for (const [key, value] of Object.entries(requestObject.headers)) {
-        if (!(isFormData && (key === "Content-Type" || key === "content-type"))) {
+        if (
+          !(isFormData && (key === "Content-Type" || key === "content-type"))
+        ) {
           transformedObject.request.headers.push({ key, value, checked: true });
         }
 

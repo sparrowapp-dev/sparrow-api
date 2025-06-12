@@ -404,7 +404,7 @@ export class RequestResponseMetaData {
   @ApiProperty({ example: "200 OK" })
   @IsString()
   @IsOptional()
-  responseStatusCode?: string;
+  responseStatus?: string;
 
   @ApiProperty({
     enum: [
@@ -516,7 +516,7 @@ export class MockRequestMetaData {
   @ApiProperty({ example: "200 OK" })
   @IsString()
   @IsOptional()
-  responseStatusCode?: string;
+  responseStatus?: string;
 
   @ApiProperty({
     enum: [

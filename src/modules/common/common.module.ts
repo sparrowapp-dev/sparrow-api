@@ -41,9 +41,10 @@ import { InstrumentService } from "./services/instrument.service";
         insightsService: InsightsService,
       ): Promise<Db> => {
         try {
+          const dbName = configService.get<string>("db.name");
           // Connect to MongoDB using the URL from ConfigService
           const client = await MongoClient.connect(configService.get("db.url"));
-          return client.db("sparrow");
+          return client.db(dbName);
         } catch (e) {
           console.log("ERROR =====> ", e);
           const client = await insightsService.getClient();

@@ -47,5 +47,6 @@ export enum DeepSeepModelVersion {
 export enum Roles {
   system = "system",
   user = "user",
-  assistant = "assistant"
+  assistant = "assistant",
+  model = "model"
 }

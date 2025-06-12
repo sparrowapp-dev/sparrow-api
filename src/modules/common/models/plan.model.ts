@@ -51,11 +51,19 @@ export class UsersPerHub {
   value: number;
 }
 
+export class SelectiveTestflowRun {
+  area: LimitArea.TESTFLOW;
+
+  @IsBoolean()
+  active: boolean;
+}
+
 export class Limits {
   workspacesPerHub: WorkspaceLimit;
   testflowPerWorkspace: TestflowLimit;
   blocksPerTestflow: BlocksPerTestflow;
-  usersPerHub: UsersPerHub
+  usersPerHub: UsersPerHub;
+  selectiveTestflowRun: SelectiveTestflowRun;
 }
 
 export class Plan {

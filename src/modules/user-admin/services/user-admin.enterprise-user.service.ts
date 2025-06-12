@@ -10,6 +10,7 @@ import { WorkspaceService } from "@src/modules/workspace/services/workspace.serv
 import { AdminUpdatesRepository } from "../repositories/user-admin.updates.repository";
 import { ObjectId } from "mongodb";
 import { AdminMembersRepository } from "../repositories/user-admin.members.repository";
+import { TeamRole } from "@src/modules/common/enum/roles.enum";
 
 @Injectable()
 export class AdminUsersService {
@@ -204,8 +205,14 @@ export class AdminUsersService {
       ).length;
 
       // Track unique users by their highest role - similar to graph functions
-      const userHighestRoleMap = new Map<string, "admin" | "member">();
-      const newUserHighestRoleMap = new Map<string, "admin" | "member">();
+      const userHighestRoleMap = new Map<
+        string,
+        TeamRole.ADMIN | TeamRole.MEMBER
+      >();
+      const newUserHighestRoleMap = new Map<
+        string,
+        TeamRole.ADMIN | TeamRole.MEMBER
+      >();
       let totalInvites = 0;
       let newInvites = 0;
 
@@ -214,29 +221,45 @@ export class AdminUsersService {
         (team.users || []).forEach((user: any) => {
           const userId = user.id.toString();
           const role =
-            user.role === "owner" || user.role === "admin" ? "admin" : "member";
+            user.role === TeamRole.OWNER || user.role === TeamRole.ADMIN
+              ? TeamRole.ADMIN
+              : TeamRole.MEMBER;
 
           // Track user's highest role across all teams
           if (!userHighestRoleMap.has(userId)) {
             userHighestRoleMap.set(userId, role);
           } else if (
-            userHighestRoleMap.get(userId) === "member" &&
-            role === "admin"
+            userHighestRoleMap.get(userId) === TeamRole.MEMBER &&
+            role === TeamRole.ADMIN
           ) {
             // Upgrade role to admin if previously marked as member
-            userHighestRoleMap.set(userId, "admin");
+            userHighestRoleMap.set(userId, TeamRole.ADMIN);
           }
 
-          // Also track new users this month by their highest role
+          // Check if this user is new this month - special handling for owners
+          let isNewThisMonth = false;
+
           if (user.joinedAt && new Date(user.joinedAt) >= firstDayThisMonth) {
+            // Regular users with joinedAt date
+            isNewThisMonth = true;
+          } else if (
+            user.role === TeamRole.OWNER &&
+            team.createdAt &&
+            new Date(team.createdAt) >= firstDayThisMonth
+          ) {
+            // Team owners of newly created teams
+            isNewThisMonth = true;
+          }
+
+          if (isNewThisMonth) {
             if (!newUserHighestRoleMap.has(userId)) {
               newUserHighestRoleMap.set(userId, role);
             } else if (
-              newUserHighestRoleMap.get(userId) === "member" &&
-              role === "admin"
+              newUserHighestRoleMap.get(userId) === TeamRole.MEMBER &&
+              role === TeamRole.ADMIN
             ) {
               // Upgrade role to admin if previously marked as member
-              newUserHighestRoleMap.set(userId, "admin");
+              newUserHighestRoleMap.set(userId, TeamRole.ADMIN);
             }
           }
         });
@@ -259,7 +282,7 @@ export class AdminUsersService {
       let newMemberCount = 0;
 
       userHighestRoleMap.forEach((role) => {
-        if (role === "admin") {
+        if (role === TeamRole.ADMIN) {
           adminCount++;
         } else {
           memberCount++;
@@ -267,7 +290,7 @@ export class AdminUsersService {
       });
 
       newUserHighestRoleMap.forEach((role) => {
-        if (role === "admin") {
+        if (role === TeamRole.ADMIN) {
           newAdminCount++;
         } else {
           newMemberCount++;
@@ -456,23 +479,28 @@ export class AdminUsersService {
     }
 
     // Track unique users by their highest role
-    const userHighestRoleMap = new Map<string, "admin" | "member">();
+    const userHighestRoleMap = new Map<
+      string,
+      TeamRole.ADMIN | TeamRole.MEMBER
+    >();
 
     // First pass: determine each user's highest role
     for (const hub of teams.data) {
       for (const user of hub.users) {
         const userId = user.id.toString();
         const role =
-          user.role === "owner" || user.role === "admin" ? "admin" : "member";
+          user.role === TeamRole.OWNER || user.role === TeamRole.ADMIN
+            ? TeamRole.ADMIN
+            : TeamRole.MEMBER;
 
         if (!userHighestRoleMap.has(userId)) {
           userHighestRoleMap.set(userId, role);
         } else if (
-          userHighestRoleMap.get(userId) === "member" &&
-          role === "admin"
+          userHighestRoleMap.get(userId) === TeamRole.MEMBER &&
+          role === TeamRole.ADMIN
         ) {
           // Upgrade role to admin if previously marked as member
-          userHighestRoleMap.set(userId, "admin");
+          userHighestRoleMap.set(userId, TeamRole.ADMIN);
         }
       }
     }
@@ -482,7 +510,7 @@ export class AdminUsersService {
     let memberCount = 0;
 
     userHighestRoleMap.forEach((role) => {
-      if (role === "admin") {
+      if (role === TeamRole.ADMIN) {
         adminCount++;
       } else {
         memberCount++;
@@ -566,7 +594,7 @@ export class AdminUsersService {
       // For each date point, count unique users who had joined by that date
       datePoints.forEach((dp, index) => {
         // Track unique users by ID and role
-        const userRoleMap = new Map<string, "admin" | "member">();
+        const userRoleMap = new Map<string, TeamRole.ADMIN | TeamRole.MEMBER>();
 
         // Loop through each team
         for (const team of teams.data) {
@@ -591,18 +619,18 @@ export class AdminUsersService {
             if (userJoinedAt && userJoinedAt <= dp.month) {
               const userId = user.id.toString();
               const role =
-                user.role === "owner" || user.role === "admin"
-                  ? "admin"
-                  : "member";
+                user.role === TeamRole.OWNER || user.role === TeamRole.ADMIN
+                  ? TeamRole.ADMIN
+                  : TeamRole.MEMBER;
 
               if (!userRoleMap.has(userId)) {
                 userRoleMap.set(userId, role);
               } else if (
-                userRoleMap.get(userId) === "member" &&
-                role === "admin"
+                userRoleMap.get(userId) === TeamRole.MEMBER &&
+                role === TeamRole.ADMIN
               ) {
                 // Upgrade to admin if previously marked as member
-                userRoleMap.set(userId, "admin");
+                userRoleMap.set(userId, TeamRole.ADMIN);
               }
             }
           }
@@ -613,7 +641,7 @@ export class AdminUsersService {
         let memberCount = 0;
 
         userRoleMap.forEach((role) => {
-          if (role === "admin") {
+          if (role === TeamRole.ADMIN) {
             adminCount++;
           } else {
             memberCount++;

@@ -47,14 +47,26 @@ import {  Models , AiService , ClaudeModelVersion , GoogleModelVersion , OpenAIM
 import { instructions } from "@src/modules/common/instructions/prompt";
 import { totalmem } from "node:os";
 import { Role } from "nest-access-control";
+// import { GoogleGenAI } from "@google/genai";
 
-async function initializeGenAI(authKey: string) 
+async function initializeGenAI(authKey: string, client?: WebSocket) 
 {
   const { GoogleGenAI } = await import('@google/genai');
-  const genAI = new GoogleGenAI({apiKey: authKey});
-  return genAI;
+  try {
+    const genAI = new GoogleGenAI({ apiKey: authKey });
+    return genAI;
+  } catch (error: any) {
+      if (client?.readyState === WebSocket.OPEN) {
+        client.send(
+          JSON.stringify({
+            event: 'error',
+            message: 'Invalid Authentication. Please add a valid Google Gemini API key.',
+          })
+        );
+      }
+      return null;
+  }
 }
-
 
 /**
  * Service for managing AI Assistant interactions.
@@ -838,6 +850,216 @@ export class AiAssistantService {
       };
     }
 
+  /**
+     * Processes LLM requests through Google API
+     */
+    private async geminiLLMService(
+      client: WebSocket,
+      GoogleClient: any,
+      modelVersion: string,
+      systemPrompt: string,
+      userInput: string,
+      conversation: string,
+      streamResponse: boolean,
+      jsonResponseFormat: boolean,
+      temperature: number,
+      topP: number,
+      maxTokens: number,
+    ): Promise<void> {
+      // Return early if Google client creation failed
+      if (!GoogleClient) return;
+  
+      const startTime = performance.now();
+      
+      let parsedHistory: any[] = [];
+
+      try {
+        if (typeof conversation === "string" && conversation.trim()) {
+          parsedHistory = JSON.parse(conversation);
+          if (!Array.isArray(parsedHistory)) throw new Error("Invalid format");
+        }
+      } catch (err) {
+        console.error("Invalid conversation format", err);
+        parsedHistory = []; // fall back to empty history
+      }
+
+      try {        
+
+        // Handle streaming response
+        if (streamResponse === true) {
+          const requestPayload: any = {
+            model: modelVersion,
+            config: {
+              systemInstruction: systemPrompt,
+              maxOutputTokens: maxTokens,
+              temperature: temperature,
+              topP: topP,
+              ...(jsonResponseFormat && { responseMimeType: 'application/json' })
+            }
+          };
+
+          if (conversation) {
+            try {
+              const parsed = JSON.parse(conversation);
+              if (Array.isArray(parsed)) {
+                requestPayload.history = parsed;
+              } else {
+                console.warn("Conversation provided but not in expected format.");
+              }
+            } catch (err) {
+              console.warn("Failed to parse conversation:", err);
+            }
+          }
+
+          const response = await GoogleClient.chats.create(requestPayload);
+          const response1 = await response.sendMessageStream({ message: userInput });
+          
+          // Signal stream start
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(
+              JSON.stringify({
+                messages: "",
+                stream_status: "start"
+              })
+            );
+          }
+
+          // Process stream chunks
+          for await (const event of response1) {
+            if (client.readyState !== WebSocket.OPEN) break;
+            
+            const choice = event.text;
+            
+            // Send content chunk if it exists
+              client.send(
+                JSON.stringify({
+                  messages: choice,
+                  stream_status: "streaming"
+                })
+              );
+          }
+            
+          const TokensResponse = await GoogleClient.models.generateContent({
+            config: {
+              systemInstruction: systemPrompt,
+              maxOutputTokens: maxTokens,
+              temperature: temperature,
+              topP: topP,
+              ...(jsonResponseFormat && { responseMimeType: 'application/json' })
+            },
+            model: modelVersion,
+            contents: conversation || userInput,
+          });
+
+        
+          const endTime = performance.now();
+          const timeTaken = Math.round(endTime - startTime);
+
+          client.send(
+            JSON.stringify({
+              statusCode: 200,
+              messages: "",
+              stream_status: "end",
+              inputTokens: TokensResponse.usageMetadata.promptTokenCount,
+              outputTokens: TokensResponse.usageMetadata.candidatesTokenCount,
+              totalTokens: TokensResponse.usageMetadata.totalTokenCount,
+              timeTaken: `${timeTaken}ms`,
+            })
+          );
+        }
+
+        // Handle non-streaming response
+        else {
+          const requestPayload: any = {
+            model: modelVersion,
+            config: {
+              systemInstruction: systemPrompt,
+              maxOutputTokens: maxTokens > 0 ? maxTokens : 1024,
+              temperature: temperature,
+              topP: topP,
+              ...(jsonResponseFormat && { responseMimeType: 'application/json' })
+            }
+          };
+
+          if (conversation) {
+            try {
+              const parsed = JSON.parse(conversation);
+              if (Array.isArray(parsed)) {
+                requestPayload.history = parsed;
+              } else {
+                console.warn("Conversation provided but not in expected format.");
+              }
+            } catch (err) {
+              console.warn("Failed to parse conversation:", err);
+            }
+          }
+
+          const response = await GoogleClient.chats.create(requestPayload);
+          const response1 = await response.sendMessage({ message: userInput });
+
+          const TokensResponse = await GoogleClient.models.generateContent({
+            config: {
+              systemInstruction: systemPrompt,
+              maxOutputTokens: maxTokens,
+              temperature: temperature,
+              topP: topP,
+              ...(jsonResponseFormat && { responseMimeType: 'application/json' })
+            },
+            model: modelVersion,
+            contents: conversation || userInput,
+          });
+
+
+          // Signal stream start
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(
+              JSON.stringify({
+                messages: "",
+                stream_status: "start"
+              })
+            );
+          }
+          
+          const data = response1.text;
+
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(
+              JSON.stringify({
+                messages: data,
+                stream_status: "streaming"
+              })
+            );
+          }
+          
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(
+              JSON.stringify(this.formatResponse(
+                TokensResponse.usageMetadata.promptTokenCount || 0,
+                TokensResponse.usageMetadata.candidatesTokenCount || 0,
+                TokensResponse.usageMetadata.totalTokenCount || 0,
+                startTime
+              ))
+            );
+          }
+        }
+      } catch (error: any) {
+        if (client.readyState === WebSocket.OPEN) {
+            const endTime = performance.now();
+            const timeTaken = Math.round(endTime - startTime);
+            const message = (error.message.match(/"message":"([^"]+)"/) || [])[1] || "Some Issue Occurred in Processing your Request. Please try again";
+          client.send(
+            JSON.stringify({
+              timeTaken: `${timeTaken}ms`,
+              statusCode: error?.status || error?.error?.code || 500,
+              event: "error",
+              message: message
+            })
+          );
+        }
+      }
+    }
+
+
     /**
      * Processes LLM requests through Anthropic API
      */
@@ -1004,7 +1226,7 @@ export class AiAssistantService {
               timeTaken: `${timeTaken}ms`,
               statusCode: error?.status || 500,
               event: "error",
-              message: error,
+              message: error?.message || error?.error?.error?.message || "Some Issue Occurred in Processing your Request. Please try again",
             })
           );
         }
@@ -1176,7 +1398,7 @@ export class AiAssistantService {
               timeTaken: `${timeTaken}ms`,
               statusCode: error?.status || 500,
               event: "error",
-              message: error?.error?.message || "Some Issue Occurred in Processing your Request. Please try again",
+              message: error?.message || error?.error?.message || "Some Issue Occurred in Processing your Request. Please try again",
             })
           );
         }
@@ -1209,7 +1431,7 @@ export class AiAssistantService {
       //   { role: "system", content: systemPrompt },
       //   { role: "user", content: userInput },
       // ];
-
+      
       // Message for Contextual Chatbot 
       type ChatMessage = {
         role: Roles.system | Roles.user | Roles.assistant;
@@ -1218,22 +1440,26 @@ export class AiAssistantService {
 
       let messages: ChatMessage[];
 
-      if (typeof userInput === 'string') {
-        try {
-          messages = JSON.parse(userInput) as ChatMessage[];
-        } catch (err) {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              statusCode: 400,
-              event: "error",
-              message: "Invalid JSON format for userInput."
-            }));
+      if (modelVersion !== OpenAIModelVersion.GPT_o1_Mini) {
+
+
+        if (typeof userInput === 'string') {
+          try {
+            messages = JSON.parse(userInput) as ChatMessage[];
+          } catch (err) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                statusCode: 400,
+                event: "error",
+                message: "Invalid JSON format for userInput."
+              }));
+            }
+            return;
           }
-          return;
+        } else {
+          messages = userInput as ChatMessage[];
         }
-      } else {
-        messages = userInput as ChatMessage[];
-      }
+    }
 
       const o1miniMessage: { role: "system" | "user"; content: string } [] = [{ role: "user", content: userInput }]
       
@@ -1460,6 +1686,7 @@ export class AiAssistantService {
                 authKey = "",
                 systemPrompt,
                 userInput,
+                conversation,
                 streamResponse,
                 jsonResponseFormat,
                 temperature,
@@ -1526,6 +1753,27 @@ export class AiAssistantService {
                 temperature,
                 presencePenalty,
                 frequencePenalty,
+                maxTokens
+              );
+              continue;
+            }
+
+            if (model === Models.Google) {
+              // Create Google client
+              const GoogleClient = await initializeGenAI(authKey, client);
+              
+              // Process the LLM request
+              await this.geminiLLMService(
+                client,
+                GoogleClient,
+                modelVersion,
+                systemPrompt,
+                userInput,
+                conversation,
+                streamResponse,
+                jsonResponseFormat,
+                temperature,
+                topP,
                 maxTokens
               );
               continue;

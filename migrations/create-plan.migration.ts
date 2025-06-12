@@ -27,7 +27,7 @@ export class CreatePlanMigration implements OnModuleInit {
           name: defaultHubPlan,
           description: "Free tier with limited access",
           active: true,
-          limits: {
+          limits: { 
             workspacesPerHub: {
               area: LimitArea.WORKSPACE,
               value: 3,
@@ -43,6 +43,10 @@ export class CreatePlanMigration implements OnModuleInit {
             usersPerHub:{
               area: LimitArea.BLOCK,
               value: 3,
+            },
+            selectiveTestflowRun:{
+              area: LimitArea.TESTFLOW,
+              active: false
             }
           },
           createdAt: new Date(),
