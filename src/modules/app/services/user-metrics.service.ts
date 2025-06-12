@@ -61,11 +61,13 @@ export class UserMetricsService {
     for (const value of userRequestsMetric.values) {
       const userId = value.labels.user_id;
       if (userId) {
-        const current = userStats.get(userId) || { totalRequests: 0, lastActivity: new Date(0) };
+        // Ensure userId is a string
+        const userIdStr = String(userId);
+        const current = userStats.get(userIdStr) || { totalRequests: 0, lastActivity: new Date(0) };
         current.totalRequests += value.value;
         // Use current time as approximation since we don't store actual timestamps
         current.lastActivity = new Date();
-        userStats.set(userId, current);
+        userStats.set(userIdStr, current);
       }
     }
 

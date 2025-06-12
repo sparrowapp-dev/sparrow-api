@@ -135,6 +135,32 @@ describe("UserMetricsService", () => {
         lastActivity: expect.any(Date),
       });
     });
+
+    it("should handle numeric user IDs", async () => {
+      userRequestsCounter.get.mockResolvedValue({
+        name: "user_requests_total",
+        help: "Total number of requests per user",
+        type: "counter",
+        values: [
+          { value: 25, labels: { user_id: 123, method: "GET", status: "200", environment: "test" } },
+          { value: 35, labels: { user_id: "456", method: "POST", status: "201", environment: "test" } },
+        ],
+      } as any);
+
+      const result = await service.getUserRequestStats();
+
+      expect(result).toHaveLength(2);
+      expect(result.find(u => u.userId === "123")).toEqual({
+        userId: "123",
+        totalRequests: 25,
+        lastActivity: expect.any(Date),
+      });
+      expect(result.find(u => u.userId === "456")).toEqual({
+        userId: "456",
+        totalRequests: 35,
+        lastActivity: expect.any(Date),
+      });
+    });
   });
 
   describe("getTopActiveUsers", () => {
