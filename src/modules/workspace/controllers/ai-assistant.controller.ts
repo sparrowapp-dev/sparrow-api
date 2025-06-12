@@ -25,8 +25,9 @@ export class AiAssistantController {
   /**
    * Constructor to initialize AiAssistantController with the required service.
    * @param aiAssistantService - Injected AiAssistantService to handle business logic.
+   * * @param llmConversationService - Injected LlmConversationService to handle LLM conversation logic.
    */
-  constructor(private readonly aiAssistantService: AiAssistantService) {}
+  constructor(private readonly aiAssistantService: AiAssistantService ) {}
 
   @ApiOperation({
     summary: "Get a respose for AI assistant",
@@ -68,16 +69,14 @@ export class AiAssistantController {
   }
 
   @Post("generate-prompt")
-  async GeneratePrompt(
-    @Body() payload: ChatBotPayload,
-    @Res() res: FastifyReply,
-  ) {
+  async GeneratePrompt(@Body() payload: ChatBotPayload, @Res() res: FastifyReply) {
     const data = await this.aiAssistantService.promptGeneration(payload);
     const response = new ApiResponseService(
-      "Prompt Generated",
+      "Prompt Generated Successfully",
       HttpStatusCode.CREATED,
       data,
     );
     return res.status(response.httpStatusCode).send(response);
   }
+
 }

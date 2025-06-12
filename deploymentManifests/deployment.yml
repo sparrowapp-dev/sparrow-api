@@ -337,9 +337,6 @@ spec:
                   name: sparrow-api-secret
                   key: DEEPSEEK_API_VERSION
 
-      imagePullSecrets:
-        - name: acr-secret
-
 ---
 apiVersion: v1
 kind: Service

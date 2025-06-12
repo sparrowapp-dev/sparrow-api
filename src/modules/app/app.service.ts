@@ -82,6 +82,10 @@ export class AppService {
             signature: this.config.get("updater.macIntel.appSignature"),
             url: this.config.get("updater.macIntel.appUrl"),
           },
+          "linux-x86_64": {
+            signature: "",
+            url: "https://dev.sparrowapp.dev/", // URL is not required for deb, so providing dev url.
+          },
         },
       };
       return {
