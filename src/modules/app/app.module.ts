@@ -24,8 +24,6 @@ import { CustomMetricsMiddleware } from "./middleware/metrics.middleware";
 import { AppRepository } from "./app.repository";
 import { SentryModule } from "@sentry/nestjs/setup";
 import { UserAdminModule } from "../user-admin/user-admin.module";
-import { UserMetricsService } from "./services/user-metrics.service";
-import { UserMetricsController } from "./controllers/user-metrics.controller";
 
 @Module({
   imports: [
@@ -65,7 +63,7 @@ import { UserMetricsController } from "./controllers/user-metrics.controller";
     CommonModule,
     ProxyModule,
   ],
-  controllers: [AppController, UserMetricsController],
+  controllers: [AppController],
   providers: [
     CustomMetricsMiddleware,
     makeCounterProvider({
@@ -100,7 +98,6 @@ import { UserMetricsController } from "./controllers/user-metrics.controller";
     }),
     AppService,
     AppRepository,
-    UserMetricsService,
     {
       provide: EnvironmentVariables,
       useValue: transformAndValidateSync(EnvironmentVariables, process.env),

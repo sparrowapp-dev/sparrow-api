@@ -66,6 +66,7 @@ import { GoogleStrategy } from "./strategies/google.strategy";
   ],
   exports: [
     PassportModule.register({ defaultStrategy: "jwt" }),
+    JwtService,
     AuthService,
     UserService,
     UserRepository,
