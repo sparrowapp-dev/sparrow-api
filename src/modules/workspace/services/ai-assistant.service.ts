@@ -956,7 +956,7 @@ export class AiAssistantService {
           model: modelVersion,
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens > 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1009,7 +1009,7 @@ export class AiAssistantService {
         const TokensResponse = await GoogleClient.models.generateContent({
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens > 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1066,7 +1066,7 @@ export class AiAssistantService {
         const TokensResponse = await GoogleClient.models.generateContent({
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens > 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
