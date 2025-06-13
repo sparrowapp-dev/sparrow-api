@@ -1114,6 +1114,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         const timeTaken = Math.round(endTime - startTime);
         let message = "Some Issue Occurred in Processing your Request. Please try again";
+        let statusCode = 500;
 
         if (streamResponse === true) {
           const jsonPart = error.message.match(/{.*}/s)?.[0];
@@ -1121,17 +1122,19 @@ export class AiAssistantService {
             const outerError = JSON.parse(jsonPart);
             const innerError = JSON.parse(outerError.error.message);
             message = innerError.error.message || message;
+            statusCode = innerError.error?.code || statusCode;
           }
         } else {
           message =
             error.message.match(/"message":"([^"]+)"/)?.[1] ||
             message;
+          statusCode = parseInt(error.message?.match(/"code"\s*:\s*(\d+)/)?.[1]) || statusCode;
         }
 
         client.send(
           JSON.stringify({
             timeTaken: `${timeTaken}ms`,
-            statusCode: error?.status || error?.error?.code || 500,
+            statusCode: statusCode,
             event: "error",
             message: message,
           }),
