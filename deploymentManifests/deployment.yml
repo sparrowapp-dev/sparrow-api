@@ -341,6 +341,11 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: DEEPSEEK_API_VERSION
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DB_NAME   
 
       imagePullSecrets:
         - name: acr-secret
