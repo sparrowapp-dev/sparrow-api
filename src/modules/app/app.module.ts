@@ -24,6 +24,7 @@ import { CustomMetricsMiddleware } from "./middleware/metrics.middleware";
 import { AppRepository } from "./app.repository";
 import { SentryModule } from "@sentry/nestjs/setup";
 import { UserAdminModule } from "../user-admin/user-admin.module";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { UserAdminModule } from "../user-admin/user-admin.module";
     IdentityModule,
     WorkspaceModule,
     UserAdminModule,
+    BillingModule.register(),
     CommonModule,
     ProxyModule,
   ],

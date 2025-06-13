@@ -4,6 +4,7 @@ import { WebSocketAdapter } from "@nestjs/common";
 import { MessageMappingProperties } from "@nestjs/websockets";
 import { Observable, fromEvent, EMPTY, fromEventPattern } from "rxjs";
 import { mergeMap, filter } from "rxjs/operators";
+import { IoAdapter } from "@nestjs/platform-socket.io";
 
 type HybridWebsocketServer = WebSocket.Server | SocketIO.Server;
 type HybridWebsocketClient = WebSocket.WebSocket | SocketIO.Socket;
@@ -22,8 +23,30 @@ export interface SocketServerOptions {
   };
 }
 
+/**
+ * Custom IoAdapter to properly configure Socket.IO with Fastify
+ */
+export class CustomIoAdapter extends IoAdapter {
+  createIOServer(port: number, options?: any): any {
+    const server = super.createIOServer(port, {
+      ...options,
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+        credentials: true,
+      },
+      allowEIO3: true,
+      transports: ["polling"],
+    });
+    return server;
+  }
+}
+
 export class CustomWebSocketAdapter implements WebSocketAdapter {
-  constructor(private app: any) {}
+  private ioAdapter: CustomIoAdapter;
+  constructor(private app: any) {
+    this.ioAdapter = new CustomIoAdapter(app);
+  }
 
   create(
     port: number,
@@ -37,9 +60,15 @@ export class CustomWebSocketAdapter implements WebSocketAdapter {
           ...options,
         });
       case SocketServerType.SOCKET_IO:
-        return new SocketIO.Server(port, options);
+        // Create Socket.IO server with proper configuration
+        return this.ioAdapter.createIOServer(port, {
+          ...options,
+        });
       default:
-        return new SocketIO.Server(port, options);
+        // Default to Socket.IO with proper configuration
+        return this.ioAdapter.createIOServer(port, {
+          ...options,
+        });
     }
   }
 

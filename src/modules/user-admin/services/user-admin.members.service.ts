@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
 import { AdminMembersRepository } from "../repositories/user-admin.members.repository";
 import { WorkspaceService } from "@src/modules/workspace/services/workspace.service";
+import { TeamRole } from "@src/modules/common/enum/roles.enum";
 
 @Injectable()
 export class AdminMembersService {
@@ -136,5 +141,61 @@ export class AdminMembersService {
       totalPages: Math.ceil(totalCount / limit),
       limit,
     };
+  }
+
+  /**
+   * Get Stripe customer ID for a hub
+   * @param hubId The hub/team ID
+   * @returns The Stripe customer ID or null if not found
+   */
+  async getStripeCustomerId(hubId: string): Promise<string | null> {
+    try {
+      const hub = await this.adminHubsRepo.findHubById(hubId);
+
+      if (!hub) {
+        throw new NotFoundException("Hub not found");
+      }
+
+      return hub.stripeCustomerId || null;
+    } catch (error) {
+      console.error("Error fetching Stripe customer ID:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save Stripe customer ID for a hub
+   * @param hubId The hub/team ID
+   * @param customerId The Stripe customer ID
+   * @param userId The user ID making the request (for authorization check)
+   */
+  async saveStripeCustomerId(
+    hubId: string,
+    customerId: string,
+    userId: string,
+  ): Promise<void> {
+    // Get hub and verify user has permission to update it
+    const hub = await this.adminHubsRepo.findHubById(hubId);
+
+    if (!hub) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Check if user is owner or admin of the hub
+    const userInHub = hub.users.find(
+      (user: { id: string }) => user.id.toString() === userId.toString(),
+    );
+
+    if (
+      !userInHub ||
+      (userInHub.role !== TeamRole.OWNER && userInHub.role !== TeamRole.ADMIN)
+    ) {
+      throw new UnauthorizedException(
+        "Only hub owners and admins can update the Stripe customer ID",
+      );
+    }
+
+    // Update the hub with the new customer ID
+    await this.adminHubsRepo.updateHubStripeCustomerId(hubId, customerId);
   }
 }

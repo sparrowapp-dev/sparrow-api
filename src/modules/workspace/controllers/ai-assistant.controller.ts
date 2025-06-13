@@ -15,6 +15,7 @@ import {
   ErrorResponsePayload,
   ChatBotPayload
 } from "../payloads/ai-assistant.payload";
+import { UserLimitGuard } from "@src/modules/identity/guards/user-limt-guard";
 
 @ApiBearerAuth()
 @ApiTags("AI Support")
@@ -37,6 +38,7 @@ export class AiAssistantController {
   })
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
   @Post("prompt")
+  @UseGuards(UserLimitGuard)
   async generate(@Body() prompt: PromptPayload, @Res() res: FastifyReply) {
     const data = await this.aiAssistantService.generateText(prompt);
     const response = new ApiResponseService(

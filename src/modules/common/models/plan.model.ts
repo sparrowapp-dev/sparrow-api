@@ -59,6 +59,14 @@ export class SelectiveTestflowRun {
   active: boolean;
 }
 
+export class AiRequestsPerMonth {
+  area: LimitArea.AI;
+
+  @IsNumber()
+  @IsNotEmpty()
+  value: number;
+}
+
 export class ActiveSync {
   area: LimitArea.COLLECTION;
 
@@ -79,7 +87,8 @@ export class Limits {
   blocksPerTestflow: BlocksPerTestflow;
   usersPerHub: UsersPerHub;
   selectiveTestflowRun: SelectiveTestflowRun;
-  activeSync: ActiveSync
+  aiRequestsPerMonth: AiRequestsPerMonth;
+  activeSync: ActiveSync;
   testflowRunHistory: TestflowRunHistory;
 }
 

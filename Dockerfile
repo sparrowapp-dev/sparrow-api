@@ -1,6 +1,14 @@
 FROM node:18-alpine AS deps
 WORKDIR /app
 
+# Add build argument for GitHub token
+ARG GITHUB_TOKEN
+
+# Configure npm and pnpm to use GitHub token
+RUN echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > .npmrc
+RUN echo "@sparrowapp-dev:registry=https://npm.pkg.github.com" >> .npmrc
+RUN echo "always-auth=true" >> .npmrc
+
 # Copy only the files needed to install dependencies
 COPY package.json pnpm-lock.yaml* ./
 
@@ -10,6 +18,7 @@ RUN apk update && apk add --no-cache python3 py3-pip build-base gcc
 # Install dependencies with the preferred package manager
 RUN npm i -g pnpm@latest
 RUN pnpm install --frozen-lockfile
+RUN pnpm add @sparrowapp-dev/stripe-billing@1.0.0
 # RUN corepack enable pnpm && pnpm i --frozen-lockfile
 
 FROM node:18-alpine AS builder

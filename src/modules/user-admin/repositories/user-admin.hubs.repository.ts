@@ -1,4 +1,8 @@
-import { Injectable, Inject } from "@nestjs/common";
+import {
+  Injectable,
+  Inject,
+  InternalServerErrorException,
+} from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { Team } from "@src/modules/common/models/team.model";
 import { Db, ObjectId, WithId } from "mongodb";
@@ -117,5 +121,31 @@ export class AdminHubsRepository {
     };
 
     return await this.findTeamsByQuery(query);
+  }
+
+  /**
+   * Update a hub's Stripe customer ID
+   * @param hubId The hub ID
+   * @param customerId The Stripe customer ID
+   */
+  async updateHubStripeCustomerId(
+    hubId: string,
+    customerId: string,
+  ): Promise<void> {
+    try {
+      const hubObjectId = new ObjectId(hubId);
+
+      await this.db
+        .collection(Collections.TEAM)
+        .updateOne(
+          { _id: hubObjectId },
+          { $set: { stripeCustomerId: customerId } },
+        );
+    } catch (error) {
+      console.error("Error updating hub Stripe customer ID:", error);
+      throw new InternalServerErrorException(
+        "Failed to update hub Stripe customer ID",
+      );
+    }
   }
 }

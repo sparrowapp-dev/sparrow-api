@@ -9,6 +9,9 @@ import {
   Param,
   Delete,
   Put,
+  Req,
+  UnauthorizedException,
+  BadRequestException,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import {
@@ -333,5 +336,102 @@ export class AdminMembersController {
       workspace,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @Get("stripe-customer")
+  @ApiOperation({
+    summary: "Get Stripe customer ID for a hub",
+    description: "Returns the stored Stripe customer ID for the specified hub",
+  })
+  @ApiQuery({
+    name: "hubId",
+    required: true,
+    type: String,
+    description: "The ID of the hub to fetch the customer ID for",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Customer ID retrieved successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Hub not found" })
+  async getStripeCustomerId(
+    @Query("hubId") hubId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const customerId =
+      await this.adminMembersService.getStripeCustomerId(hubId);
+
+    const response = { customerId: customerId };
+
+    const responseData = new ApiResponseService(
+      "Stripe customer ID retrieved",
+      HttpStatusCode.OK,
+      response,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @Post("stripe-customer")
+  @ApiOperation({
+    summary: "Save Stripe customer ID for a hub",
+    description: "Saves the Stripe customer ID for the specified hub",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        customerId: {
+          type: "string",
+          description: "Stripe customer ID",
+          example: "cus_123456789",
+        },
+        hubId: {
+          type: "string",
+          description: "Hub ID",
+          example: "60d6ec9f1d9a4c001f3a8f5d",
+        },
+      },
+      required: ["customerId", "hubId"],
+    },
+  })
+  @ApiResponse({ status: 200, description: "Customer ID saved successfully" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Hub not found" })
+  async saveStripeCustomerId(@Req() req: any, @Res() res: FastifyReply) {
+    try {
+      const userId = req.user._id;
+
+      const { customerId, hubId } = req.body;
+
+      await this.adminMembersService.saveStripeCustomerId(
+        hubId,
+        customerId,
+        userId,
+      );
+
+      const responseData = new ApiResponseService(
+        "Stripe customer ID saved successfully",
+        HttpStatusCode.OK,
+        { success: true },
+      );
+
+      return res.status(responseData.httpStatusCode).send(responseData);
+    } catch (error) {
+      console.error("Error saving Stripe customer ID:", error);
+
+      const responseData = new ApiResponseService(
+        error.message || "Failed to save customer ID",
+        error.status || HttpStatusCode.BAD_REQUEST,
+        null,
+      );
+
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
   }
 }

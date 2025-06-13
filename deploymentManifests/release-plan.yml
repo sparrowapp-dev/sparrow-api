@@ -3,22 +3,22 @@ kind: Deployment
 metadata:
   creationTimestamp: null
   labels:
-    app: release-api-v2
-  name: release-api-v2
+    app: sparrow-api
+  name: sparrow-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: release-api-v2
+      app: sparrow-api
   template:
     metadata:
       creationTimestamp: null
       labels:
-        app: release-api-v2
+        app: sparrow-api
     spec:
       containers:
         - image: sparrowprod.azurecr.io/sparrow-api:_BUILD__ID_
-          name: release-api-v2
+          name: sparrow-api
           imagePullPolicy: Always
           resources: {}
           ports:
@@ -28,315 +28,315 @@ spec:
             - name: PORT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: PORT
             - name: APP_ENV
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: APP_ENV
             - name: APP_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: APP_URL
             - name: JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: JWT_SECRET_KEY
             - name: EMAIL_VALIDATION_CODE_EXPIRY_TIME
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: EMAIL_VALIDATION_CODE_EXPIRY_TIME
             - name: JWT_EXPIRATION_TIME
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: JWT_EXPIRATION_TIME
             - name: DB_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: DB_URL
             - name: REFRESH_TOKEN_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: REFRESH_TOKEN_SECRET_KEY
             - name: REFRESH_TOKEN_EXPIRATION_TIME
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: REFRESH_TOKEN_EXPIRATION_TIME
             - name: REFRESH_TOKEN_MAX_LIMIT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: REFRESH_TOKEN_MAX_LIMIT
             - name: SMTP_ENABLED
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SMTP_ENABLED
             - name: SMTP_SENDER_EMAIL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SMTP_SENDER_EMAIL
             - name: SMTP_SENDER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SMTP_SENDER_PASSWORD
             - name: SMTP_MAIL_HOST
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SMTP_MAIL_HOST
             - name: SMTP_MAIL_PORT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SMTP_MAIL_PORT
             - name: SMTP_MAIL_SECURE
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SMTP_MAIL_SECURE
             - name: SMTP_USER_NAME
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SMTP_USER_NAME
             - name: LOGIN_REDIRECT_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: LOGIN_REDIRECT_URL
             - name: GOOGLE_APP_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: GOOGLE_APP_URL
             - name: GOOGLE_ACCESS_TYPE
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: GOOGLE_ACCESS_TYPE
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: GOOGLE_CLIENT_ID
             - name: ENABLE_GOOGLE_AUTH
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: ENABLE_GOOGLE_AUTH
             - name: GOOGLE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: GOOGLE_CLIENT_SECRET
             - name: KAFKA_BROKER
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: KAFKA_BROKER
             - name: APP_UPDATE_AVAILABLE
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: APP_UPDATE_AVAILABLE
             - name: APP_VERSION
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: APP_VERSION
             - name: WINDOWS_APP_SIGNATURE
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: WINDOWS_APP_SIGNATURE
             - name: WINDOWS_APP_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: WINDOWS_APP_URL
             - name: MAC_APPLE_SILICON_APP_SIGNATURE
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: MAC_APPLE_SILICON_APP_SIGNATURE
             - name: MAC_APPLE_SILICON_APP_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: MAC_APPLE_SILICON_APP_URL
             - name: MAC_INTEL_APP_SIGNATURE
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: MAC_INTEL_APP_SIGNATURE
             - name: MAC_INTEL_APP_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: MAC_INTEL_APP_URL
             - name: SPARROW_EMAIL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SPARROW_EMAIL
             - name: AZURE_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_CONNECTION_STRING
             - name: FEEDBACK_BLOB_CONTAINER
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: FEEDBACK_BLOB_CONTAINER
             - name: AZURE_OPENAI_ENDPOINT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_OPENAI_ENDPOINT
             - name: AZURE_OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_OPENAI_API_KEY
             - name: AZURE_OPENAI_DEPLOYMENT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_OPENAI_DEPLOYMENT
             - name: AZURE_OPENAI_API_VERSION
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_OPENAI_API_VERSION
             - name: AZURE_OPENAI_MAX_TOKENS
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_OPENAI_MAX_TOKENS
             - name: AZURE_INSIGHTS_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_INSIGHTS_CONNECTION_STRING
             - name: AZURE_OPENAI_MONTHLY_TOKEN_LIMIT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_OPENAI_MONTHLY_TOKEN_LIMIT
             - name: HUBSPOT_BASEURL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: HUBSPOT_BASEURL
             - name: HUBSPOT_INTEGRATION_ENABLED
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: HUBSPOT_INTEGRATION_ENABLED
             - name: HUBSPOT_PORTALID
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: HUBSPOT_PORTALID
             - name: HUBSPOT_FORMID
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: HUBSPOT_FORMID
             - name: BEEHIIV_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: BEEHIIV_API_KEY
             - name: BEEHIIV_PUBLICATION_ID
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: BEEHIIV_PUBLICATION_ID
             - name: AZURE_OPENAI_ASSISTANT_ID
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AZURE_OPENAI_ASSISTANT_ID
             - name: AUTH_BASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: AUTH_BASE_URL
             - name: MARKETING_BASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: MARKETING_BASE_URL
             - name: WHITELIST_USER_EMAILS
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: WHITELIST_USER_EMAILS
             - name: SENTRY_DSN_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SENTRY_DSN_KEY
             - name: SENTRY_APP_ENVIRONMENT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: SENTRY_APP_ENVIRONMENT
             - name: DEEPSEEK_ENDPOINT
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: DEEPSEEK_ENDPOINT
             - name: DEEPSEEK_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: DEEPSEEK_API_KEY
             - name: DEEPSEEK_API_VERSION
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: DEEPSEEK_API_VERSION
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: STRIPE_SECRET_KEY
             - name: STRIPE_PUBLISHABLE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: STRIPE_PUBLISHABLE_KEY
             - name: STRIPE_WEBHOOK
               valueFrom:
                 secretKeyRef:
-                  name: release-api-v2-secret
+                  name: sparrow-api-secret
                   key: STRIPE_WEBHOOK
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: release-api-v2
+  name: sparrow-api
   labels:
-    run: release-api-v2
+    run: sparrow-api
 spec:
   type: ClusterIP
   selector:
-    app: release-api-v2
+    app: sparrow-api
   ports:
     - name: http
       protocol: TCP

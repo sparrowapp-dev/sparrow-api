@@ -1,4 +1,5 @@
 import { Env } from "@common/config/env.validation";
+import { publish } from "rxjs";
 
 export default () => ({
   app: {
@@ -98,7 +99,7 @@ export default () => ({
     deepseekEndpoint: process.env.DEEPSEEK_ENDPOINT,
     deepseekApiKey: process.env.DEEPSEEK_API_KEY,
     deepseekApiVersion: process.env.DEEPSEEK_API_VERSION,
-    deepseekURL: "https://api.deepseek.com"
+    deepseekURL: "https://api.deepseek.com",
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,
@@ -119,5 +120,11 @@ export default () => ({
   sentry: {
     dsn: process.env.SENTRY_DSN_KEY,
     environment: process.env.SENTRY_APP_ENVIRONMENT,
+  },
+
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   },
 });
