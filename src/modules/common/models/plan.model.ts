@@ -59,6 +59,12 @@ export class SelectiveTestflowRun {
   active: boolean;
 }
 
+export class ActiveSync {
+  area: LimitArea.COLLECTION;
+
+  @IsBoolean()
+  active: boolean;
+}
 export class TestflowRunHistory {
   area: LimitArea.TESTFLOW_RUNHISTORY;
 
@@ -73,6 +79,7 @@ export class Limits {
   blocksPerTestflow: BlocksPerTestflow;
   usersPerHub: UsersPerHub;
   selectiveTestflowRun: SelectiveTestflowRun;
+  activeSync: ActiveSync
   testflowRunHistory: TestflowRunHistory;
 }
 
