@@ -22,11 +22,11 @@ export class LlmConversationRepository {
 
   async getConversations(
     provider: string,
-    apiKey: string
+    apiKey: string,
   ): Promise<any[] | null> {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
-
+ 
     const document = await collection.findOne({
       [providerField]: {
         $elemMatch: {
@@ -34,16 +34,29 @@ export class LlmConversationRepository {
         },
       },
     });
-
+ 
     if (!document || !document[providerField]) {
       return null;
     }
-
+ 
     const providerEntry = document[providerField].find(
-      (entry: { value: string }) => entry.value === apiKey
+      (entry: { value: string }) => entry.value === apiKey,
     );
-
-    return providerEntry?.conversations ?? null;
+ 
+    const conversations = providerEntry?.conversations;
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+ 
+    // Sort by date and time, latest first
+    return (
+      conversations?.sort(
+        (
+          a: { date: string; time: string },
+          b: { date: string; time: string },
+        ) =>
+          new Date(`${b.date} ${b.time}`).getTime() -
+          new Date(`${a.date} ${a.time}`).getTime(),
+      ) ?? null
+    );
   }
 
 
