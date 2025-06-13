@@ -2,13 +2,13 @@ import { ApiProperty } from "@nestjs/swagger";
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsNotEmpty,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
   ValidateNested,
-  IsDateString,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
@@ -140,6 +140,59 @@ export class UpdateTeamDto {
   @IsOptional()
   @IsObject()
   logo?: logoDto;
+}
+
+export class ResponseTeam {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsString()
+  @IsOptional()
+  hubUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  githubUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  xUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  linkedinUrl?: string;
+
+  @IsOptional()
+  @IsObject()
+  logo?: TeamLogoDto;
+
+  @IsArray()
+  @Type(() => UserDto)
+  @ValidateNested({ each: true })
+  users: UserDto[];
+
+  @IsArray()
+  @IsNotEmpty()
+  owner: string;
+
+  @IsDateString()
+  createdAt: Date;
+
+  @IsDateString()
+  updatedAt: Date;
+
+  @IsString()
+  @IsOptional()
+  createdBy?: string;
+
+  @IsString()
+  @IsOptional()
+  updatedBy?: string;
 }
 
 export class GetTeamDto {

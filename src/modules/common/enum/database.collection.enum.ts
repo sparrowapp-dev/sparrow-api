@@ -14,4 +14,5 @@ export enum Collections {
   TESTFLOW = "testflow",
   USERINVITES = "userinvites",
   AILOGS = "ailogs",
+  USERLIMITLOGS = "userlimitlogs",
 }
