@@ -346,6 +346,21 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: DB_NAME   
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_SECRET_KEY
+            - name: STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_PUBLISHABLE_KEY
+            - name: STRIPE_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_WEBHOOK
 
       imagePullSecrets:
         - name: acr-secret
