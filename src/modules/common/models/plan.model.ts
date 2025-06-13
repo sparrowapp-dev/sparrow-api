@@ -16,6 +16,7 @@ export enum LimitArea {
   BLOCK = "block",
   ENVIRONMENT = "environment",
   COLLECTION = "collection",
+  TESTFLOW_RUNHISTORY = "testflow-run-history",
   AI = "ai",
 }
 
@@ -58,12 +59,21 @@ export class SelectiveTestflowRun {
   active: boolean;
 }
 
+export class TestflowRunHistory {
+  area: LimitArea.TESTFLOW_RUNHISTORY;
+
+  @IsNumber()
+  @IsNotEmpty()
+  value: number;
+}
+
 export class Limits {
   workspacesPerHub: WorkspaceLimit;
   testflowPerWorkspace: TestflowLimit;
   blocksPerTestflow: BlocksPerTestflow;
   usersPerHub: UsersPerHub;
   selectiveTestflowRun: SelectiveTestflowRun;
+  testflowRunHistory: TestflowRunHistory;
 }
 
 export class Plan {

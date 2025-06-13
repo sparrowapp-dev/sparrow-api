@@ -23,9 +23,7 @@ export class CreateWorkspaceGuard implements CanActivate {
       usersTeamdetails?.workspaces?.length >=
       planData?.limits?.workspacesPerHub?.value
     ) {
-      throw new ForbiddenException(
-        "You’ve reached the workspace limit for your current plan. Upgrade plan to create more workspaces.",
-      );
+      throw new ForbiddenException("Plan limit reached");
     }
     return true;
   }

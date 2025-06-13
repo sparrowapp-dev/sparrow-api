@@ -30,7 +30,8 @@
     "start:migration-testflow": "ts-node -r tsconfig-paths/register src/migrationTestflow.ts",
     "start:migration-workspace-type": "ts-node -r tsconfig-paths/register src/migrationWorkspaceType.ts",
     "start:migration-chatbot-ai-model": "ts-node -r tsconfig-paths/register src/migration-chatbotstats.ts",
-    "start:create-plan": "ts-node -r tsconfig-paths/register src/create-plan.ts"
+    "start:create-plan": "ts-node -r tsconfig-paths/register src/create-plan.ts",
+    "start:upgrade-plan": "ts-node -r tsconfig-paths/register src/upgrade-plan.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.51.0",
