@@ -66,13 +66,56 @@ export class MockServerService {
                 mock?.url === mockUrl &&
                 mock?.method?.toUpperCase() === method
               ) {
-                const responseData = {
-                  status:
+                // Filter active mock responses
+                const activeMockResponses =
+                  item?.items?.filter(
+                    (responseItem: any) =>
+                      responseItem.mockRequestResponse?.isMockResponseActive ===
+                      true,
+                  ) || [];
+
+                let selectedResponse = null;
+                let responseStatus = 200;
+                let responseBody = "";
+                let selectedResponseBodyType = BodyModeEnum["text/plain"];
+                let responseHeaders = [];
+
+                // If there are active mock responses, randomly select one
+                if (activeMockResponses?.length > 0) {
+                  const randomIndex = Math.floor(
+                    Math.random() * activeMockResponses.length,
+                  );
+                  selectedResponse = activeMockResponses[randomIndex];
+
+                  responseStatus =
+                    selectedResponse.mockRequestResponse?.responseStatus || 200;
+                  responseBody =
+                    selectedResponse.mockRequestResponse?.responseBody || "";
+                  selectedResponseBodyType =
+                    selectedResponse.mockRequestResponse
+                      ?.selectedResponseBodyType ||
+                    mock.selectedResponseBodyType;
+                  responseHeaders =
+                    selectedResponse.mockRequestResponse?.responseHeaders || [];
+                } else {
+                  // Fallback to original mock response if no active responses
+                  responseStatus =
                     mock?.responseStatus && mock.responseStatus !== ""
                       ? mock.responseStatus
-                      : 200,
-                  body: mock.responseBody ?? "",
-                  contentType: mock.selectedResponseBodyType,
+                      : 200;
+                  responseBody = mock.responseBody ?? "";
+                }
+                // Filter headers that have key, value, and are checked
+                const filteredResponseHeaders = responseHeaders.filter(
+                  (header: any) =>
+                    header?.key && header?.value && header?.checked,
+                );
+                const responseData = {
+                  status: responseStatus,
+                  body: responseBody,
+                  contentType:
+                    selectedResponseBodyType || BodyModeEnum["text/plain"],
+                  responseHeaders: filteredResponseHeaders,
                 };
 
                 const duration = Math.round(Date.now() - startTime);
@@ -89,14 +132,14 @@ export class MockServerService {
                   name: item.name,
                   url: mockEndpoint(url),
                   method: req.method as HTTPMethods,
-                  responseStatus: responseData.status,
+                  responseStatus: responseData.status.toString(),
                   duration: duration,
                   requestHeaders: mock.headers,
                   requestBody: mock.body,
                   selectedRequestBodyType: mock.selectedRequestBodyType,
-                  selectedResponseBodyType: mock.selectedResponseBodyType,
-                  responseHeaders: mock.responseHeaders,
-                  responseBody: mock?.responseBody ?? "",
+                  selectedResponseBodyType: responseData.contentType,
+                  responseHeaders: responseData.responseHeaders,
+                  responseBody: responseData?.body ?? "",
                 };
 
                 await this.storeRequestHistory(collectionId, historyEntry);

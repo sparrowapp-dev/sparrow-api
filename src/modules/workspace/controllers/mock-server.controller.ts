@@ -41,6 +41,14 @@ export class MockServerController {
     if (response?.contentType) {
       res.header("Content-Type", response.contentType);
     }
+    // Set response headers if they exist
+    if (response?.responseHeaders && Array.isArray(response.responseHeaders)) {
+      response.responseHeaders.forEach((header: any) => {
+        if (header?.key && header?.value && header?.checked) {
+          res.header(header.key, header.value);
+        }
+      });
+    }
     return res.status(response.status).send(response.body);
   }
 }
