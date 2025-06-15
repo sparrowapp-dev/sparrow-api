@@ -127,6 +127,7 @@ export class StripeController {
       this.checkStripeAvailability();
 
       const customer = await this.stripeService.createCustomer(
+        createCustomerDto.name,
         createCustomerDto.email,
         createCustomerDto.metadata,
       );
@@ -535,7 +536,7 @@ export class StripeController {
           await this.stripeSubscriptionService.handleSubscriptionUpdated(
             event.data.object,
           );
-          
+
           // Get the updated team data
           const teamUpdated = await this.stripeSubscriptionRepo.findTeamById(
             event.data.object.metadata?.hubId,
@@ -545,49 +546,51 @@ export class StripeController {
           if (event.data.object.status === "canceled") {
             // Determine the event type based on cancellation reason
             let eventType = PaymentEventType.SUBSCRIPTION_CANCELED;
-            
+
             // If cancellation was due to payment failure, use a specific event type
-            if (event.data.object.cancellation_details?.reason === "payment_failed") {
+            if (
+              event.data.object.cancellation_details?.reason ===
+              "payment_failed"
+            ) {
               eventType = PaymentEventType.SUBSCRIPTION_CANCELED_PAYMENT_FAILED;
             }
-            
-            this.stripeWebhookGateway.emitPaymentEvent(
-              eventType,
-              {
-                subscription: event.data.object,
-                team: teamUpdated,
-                cancellationReason: event.data.object.cancellation_details?.reason || "unknown"
-              },
-            );
+
+            this.stripeWebhookGateway.emitPaymentEvent(eventType, {
+              subscription: event.data.object,
+              team: teamUpdated,
+              cancellationReason:
+                event.data.object.cancellation_details?.reason || "unknown",
+            });
           }
           break;
-          
+
         case "customer.subscription.deleted":
           await this.stripeSubscriptionService.handleSubscriptionDeleted(
             event.data.object,
           );
-          
+
           // Get the updated team data
           const teamDeleted = await this.stripeSubscriptionRepo.findTeamById(
             event.data.object.metadata?.hubId,
           );
-          
+
           // Determine the event type based on cancellation reason
           let deletedEventType = PaymentEventType.SUBSCRIPTION_DELETED;
-          
+
           // If deletion was due to payment failure, use a specific event type
-          if (event.data.object.cancellation_details?.reason === "payment_failed") {
-            deletedEventType = PaymentEventType.SUBSCRIPTION_DELETED_PAYMENT_FAILED;
+          if (
+            event.data.object.cancellation_details?.reason === "payment_failed"
+          ) {
+            deletedEventType =
+              PaymentEventType.SUBSCRIPTION_DELETED_PAYMENT_FAILED;
           }
-          
-          this.stripeWebhookGateway.emitPaymentEvent(
-            deletedEventType,
-            {
-              subscription: event.data.object,
-              team: teamDeleted,
-              cancellationReason: event.data.object.cancellation_details?.reason || "unknown"
-            },
-          );
+
+          this.stripeWebhookGateway.emitPaymentEvent(deletedEventType, {
+            subscription: event.data.object,
+            team: teamDeleted,
+            cancellationReason:
+              event.data.object.cancellation_details?.reason || "unknown",
+          });
           break;
 
         case "invoice.payment_failed":
