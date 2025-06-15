@@ -35,6 +35,9 @@ export class MockServerService {
       // Extract collectionId
       const segments = url.split("/");
       const collectionId = segments[3] || null; // 3rd index (after /api/mock)
+      // Extract the rest of the URL after the collection ID with leading slash
+      const restUrl =
+        segments.length > 4 ? "/" + segments.slice(4).join("/") : "";
       if (collectionId) {
         const modifiedCollectionId = new ObjectId(collectionId);
         const collection =
@@ -63,7 +66,7 @@ export class MockServerService {
               const mockUrl = `${baseUrl}${url}`;
 
               if (
-                mock?.url === mockUrl &&
+                mock?.url === restUrl &&
                 mock?.method?.toUpperCase() === method
               ) {
                 // Filter active mock responses
