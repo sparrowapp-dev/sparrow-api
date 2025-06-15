@@ -15,6 +15,13 @@ export class CreateCustomerDto {
   @IsEmail()
   email: string;
 
+  @ApiProperty({
+    description: "Customer name",
+    example: "John Doe",
+  })
+  @IsString()
+  name: string;
+
   @ApiPropertyOptional({
     description: "Additional metadata for the customer",
     example: { userId: "12345", companyName: "Acme Inc." },
