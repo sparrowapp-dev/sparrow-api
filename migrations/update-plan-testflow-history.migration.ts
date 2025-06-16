@@ -50,7 +50,7 @@ export class UpdateTestflowHistoryPlanMigration implements OnModuleInit {
                   value: desiredValue,
                 },
                 updatedAt: new Date(),
-                updatedBy: "migration-script",
+                updatedBy: "system",
               },
             },
           );
