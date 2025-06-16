@@ -216,18 +216,18 @@ export class AiAssistantService {
     if (whitelistEmails) {
       parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
     }
-    if (
-      (stat?.tokenStats &&
-        stat.tokenStats?.yearMonth === currentYearMonth &&
-        stat.tokenStats.tokenUsage > (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(user?.email)) ||
-      (stat?.tokenStats &&
-        stat.tokenStats?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(user?.email) &&
-        stat.tokenStats.tokenUsage > this.whiteListUserTokenLimit)
-    ) {
-      throw new BadRequestException("Limit reached");
-    }
+    // if (
+    //   (stat?.tokenStats &&
+    //     stat.tokenStats?.yearMonth === currentYearMonth &&
+    //     stat.tokenStats.tokenUsage > (this.monthlyTokenLimit || 0) &&
+    //     !parsedWhiteListEmails.includes(user?.email)) ||
+    //   (stat?.tokenStats &&
+    //     stat.tokenStats?.yearMonth === currentYearMonth &&
+    //     parsedWhiteListEmails.includes(user?.email) &&
+    //     stat.tokenStats.tokenUsage > this.whiteListUserTokenLimit)
+    // ) {
+    //   throw new BadRequestException("Limit reached");
+    // }
     const { text: prompt, threadId, instructions } = data;
     const assistantId = await this.createAssistant(instructions);
     if (!assistantId) {
