@@ -1439,6 +1439,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.AI_REQUEST,
           workspaceId: aiRequest.workspaceId,
         }),
