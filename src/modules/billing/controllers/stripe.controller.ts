@@ -127,6 +127,7 @@ export class StripeController {
       this.checkStripeAvailability();
 
       const customer = await this.stripeService.createCustomer(
+        createCustomerDto.name,
         createCustomerDto.email,
         createCustomerDto.metadata,
       );
@@ -531,59 +532,144 @@ export class StripeController {
           break;
 
         case "customer.subscription.updated":
+          // Only handle for specific status changes, like cancellation
           await this.stripeSubscriptionService.handleSubscriptionUpdated(
             event.data.object,
           );
+
           // Get the updated team data
           const teamUpdated = await this.stripeSubscriptionRepo.findTeamById(
             event.data.object.metadata?.hubId,
           );
 
-          this.stripeWebhookGateway.emitPaymentEvent(
-            PaymentEventType.SUBSCRIPTION_UPDATED,
-            {
+          // Only emit event if there's a status change that matters
+          if (event.data.object.status === "canceled") {
+            // Determine the event type based on cancellation reason
+            let eventType = PaymentEventType.SUBSCRIPTION_CANCELED;
+
+            // If cancellation was due to payment failure, use a specific event type
+            if (
+              event.data.object.cancellation_details?.reason ===
+              "payment_failed"
+            ) {
+              eventType = PaymentEventType.SUBSCRIPTION_CANCELED_PAYMENT_FAILED;
+            }
+
+            this.stripeWebhookGateway.emitPaymentEvent(eventType, {
               subscription: event.data.object,
               team: teamUpdated,
-            },
+              cancellationReason:
+                event.data.object.cancellation_details?.reason || "unknown",
+            });
+          }
+          break;
+
+        case "customer.subscription.deleted":
+          await this.stripeSubscriptionService.handleSubscriptionDeleted(
+            event.data.object,
           );
+
+          // Get the updated team data
+          const teamDeleted = await this.stripeSubscriptionRepo.findTeamById(
+            event.data.object.metadata?.hubId,
+          );
+
+          // Determine the event type based on cancellation reason
+          let deletedEventType = PaymentEventType.SUBSCRIPTION_DELETED;
+
+          // If deletion was due to payment failure, use a specific event type
+          if (
+            event.data.object.cancellation_details?.reason === "payment_failed"
+          ) {
+            deletedEventType =
+              PaymentEventType.SUBSCRIPTION_DELETED_PAYMENT_FAILED;
+          }
+
+          this.stripeWebhookGateway.emitPaymentEvent(deletedEventType, {
+            subscription: event.data.object,
+            team: teamDeleted,
+            cancellationReason:
+              event.data.object.cancellation_details?.reason || "unknown",
+          });
           break;
 
         case "invoice.payment_failed":
           await this.stripeSubscriptionService.handleInvoicePaymentFailed(
             event.data.object,
           );
-          // Get team data for the failed payment
-          const teamWithFailedPayment =
-            await this.stripeSubscriptionRepo.findTeamById(
-              event.data.object.parent?.subscription_details?.metadata?.hubId,
-            );
 
-          this.stripeWebhookGateway.emitPaymentEvent(
-            PaymentEventType.PAYMENT_FAILED,
-            {
-              invoice: event.data.object,
-              team: teamWithFailedPayment,
-            },
-          );
-          break;
-
-        case "invoice.payment_succeeded":
-          await this.stripeSubscriptionService.handleInvoicePaymentSucceeded(
+          // Extract metadata from the invoice to find the related team
+          const { metadata: failedMetadata } = this.extractInvoiceMetadata(
             event.data.object,
           );
-          // Get team data for the successful payment
-          const teamWithSuccessfulPayment =
-            await this.stripeSubscriptionRepo.findTeamById(
-              event.data.object.parent?.subscription_details?.metadata?.hubId,
-            );
 
-          this.stripeWebhookGateway.emitPaymentEvent(
-            PaymentEventType.PAYMENT_SUCCESS,
-            {
-              invoice: event.data.object,
-              team: teamWithSuccessfulPayment,
-            },
+          if (failedMetadata?.hubId) {
+            const teamWithFailedPayment =
+              await this.stripeSubscriptionRepo.findTeamById(
+                failedMetadata.hubId,
+              );
+
+            this.stripeWebhookGateway.emitPaymentEvent(
+              PaymentEventType.PAYMENT_FAILED,
+              {
+                invoice: event.data.object,
+                team: teamWithFailedPayment,
+              },
+            );
+          }
+          break;
+
+        case "invoice.paid":
+          await this.stripeSubscriptionService.handleInvoicePaid(
+            event.data.object,
           );
+
+          // Extract metadata from the invoice to find the related team
+          const { metadata: paidMetadata } = this.extractInvoiceMetadata(
+            event.data.object,
+          );
+
+          if (paidMetadata?.hubId) {
+            const teamWithSuccessfulPayment =
+              await this.stripeSubscriptionRepo.findTeamById(
+                paidMetadata.hubId,
+              );
+
+            this.stripeWebhookGateway.emitPaymentEvent(
+              PaymentEventType.PAYMENT_SUCCESS,
+              {
+                invoice: event.data.object,
+                team: teamWithSuccessfulPayment,
+              },
+            );
+          }
+          break;
+
+        case "invoice.voided":
+          await this.stripeSubscriptionService.handleInvoiceVoided(
+            event.data.object,
+          );
+
+          // Extract metadata from the invoice to find the related team
+          const { metadata: voidedMetadata } = this.extractInvoiceMetadata(
+            event.data.object,
+          );
+
+          if (voidedMetadata?.hubId) {
+            const teamWithVoidedInvoice =
+              await this.stripeSubscriptionRepo.findTeamById(
+                voidedMetadata.hubId,
+              );
+
+            // Create a custom event type for voided invoices
+            this.stripeWebhookGateway.emitPaymentEvent(
+              PaymentEventType.INVOICE_VOIDED,
+              {
+                invoice: event.data.object,
+                team: teamWithVoidedInvoice,
+              },
+            );
+          }
           break;
 
         default:
@@ -598,5 +684,47 @@ export class StripeController {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  /**
+   * Extract metadata from an invoice, checking multiple potential locations
+   * @param invoice The invoice object from Stripe
+   * @returns Object containing subscriptionId and metadata
+   */
+  private extractInvoiceMetadata(invoice: any): {
+    subscriptionId: string | null;
+    metadata: any;
+  } {
+    // Extract subscription ID from various possible locations
+    const subscriptionId =
+      invoice.subscription ||
+      invoice.parent?.subscription_details?.subscription ||
+      invoice.lines?.data?.[0]?.subscription ||
+      invoice.lines?.data?.[0]?.parent?.subscription_item_details?.subscription;
+
+    // Initialize metadata object
+    let metadata: any = {};
+
+    // Try to extract metadata from different possible locations, in order of preference
+    const metadataSources = [
+      // Direct subscription metadata
+      invoice.subscription_details?.metadata,
+      // Parent subscription metadata
+      invoice.parent?.subscription_details?.metadata,
+      // Line item metadata
+      invoice.lines?.data?.[0]?.metadata,
+      // Invoice metadata itself
+      invoice.metadata,
+    ];
+
+    // Use the first source that has a hubId
+    for (const source of metadataSources) {
+      if (source && source.hubId) {
+        metadata = source;
+        break;
+      }
+    }
+
+    return { subscriptionId, metadata };
   }
 }
