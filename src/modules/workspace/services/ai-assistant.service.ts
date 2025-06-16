@@ -956,7 +956,7 @@ export class AiAssistantService {
           model: modelVersion,
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1009,7 +1009,7 @@ export class AiAssistantService {
         const TokensResponse = await GoogleClient.models.generateContent({
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1040,7 +1040,7 @@ export class AiAssistantService {
           model: modelVersion,
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens > 0 ? maxTokens : 1024,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1066,7 +1066,7 @@ export class AiAssistantService {
         const TokensResponse = await GoogleClient.models.generateContent({
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1113,13 +1113,28 @@ export class AiAssistantService {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
         const timeTaken = Math.round(endTime - startTime);
-        const message =
-          (error.message.match(/"message":"([^"]+)"/) || [])[1] ||
-          "Some Issue Occurred in Processing your Request. Please try again";
+        let message = "Some Issue Occurred in Processing your Request. Please try again";
+        let statusCode = 500;
+
+        if (streamResponse === true) {
+          const jsonPart = error.message.match(/{.*}/s)?.[0];
+          if (jsonPart) {
+            const outerError = JSON.parse(jsonPart);
+            const innerError = JSON.parse(outerError.error.message);
+            message = innerError.error.message || message;
+            statusCode = innerError.error?.code || statusCode;
+          }
+        } else {
+          message =
+            error.message.match(/"message":"([^"]+)"/)?.[1] ||
+            message;
+          statusCode = parseInt(error.message?.match(/"code"\s*:\s*(\d+)/)?.[1]) || statusCode;
+        }
+
         client.send(
           JSON.stringify({
             timeTaken: `${timeTaken}ms`,
-            statusCode: error?.status || error?.error?.code || 500,
+            statusCode: statusCode,
             event: "error",
             message: message,
           }),

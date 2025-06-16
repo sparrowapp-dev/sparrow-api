@@ -1251,6 +1251,7 @@ export class CollectionRepository {
             "items.$.name": request.items.name,
             "items.$.description": request.items.description,
             "items.$.mockRequest": request.items.mockRequest,
+            "items.$.items": request.items?.items,
             "items.$.updatedAt": new Date(),
             updatedAt: new Date(),
             updatedBy: {
@@ -1272,6 +1273,7 @@ export class CollectionRepository {
         {
           $set: {
             "items.$[i].items.$[j].name": request.items.items.name,
+            "items.$[i].items.$[j].items": request.items.items?.items,
             "items.$[i].items.$[j].description":
               request.items.items.description,
             "items.$[i].items.$[j].mockRequest":

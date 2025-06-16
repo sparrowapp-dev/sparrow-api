@@ -1,5 +1,5 @@
 import { Body, Controller, Post, Req, Res, UseGuards, Get, Query, Delete, Put, Param } from "@nestjs/common";
-import { ApiQuery } from '@nestjs/swagger';
+import { ApiQuery, ApiResponse, ApiOperation } from '@nestjs/swagger';
 import { FastifyReply } from "fastify";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -24,6 +24,12 @@ export class LlmConversationController {
 
 
   @Get("get-conversation")
+  @ApiOperation({
+      summary: "Get Conversation",
+      description: "Get all Conversation from DB",
+    })
+  @ApiResponse({ status: 201, description: "Conversation Fetched" })
+  @ApiResponse({ status: 400, description: "Failed to fetched conversation" })
   @ApiQuery({ name: 'provider', required: true })
   @ApiQuery({ name: 'apiKey', required: true })
   @ApiQuery({ name: 'id', required: false })
@@ -43,6 +49,12 @@ export class LlmConversationController {
   }
 
   @Post("insert-conversation")
+  @ApiOperation({
+      summary: "Insert Conversation",
+      description: "Insert Conversation in the DB",
+    })
+  @ApiResponse({ status: 201, description: "Conversation Inserted Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to inserted conversation" })
   async InsertConversation(@Body() payload: LlmConversation, @Res() res: FastifyReply) {
     const data = await this.llmConversationService.insertConversation(payload);
     const response = new ApiResponseService(
@@ -54,6 +66,12 @@ export class LlmConversationController {
   }
 
   @Put("update-conversation")
+  @ApiOperation({
+      summary: "Update Conversation",
+      description: "Update Conversation in the DB",
+    })
+  @ApiResponse({ status: 201, description: "Conversation Update Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to update conversation" })
   async UpdateConversation(@Body() payload: LlmConversation, @Res() res: FastifyReply) {
     const data = await this.llmConversationService.updateConversation(payload);
     const response = new ApiResponseService(
@@ -65,6 +83,12 @@ export class LlmConversationController {
   }
 
   @Delete("delete-conversation/:id")
+  @ApiOperation({
+      summary: "Delete Conversation",
+      description: "Delete Conversation from Conversation DB",
+    })
+  @ApiResponse({ status: 201, description: "Conversation Deleted Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to delete conversation" })
   @ApiQuery({ name: 'provider', required: true })
   @ApiQuery({ name: 'apiKey', required: true })
   async DeleteConversation(
