@@ -216,18 +216,18 @@ export class AiAssistantService {
     if (whitelistEmails) {
       parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
     }
-    if (
-      (stat?.tokenStats &&
-        stat.tokenStats?.yearMonth === currentYearMonth &&
-        stat.tokenStats.tokenUsage > (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(user?.email)) ||
-      (stat?.tokenStats &&
-        stat.tokenStats?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(user?.email) &&
-        stat.tokenStats.tokenUsage > this.whiteListUserTokenLimit)
-    ) {
-      throw new BadRequestException("Limit reached");
-    }
+    // if (
+    //   (stat?.tokenStats &&
+    //     stat.tokenStats?.yearMonth === currentYearMonth &&
+    //     stat.tokenStats.tokenUsage > (this.monthlyTokenLimit || 0) &&
+    //     !parsedWhiteListEmails.includes(user?.email)) ||
+    //   (stat?.tokenStats &&
+    //     stat.tokenStats?.yearMonth === currentYearMonth &&
+    //     parsedWhiteListEmails.includes(user?.email) &&
+    //     stat.tokenStats.tokenUsage > this.whiteListUserTokenLimit)
+    // ) {
+    //   throw new BadRequestException("Limit reached");
+    // }
     const { text: prompt, threadId, instructions } = data;
     const assistantId = await this.createAssistant(instructions);
     if (!assistantId) {
@@ -456,26 +456,26 @@ export class AiAssistantService {
     }
 
     // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(emailId)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(emailId) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
-    ) {
-      client.send(
-        JSON.stringify({
-          messages: "Limit Reached. Please try again later.",
-          thread_Id: threadId,
-          tab_id: tabId,
-        }),
-      );
-      return;
-    }
+    // if (
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek >
+    //       (this.monthlyTokenLimit || 0) &&
+    //     !parsedWhiteListEmails.includes(emailId)) ||
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     parsedWhiteListEmails.includes(emailId) &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
+    // ) {
+    //   client.send(
+    //     JSON.stringify({
+    //       messages: "Limit Reached. Please try again later.",
+    //       thread_Id: threadId,
+    //       tab_id: tabId,
+    //     }),
+    //   );
+    //   return;
+    // }
 
     // Validate input
     if (!text) {
@@ -541,11 +541,11 @@ export class AiAssistantService {
           if (latestRun?.usage) {
             const tokenUsage = latestRun.usage.total_tokens;
 
-            const kafkaMessage = {
-              userId: user._id.toString(),
-              tokenCount: tokenUsage,
-              model: model,
-            };
+            // const kafkaMessage = {
+            //   userId: user._id.toString(),
+            //   tokenCount: tokenUsage,
+            //   model: model,
+            // };
 
             await this.producerService.produce(
               TOPIC.AI_RESPONSE_GENERATED_TOPIC,
@@ -625,26 +625,26 @@ export class AiAssistantService {
     }
 
     // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(emailId)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(emailId) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
-    ) {
-      client.send(
-        JSON.stringify({
-          messages: "Limit Reached. Please try again later.",
-          thread_Id: null,
-          tab_id: tabId,
-        }),
-      );
-      return;
-    }
+    // if (
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek >
+    //       (this.monthlyTokenLimit || 0) &&
+    //     !parsedWhiteListEmails.includes(emailId)) ||
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     parsedWhiteListEmails.includes(emailId) &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
+    // ) {
+    //   client.send(
+    //     JSON.stringify({
+    //       messages: "Limit Reached. Please try again later.",
+    //       thread_Id: null,
+    //       tab_id: tabId,
+    //     }),
+    //   );
+    //   return;
+    // }
 
     // Validate user input
     if (!text) {
@@ -741,18 +741,18 @@ export class AiAssistantService {
           if (parsed?.usage) {
             const tokenUsage = parsed.usage.total_tokens;
 
-            const kafkaMessage = {
-              userId: user._id.toString(),
-              tokenCount: tokenUsage,
-              model: model,
-            };
+            // const kafkaMessage = {
+            //   userId: user._id.toString(),
+            //   tokenCount: tokenUsage,
+            //   model: model,
+            // };
 
-            await this.producerService.produce(
-              TOPIC.AI_RESPONSE_GENERATED_TOPIC,
-              {
-                value: JSON.stringify(kafkaMessage),
-              },
-            );
+            // await this.producerService.produce(
+            //   TOPIC.AI_RESPONSE_GENERATED_TOPIC,
+            //   {
+            //     value: JSON.stringify(kafkaMessage),
+            //   },
+            // );
 
             const activityLog = {
               userId: user._id.toString(),
