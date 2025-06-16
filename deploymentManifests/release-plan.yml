@@ -325,6 +325,11 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: STRIPE_WEBHOOK
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DB_NAME        
 
 ---
 apiVersion: v1
