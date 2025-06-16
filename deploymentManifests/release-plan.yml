@@ -331,6 +331,7 @@ spec:
                   name: sparrow-api-secret
                   key: DB_NAME        
 
+
 ---
 apiVersion: v1
 kind: Service
