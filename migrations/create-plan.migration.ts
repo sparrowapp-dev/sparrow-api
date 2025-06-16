@@ -54,11 +54,11 @@ export class CreatePlanMigration implements OnModuleInit {
             },
             selectiveTestflowRun: {
               area: LimitArea.TESTFLOW,
-              active: false
+              active: false,
             },
-            activeSync:{
+            activeSync: {
               area: LimitArea.COLLECTION,
-              active: false
+              active: false,
             },
             testflowRunHistory: {
               area: LimitArea.TESTFLOW_RUNHISTORY,
@@ -116,7 +116,7 @@ export class CreatePlanMigration implements OnModuleInit {
             },
             testflowRunHistory: {
               area: LimitArea.TESTFLOW_RUNHISTORY,
-              value: 10,
+              value: 100000,
             },
           },
           createdAt: new Date(),
@@ -170,7 +170,7 @@ export class CreatePlanMigration implements OnModuleInit {
             },
             testflowRunHistory: {
               area: LimitArea.TESTFLOW_RUNHISTORY,
-              value: 25,
+              value: 100000,
             },
           },
           createdAt: new Date(),

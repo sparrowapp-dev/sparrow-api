@@ -24,40 +24,47 @@ export class UpdateTestflowHistoryPlanMigration implements OnModuleInit {
 
       for (const plan of plans) {
         const limits = plan.limits || {};
-        if (!limits.testflowRunHistory) {
-          let historyValue = 5;
+        let desiredValue = 5;
 
-          switch (plan.name) {
-            case "Standard":
-              historyValue = 10;
-              break;
-            case "Professional":
-              historyValue = 25;
-              break;
-            case "Community":
-            default:
-              historyValue = 5;
-              break;
-          }
+        switch (plan.name) {
+          case "Standard":
+          case "Professional":
+            desiredValue = 100000;
+            break;
+          case "Community":
+          default:
+            desiredValue = 5;
+            break;
+        }
 
+        const existingValue = limits.testflowRunHistory?.value;
+        const fieldExists = limits.testflowRunHistory !== undefined;
+
+        if (!fieldExists || existingValue !== desiredValue) {
           await planCollection.updateOne(
             { _id: plan._id },
             {
               $set: {
                 "limits.testflowRunHistory": {
                   area: LimitArea.TESTFLOW_RUNHISTORY,
-                  value: historyValue,
+                  value: desiredValue,
                 },
+                updatedAt: new Date(),
+                updatedBy: "migration-script",
               },
             },
           );
 
+          const action = fieldExists ? "updated" : "added";
+          console.log(
+            `\x1b[32m[Nest]\x1b[0m ${plan.name} plan ${action} with testflowRunHistory value: ${desiredValue}`,
+          );
           updatedCount++;
         }
       }
 
       console.log(
-        `\x1b[32m[Nest]\x1b[0m \x1b[33m${updatedCount}\x1b[0m \x1b[32mplans updated with 'testflowRunHistory'.\x1b[0m`,
+        `\x1b[32m[Nest]\x1b[0m \x1b[33m${updatedCount}\x1b[0m \x1b[32mplans updated with correct 'testflowRunHistory' values.\x1b[0m`,
       );
 
       this.hasRun = true;
