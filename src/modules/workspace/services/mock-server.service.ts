@@ -32,13 +32,38 @@ export class MockServerService {
       const startTime = Date.now();
       const url = req.url; // e.g. /api/mock/6825983c9ab55fe3b6dcc05f/user
       const method = req.method.toUpperCase();
+      // Get all query parameters as an array of key-value objects
+      const queryParamsArray = Object.entries(req.query || {}).map(
+        ([key, value]) => ({
+          key,
+          value,
+        }),
+      );
+
+      console.log("Query params array:", queryParamsArray);
 
       // Extract collectionId
       const segments = url.split("/");
-      const collectionId = segments[3] || null; // 3rd index (after /api/mock)
+      let collectionId = segments[3] || null; // 3rd index (after /api/mock)
+      // Remove query parameters from collectionId if they exist
+      if (collectionId && collectionId.includes("?")) {
+        collectionId = collectionId.split("?")[0];
+      }
       // Extract the rest of the URL after the collection ID with leading slash
-      const restUrl =
+      let restUrl =
         segments.length > 4 ? "/" + segments.slice(4).join("/") : "";
+      // Add query parameters to restUrl if they exist
+      if (queryParamsArray.length > 0) {
+        const queryString = queryParamsArray
+          .map(
+            ({ key, value }) =>
+              `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+          )
+          .join("&");
+
+        restUrl += `?${queryString}`;
+      }
+      console.log("Final restUrl with query params:", restUrl);
       if (collectionId) {
         const modifiedCollectionId = new ObjectId(collectionId);
         const collection =
