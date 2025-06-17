@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Socket } from "socket.io";
-import { Server, WebSocket, MessageEvent } from "ws";
+import { WebSocket, MessageEvent } from "ws";
 
 // ---- OpenAI
 import ModelClient from "@azure-rest/ai-inference";
@@ -33,8 +33,6 @@ import {
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
-import { ContextService } from "@src/modules/common/services/context.service";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
 import { ChatbotStatsService } from "./chatbot-stats.service";
 import { UserService } from "../../identity/services/user.service";
 
@@ -59,6 +57,8 @@ import { TeamService } from "@src/modules/identity/services/team.service";
 import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 import { UserLimitService } from "./userLimit.service";
 import { LimitCheckResult } from "@src/modules/common/enum/user-limit-enum";
+import { ProducerService } from "@src/modules/common/services/event-producer.service";
+import { DecodedUserObject } from "@src/types/fastify";
 // import { GoogleGenAI } from "@google/genai";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
@@ -112,7 +112,6 @@ export class AiAssistantService {
    * @param producerService - Kafka producer service to send messages to Kafka topics.
    */
   constructor(
-    private readonly contextService: ContextService,
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly chatbotStatsService: ChatbotStatsService,
@@ -128,7 +127,7 @@ export class AiAssistantService {
     this.maxTokens = this.configService.get("ai.maxTokens");
     this.monthlyTokenLimit = this.configService.get("ai.monthlyTokenLimit");
     this.assistantId = this.configService.get("ai.assistantId");
-    this.whiteListUserTokenLimit - 100000;
+    this.whiteListUserTokenLimit = 100000;
     this.deepseekEndpoint = this.configService.get("ai.deepseekEndpoint");
     this.deepseekApiKey = this.configService.get("ai.deepseekApiKey");
     this.deepseekApiVersion = this.configService.get("ai.deepseekApiVersion");
@@ -203,8 +202,10 @@ export class AiAssistantService {
    * @returns A promise that resolves with the generated text, thread ID, and message ID.
    * @throws BadRequestException if the assistant cannot be created.
    */
-  public async generateText(data: PromptPayload): Promise<AIResponseDto> {
-    const user = this.contextService.get("user");
+  public async generateText(
+    data: PromptPayload,
+    user: DecodedUserObject,
+  ): Promise<AIResponseDto> {
     const stat = await this.chatbotStatsService.getIndividualStat(
       user?._id?.toString(),
     );
@@ -216,108 +217,148 @@ export class AiAssistantService {
     if (whitelistEmails) {
       parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
     }
+
+    // Check if user exceeded token limit
     if (
-      (stat?.tokenStats &&
-        stat.tokenStats?.yearMonth === currentYearMonth &&
-        stat.tokenStats.tokenUsage > (this.monthlyTokenLimit || 0) &&
+      (stat?.aiModel &&
+        stat.aiModel?.yearMonth === currentYearMonth &&
+        stat.aiModel.gpt + stat.aiModel.deepseek >
+          (this.monthlyTokenLimit || 0) &&
         !parsedWhiteListEmails.includes(user?.email)) ||
-      (stat?.tokenStats &&
-        stat.tokenStats?.yearMonth === currentYearMonth &&
+      (stat?.aiModel &&
+        stat.aiModel?.yearMonth === currentYearMonth &&
         parsedWhiteListEmails.includes(user?.email) &&
-        stat.tokenStats.tokenUsage > this.whiteListUserTokenLimit)
+        stat.aiModel.gpt + stat.aiModel.deepseek >
+          this.whiteListUserTokenLimit)
     ) {
-      throw new BadRequestException("Limit reached");
-    }
-    const { text: prompt, threadId, instructions } = data;
-    const assistantId = await this.createAssistant(instructions);
-    if (!assistantId) {
-      throw new BadRequestException("AI Assistant not created!");
+      return {result: "Limit reached"};
     }
 
-    const role = "user";
-    const message = prompt;
+    const { text: prompt, model, instructions } = data;
 
-    let currentThreadId = threadId;
+    const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            messages: [
+              { role: "system", content: instructions },
+              { role: "user", content: prompt },
+            ],
+            model: DeepSeepModelVersion.DeepSeek_V3,
+          },
+        });
 
-    if (!currentThreadId) {
-      // Create an thread if it does not exist
-      const assistantThread: Thread =
-        await this.gptAssistantsClient.beta.threads.create({});
-      currentThreadId = assistantThread.id;
-    }
+      if (response.status !== "200") {
+        const data =
+          "Some Issue Occurred in Processing your Request. Please try again";
+        return {result: data};
+      }
 
-    // Add a user question to the existing thread
-    await this.gptAssistantsClient.beta.threads.messages.create(
-      currentThreadId,
-      {
-        role,
-        content: message,
-      },
-    );
+    const body = response.body as any;
+    const tokens = body?.usage?.total_tokens;
 
-    // Run the thread and poll it until it is in a terminal state
+    const eventMessage = {
+          userId: user._id,
+          tokenCount: tokens,
+          model: model
+        };
 
-    const pollRunner =
-      await this.gptAssistantsClient.beta.threads.runs.createAndPoll(
-        currentThreadId,
-        {
-          assistant_id: assistantId,
-          max_completion_tokens: this.maxTokens || 0,
-        },
-        { pollIntervalMs: 500 },
-      );
+    await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+          value: JSON.stringify(eventMessage),
+        });
 
-    /**
-     * Example implementation for getting data stream-wise in chunks
-     * Can be used in future iterations for real-time data streaming
-     */
-    // Run the thread and stream the responses
-    // const stream = await this.gptAssistantsClient.beta.threads.runs.stream(
-    //   currentThreadId,
-    //   {
-    //     assistant_id: assistantId,
-    //   },
-    //   // { timeout: 10 },
-    // );
+    const output = (response.body as any).choices?.[0]?.message?.content;
+    return {result: output};
 
-    // for await (const event of stream) {
-    //   if (event.event === "thread.message.delta") {
-    //     const data = event.data;
-    //     const delta = data.delta;
-    //     const content = delta.content;
-    //     const textBlock = content[0];
-    //     if (textBlock.type === "text") {
-    //       const messageValue = textBlock?.text?.value;
-    //     }
-
-    //     // await websocket.send(value);
-    //   }
+    // const assistantId = await this.createAssistant(instructions);
+    // if (!assistantId) {
+    //   throw new BadRequestException("AI Assistant not created!");
     // }
 
-    // Get the messages
-    const messageList: MessagesPage =
-      await this.gptAssistantsClient.beta.threads.messages.list(
-        currentThreadId,
-      );
-    const kafkaMessage = {
-      userId: this.contextService.get("user")._id,
-      tokenCount: pollRunner.usage.total_tokens,
-    };
-    await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-      value: JSON.stringify(kafkaMessage),
-    });
-    for await (const message of messageList) {
-      for (const item of message.content) {
-        if (item.type === "text") {
-          return {
-            result: item.text?.value || "",
-            threadId: currentThreadId,
-            messageId: message.id,
-          };
-        }
-      }
-    }
-    return { result: "", threadId: currentThreadId, messageId: "" };
+    // const role = "user";
+    // const message = prompt;
+
+    // let currentThreadId = threadId;
+
+    // if (!currentThreadId) {
+    //   // Create an thread if it does not exist
+    //   const assistantThread: Thread =
+    //     await this.gptAssistantsClient.beta.threads.create({});
+    //   currentThreadId = assistantThread.id;
+    // }
+
+    // // Add a user question to the existing thread
+    // await this.gptAssistantsClient.beta.threads.messages.create(
+    //   currentThreadId,
+    //   {
+    //     role,
+    //     content: message,
+    //   },
+    // );
+
+    // // Run the thread and poll it until it is in a terminal state
+
+    // const pollRunner =
+    //   await this.gptAssistantsClient.beta.threads.runs.createAndPoll(
+    //     currentThreadId,
+    //     {
+    //       assistant_id: assistantId,
+    //       max_completion_tokens: this.maxTokens || 0,
+    //     },
+    //     { pollIntervalMs: 500 },
+    //   );
+
+    // /**
+    //  * Example implementation for getting data stream-wise in chunks
+    //  * Can be used in future iterations for real-time data streaming
+    //  */
+    // // Run the thread and stream the responses
+    // // const stream = await this.gptAssistantsClient.beta.threads.runs.stream(
+    // //   currentThreadId,
+    // //   {
+    // //     assistant_id: assistantId,
+    // //   },
+    // //   // { timeout: 10 },
+    // // );
+
+    // // for await (const event of stream) {
+    // //   if (event.event === "thread.message.delta") {
+    // //     const data = event.data;
+    // //     const delta = data.delta;
+    // //     const content = delta.content;
+    // //     const textBlock = content[0];
+    // //     if (textBlock.type === "text") {
+    // //       const messageValue = textBlock?.text?.value;
+    // //     }
+
+    // //     // await websocket.send(value);
+    // //   }
+    // // }
+
+    // // Get the messages
+    // const messageList: MessagesPage =
+    //   await this.gptAssistantsClient.beta.threads.messages.list(
+    //     currentThreadId,
+    //   );
+    // const eventMessage = {
+    //   userId: user._id,
+    //   tokenCount: pollRunner.usage.total_tokens,
+    // };
+    // await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+    //   value: JSON.stringify(eventMessage),
+    // });
+    // for await (const message of messageList) {
+    //   for (const item of message.content) {
+    //     if (item.type === "text") {
+    //       return {
+    //         result: item.text?.value || "",
+    //         threadId: currentThreadId,
+    //         messageId: message.id,
+    //       };
+    //     }
+    //   }
+    // }
+    // return { result: "", threadId: currentThreadId, messageId: "" };
   }
 
   /**
@@ -329,6 +370,7 @@ export class AiAssistantService {
   public async generateTextStream(
     data: StreamPromptPayload,
     client: Socket,
+    user: DecodedUserObject,
   ): Promise<void> {
     const { text: prompt, threadId, instructions } = data;
 
@@ -413,12 +455,12 @@ export class AiAssistantService {
       }
     }
     // Save token details
-    const kafkaMessage = {
-      userId: this.contextService.get("user")._id,
+    const eventMessage = {
+      userId: user._id,
       tokenCount: total_tokens,
     };
     await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-      value: JSON.stringify(kafkaMessage),
+      value: JSON.stringify(eventMessage),
     });
   }
 
@@ -541,7 +583,7 @@ export class AiAssistantService {
           if (latestRun?.usage) {
             const tokenUsage = latestRun.usage.total_tokens;
 
-            const kafkaMessage = {
+            const eventMessage = {
               userId: user._id.toString(),
               tokenCount: tokenUsage,
               model: model,
@@ -550,7 +592,7 @@ export class AiAssistantService {
             await this.producerService.produce(
               TOPIC.AI_RESPONSE_GENERATED_TOPIC,
               {
-                value: JSON.stringify(kafkaMessage),
+                value: JSON.stringify(eventMessage),
               },
             );
 
@@ -741,7 +783,7 @@ export class AiAssistantService {
           if (parsed?.usage) {
             const tokenUsage = parsed.usage.total_tokens;
 
-            const kafkaMessage = {
+            const eventMessage = {
               userId: user._id.toString(),
               tokenCount: tokenUsage,
               model: model,
@@ -750,7 +792,7 @@ export class AiAssistantService {
             await this.producerService.produce(
               TOPIC.AI_RESPONSE_GENERATED_TOPIC,
               {
-                value: JSON.stringify(kafkaMessage),
+                value: JSON.stringify(eventMessage),
               },
             );
 
@@ -924,7 +966,7 @@ export class AiAssistantService {
           model: modelVersion,
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -977,7 +1019,7 @@ export class AiAssistantService {
         const TokensResponse = await GoogleClient.models.generateContent({
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1008,7 +1050,7 @@ export class AiAssistantService {
           model: modelVersion,
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens > 0 ? maxTokens : 1024,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1034,7 +1076,7 @@ export class AiAssistantService {
         const TokensResponse = await GoogleClient.models.generateContent({
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: maxTokens >= 0 ? maxTokens : 1024,
             temperature: temperature,
             topP: topP,
             ...(jsonResponseFormat && { responseMimeType: "application/json" }),
@@ -1081,13 +1123,28 @@ export class AiAssistantService {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
         const timeTaken = Math.round(endTime - startTime);
-        const message =
-          (error.message.match(/"message":"([^"]+)"/) || [])[1] ||
-          "Some Issue Occurred in Processing your Request. Please try again";
+        let message = "Some Issue Occurred in Processing your Request. Please try again";
+        let statusCode = 500;
+
+        if (streamResponse === true) {
+          const jsonPart = error.message.match(/{.*}/s)?.[0];
+          if (jsonPart) {
+            const outerError = JSON.parse(jsonPart);
+            const innerError = JSON.parse(outerError.error.message);
+            message = innerError.error.message || message;
+            statusCode = innerError.error?.code || statusCode;
+          }
+        } else {
+          message =
+            error.message.match(/"message":"([^"]+)"/)?.[1] ||
+            message;
+          statusCode = parseInt(error.message?.match(/"code"\s*:\s*(\d+)/)?.[1]) || statusCode;
+        }
+
         client.send(
           JSON.stringify({
             timeTaken: `${timeTaken}ms`,
-            statusCode: error?.status || error?.error?.code || 500,
+            statusCode: statusCode,
             event: "error",
             message: message,
           }),
@@ -1155,7 +1212,7 @@ export class AiAssistantService {
           model: modelVersion,
           temperature: temperature,
           top_p: topP,
-          max_tokens: maxTokens > 0 ? maxTokens : 1024,
+          max_tokens: maxTokens > -1 ? maxTokens : 1024,
           stream: true,
         });
 
@@ -1216,7 +1273,7 @@ export class AiAssistantService {
           messages: messages,
           temperature: temperature,
           top_p: topP,
-          max_tokens: maxTokens > 0 ? maxTokens : 1024,
+          max_tokens: maxTokens > -1 ? maxTokens : 1024,
         });
 
         const data = response.content
@@ -1337,10 +1394,10 @@ export class AiAssistantService {
           temperature: temperature,
           presence_penalty: presencePenalty,
           frequency_penalty: frequencePenalty,
-          ...(maxTokens > 1 && { max_tokens: maxTokens }),
-          ...(jsonResponseFormat && {
-            response_format: { type: "json_object" },
-          }),
+          ...(maxTokens > -1 && { max_tokens: maxTokens }),
+          response_format: {
+            type: jsonResponseFormat ? "json_object" : "text",
+          },
           stream: true,
           stream_options: { include_usage: true },
         });
@@ -1398,10 +1455,10 @@ export class AiAssistantService {
           temperature: temperature,
           presence_penalty: presencePenalty,
           frequency_penalty: frequencePenalty,
-          ...(maxTokens > 1 && { max_tokens: maxTokens }),
-          ...(jsonResponseFormat && {
-            response_format: { type: "json_object" },
-          }),
+          ...(maxTokens > -1 && { max_tokens: maxTokens }),
+          response_format: {
+            type: jsonResponseFormat ? "json_object" : "text",
+          },
         });
 
         // Signal stream start
@@ -1578,10 +1635,10 @@ export class AiAssistantService {
             presence_penalty: presencePenalty,
             frequency_penalty: frequencePenalty,
           }),
-          ...(maxTokens > 1 && { max_tokens: maxTokens }),
-          ...(jsonResponseFormat && {
-            response_format: { type: "json_object" },
-          }),
+          ...(maxTokens > -1 && { max_tokens: maxTokens }),
+          response_format: {
+            type: jsonResponseFormat ? "json_object" : "text",
+          },
           stream: true,
           stream_options: { include_usage: true },
         });
@@ -1639,10 +1696,10 @@ export class AiAssistantService {
           temperature: temperature,
           presence_penalty: presencePenalty,
           frequency_penalty: frequencePenalty,
-          ...(maxTokens > 1 && { max_tokens: maxTokens }),
-          ...(jsonResponseFormat && {
-            response_format: { type: "json_object" },
-          }),
+          ...(maxTokens > -1 && { max_tokens: maxTokens }),
+          response_format: {
+            type: jsonResponseFormat ? "json_object" : "text",
+          },
         });
 
         // Signal stream start
@@ -1772,7 +1829,7 @@ export class AiAssistantService {
 
         if (feature === AiService.SparrowAI) {
           const text = parsedData.userInput;
-          let threadId = parsedData.threadId;
+          const threadId = parsedData.threadId;
           const tabId = parsedData.tabId;
           const emailId = parsedData.emailId;
           const apiData = parsedData.apiData || "Data not available";
@@ -1978,98 +2035,75 @@ export class AiAssistantService {
 
   public async promptGeneration(data: ChatBotPayload): Promise<string> {
     try {
-      const { userInput, authKey, model, modelVersion } = data;
+      const { userInput, emailId } = data;
 
       const promptInstruction =
         "You're an assistant that helps create well-structured prompts from user text. You are provided with user input and must generate a clean, optimized prompt. Return only the generated prompt—no explanations or additional output.";
 
-      const userInstructions = `You're an assistant that helps create well-structured prompts from user text. You are provided with user input and must generate a clean, optimized prompt. Return only the generated prompt—no explanations or additional output. This is the user text ${userInput}`;
-
-      switch (model) {
-        case Models.OpenAI: {
-          const openai = new OpenAI({ apiKey: authKey });
-
-          // Special handling for o1-mini
-          if (modelVersion === OpenAIModelVersion.GPT_o1_Mini) {
-            const completion = await openai.chat.completions.create({
-              messages: [
-                {
-                  role: "user",
-                  content: userInstructions,
-                },
-              ],
-              model: modelVersion,
-            });
-
-            const result = completion.choices[0].message.content;
-            return result;
-          }
-
-          const completion = await openai.chat.completions.create({
-            messages: [
-              { role: "system", content: promptInstruction },
-              { role: "user", content: userInput },
-            ],
-            model: modelVersion,
-          });
-
-          const result = completion.choices[0].message.content;
-          return result;
-        }
-
-        case Models.Google: {
-          const genAI = await initializeGenAI(authKey);
-          const response = await genAI.models.generateContent({
-            model: modelVersion,
-            contents: userInstructions,
-          });
-
-          const result =
-            response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          return result;
-        }
-
-        case Models.Anthropic: {
-          const anthropic = new Anthropic({ apiKey: authKey });
-          const msg = await anthropic.messages.create({
-            model: modelVersion,
-            max_tokens: 1024,
-            messages: [
-              {
-                role: "user",
-                content: userInstructions,
-              },
-            ],
-          });
-
-          const result = msg.content
-            .map((block) => ("text" in block ? block.text : ""))
-            .join("");
-
-          return result;
-        }
-
-        case Models.DeepSeek: {
-          const deepseek = new OpenAI({
-            baseURL: this.deepseekurl,
-            apiKey: authKey,
-          });
-
-          const completion = await deepseek.chat.completions.create({
-            messages: [
-              { role: "system", content: promptInstruction },
-              { role: "user", content: userInput },
-            ],
-            model: modelVersion,
-          });
-
-          const result = completion.choices[0].message.content;
-          return result;
-        }
-
-        default:
-          throw new BadRequestException("Unsupported model type.");
+      // Fetch user details
+      const user = await this.userService.getUserByEmail(emailId);
+      const stat = await this.chatbotStatsService.getIndividualStat(
+        user?._id?.toString(),
+      );
+      const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
+      const whitelistEmails = await this.configService.get(
+        "whitelist.userEmails",
+      );
+      let parsedWhiteListEmails: string[] = [];
+      if (whitelistEmails) {
+        parsedWhiteListEmails =
+          parseWhitelistedEmailList(whitelistEmails) || [];
       }
+
+      // Check if user exceeded token limit
+      if (
+        (stat?.aiModel &&
+          stat.aiModel?.yearMonth === currentYearMonth &&
+          stat.aiModel.gpt + stat.aiModel.deepseek >
+            (this.monthlyTokenLimit || 0) &&
+          !parsedWhiteListEmails.includes(emailId)) ||
+        (stat?.aiModel &&
+          stat.aiModel?.yearMonth === currentYearMonth &&
+          parsedWhiteListEmails.includes(emailId) &&
+          stat.aiModel.gpt + stat.aiModel.deepseek >
+            this.whiteListUserTokenLimit)
+      ) {
+        return "Limit Reached. Please try again later.";
+      }
+
+      const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            messages: [
+              { role: "system", content: promptInstruction },
+              { role: "user", content: userInput },
+            ],
+            model: DeepSeepModelVersion.DeepSeek_V3,
+          },
+        });
+
+      if (response.status !== "200") {
+        const data =
+          "Some Issue Occurred in Processing your Request. Please try again";
+        return data;
+      }
+
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+            userId: user._id,
+            tokenCount: tokens,
+            model: "deepseek"
+          };
+
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+            value: JSON.stringify(eventMessage),
+          });
+
+      const result = (response.body as any).choices?.[0]?.message?.content;
+      return result;
     } catch (error) {
       console.error("Error processing prompt generation:", error);
       throw new BadRequestException(

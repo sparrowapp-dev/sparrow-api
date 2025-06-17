@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Put,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -35,6 +36,7 @@ import {
 } from "../payloads/testflow.payload";
 import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Controller responsible for handling Testflow operations
@@ -79,9 +81,13 @@ export class TestflowController {
   async createTestflow(
     @Body() createTestflowDto: CreateTestflowDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const testflow =
-      await this.testflowService.createTestflow(createTestflowDto);
+    const user = request.user;
+    const testflow = await this.testflowService.createTestflow(
+      createTestflowDto,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Testflow Created",
       HttpStatusCode.CREATED,
@@ -148,11 +154,14 @@ export class TestflowController {
     @Param("testflowId") testflowId: string,
     @Body() updateTestflowDto: Partial<UpdateTestflowDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const testflow = await this.testflowService.updateTestflow(
       testflowId,
       updateTestflowDto,
       workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -185,10 +194,13 @@ export class TestflowController {
     @Param("workspaceId") workspaceId: string,
     @Param("testflowId") testflowId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const testflow = await this.testflowService.deleteTestflow(
       testflowId,
       workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
       "Testflow Removed",
@@ -222,8 +234,13 @@ export class TestflowController {
   async getTestflows(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const testflow = await this.testflowService.getAllTestflows(workspaceId);
+    const user = request.user;
+    const testflow = await this.testflowService.getAllTestflows(
+      workspaceId,
+      user._id,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,

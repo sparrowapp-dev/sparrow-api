@@ -28,7 +28,6 @@ import {
   ItemTypeEnum,
   ResponseBodyModeEnum,
 } from "@src/modules/common/models/collection.model";
-import { ContextService } from "@src/modules/common/services/context.service";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { Branch } from "@src/modules/common/models/branch.model";
@@ -36,18 +35,18 @@ import { UpdateBranchDto } from "../payloads/branch.payload";
 import { ConfigService } from "@nestjs/config";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { PostmanParserService } from "@src/modules/common/services/postman.parser.service";
 import { v4 as uuidv4 } from "uuid";
 import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
 import { WorkspaceType } from "@src/modules/common/models/workspace.model";
+import { DecodedUserObject } from "@src/types/fastify";
 @Injectable()
 export class CollectionService {
   constructor(
     private readonly collectionRepository: CollectionRepository,
     private readonly workspaceRepository: WorkspaceRepository,
     private readonly branchRepository: BranchRepository,
-    private readonly contextService: ContextService,
     private readonly workspaceService: WorkspaceService,
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
@@ -56,11 +55,12 @@ export class CollectionService {
 
   async createCollection(
     createCollectionDto: Partial<CreateCollectionDto>,
+    user: DecodedUserObject,
   ): Promise<InsertOneResult> {
     const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
       createCollectionDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.checkPermission(createCollectionDto.workspaceId, user._id);
 
     const newCollection: Collection = {
@@ -73,7 +73,7 @@ export class CollectionService {
       createdBy: user.name,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
       items: [],
-      updatedBy: user.name,
+      updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -83,6 +83,7 @@ export class CollectionService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.COLLECTION,
         workspaceId: createCollectionDto.workspaceId,
       }),
@@ -104,8 +105,9 @@ export class CollectionService {
     workspaceId: string,
     collectionId: string,
     status: boolean,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
     const data = await this.collectionRepository.updateCollection(
       collectionId,
       {
@@ -378,15 +380,16 @@ export class CollectionService {
     return sampleRequests;
   }
 
-  async createDefaultCollection(): Promise<InsertOneResult> {
-    const user = await this.contextService.get("user");
+  async createDefaultCollection(
+    user: DecodedUserObject,
+  ): Promise<InsertOneResult> {
     const newCollection: Collection = {
       name: "Sample Collection",
       totalRequests: 4,
       createdBy: user.name,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
       items: await this.createSampleData(user),
-      updatedBy: user.name,
+      updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -399,8 +402,10 @@ export class CollectionService {
     return await this.collectionRepository.get(id);
   }
 
-  async getAllCollections(id: string): Promise<WithId<Collection>[]> {
-    const user = await this.contextService.get("user");
+  async getAllCollections(
+    id: string,
+    user: DecodedUserObject,
+  ): Promise<WithId<Collection>[]> {
     await this.checkPermission(id, user._id);
 
     const workspace = await this.workspaceRepository.get(id);
@@ -467,21 +472,25 @@ export class CollectionService {
     collectionId: string,
     updateCollectionDto: Partial<UpdateCollectionDto>,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<UpdateResult> {
-    const workspace =
-      await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
-    const user = await this.contextService.get("user");
+    const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+      user._id,
+    );
     await this.checkPermission(workspaceId, user._id);
     const collection = await this.collectionRepository.get(collectionId);
     const data = await this.collectionRepository.update(
       collectionId,
       updateCollectionDto,
+      user,
     );
     if (updateCollectionDto?.name) {
       const updateMessage = `"${collection.name}" collection is renamed to "${updateCollectionDto.name}" in "${workspace.name}" workspace`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.COLLECTION,
           workspaceId: workspaceId,
         }),
@@ -492,6 +501,7 @@ export class CollectionService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.COLLECTION,
           workspaceId: workspaceId,
         }),
@@ -504,14 +514,15 @@ export class CollectionService {
     collectionId: string,
     branch: CollectionBranch,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<UpdateResult> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
-    const user = await this.contextService.get("user");
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
     await this.checkPermission(workspaceId, user._id);
     await this.collectionRepository.get(collectionId);
     const data = await this.collectionRepository.updateBranchArray(
       collectionId,
       branch,
+      user,
     );
     return data;
   }
@@ -519,10 +530,12 @@ export class CollectionService {
   async deleteCollection(
     id: string,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<DeleteResult> {
-    const workspace =
-      await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
-    const user = await this.contextService.get("user");
+    const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+      user._id,
+    );
     await this.checkPermission(workspaceId, user._id);
     const collection = await this.getCollection(id);
     const data = await this.collectionRepository.delete(id);
@@ -530,6 +543,7 @@ export class CollectionService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.COLLECTION,
         workspaceId: workspaceId,
       }),
@@ -549,6 +563,7 @@ export class CollectionService {
   async getBranchData(
     collectionId: string,
     branchName: string,
+    userId: ObjectId,
   ): Promise<WithId<Branch> | void> {
     const branch = await this.branchRepository.getBranchByCollection(
       collectionId,
@@ -587,7 +602,7 @@ export class CollectionService {
     const updatedBranch: UpdateBranchDto = {
       items: branch.items,
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: userId.toString(),
     };
     await this.branchRepository.updateBranchById(
       branch._id.toJSON(),
@@ -608,26 +623,31 @@ export class CollectionService {
   async importPostmanCollection(
     jsonObj: string,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<WithId<Collection>> {
     const updatedCollection =
-      await this.postmanParserService.parsePostmanCollection(jsonObj);
+      await this.postmanParserService.parsePostmanCollection(jsonObj, user);
     const newCollection = await this.importCollection(updatedCollection);
     const collectionDetails = await this.getCollection(
       newCollection.insertedId.toString(),
     );
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionDetails._id),
-      name: collectionDetails.name,
-    });
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: new ObjectId(collectionDetails._id),
+        name: collectionDetails.name,
+      },
+      user._id,
+    );
     return collectionDetails;
   }
 
   async createMockCollectionFromExisting(
     collectionId: string,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<InsertOneResult> {
-    const workspace =
-      await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
 
     const originalCollection =
       await this.collectionRepository.get(collectionId);
@@ -675,10 +695,14 @@ export class CollectionService {
       );
     }
 
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: insertedCollection._id,
-      name: newMockCollection.name,
-    });
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: insertedCollection._id,
+        name: newMockCollection.name,
+      },
+      user._id,
+    );
 
     return mockCollection;
   }

@@ -12,17 +12,17 @@ import {
   Team,
   TeamWithNewInviteTag,
 } from "@src/modules/common/models/team.model";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { ConfigService } from "@nestjs/config";
 import { UserRepository } from "../repositories/user.repository";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
-import { User } from "@src/modules/common/models/user.model";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { PlanRepository } from "../repositories/plan.repository";
 import { EmailService } from "@src/modules/common/services/email.service";
+import { DecodedUserObject } from "@src/types/fastify";
 
 /**
  * Team Service
@@ -35,7 +35,6 @@ export class TeamService {
     private readonly configService: ConfigService,
     private readonly userInvitesRepository: UserInvitesRepository,
     private readonly userRepository: UserRepository,
-    private readonly contextService: ContextService,
     private readonly planRepository: PlanRepository,
     private readonly emailService: EmailService,
   ) {}
@@ -93,6 +92,7 @@ export class TeamService {
    */
   async create(
     teamData: CreateOrUpdateTeamDto,
+    user: DecodedUserObject,
     image?: MemoryStorageFile,
   ): Promise<InsertOneResult<Team>> {
     let team;
@@ -132,7 +132,6 @@ export class TeamService {
 
     let hubPlan;
 
-    const user = await this.contextService.get("user");
     const userData = await this.userRepository.findUserByUserId(
       new ObjectId(user._id),
     );
@@ -147,7 +146,7 @@ export class TeamService {
       }
     }
 
-    const createdTeam = await this.teamRepository.create(team, hubPlan);
+    const createdTeam = await this.teamRepository.create(team, hubPlan, user);
     const updatedUserTeams = [...userData.teams];
     updatedUserTeams.push({
       id: createdTeam.insertedId,
@@ -168,6 +167,7 @@ export class TeamService {
         name: this.configService.get("app.defaultWorkspaceName"),
         id: createdTeam.insertedId.toString(),
         firstWorkspace: true,
+        user,
       };
       await this.producerService.produce(TOPIC.CREATE_USER_TOPIC, {
         value: JSON.stringify(workspaceObj),
@@ -205,7 +205,7 @@ export class TeamService {
    */
   async getPublic(id: string): Promise<WithId<ResponseTeam>> {
     const data = await this.teamRepository.get(id);
-    const owner = data.users?.filter((user) => user.role ===TeamRole.OWNER) || [];
+    const owner = data.users?.filter((user) => user.role === "owner") || [];
     return {
       _id: data._id,
       name: data.name,
@@ -232,9 +232,10 @@ export class TeamService {
   async update(
     id: string,
     teamData: Partial<UpdateTeamDto>,
+    userId: ObjectId,
     image?: MemoryStorageFile,
   ): Promise<UpdateResult<Team>> {
-    const teamOwner = await this.isTeamOwner(id);
+    const teamOwner = await this.isTeamOwner(id, userId);
     if (!teamOwner) {
       throw new BadRequestException("You don't have Access");
     }
@@ -301,8 +302,11 @@ export class TeamService {
     return new Date(expiresAt) < now;
   }
 
-  async getAllTeams(userId: string): Promise<WithId<Team>[]> {
-    const user = await this.userRepository.getUserById(userId);
+  async getAllTeams(
+    userId: string,
+    currentUser: DecodedUserObject,
+  ): Promise<WithId<Team>[]> {
+    const user = await this.userRepository.getUserById(userId, currentUser);
     if (!user) {
       throw new BadRequestException(
         "The user with this id does not exist in the system",
@@ -359,26 +363,27 @@ export class TeamService {
     return await this.teamRepository.getTeams();
   }
 
-  async isTeamOwner(id: string): Promise<boolean> {
-    const user = await this.contextService.get("user");
+  async isTeamOwner(id: string, userId: ObjectId): Promise<boolean> {
     const teamDetails = await this.teamRepository.findTeamByTeamId(
       new ObjectId(id),
     );
-    if (teamDetails.owner.toString() !== user._id.toString()) {
+    if (teamDetails.owner.toString() !== userId.toString()) {
       return false;
     }
     return true;
   }
 
-  async isTeamOwnerOrAdmin(id: ObjectId): Promise<WithId<Team>> {
+  async isTeamOwnerOrAdmin(
+    id: ObjectId,
+    currentUserId: ObjectId,
+  ): Promise<WithId<Team>> {
     const data = await this.teamRepository.findTeamByTeamId(id);
-    const userId = this.contextService.get("user")._id;
     if (data) {
-      if (data.owner.toString() === userId.toString()) {
+      if (data.owner.toString() === currentUserId.toString()) {
         return data;
       } else {
         for (const item of data.admins) {
-          if (item.toString() === userId.toString()) {
+          if (item.toString() === currentUserId.toString()) {
             return data;
           }
         }
@@ -404,7 +409,7 @@ export class TeamService {
   async disableTeamNewInvite(
     userId: string,
     teamId: string,
-    user: WithId<User>,
+    user: DecodedUserObject,
   ): Promise<Team> {
     const teams = user.teams.map((team) => {
       if (team.id.toString() === teamId) {

@@ -10,8 +10,7 @@ import {
 import { DeleteResult, ObjectId, WithId } from "mongodb";
 
 // ---- Services
-import { ContextService } from "@src/modules/common/services/context.service";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { WorkspaceService } from "./workspace.service";
 
 // ---- Enum
@@ -34,6 +33,7 @@ import {
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
 import { Testflow } from "@src/modules/common/models/testflow.model";
+import { DecodedUserObject } from "@src/types/fastify";
 
 /**
  * Testflow Service
@@ -43,7 +43,6 @@ export class TestflowService {
   constructor(
     private readonly testflowRepository: TestflowRepository,
     private readonly workspaceReposistory: WorkspaceRepository,
-    private readonly contextService: ContextService,
     private readonly producerService: ProducerService,
     private readonly workspaceService: WorkspaceService,
   ) {}
@@ -54,11 +53,11 @@ export class TestflowService {
    */
   async createTestflow(
     createTestflowDto: CreateTestflowDto,
+    user: DecodedUserObject,
   ): Promise<WithId<Testflow>> {
-    const user = this.contextService.get("user");
-
     const workspace = await this.isWorkspaceAdminorEditor(
       createTestflowDto.workspaceId,
+      user._id,
     );
     const updateMessage = `New testflow "${createTestflowDto.name}" is added under "${workspace.name}" workspace`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -66,6 +65,7 @@ export class TestflowService {
         message: updateMessage,
         type: UpdatesType.TESTFLOW,
         workspaceId: createTestflowDto.workspaceId,
+        user,
       }),
     });
 
@@ -83,6 +83,7 @@ export class TestflowService {
     await this.workspaceService.addTestflowInWorkSpace(
       createTestflowDto.workspaceId,
       { name: createTestflowDto.name, id: testflowData.insertedId.toString() },
+      user._id,
     );
     const testflow = await this.testflowRepository.get(
       testflowData.insertedId.toString(),
@@ -118,17 +119,29 @@ export class TestflowService {
    * @param id - Testflow id you want to delete.
    * @param workspaceId - Workspace id you want to delete from it.
    */
-  async deleteTestflow(id: string, workspaceId: string): Promise<DeleteResult> {
-    const workspace = await this.isWorkspaceAdminorEditor(workspaceId);
+  async deleteTestflow(
+    id: string,
+    workspaceId: string,
+    user: DecodedUserObject,
+  ): Promise<DeleteResult> {
+    const workspace = await this.isWorkspaceAdminorEditor(
+      workspaceId,
+      user._id,
+    );
     const testflow = await this.testflowRepository.get(id);
     const data = await this.testflowRepository.delete(id);
-    await this.workspaceService.deleteTestflowInWorkSpace(workspaceId, id);
+    await this.workspaceService.deleteTestflowInWorkSpace(
+      workspaceId,
+      id,
+      user._id,
+    );
     const updateMessage = `"${testflow.name}" testflow is deleted from "${workspace.name}" workspace`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
         type: UpdatesType.TESTFLOW,
         workspaceId: workspaceId,
+        user,
       }),
     });
     return data;
@@ -138,9 +151,11 @@ export class TestflowService {
    * Fetches all the testflows corresponding to a workspace.
    * @param id - Workspace id you want to get their testflows.
    */
-  async getAllTestflows(id: string): Promise<WithId<Testflow>[]> {
-    const user = this.contextService.get("user");
-    await this.checkPermission(id, user._id);
+  async getAllTestflows(
+    id: string,
+    userId: ObjectId,
+  ): Promise<WithId<Testflow>[]> {
+    await this.checkPermission(id, userId);
 
     const workspace = await this.workspaceService.get(id);
     const testflows = [];
@@ -182,15 +197,24 @@ export class TestflowService {
     testflowId: string,
     updateTestflowDto: Partial<UpdateTestflowDto>,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<WithId<Testflow>> {
-    const workspace = await this.isWorkspaceAdminorEditor(workspaceId);
-    await this.testflowRepository.update(testflowId, updateTestflowDto);
+    const workspace = await this.isWorkspaceAdminorEditor(
+      workspaceId,
+      user._id,
+    );
+    await this.testflowRepository.update(
+      testflowId,
+      updateTestflowDto,
+      user._id,
+    );
     const testflow = await this.testflowRepository.get(testflowId);
     if (updateTestflowDto?.name) {
       await this.workspaceService.updateTestflowInWorkSpace(
         workspaceId,
         testflowId,
         updateTestflowDto.name,
+        user._id,
       );
       const updateMessage = `"${testflow.name}" testflow is renamed to "${updateTestflowDto.name}" testflow under "${workspace.name}" workspace`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -198,6 +222,7 @@ export class TestflowService {
           message: updateMessage,
           type: UpdatesType.TESTFLOW,
           workspaceId: workspaceId,
+          user,
         }),
       });
     }
@@ -208,9 +233,11 @@ export class TestflowService {
    * Checks if user is admin or editor of workspace.
    * @param id - Workspace id.
    */
-  async isWorkspaceAdminorEditor(id: string): Promise<Workspace> {
+  async isWorkspaceAdminorEditor(
+    id: string,
+    userId: ObjectId,
+  ): Promise<Workspace> {
     const workspaceData = await this.workspaceReposistory.get(id);
-    const userId = this.contextService.get("user")._id;
     if (workspaceData) {
       for (const item of workspaceData.users) {
         if (

@@ -10,6 +10,7 @@ import { WorkspaceService } from "@src/modules/workspace/services/workspace.serv
 import { AdminUpdatesRepository } from "../repositories/user-admin.updates.repository";
 import { ObjectId } from "mongodb";
 import { AdminMembersRepository } from "../repositories/user-admin.members.repository";
+import { DecodedUserObject } from "@src/types/fastify";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 
 @Injectable()
@@ -22,7 +23,7 @@ export class AdminUsersService {
     private readonly adminUserRepository: AdminMembersRepository,
   ) {}
 
-  async getAllUsers(userId: string) {
+  async getAllUsers(userId: string, currentUser?: DecodedUserObject) {
     const teams = await this.teamsRepo.findBasicTeamsByUserId(userId);
 
     if (!teams.length) {
@@ -80,7 +81,10 @@ export class AdminUsersService {
           };
         });
 
-        const userOrg: any = await this.userService.getUserById(user.id);
+        const userOrg: any = await this.userService.getUserById(
+          user.id,
+          currentUser,
+        );
 
         return {
           id: user.id,
@@ -103,12 +107,16 @@ export class AdminUsersService {
     });
     return { teams: updatedFilteredTeams, users: newestUniqueUsers };
   }
-  async getUserDetails(ownerId: string, userId: string) {
+  async getUserDetails(
+    ownerId: string,
+    userId: string,
+    currentUser?: DecodedUserObject,
+  ) {
     // Fetch all required data in parallel
     const [teams, userOrg, memberWorkspaces] = await Promise.all([
       this.teamsRepo.findBasicTeamsByUserId(ownerId),
-      this.userService.getUserById(userId),
-      this.workspaceService.getAllWorkSpaces(userId),
+      this.userService.getUserById(userId, currentUser),
+      this.workspaceService.getAllWorkSpaces(userId, currentUser),
     ]);
 
     // Validate teams exist

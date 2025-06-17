@@ -9,7 +9,7 @@ import { JwtService } from "@nestjs/jwt";
 import { LoginPayload } from "../payloads/login.payload";
 import { ConfigService } from "@nestjs/config";
 import { Db, ObjectId, WithId } from "mongodb";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { createHmac } from "crypto";
 import { User } from "@src/modules/common/models/user.model";
@@ -58,7 +58,7 @@ export class AuthService {
     private readonly userReposistory: UserRepository,
     @Inject("DATABASE_CONNECTION")
     private db: Db,
-    private contextService: ContextService,
+
     private readonly logger: Logger,
   ) {
     this.expiration = this.configService.get("app.jwtExpirationTime");
@@ -150,7 +150,6 @@ export class AuthService {
         "Could not authenticate. Please try again.",
       );
     }
-    this.contextService.set("user", user);
     return user;
   }
   async getUserByEmailAndPass(

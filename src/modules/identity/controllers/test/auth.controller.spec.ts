@@ -13,7 +13,7 @@ import {
 } from "./mockData/auth.payload";
 import { FastifyReply } from "fastify";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import { UserService } from "../../services/user.service";
 import { ConfigService } from "@nestjs/config";
 
@@ -54,6 +54,7 @@ export const createFastifyReplyMock = (): FastifyReply => {
       script: "",
       style: "",
     },
+    elapsedTime: 0,
   };
   return mock;
 };
@@ -71,9 +72,6 @@ describe("AuthController", () => {
   const configServiceMock = {
     get: jest.fn().mockReturnValue("testget"),
   };
-  const contextServiceMock = {
-    set: jest.fn(),
-  };
   const userServiceMock = {
     getUserByEmail: jest.fn().mockResolvedValue({ _id: "" }),
     createGoogleAuthUser: jest.fn().mockResolvedValue({ insertedId: "" }),
@@ -81,12 +79,10 @@ describe("AuthController", () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [AuthService, ContextService, UserService, ConfigService],
+      providers: [AuthService, UserService, ConfigService],
     })
       .overrideProvider(AuthService)
       .useValue(authServiceMock)
-      .overrideProvider(ContextService)
-      .useValue(contextServiceMock)
       .overrideProvider(UserService)
       .useValue(userServiceMock)
       .overrideProvider(ConfigService)

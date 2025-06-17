@@ -8,9 +8,8 @@ import {
 } from "../models/collection.model";
 import { OpenAPI303 } from "../models/openapi303.model";
 import { Injectable } from "@nestjs/common";
-import { ContextService } from "./context.service";
 import { CollectionService } from "@src/modules/workspace/services/collection.service";
-import { WithId } from "mongodb";
+import { ObjectId, WithId } from "mongodb";
 import { resolveAllRefs } from "./helper/parser.helper";
 import { OpenAPI20 } from "../models/openapi20.model";
 import * as oapi2Transformer from "./helper/oapi2.transformer";
@@ -20,6 +19,7 @@ import { Branch } from "../models/branch.model";
 import { FastifyRequest } from "fastify";
 import axios from "axios";
 import * as yml from "js-yaml";
+import { DecodedUserObject } from "@src/types/fastify";
 interface ActiveSyncResponsePayload {
   collection: WithId<Collection>;
   existingCollection: boolean;
@@ -28,13 +28,13 @@ interface ActiveSyncResponsePayload {
 @Injectable()
 export class ParserService {
   constructor(
-    private readonly contextService: ContextService,
     private readonly collectionService: CollectionService,
     private readonly branchService: BranchService,
   ) {}
 
   async parse(
     file: string,
+    user: DecodedUserObject,
     activeSync?: boolean,
     workspaceId?: string,
     activeSyncUrl?: string,
@@ -50,18 +50,17 @@ export class ParserService {
       | OpenAPI20
       | any;
     let folderObjMap = new Map();
-    const user = await this.contextService.get("user");
     if (openApiDocument.hasOwnProperty("components")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI303;
       folderObjMap = oapi3Transformer.createCollectionItems(
         openApiDocument,
-        user,
+        user.name,
       );
     } else if (openApiDocument.hasOwnProperty("definitions")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI20;
       folderObjMap = oapi2Transformer.createCollectionItems(
         openApiDocument,
-        user,
+        user.name,
       );
     }
     const itemObject = Object.fromEntries(folderObjMap);
@@ -88,6 +87,7 @@ export class ParserService {
         activeSyncUrl,
         items,
         localRepositoryPath,
+        user,
       );
       return {
         collection,
@@ -108,9 +108,9 @@ export class ParserService {
         activeSyncUrl: openApiDocument?.activeSyncUrl ?? "",
         createdAt: new Date(),
         updatedAt: new Date(),
-        createdBy: user._id,
+        createdBy: user._id.toString(),
         updatedBy: {
-          id: user._id,
+          id: user._id.toString(),
           name: user.name,
         },
         syncedAt: openApiDocument?.isActiveSyncEnabled ? new Date() : null,
@@ -137,6 +137,7 @@ export class ParserService {
     activeSyncUrl: string,
     items: CollectionItem[],
     localRepositoryPath: string,
+    user: DecodedUserObject,
   ): Promise<ActiveSyncResponsePayload> {
     const collectionTitle = openApiDocument.info.title;
     let mergedFolderItems: CollectionItem[] = [];
@@ -152,6 +153,7 @@ export class ParserService {
         existingCollection._id.toString(),
         workspaceId,
         items,
+        user,
       );
 
       //Check items on folder level
@@ -172,6 +174,7 @@ export class ParserService {
         workspaceId,
         branch._id.toString(),
         mergedFolderItems,
+        user._id,
       );
 
       //Update collection Items
@@ -192,7 +195,6 @@ export class ParserService {
         existingCollection: true,
       };
     }
-    const user = await this.contextService.get("user");
 
     const collection: Collection = {
       name: collectionTitle,
@@ -207,25 +209,29 @@ export class ParserService {
       activeSyncUrl: activeSyncUrl ?? "",
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: user._id,
+      createdBy: user._id.toString(),
       updatedBy: {
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
       },
     };
     const insertedCollection =
       await this.collectionService.importCollection(collection);
     const collectionId = insertedCollection.insertedId.toString();
-    const branch = await this.branchService.createBranch({
-      name: currentBranch,
-      items: items,
-      collectionId,
-    });
+    const branch = await this.branchService.createBranch(
+      {
+        name: currentBranch,
+        items: items,
+        collectionId,
+      },
+      user._id,
+    );
 
     await this.collectionService.updateBranchArray(
       collectionId,
       { id: branch.insertedId.toString(), name: currentBranch },
       workspaceId,
+      user,
     );
 
     return {
@@ -241,6 +247,7 @@ export class ParserService {
     collectionId: string,
     workspaceId: string,
     items: CollectionItem[],
+    user: DecodedUserObject,
   ): Promise<WithId<Branch>> {
     const existingBranch = await this.collectionService.getActiveSyncedBranch(
       collectionId,
@@ -249,15 +256,23 @@ export class ParserService {
     if (existingBranch) {
       return existingBranch;
     }
-    const insertedBranch = await this.branchService.createBranch({
-      name: currentBranch,
-      items: items,
-      collectionId,
-    });
+    const insertedBranch = await this.branchService.createBranch(
+      {
+        name: currentBranch,
+        items: items,
+        collectionId,
+      },
+      user._id,
+    );
     const branch = await this.branchService.getBranch(
       insertedBranch.insertedId.toString(),
     );
-    await this.updateBranchInCollection(workspaceId, collectionId, branch);
+    await this.updateBranchInCollection(
+      workspaceId,
+      collectionId,
+      branch,
+      user,
+    );
     return branch;
   }
 
@@ -265,19 +280,22 @@ export class ParserService {
     workspaceId: string,
     branchId: string,
     items: CollectionItem[],
+    userId: ObjectId,
   ) {
-    await this.branchService.updateBranch(workspaceId, branchId, items);
+    await this.branchService.updateBranch(workspaceId, branchId, items, userId);
   }
 
   async updateItemsInCollection(
     workspaceId: string,
     collectionId: string,
     items: CollectionItem[],
+    user: DecodedUserObject,
   ) {
     await this.collectionService.updateCollection(
       collectionId,
       { items },
       workspaceId,
+      user,
     );
   }
 
@@ -285,11 +303,13 @@ export class ParserService {
     workspaceId: string,
     collectionId: string,
     branch: WithId<Branch>,
+    user: DecodedUserObject,
   ) {
     await this.collectionService.updateBranchArray(
       collectionId,
       { id: branch._id.toString(), name: branch.name },
       workspaceId,
+      user,
     );
   }
 
@@ -395,24 +415,26 @@ export class ParserService {
     return mergedArray;
   }
 
-  async parseOAPICollection(file: string): Promise<Collection> {
+  async parseOAPICollection(
+    file: string,
+    user: DecodedUserObject,
+  ): Promise<Collection> {
     let openApiDocument = (await SwaggerParser.parse(file)) as
       | OpenAPI303
       | OpenAPI20
       | any;
     let folderObjMap = new Map();
-    const user = await this.contextService.get("user");
     if (openApiDocument.hasOwnProperty("components")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI303;
       folderObjMap = oapi3Transformer.createCollectionItems(
         openApiDocument,
-        user,
+        user.name,
       );
     } else if (openApiDocument.hasOwnProperty("definitions")) {
       openApiDocument = resolveAllRefs(openApiDocument) as OpenAPI20;
       folderObjMap = oapi2Transformer.createCollectionItems(
         openApiDocument,
-        user,
+        user.name,
       );
     }
     const itemObject = Object.fromEntries(folderObjMap);
@@ -442,9 +464,9 @@ export class ParserService {
       activeSyncUrl: openApiDocument?.activeSyncUrl ?? "",
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: user._id,
+      createdBy: user._id.toString(),
       updatedBy: {
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
       },
     };

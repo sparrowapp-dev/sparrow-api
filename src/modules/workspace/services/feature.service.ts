@@ -1,8 +1,13 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { DeleteResult, InsertOneResult, UpdateResult, WithId } from "mongodb";
+import {
+  DeleteResult,
+  InsertOneResult,
+  ObjectId,
+  UpdateResult,
+  WithId,
+} from "mongodb";
 
 // ---- Service
-import { ContextService } from "@src/modules/common/services/context.service";
 
 // ---- Model & Payload
 import { AddFeatureDto, UpdateFeatureDto } from "../payloads/feature.payload";
@@ -19,10 +24,7 @@ import { FeatureRepository } from "../repositories/feature.repository";
 
 @Injectable()
 export class FeatureService {
-  constructor(
-    private readonly contextService: ContextService,
-    private readonly featureRepository: FeatureRepository,
-  ) {}
+  constructor(private readonly featureRepository: FeatureRepository) {}
 
   /**
    * Adds a new feature.
@@ -33,8 +35,8 @@ export class FeatureService {
    */
   async addFeature(
     addFeatureDto: AddFeatureDto,
+    userId: ObjectId,
   ): Promise<InsertOneResult<Feature>> {
-    const user = this.contextService.get("user");
     const featureData = await this.featureRepository.getFeatureByName(
       addFeatureDto.name,
     );
@@ -46,8 +48,8 @@ export class FeatureService {
     const newFeature: Feature = {
       name: addFeatureDto.name,
       isEnabled: addFeatureDto.isEnabled,
-      createdBy: user._id,
-      updatedBy: user._id,
+      createdBy: userId.toString(),
+      updatedBy: userId.toString(),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -91,10 +93,12 @@ export class FeatureService {
   async updateFeature(
     name: string,
     updateFeatureDto: UpdateFeatureDto,
+    userId: ObjectId,
   ): Promise<UpdateResult> {
     const data = await this.featureRepository.updateFeature(
       name,
       updateFeatureDto,
+      userId,
     );
     return data;
   }

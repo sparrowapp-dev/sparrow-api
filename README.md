@@ -58,7 +58,7 @@ cp .env.example .env
 
 ### Docker Method
 
-- To install all services(mongo + kafka + api server) as docker containers, run:
+- To install all services(mongo + api server) as docker containers, run:
 
   `pnpm docker:up `
 
@@ -67,7 +67,6 @@ cp .env.example .env
         pnpm docker:<SERVICE NAME>
 
   - `pnpm docker:mongo` - Runs only mongo in a docker container
-  - `pnpm docker:kafka` - Runs only kafka in a docker container
   - `pnpm docker:api` - Runs only the api server
 
 ### Non-Docker Method

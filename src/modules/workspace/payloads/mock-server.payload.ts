@@ -1,4 +1,12 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { KeyValue } from "@src/modules/common/models/collection.rxdb.model";
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from "class-validator";
 
 export class MockRequestResponseDto {
   @IsNumber()
@@ -12,4 +20,9 @@ export class MockRequestResponseDto {
   @IsString()
   @IsOptional()
   contentType?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @IsOptional()
+  responseHeaders?: KeyValue[];
 }

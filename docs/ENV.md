@@ -9,18 +9,14 @@ In case you set the above env to 'false', you wont be able to get verification c
     Email - dev@sparrow.com <br />
     Password - 12345678@
 
-2. There are multiple ways to setup Kafka and Mongo. You need to change the below env variables accordingly,
+2. There are multiple ways to setup Mongo. You need to change the below env variables accordingly,
 
-   `DB_URL and KAFKA_BROKER`
+   `DB_URL`
 
-   - If you used the provided scripts to run the API server and Kafka/Mongo inside Docker containers, use:
-
-     `KAFKA_BROKER=kafka:9094`
+   - If you used the provided scripts to run the API server and Mongo inside Docker containers, use:
 
      `DB_URL=mongodb://sparowapp:sparrow123@mongo:27017`
 
-   - If Kafka/Mongo is running directly on your machine or on a different host:
-
-     `KAFKA_BROKER=[HOST]:[PORT]`
+   - If Mongo is running directly on your machine or on a different host:
 
      `DB_URL=mongodb://[USERNAME]:[PASSWORD]@[HOST]:[PORT]`

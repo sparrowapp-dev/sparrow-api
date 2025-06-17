@@ -6,16 +6,18 @@ import {
 import { CollectionRepository } from "../repositories/collection.repository";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { ObjectId, UpdateResult } from "mongodb";
-import { ContextService } from "@src/modules/common/services/context.service";
 import {
   CollectionGraphQLDto,
+  CollectionMockRequestResponseDto,
   CollectionRequestDto,
   CollectionRequestItem,
   CollectionRequestResponseDto,
   CollectionSocketIODto,
+  CollectionAiRequestDto,
   CollectionWebSocketDto,
   DeleteFolderDto,
   FolderDto,
+  UpdateCollectionMockRequestResponseDto,
   UpdateCollectionRequestResponseDto,
 } from "../payloads/collectionRequest.payload";
 import { v4 as uuidv4 } from "uuid";
@@ -25,29 +27,32 @@ import {
   ItemTypeEnum,
   SourceTypeEnum,
 } from "@src/modules/common/models/collection.model";
-import { CollectionService } from "./collection.service";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { UpdateBranchDto } from "../payloads/branch.payload";
 import { Branch } from "@src/modules/common/models/branch.model";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { ProducerService } from "@src/modules/common/services/event-producer.service";
+import { DecodedUserObject } from "@src/types/fastify";
 @Injectable()
 export class CollectionRequestService {
   constructor(
     private readonly collectionReposistory: CollectionRepository,
     private readonly workspaceReposistory: WorkspaceRepository,
-    private readonly contextService: ContextService,
-    private readonly collectionService: CollectionService,
     private readonly workspaceService: WorkspaceService,
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
   ) {}
 
-  async addFolder(payload: Partial<FolderDto>): Promise<CollectionItem> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
-    const user = await this.contextService.get("user");
+  async addFolder(
+    payload: Partial<FolderDto>,
+    user: DecodedUserObject,
+  ): Promise<CollectionItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload.workspaceId,
+      user._id,
+    );
     const uuid = uuidv4();
     await this.checkPermission(payload.workspaceId, user._id);
     const collection = await this.collectionReposistory.getCollection(
@@ -86,7 +91,7 @@ export class CollectionRequestService {
       const updatedBranch: UpdateBranchDto = {
         items: branch.items,
         updatedAt: new Date(),
-        updatedBy: this.contextService.get("user")._id,
+        updatedBy: user._id.toString(),
       };
       await this.branchRepository.updateBranchById(
         branch._id.toString(),
@@ -97,6 +102,7 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.FOLDER,
         workspaceId: payload.workspaceId,
       }),
@@ -113,9 +119,14 @@ export class CollectionRequestService {
     throw new BadRequestException("Folder Doesn't Exist");
   }
 
-  async updateFolder(payload: Partial<FolderDto>): Promise<CollectionItem> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
-    const user = await this.contextService.get("user");
+  async updateFolder(
+    payload: Partial<FolderDto>,
+    user: DecodedUserObject,
+  ): Promise<CollectionItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload.workspaceId,
+      user._id,
+    );
     await this.checkPermission(payload.workspaceId, user._id);
     const collection = await this.collectionReposistory.getCollection(
       payload.collectionId,
@@ -151,7 +162,7 @@ export class CollectionRequestService {
       const updatedBranch: UpdateBranchDto = {
         items: branch.items,
         updatedAt: new Date(),
-        updatedBy: user._id,
+        updatedBy: user._id.toString(),
       };
       await this.branchRepository.updateBranchById(
         branch._id.toString(),
@@ -162,6 +173,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.FOLDER,
           workspaceId: payload.workspaceId,
         }),
@@ -172,6 +184,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateDescriptionMessage,
+          user,
           type: UpdatesType.FOLDER,
           workspaceId: payload.workspaceId,
         }),
@@ -204,9 +217,12 @@ export class CollectionRequestService {
 
   async deleteFolder(
     payload: DeleteFolderDto,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(payload.workspaceId);
-    const user = await this.contextService.get("user");
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload.workspaceId,
+      user._id,
+    );
     await this.checkPermission(payload.workspaceId, user._id);
     const collection = await this.collectionReposistory.getCollection(
       payload.collectionId,
@@ -238,7 +254,7 @@ export class CollectionRequestService {
       const updatedBranch: UpdateBranchDto = {
         items: branch.items,
         updatedAt: new Date(),
-        updatedBy: user._id,
+        updatedBy: user._id.toString(),
       };
       await this.branchRepository.updateBranchById(
         branch._id.toString(),
@@ -249,6 +265,7 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.FOLDER,
         workspaceId: payload.workspaceId,
       }),
@@ -280,7 +297,7 @@ export class CollectionRequestService {
     collectionId: string,
     request: Partial<CollectionRequestDto>,
     noOfRequests: number,
-    userName: string,
+    user: DecodedUserObject,
     folderId?: string,
   ): Promise<CollectionItem> {
     const uuid = uuidv4();
@@ -293,8 +310,8 @@ export class CollectionRequestService {
       description: request.items.description,
       source: request.source ?? SourceTypeEnum.USER,
       isDeleted: false,
-      createdBy: userName,
-      updatedBy: userName,
+      createdBy: user.name,
+      updatedBy: user.name,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -317,6 +334,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -331,8 +349,8 @@ export class CollectionRequestService {
           description: request.items.items.description,
           request: { ...request.items.items.request },
           source: SourceTypeEnum.USER,
-          createdBy: userName,
-          updatedBy: userName,
+          createdBy: user.name,
+          updatedBy: user.name,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -356,6 +374,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -368,6 +387,7 @@ export class CollectionRequestService {
     collectionId: string,
     requestId: string,
     request: Partial<CollectionRequestDto>,
+    user: DecodedUserObject,
   ): Promise<CollectionRequestItem> {
     const collectionData =
       await this.collectionReposistory.getCollection(collectionId);
@@ -379,6 +399,7 @@ export class CollectionRequestService {
       collectionId,
       requestId,
       request,
+      user,
     );
     if (request?.currentBranch) {
       await this.branchRepository.updateRequestInBranch(
@@ -386,6 +407,7 @@ export class CollectionRequestService {
         request.currentBranch,
         requestId,
         request,
+        user._id,
       );
     }
     if (
@@ -397,6 +419,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -407,6 +430,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -419,6 +443,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -432,6 +457,7 @@ export class CollectionRequestService {
     requestId: string,
     noOfRequests: number,
     requestDto: Partial<CollectionRequestDto>,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
     const collectionData =
       await this.collectionReposistory.getCollection(collectionId);
@@ -443,6 +469,7 @@ export class CollectionRequestService {
       collectionId,
       requestId,
       noOfRequests,
+      user,
       requestDto?.folderId,
     );
     if (requestDto.currentBranch) {
@@ -450,6 +477,7 @@ export class CollectionRequestService {
         collectionId,
         requestDto.currentBranch,
         requestId,
+        user._id,
         requestDto.folderId,
       );
     }
@@ -457,6 +485,7 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.REQUEST,
         workspaceId: requestDto.workspaceId,
       }),
@@ -494,9 +523,12 @@ export class CollectionRequestService {
    */
   async addWebSocket(
     websocket: Partial<CollectionWebSocketDto>,
+    user: DecodedUserObject,
   ): Promise<CollectionItem> {
-    const user = await this.contextService.get("user");
-    await this.workspaceService.IsWorkspaceAdminOrEditor(websocket.workspaceId);
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      websocket.workspaceId,
+      user._id,
+    );
     await this.checkPermission(websocket.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(websocket.collectionId);
     const uuid = uuidv4();
@@ -527,6 +559,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.WEBSOCKET,
           workspaceId: websocket.workspaceId,
         }),
@@ -557,6 +590,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.WEBSOCKET,
           workspaceId: websocket.workspaceId,
         }),
@@ -576,14 +610,18 @@ export class CollectionRequestService {
   async updateWebSocket(
     websocketId: string,
     websocket: Partial<CollectionWebSocketDto>,
+    user: DecodedUserObject,
   ): Promise<CollectionRequestItem> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(websocket.workspaceId);
-    const user = await this.contextService.get("user");
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      websocket.workspaceId,
+      user._id,
+    );
     await this.checkPermission(websocket.workspaceId, user._id);
     const collection = await this.collectionReposistory.updateWebSocket(
       websocket.collectionId,
       websocketId,
       websocket,
+      user,
     );
     const collectionData = await this.collectionReposistory.getCollection(
       websocket.collectionId,
@@ -594,6 +632,7 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.WEBSOCKET,
         workspaceId: websocket.workspaceId,
       }),
@@ -612,11 +651,12 @@ export class CollectionRequestService {
   async deleteWebSocket(
     websocketId: string,
     websocketDto: Partial<CollectionWebSocketDto>,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(
       websocketDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.checkPermission(websocketDto.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(websocketDto.collectionId);
     const collectionData = await this.collectionReposistory.getCollection(
@@ -630,12 +670,14 @@ export class CollectionRequestService {
       websocketDto.collectionId,
       websocketId,
       noOfRequests,
+      user,
       websocketDto?.folderId,
     );
     const updateMessage = `WebSocket "${websocketData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.WEBSOCKET,
         workspaceId: websocketDto.workspaceId,
       }),
@@ -653,9 +695,12 @@ export class CollectionRequestService {
    */
   async addSocketIO(
     socketio: Partial<CollectionSocketIODto>,
+    user: DecodedUserObject,
   ): Promise<CollectionItem> {
-    const user = await this.contextService.get("user");
-    await this.workspaceService.IsWorkspaceAdminOrEditor(socketio.workspaceId);
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      socketio.workspaceId,
+      user._id,
+    );
     await this.checkPermission(socketio.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(socketio.collectionId);
     const uuid = uuidv4();
@@ -686,6 +731,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.SOCKETIO,
           workspaceId: socketio.workspaceId,
         }),
@@ -716,6 +762,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.SOCKETIO,
           workspaceId: socketio.workspaceId,
         }),
@@ -735,14 +782,18 @@ export class CollectionRequestService {
   async updateSocketIO(
     socketioId: string,
     socketio: Partial<CollectionSocketIODto>,
+    user: DecodedUserObject,
   ): Promise<CollectionRequestItem> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(socketio.workspaceId);
-    const user = await this.contextService.get("user");
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      socketio.workspaceId,
+      user._id,
+    );
     await this.checkPermission(socketio.workspaceId, user._id);
     const collection = await this.collectionReposistory.updateSocketIO(
       socketio.collectionId,
       socketioId,
       socketio,
+      user,
     );
     const collectionData = await this.collectionReposistory.getCollection(
       socketio.collectionId,
@@ -753,6 +804,7 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.SOCKETIO,
         workspaceId: socketio.workspaceId,
       }),
@@ -771,11 +823,12 @@ export class CollectionRequestService {
   async deleteSocketIO(
     socketioId: string,
     socketioDto: Partial<CollectionSocketIODto>,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(
       socketioDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.checkPermission(socketioDto.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(socketioDto.collectionId);
     const collectionData = await this.collectionReposistory.getCollection(
@@ -789,12 +842,14 @@ export class CollectionRequestService {
       socketioDto.collectionId,
       socketioId,
       noOfRequests,
+      user,
       socketioDto?.folderId,
     );
     const updateMessage = `Socket.IO "${socketioData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.SOCKETIO,
         workspaceId: socketioDto.workspaceId,
       }),
@@ -812,9 +867,12 @@ export class CollectionRequestService {
    */
   async addGraphQL(
     graphql: Partial<CollectionGraphQLDto>,
+    user: DecodedUserObject,
   ): Promise<CollectionItem> {
-    const user = await this.contextService.get("user");
-    await this.workspaceService.IsWorkspaceAdminOrEditor(graphql.workspaceId);
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      graphql.workspaceId,
+      user._id,
+    );
     await this.checkPermission(graphql.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(graphql.collectionId);
     const uuid = uuidv4();
@@ -845,6 +903,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.GRAPHQL,
           workspaceId: graphql.workspaceId,
         }),
@@ -875,6 +934,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.GRAPHQL,
           workspaceId: graphql.workspaceId,
         }),
@@ -894,14 +954,18 @@ export class CollectionRequestService {
   async updateGraphQL(
     graphqlId: string,
     graphql: Partial<CollectionGraphQLDto>,
+    user: DecodedUserObject,
   ): Promise<CollectionRequestItem> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(graphql.workspaceId);
-    const user = await this.contextService.get("user");
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      graphql.workspaceId,
+      user._id,
+    );
     await this.checkPermission(graphql.workspaceId, user._id);
     const collection = await this.collectionReposistory.updateGraphQL(
       graphql.collectionId,
       graphqlId,
       graphql,
+      user,
     );
     const collectionData = await this.collectionReposistory.getCollection(
       graphql.collectionId,
@@ -912,6 +976,7 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.GRAPHQL,
         workspaceId: graphql.workspaceId,
       }),
@@ -930,11 +995,12 @@ export class CollectionRequestService {
   async deleteGraphQL(
     graphqlId: string,
     graphqlDto: Partial<CollectionGraphQLDto>,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(
       graphqlDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.checkPermission(graphqlDto.workspaceId, user._id);
     const noOfRequests = await this.getNoOfRequest(graphqlDto.collectionId);
     const collectionData = await this.collectionReposistory.getCollection(
@@ -948,12 +1014,14 @@ export class CollectionRequestService {
       graphqlDto.collectionId,
       graphqlId,
       noOfRequests,
+      user,
       graphqlDto?.folderId,
     );
     const updateMessage = `GraphQL "${graphqlData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.GRAPHQL,
         workspaceId: graphqlDto.workspaceId,
       }),
@@ -971,10 +1039,11 @@ export class CollectionRequestService {
    */
   async addRequestResponse(
     requestResponse: Partial<CollectionRequestResponseDto>,
+    user: DecodedUserObject,
   ): Promise<CollectionItem> {
-    const user = await this.contextService.get("user");
     await this.workspaceService.IsWorkspaceAdminOrEditor(
       requestResponse.workspaceId,
+      user._id,
     );
     await this.checkPermission(requestResponse.workspaceId, user._id);
     const uuid = uuidv4();
@@ -1005,6 +1074,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.REQUEST_RESPONSE,
           workspaceId: requestResponse.workspaceId,
         }),
@@ -1021,6 +1091,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.REQUEST_RESPONSE,
           workspaceId: requestResponse.workspaceId,
         }),
@@ -1041,16 +1112,18 @@ export class CollectionRequestService {
   async updateRequestResponse(
     responseId: string,
     requestResponse: Partial<UpdateCollectionRequestResponseDto>,
+    user: DecodedUserObject,
   ): Promise<Partial<UpdateCollectionRequestResponseDto>> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(
       requestResponse.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.checkPermission(requestResponse.workspaceId, user._id);
     const collection = await this.collectionReposistory.updateRequestResponse(
       requestResponse.collectionId,
       responseId,
       requestResponse,
+      user,
     );
     const collectionData = await this.collectionReposistory.getCollection(
       requestResponse.collectionId,
@@ -1065,6 +1138,7 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.REQUEST_RESPONSE,
         workspaceId: requestResponse.workspaceId,
       }),
@@ -1084,11 +1158,12 @@ export class CollectionRequestService {
   async deleteRequestResponse(
     responseId: string,
     requestResponseDto: Partial<CollectionRequestResponseDto>,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
     await this.workspaceService.IsWorkspaceAdminOrEditor(
       requestResponseDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.checkPermission(requestResponseDto.workspaceId, user._id);
     const collectionData = await this.collectionReposistory.getCollection(
       requestResponseDto.collectionId,
@@ -1101,12 +1176,14 @@ export class CollectionRequestService {
       requestResponseDto.collectionId,
       requestResponseDto.requestId,
       responseId,
+      user,
       requestResponseDto?.folderId,
     );
     const updateMessage = `Response "${requestResponseData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.REQUEST_RESPONSE,
         workspaceId: requestResponseDto.workspaceId,
       }),
@@ -1118,7 +1195,7 @@ export class CollectionRequestService {
     collectionId: string,
     request: Partial<CollectionRequestDto>,
     noOfRequests: number,
-    userName: string,
+    user: DecodedUserObject,
     folderId?: string,
   ): Promise<CollectionItem> {
     const uuid = uuidv4();
@@ -1132,8 +1209,8 @@ export class CollectionRequestService {
       mockRequest: { ...request.items.mockRequest },
       source: request.source ?? SourceTypeEnum.USER,
       isDeleted: false,
-      createdBy: userName,
-      updatedBy: userName,
+      createdBy: user.name,
+      updatedBy: user.name,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1149,6 +1226,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.MOCK_REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -1163,8 +1241,8 @@ export class CollectionRequestService {
           description: request.items.items.description,
           mockRequest: { ...request.items.items.mockRequest },
           source: SourceTypeEnum.USER,
-          createdBy: userName,
-          updatedBy: userName,
+          createdBy: user.name,
+          updatedBy: user.name,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -1181,6 +1259,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.MOCK_REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -1193,6 +1272,7 @@ export class CollectionRequestService {
     collectionId: string,
     requestId: string,
     request: Partial<CollectionRequestDto>,
+    user: DecodedUserObject,
   ): Promise<CollectionRequestItem> {
     const collectionData =
       await this.collectionReposistory.getCollection(collectionId);
@@ -1204,6 +1284,7 @@ export class CollectionRequestService {
       collectionId,
       requestId,
       request,
+      user,
     );
 
     if (
@@ -1215,6 +1296,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.MOCK_REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -1225,6 +1307,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.MOCK_REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -1237,6 +1320,7 @@ export class CollectionRequestService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.MOCK_REQUEST,
           workspaceId: request.workspaceId,
         }),
@@ -1250,6 +1334,7 @@ export class CollectionRequestService {
     requestId: string,
     noOfRequests: number,
     requestDto: Partial<CollectionRequestDto>,
+    user: DecodedUserObject,
   ): Promise<UpdateResult<Collection>> {
     const collectionData =
       await this.collectionReposistory.getCollection(collectionId);
@@ -1261,6 +1346,7 @@ export class CollectionRequestService {
       collectionId,
       requestId,
       noOfRequests,
+      user,
       requestDto?.folderId,
     );
 
@@ -1268,8 +1354,345 @@ export class CollectionRequestService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.MOCK_REQUEST,
         workspaceId: requestDto.workspaceId,
+      }),
+    });
+    return collection;
+  }
+
+  /**
+   * Adds a new AI Request to the collection.
+   * This method handles AI Request and folderAI Request.
+   *
+   * @param aiRequest AI Request details to be added.
+   * @returns AI Request item.
+   * @throws UnauthorizedException if the user does not have the required permissions.
+   */
+  async addAiRequest(
+    aiRequest: Partial<CollectionAiRequestDto>,
+    user: DecodedUserObject,
+  ): Promise<CollectionItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      aiRequest.workspaceId,
+      user._id,
+    );
+    await this.checkPermission(aiRequest.workspaceId, user._id);
+    const noOfRequests = await this.getNoOfRequest(aiRequest.collectionId);
+    const uuid = uuidv4();
+    const collection = await this.collectionReposistory.getCollection(
+      aiRequest.collectionId,
+    );
+    const aiRequestObj: CollectionItem = {
+      id: uuid,
+      name: aiRequest.items.name,
+      type: aiRequest.items.type,
+      description: aiRequest.items.description,
+      source: aiRequest.source ?? SourceTypeEnum.USER,
+      isDeleted: false,
+      createdBy: user?.name,
+      updatedBy: user?.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    let updateMessage = ``;
+    if (aiRequest.items.type === ItemTypeEnum.AI_REQUEST) {
+      aiRequestObj.aiRequest = aiRequest.items.aiRequest;
+      await this.collectionReposistory.addAiRequest(
+        aiRequest.collectionId,
+        aiRequestObj,
+        noOfRequests,
+      );
+      updateMessage = `New AI request "${aiRequest.items.name}" is created under "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          user,
+          type: UpdatesType.AI_REQUEST,
+          workspaceId: aiRequest.workspaceId,
+        }),
+      });
+      return aiRequestObj;
+    } else {
+      aiRequestObj.items = [
+        {
+          id: uuidv4(),
+          name: aiRequest.items.items.name,
+          type: aiRequest.items.items.type,
+          description: aiRequest.items.items.description,
+          aiRequest: { ...aiRequest.items.items.aiRequest },
+          source: SourceTypeEnum.USER,
+          createdBy: user?.name,
+          updatedBy: user?.name,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+      await this.collectionReposistory.addAiRequestInFolder(
+        aiRequest.collectionId,
+        aiRequestObj,
+        noOfRequests,
+        aiRequest?.folderId,
+      );
+      updateMessage = `New AI request "${aiRequest.items.items.name}" is created under "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          user,
+          type: UpdatesType.AI_REQUEST,
+          workspaceId: aiRequest.workspaceId,
+        }),
+      });
+      return aiRequestObj.items[0];
+    }
+  }
+
+  /**
+   * Updates an existing AI Request in the collection.
+   *
+   * @param aiRequestId - The ID of the AI Request to be updated.
+   * @param aiRequest - The updated AI Request details.
+   * @returns The updated AI Request item.
+   * @throws UnauthorizedException if the user does not have the required permissions.
+   */
+  async updateAiRequest(
+    aiRequestId: string,
+    aiRequest: Partial<CollectionAiRequestDto>,
+    user: DecodedUserObject,
+  ): Promise<CollectionRequestItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      aiRequest.workspaceId,
+      user._id,
+    );
+    await this.checkPermission(aiRequest.workspaceId, user._id);
+    const collection = await this.collectionReposistory.updateAiRequest(
+      aiRequest.collectionId,
+      aiRequestId,
+      aiRequest,
+      user,
+    );
+    const collectionData = await this.collectionReposistory.getCollection(
+      aiRequest.collectionId,
+    );
+    const updateMessage = `AI Request "${
+      aiRequest?.items?.name ?? aiRequest?.items?.items?.name
+    }" is updated under "${collectionData.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        user,
+        type: UpdatesType.AI_REQUEST,
+        workspaceId: aiRequest.workspaceId,
+      }),
+    });
+    return collection;
+  }
+
+  /**
+   * Deletes an existing AI Request from the collection.
+   *
+   * @param aiRequestId - The ID of the AI Request to be deleted.
+   * @param aiRequestDto - The AI Request details including collection ID and folder ID (if applicable).
+   * @returns The result of the update operation.
+   * @throws UnauthorizedException if the user does not have the required permissions.
+   */
+  async deleteAiRequest(
+    aiRequestId: string,
+    aiRequestDto: Partial<CollectionAiRequestDto>,
+    user: DecodedUserObject,
+  ): Promise<UpdateResult<Collection>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      aiRequestDto.workspaceId,
+      user._id,
+    );
+    await this.checkPermission(aiRequestDto.workspaceId, user._id);
+    const noOfRequests = await this.getNoOfRequest(aiRequestDto.collectionId);
+    const collectionData = await this.collectionReposistory.getCollection(
+      aiRequestDto.collectionId,
+    );
+    const aiRequestData = await this.findItemById(
+      collectionData.items,
+      aiRequestId,
+    );
+    const collection = await this.collectionReposistory.deleteAiRequest(
+      aiRequestDto.collectionId,
+      aiRequestId,
+      noOfRequests,
+      user,
+      aiRequestDto?.folderId,
+    );
+    const updateMessage = `AI Request "${aiRequestData?.name}" is deleted from "${collectionData?.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        user,
+        type: UpdatesType.AI_REQUEST,
+        workspaceId: aiRequestDto.workspaceId,
+      }),
+    });
+    return collection;
+  }
+
+  /**
+   * Adds a new mock request response to a collection or folder.
+   * Ensures the user has the necessary permissions before performing the operation.
+   * Produces an update message after saving the response.
+   *
+   * @param mockRequestResponse - The mock request response data to add.
+   * @returns - The newly created mock request response object.
+   */
+  async addMockRequestResponse(
+    mockRequestResponse: Partial<CollectionMockRequestResponseDto>,
+    user: DecodedUserObject,
+  ): Promise<CollectionItem> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      mockRequestResponse.workspaceId,
+      user._id,
+    );
+    await this.checkPermission(mockRequestResponse.workspaceId, user._id);
+    const uuid = uuidv4();
+    const collection = await this.collectionReposistory.getCollection(
+      mockRequestResponse.collectionId,
+    );
+    const mockRequestResponseObj: CollectionItem = {
+      id: uuid,
+      name: mockRequestResponse.items.name,
+      type: mockRequestResponse.items.type,
+      description: mockRequestResponse.items.description,
+      mockRequestResponse: mockRequestResponse.items.mockRequestResponse,
+      source: mockRequestResponse.source ?? SourceTypeEnum.USER,
+      isDeleted: false,
+      createdBy: user?.name,
+      updatedBy: user?.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    let updateMessage = ``;
+    if (!mockRequestResponse?.folderId) {
+      await this.collectionReposistory.addMockRequestResponse(
+        mockRequestResponse.collectionId,
+        mockRequestResponse.mockRequestId,
+        mockRequestResponseObj,
+      );
+      updateMessage = `Mock response "${mockRequestResponse.items.name}" is saved under "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          user,
+          type: UpdatesType.MOCK_REQUEST_RESPONSE,
+          workspaceId: mockRequestResponse.workspaceId,
+        }),
+      });
+      return mockRequestResponseObj;
+    } else {
+      await this.collectionReposistory.addMockRequestResponseInFolder(
+        mockRequestResponse.collectionId,
+        mockRequestResponse.mockRequestId,
+        mockRequestResponseObj,
+        mockRequestResponse?.folderId,
+      );
+      updateMessage = `Mock response "${mockRequestResponse.items.name}" is saved under "${collection.name}" collection`;
+      await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+        value: JSON.stringify({
+          message: updateMessage,
+          user,
+          type: UpdatesType.MOCK_REQUEST_RESPONSE,
+          workspaceId: mockRequestResponse.workspaceId,
+        }),
+      });
+      return mockRequestResponseObj;
+    }
+  }
+
+  /**
+   * Updates an existing mock request response within a collection or folder.
+   * Ensures the user has the necessary permissions before updating.
+   * Produces an update message after modifying the response.
+   *
+   * @param responseId - The ID of the mock request response to update.
+   * @param mockRequestResponse - The updated mock request response data.
+   * @returns - The updated mock request response object.
+   */
+  async updateMockRequestResponse(
+    responseId: string,
+    mockRequestResponse: Partial<UpdateCollectionMockRequestResponseDto>,
+    user: DecodedUserObject,
+  ): Promise<Partial<UpdateCollectionMockRequestResponseDto>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      mockRequestResponse.workspaceId,
+      user._id,
+    );
+    await this.checkPermission(mockRequestResponse.workspaceId, user._id);
+    const collection =
+      await this.collectionReposistory.updateMockRequestResponse(
+        mockRequestResponse.collectionId,
+        responseId,
+        mockRequestResponse,
+        user,
+      );
+    const collectionData = await this.collectionReposistory.getCollection(
+      mockRequestResponse.collectionId,
+    );
+    const mockRequestResponseData = await this.findItemById(
+      collectionData.items,
+      responseId,
+    );
+    const updateMessage = `Mock response "${
+      mockRequestResponseData?.name
+    }" is updated under "${collectionData.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        user,
+        type: UpdatesType.MOCK_REQUEST_RESPONSE,
+        workspaceId: mockRequestResponse.workspaceId,
+      }),
+    });
+    return collection;
+  }
+
+  /**
+   * Deletes a mock request response from a collection or folder.
+   * Ensures the user has the necessary permissions before deletion.
+   * Produces an update message after deletion.
+   *
+   * @param responseId - The ID of the mock request response to delete.
+   * @param mockRequestResponseDto - Data containing collection and mock request details.
+   * @returns - The result of the delete operation.
+   */
+  async deleteMockRequestResponse(
+    responseId: string,
+    mockRequestResponseDto: Partial<CollectionMockRequestResponseDto>,
+    user: DecodedUserObject,
+  ): Promise<UpdateResult<Collection>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      mockRequestResponseDto.workspaceId,
+      user._id,
+    );
+    await this.checkPermission(mockRequestResponseDto.workspaceId, user._id);
+    const collectionData = await this.collectionReposistory.getCollection(
+      mockRequestResponseDto.collectionId,
+    );
+    const mockRequestResponseData = await this.findItemById(
+      collectionData.items,
+      responseId,
+    );
+    const collection =
+      await this.collectionReposistory.deleteMockRequestResponse(
+        mockRequestResponseDto.collectionId,
+        mockRequestResponseDto.mockRequestId,
+        responseId,
+        user,
+        mockRequestResponseDto?.folderId,
+      );
+    const updateMessage = `Mock response "${mockRequestResponseData?.name}" is deleted from "${collectionData?.name}" collection`;
+    await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
+      value: JSON.stringify({
+        message: updateMessage,
+        user,
+        type: UpdatesType.MOCK_REQUEST_RESPONSE,
+        workspaceId: mockRequestResponseDto.workspaceId,
       }),
     });
     return collection;

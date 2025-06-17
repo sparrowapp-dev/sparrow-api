@@ -21,6 +21,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { AdminUsersService } from "../services/user-admin.enterprise-user.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @Controller("api/admin")
 @ApiTags("admin users")
@@ -34,13 +35,16 @@ export class AdminUsersController {
   @ApiOperation({
     summary: "Get all the users in hub in which the logged in user is owner",
   })
-  async getUsers(@Req() req: any, @Res() res: FastifyReply) {
-    const userId = req.user._id;
+  async getUsers(
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const userId = request.user._id;
 
     if (!userId) {
       throw new UnauthorizedException("User ID is missing from token");
     }
-    const data = await this.usersService.getAllUsers(userId);
+    const data = await this.usersService.getAllUsers(userId.toString());
     const responseData = new ApiResponseService(
       "Users Generated",
       HttpStatusCode.OK,
@@ -55,7 +59,7 @@ export class AdminUsersController {
     summary: "Get user details for the enterprise logged in user is owner",
   })
   async getUsersDetails(
-    @Req() req: any,
+    @Req() req: ExtendedFastifyRequest,
     @Query("userId") userId: string,
     @Res() res: FastifyReply,
   ) {
@@ -64,7 +68,10 @@ export class AdminUsersController {
     if (!ownerId) {
       throw new UnauthorizedException("User ID is missing from token");
     }
-    const data = await this.usersService.getUserDetails(ownerId, userId);
+    const data = await this.usersService.getUserDetails(
+      ownerId.toString(),
+      userId,
+    );
     const responseData = new ApiResponseService(
       "Users Details Generated",
       HttpStatusCode.OK,

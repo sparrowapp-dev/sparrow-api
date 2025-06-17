@@ -40,6 +40,7 @@ import {
 import { TeamService } from "@src/modules/identity/services/team.service";
 import { PlanService } from "@src/modules/identity/services/plan.service";
 import { Plan } from "@src/modules/common/models/plan.model";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @Controller("api/admin")
 @ApiTags("admin hubs")
@@ -179,8 +180,10 @@ export class AdminHubsController {
     @Body() createHubDto: CreateOrUpdateTeamDto,
     @Res() res: FastifyReply,
     @UploadedFile() image: MemoryStorageFile,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.teamService.create(createHubDto, image);
+    const user = request.user;
+    const data = await this.teamService.create(createHubDto, user, image);
     const hub = await this.teamService.get(data.insertedId.toString());
 
     const responseData = new ApiResponseService(
@@ -247,8 +250,10 @@ export class AdminHubsController {
     @Res() res: FastifyReply,
     @UploadedFile()
     image: MemoryStorageFile,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.teamService.update(teamId, updateTeamDto, image);
+    const user = request.user;
+    await this.teamService.update(teamId, updateTeamDto, user._id, image);
     const team = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "Team Updated",

@@ -8,7 +8,6 @@ import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { AiLogs } from "@src/modules/common/models/ai-log.model";
 
 // ---- Services
-import { ContextService } from "@src/modules/common/services/context.service";
 
 /**
  * ChatbotStatsRepository
@@ -20,27 +19,22 @@ export class AiLogRepository {
   /**
    * Constructor for ChatbotStatsRepository.
    * @param db The MongoDB database connection injected by the NestJS dependency injection system.
-   * @param contextService The service for accessing context-related information like the current user.
    */
-  constructor(
-    @Inject("DATABASE_CONNECTION") private db: Db,
-    private readonly contextService: ContextService,
-  ) {}
+  constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
 
   async addLogs(
     payload: AiLogs,
-    userId: string = null,
+    userId?: string,
   ): Promise<InsertOneResult<Document>> {
     const defaultParams = {
       createdAt: new Date(),
-      createdBy: this.contextService.get("user")?._id ?? userId,
+      createdBy: userId,
     };
-  
+
     const data = await this.db
       .collection(Collections.AILOGS)
       .insertOne({ ...payload, ...defaultParams });
-  
+
     return data;
   }
-
 }
