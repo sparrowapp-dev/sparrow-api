@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { Db, ObjectId } from "mongodb";
 
-const planId = "685d2b0a1"; 
+const planId = "684"; 
 const planName = "Community"; 
 
 
