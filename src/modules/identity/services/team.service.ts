@@ -341,19 +341,21 @@ export class TeamService {
       const isValidInvite =
         specificInvite && !this.isInviteExpired(specificInvite.expiresAt);
       if (isValidInvite) {
-        const createdById = specificInvite.createdBy.toString();
-        const senderData = await this.userRepository.getUserById(createdById);
-        const team: any = {
-          _id: teamId,
-          logo: teamData.logo,
-          name: teamData.name,
-          hubUrl: teamData.hubUrl,
-          plan: teamData.plan,
-          workspaces: [],
-          description: senderData?.name || "No creator found",
-        };
-        // Add the team object to the teams array
-        teams.push(team);
+        const createdById = specificInvite?.createdBy?.toString();
+        if(createdById){
+          const senderData = await this.userRepository.getUserById(createdById);
+          const team: any = {
+            _id: teamId,
+            logo: teamData.logo,
+            name: teamData.name,
+            hubUrl: teamData.hubUrl,
+            plan: teamData.plan,
+            workspaces: [],
+            description: senderData?.name || "No creator found",
+          };
+          // Add the team object to the teams array
+          teams.push(team);
+        }
       }
     }
     return teams;

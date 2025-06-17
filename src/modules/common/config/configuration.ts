@@ -1,5 +1,4 @@
 import { Env } from "@common/config/env.validation";
-import { publish } from "rxjs";
 
 export default () => ({
   app: {

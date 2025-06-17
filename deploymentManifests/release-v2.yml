@@ -305,6 +305,11 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: DEEPSEEK_API_VERSION
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: DB_NAME 
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
