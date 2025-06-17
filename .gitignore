@@ -19,6 +19,7 @@ yarn-error.log
 
 # environment
 .env
+.npmrc
 
 # build
 /dist

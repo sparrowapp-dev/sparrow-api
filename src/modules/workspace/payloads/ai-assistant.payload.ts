@@ -263,6 +263,14 @@ export class ChatBotPayload {
   @IsOptional()
   @ApiProperty({ required: false, example: "sparrow-ai OR llm-evaluation" })
   feature?: string;
+
+  /**
+   * Team Id
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "683ff7a8a30481c5901fc386" })
+  teamId?: string;
 }
 
 export class ErrorResponsePayload {

@@ -106,7 +106,7 @@ export class UserRepository {
    * @param {RegisterPayload} payload user payload
    * @returns {Promise<IUser>} created user data
    */
-  async createUser(payload: RegisterPayload): Promise<InsertOneResult<User>> {
+  async createUser(payload: RegisterPayload ): Promise<InsertOneResult<User>> {
     const createdUser = await this.db
       .collection<User>(Collections.USER)
       .insertOne({

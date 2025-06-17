@@ -49,7 +49,13 @@ const { PORT } = process.env;
   // Create the NestJS application with Fastify adapter
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger: true, bodyLimit: 50 * 1024 * 1024 }), // Set logger and body limit
+    new FastifyAdapter({
+      logger: true,
+      bodyLimit: 50 * 1024 * 1024,
+    }),
+    {
+      rawBody: true,
+    },
   );
 
   // Use the custom WebSocket adapter to handle both WS and SocketIo

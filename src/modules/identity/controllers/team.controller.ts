@@ -33,6 +33,9 @@ import {
   UploadedFile,
 } from "@blazity/nest-file-fastify";
 import { UserService } from "../services/user.service";
+import { PlanService } from "../services/plan.service";
+import { CreateTeamGuard } from "@src/modules/identity/guards/create-team-guard";
+import { HubInviteGuard } from "@src/modules/identity/guards/hub-invite.guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 /**
  * Team Controller
@@ -46,6 +49,7 @@ export class TeamController {
     private readonly teamService: TeamService,
     private readonly teamUserService: TeamUserService,
     private readonly userService: UserService,
+    private readonly planService: PlanService,
   ) {}
 
   @Post()
@@ -228,7 +232,7 @@ export class TeamController {
   }
 
   @Post(":teamId/user")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, HubInviteGuard)
   @ApiOperation({
     summary: "Sends multiple invites to users within a team.",
     description: "This will add multiple users in your Team",
@@ -587,6 +591,31 @@ export class TeamController {
     );
     const responseData = new ApiResponseService(
       "Resend Invite to the hub",
+      HttpStatusCode.OK,
+      data,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post(":teamId/requestPlan")
+  @ApiOperation({
+    summary: "Requesting Plan Upgrade.",
+    description: "",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Successfully sent request to upgrade the plan",
+  })
+  @ApiResponse({ status: 400, description: "Failed to Accept Invite." })
+  @ApiResponse({ status: 404, description: "Team or Request not Found." })
+  async requestPlanUpgrade(
+    @Param("teamId") teamId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.teamService.teamPlanUpgradeOwner(teamId);
+    const responseData = new ApiResponseService(
+      "request send to Owner requesting for a Upgrade plan.",
       HttpStatusCode.OK,
       data,
     );

@@ -313,6 +313,7 @@ export class WorkspaceService {
           type: environmentDto.type,
         },
       ],
+      plan: teamData?.plan,
       createdAt: new Date(),
       createdBy: user._id.toString(),
       updatedAt: new Date(),

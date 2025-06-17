@@ -42,9 +42,10 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
       ): Promise<Db> => {
         const logger = new Logger("DatabaseConnection");
         try {
+          const dbName = configService.get<string>("db.name");
           // Connect to MongoDB using the URL from ConfigService
           const client = await MongoClient.connect(configService.get("db.url"));
-          return client.db("sparrow");
+          return client.db(dbName);
         } catch (e) {
           logger.error("Failed to connect to MongoDB", e.stack);
 

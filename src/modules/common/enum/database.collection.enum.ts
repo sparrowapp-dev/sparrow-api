@@ -2,6 +2,7 @@ export enum Collections {
   WORKSPACE = "workspace",
   USER = "user",
   TEAM = "team",
+  PLAN = "plan",
   COLLECTION = "collection",
   EARLYACCESS = "earlyaccess",
   ENVIRONMENT = "environment",
@@ -13,5 +14,6 @@ export enum Collections {
   TESTFLOW = "testflow",
   USERINVITES = "userinvites",
   AILOGS = "ailogs",
+  USERLIMITLOGS = "userlimitlogs",
   LLMCONVERSATION = "llmconversation"
 }

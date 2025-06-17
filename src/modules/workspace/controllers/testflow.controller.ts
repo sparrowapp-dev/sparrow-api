@@ -34,6 +34,8 @@ import {
   CreateTestflowDto,
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
+import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
+import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
@@ -73,7 +75,7 @@ export class TestflowController {
     description:
       "This will create a testflow and add this testflow in user's workspace",
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CreateTestflowGuard)
   @ApiResponse({ status: 201, description: "Testflow Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Testflow Failed" })
   async createTestflow(
@@ -144,7 +146,7 @@ export class TestflowController {
     summary: "Update An Testflow",
     description: "This will update an Testflow",
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CreateTestflowBlockGuard)
   @ApiResponse({ status: 200, description: "Testflow Updated Successfully" })
   @ApiResponse({ status: 400, description: "Update Testflow Failed" })
   async updateTestflow(

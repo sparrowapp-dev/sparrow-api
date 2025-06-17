@@ -29,6 +29,8 @@
     "start:migration-testflow": "ts-node -r tsconfig-paths/register src/migrationTestflow.ts",
     "start:migration-workspace-type": "ts-node -r tsconfig-paths/register src/migrationWorkspaceType.ts",
     "start:migration-chatbot-ai-model": "ts-node -r tsconfig-paths/register src/migration-chatbotstats.ts",
+    "start:create-plan": "ts-node -r tsconfig-paths/register src/create-plan.ts",
+    "start:upgrade-plan": "ts-node -r tsconfig-paths/register src/upgrade-plan.ts",
     "start:migration-mock-url": "ts-node -r tsconfig-paths/register src/migrationMockRequestUrl.ts"
   },
   "dependencies": {
@@ -133,5 +135,8 @@
     "tsconfig-paths": "4.1.0",
     "typescript": "5.7.2"
   },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
+  "packageManager": "pnpm@10.11.0",
+  "optionalDependencies": {
+    "@sparrowapp-dev/stripe-billing": "^1.0.1"
+  }
 }
