@@ -40,8 +40,6 @@ export class MockServerService {
         }),
       );
 
-      console.log("Query params array:", queryParamsArray);
-
       // Extract collectionId
       const segments = url.split("/");
       let collectionId = segments[3] || null; // 3rd index (after /api/mock)
@@ -63,7 +61,6 @@ export class MockServerService {
 
         restUrl += `?${queryString}`;
       }
-      console.log("Final restUrl with query params:", restUrl);
       if (collectionId) {
         const modifiedCollectionId = new ObjectId(collectionId);
         const collection =
