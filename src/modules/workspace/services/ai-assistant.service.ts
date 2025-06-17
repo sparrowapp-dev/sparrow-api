@@ -224,7 +224,9 @@ export class AiAssistantService {
       return {result: "Limit reached"};
     }
 
-    const { text: prompt, model, instructions } = data;
+    const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`
+
+    const { text: prompt, model } = data;
 
     const response = await this.deepseekClient
         .path("/chat/completions")
