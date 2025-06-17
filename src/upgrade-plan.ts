@@ -5,7 +5,6 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import configuration from "./modules/common/config/configuration";
 
 import { UpgradePlanMigration } from "migrations/upgrade-plan.migration";
-import { UpdateTestflowHistoryPlanMigration } from "migrations/update-plan-testflow-history.migration";
 
 const databaseProvider: Provider = {
   provide: "DATABASE_CONNECTION",
@@ -34,7 +33,6 @@ const databaseProvider: Provider = {
   providers: [
     databaseProvider,
     UpgradePlanMigration,
-    UpdateTestflowHistoryPlanMigration,
   ],
 })
 class MigrationModule {}
@@ -44,9 +42,6 @@ async function run() {
 
   const upgradeMigration = app.get(UpgradePlanMigration);
   await upgradeMigration.onModuleInit();
-
-  const runHistoryMigration = app.get(UpdateTestflowHistoryPlanMigration);
-  await runHistoryMigration.onModuleInit();
 
   await app.close();
 }

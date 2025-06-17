@@ -2,9 +2,8 @@ import { Injectable, OnModuleInit, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { Db, ObjectId } from "mongodb";
 
-const planId = "68"; 
-const planName = "Standard"; 
-const teamId = "6y";
+const planId = "684"; 
+const planName = "Community"; 
 
 
 @Injectable()
@@ -27,8 +26,8 @@ export class UpgradePlanMigration implements OnModuleInit {
       const workspaceCollection = this.db.collection(Collections.WORKSPACE);
 
 
-      const teamResponse  = await teamsCollection.updateOne(
-        { _id: new ObjectId(teamId) }, // Replace with the actual team ID
+      const teamResponse  = await teamsCollection.updateMany(
+        { }, // Replace with the actual team ID
         { $set: {
           'plan.id': new ObjectId(planId),
           'plan.name': planName,
@@ -36,7 +35,7 @@ export class UpgradePlanMigration implements OnModuleInit {
       );
 
       const workspaceResponse = await workspaceCollection.updateMany(
-        { 'team.id': teamId },
+        {},
         {
           $set: {
             'plan.id': new ObjectId(planId),
