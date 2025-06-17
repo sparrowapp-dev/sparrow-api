@@ -32,7 +32,7 @@ export class HubInviteGuard implements CanActivate {
 
     const teamPlanId = userTeam?.plan.id;
     const planData = await this.planService.get(teamPlanId.toString());
-    if (teamUserEmails.size > planData?.limits?.usersPerHub?.value) {
+    if (teamUserEmails.size > planData?.limits?.usersPerHub?.value + 1) {
       throw new ForbiddenException("Plan limit reached");
     }
     return true;
