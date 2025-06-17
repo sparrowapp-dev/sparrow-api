@@ -15,25 +15,25 @@ export class CreateTeamGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
+    // const request = context.switchToHttp().getRequest();
+    // const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
 
-    const user = request.user;
-    const userTeams = await this.teamService.getAllTeams(user._id.toString());
+    // const user = request.user;
+    // const userTeams = await this.teamService.getAllTeams(user._id.toString());
 
-    let communityPlansCount = 0;
-    const ownedTeams = userTeams.filter((team) => {
-      if (team.owner === user._id.toString()) {
-        if(team.plan.name === defaultHubPlan){
-          communityPlansCount = communityPlansCount + 1;
-        }
-        return true;
-      };
-      return false;
-    });
-    if (ownedTeams.length === communityPlansCount) { // if user has 'n' owned hub and all are community then throw error.
-      throw new ForbiddenException("Plan limit reached");
-    }
+    // let communityPlansCount = 0;
+    // const ownedTeams = userTeams.filter((team) => {
+    //   if (team.owner === user._id.toString()) {
+    //     if(team.plan.name === defaultHubPlan){
+    //       communityPlansCount = communityPlansCount + 1;
+    //     }
+    //     return true;
+    //   };
+    //   return false;
+    // });
+    // if (ownedTeams.length === communityPlansCount) { // if user has 'n' owned hub and all are community then throw error.
+    //   throw new ForbiddenException("Plan limit reached");
+    // }
     return true;
   }
 }
