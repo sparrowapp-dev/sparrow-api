@@ -270,8 +270,8 @@ export class AppService {
     // Handle request body based on Content-Type
     if (requestObject?.data || requestObject?.files) {
       const contentType =
-        requestObject.headers["content-type"] ||
-        requestObject.headers["Content-Type"] ||
+        requestObject?.headers?.["content-type"] ||
+        requestObject?.headers?.["Content-Type"] ||
         "";
       if (contentType.startsWith("multipart/form-data")) {
         isFormData = true;
