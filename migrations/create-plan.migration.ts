@@ -50,7 +50,7 @@ export class CreatePlanMigration implements OnModuleInit {
             },
             usersPerHub: {
               area: LimitArea.HUB,
-              value: 3,
+              value: 5,
             },
             selectiveTestflowRun: {
               area: LimitArea.TESTFLOW,
