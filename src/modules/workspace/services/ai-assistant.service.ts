@@ -206,33 +206,6 @@ export class AiAssistantService {
     data: PromptPayload,
     user: DecodedUserObject,
   ): Promise<AIResponseDto> {
-    const stat = await this.chatbotStatsService.getIndividualStat(
-      user?._id?.toString(),
-    );
-    const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
-    const whitelistEmails = await this.configService.get(
-      "whitelist.userEmails",
-    );
-    let parsedWhiteListEmails: string[] = [];
-    if (whitelistEmails) {
-      parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
-    }
-
-    // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(user?.email)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(user?.email) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          this.whiteListUserTokenLimit)
-    ) {
-      return {result: "Limit reached"};
-    }
 
     const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`
 
@@ -487,39 +460,6 @@ export class AiAssistantService {
   ): Promise<void> {
     // Fetch user details
     const user = await this.userService.getUserByEmail(emailId);
-    const stat = await this.chatbotStatsService.getIndividualStat(
-      user?._id?.toString(),
-    );
-    const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
-    const whitelistEmails = await this.configService.get(
-      "whitelist.userEmails",
-    );
-    let parsedWhiteListEmails: string[] = [];
-    if (whitelistEmails) {
-      parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
-    }
-
-    // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(emailId)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(emailId) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
-    ) {
-      client.send(
-        JSON.stringify({
-          messages: "Limit Reached. Please try again later.",
-          thread_Id: threadId,
-          tab_id: tabId,
-        }),
-      );
-      return;
-    }
 
     // Validate input
     if (!text) {
@@ -656,39 +596,7 @@ export class AiAssistantService {
 
     // Fetch user details
     const user = await this.userService.getUserByEmail(emailId);
-    const stat = await this.chatbotStatsService.getIndividualStat(
-      user?._id?.toString(),
-    );
-    const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
-    const whitelistEmails = await this.configService.get(
-      "whitelist.userEmails",
-    );
-    let parsedWhiteListEmails: string[] = [];
-    if (whitelistEmails) {
-      parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
-    }
-
-    // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(emailId)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(emailId) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
-    ) {
-      client.send(
-        JSON.stringify({
-          messages: "Limit Reached. Please try again later.",
-          thread_Id: null,
-          tab_id: tabId,
-        }),
-      );
-      return;
-    }
+    
 
     // Validate user input
     if (!text) {
@@ -2044,34 +1952,6 @@ export class AiAssistantService {
 
       // Fetch user details
       const user = await this.userService.getUserByEmail(emailId);
-      const stat = await this.chatbotStatsService.getIndividualStat(
-        user?._id?.toString(),
-      );
-      const currentYearMonth = this.chatbotStatsService.getCurrentYearMonth();
-      const whitelistEmails = await this.configService.get(
-        "whitelist.userEmails",
-      );
-      let parsedWhiteListEmails: string[] = [];
-      if (whitelistEmails) {
-        parsedWhiteListEmails =
-          parseWhitelistedEmailList(whitelistEmails) || [];
-      }
-
-      // Check if user exceeded token limit
-      if (
-        (stat?.aiModel &&
-          stat.aiModel?.yearMonth === currentYearMonth &&
-          stat.aiModel.gpt + stat.aiModel.deepseek >
-            (this.monthlyTokenLimit || 0) &&
-          !parsedWhiteListEmails.includes(emailId)) ||
-        (stat?.aiModel &&
-          stat.aiModel?.yearMonth === currentYearMonth &&
-          parsedWhiteListEmails.includes(emailId) &&
-          stat.aiModel.gpt + stat.aiModel.deepseek >
-            this.whiteListUserTokenLimit)
-      ) {
-        return "Limit Reached. Please try again later.";
-      }
 
       const response = await this.deepseekClient
         .path("/chat/completions")
