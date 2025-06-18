@@ -659,7 +659,6 @@ export class WorkspaceService {
     payload: AddUserInWorkspaceDto,
     user: DecodedUserObject,
   ): Promise<object> {
-    console.log("-------------------here it is working->");
     let workspaceData = await this.workspaceRepository.get(payload.workspaceId);
     await this.checkAdminRole(payload.workspaceId, user._id);
     await this.roleCheck(payload.role);
