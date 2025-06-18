@@ -219,20 +219,20 @@ export class AiAssistantService {
     }
 
     // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(user?.email)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(user?.email) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          this.whiteListUserTokenLimit)
-    ) {
-      return {result: "Limit reached"};
-    }
+    // if (
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek >
+    //       (this.monthlyTokenLimit || 0) &&
+    //     !parsedWhiteListEmails.includes(user?.email)) ||
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     parsedWhiteListEmails.includes(user?.email) &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek >
+    //       this.whiteListUserTokenLimit)
+    // ) {
+    //   return {result: "Limit reached"};
+    // }
 
     const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`
 
@@ -259,15 +259,15 @@ export class AiAssistantService {
     const body = response.body as any;
     const tokens = body?.usage?.total_tokens;
 
-    const eventMessage = {
-          userId: user._id,
-          tokenCount: tokens,
-          model: model
-        };
+    // const eventMessage = {
+    //       userId: user._id,
+    //       tokenCount: tokens,
+    //       model: model
+    //     };
 
-    await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-          value: JSON.stringify(eventMessage),
-        });
+    // await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+    //       value: JSON.stringify(eventMessage),
+    //     });
 
     const output = (response.body as any).choices?.[0]?.message?.content;
     return {result: output};
@@ -500,26 +500,26 @@ export class AiAssistantService {
     }
 
     // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(emailId)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(emailId) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
-    ) {
-      client.send(
-        JSON.stringify({
-          messages: "Limit Reached. Please try again later.",
-          thread_Id: threadId,
-          tab_id: tabId,
-        }),
-      );
-      return;
-    }
+    // if (
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek >
+    //       (this.monthlyTokenLimit || 0) &&
+    //     !parsedWhiteListEmails.includes(emailId)) ||
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     parsedWhiteListEmails.includes(emailId) &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
+    // ) {
+    //   client.send(
+    //     JSON.stringify({
+    //       messages: "Limit Reached. Please try again later.",
+    //       thread_Id: threadId,
+    //       tab_id: tabId,
+    //     }),
+    //   );
+    //   return;
+    // }
 
     // Validate input
     if (!text) {
@@ -585,18 +585,18 @@ export class AiAssistantService {
           if (latestRun?.usage) {
             const tokenUsage = latestRun.usage.total_tokens;
 
-            const eventMessage = {
-              userId: user._id.toString(),
-              tokenCount: tokenUsage,
-              model: model,
-            };
+            // const eventMessage = {
+            //   userId: user._id.toString(),
+            //   tokenCount: tokenUsage,
+            //   model: model,
+            // };
 
-            await this.producerService.produce(
-              TOPIC.AI_RESPONSE_GENERATED_TOPIC,
-              {
-                value: JSON.stringify(eventMessage),
-              },
-            );
+            // await this.producerService.produce(
+            //   TOPIC.AI_RESPONSE_GENERATED_TOPIC,
+            //   {
+            //     value: JSON.stringify(eventMessage),
+            //   },
+            // );
 
             // Update the actvity log in the database
             const activityLog = {
@@ -669,26 +669,26 @@ export class AiAssistantService {
     }
 
     // Check if user exceeded token limit
-    if (
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        stat.aiModel.gpt + stat.aiModel.deepseek >
-          (this.monthlyTokenLimit || 0) &&
-        !parsedWhiteListEmails.includes(emailId)) ||
-      (stat?.aiModel &&
-        stat.aiModel?.yearMonth === currentYearMonth &&
-        parsedWhiteListEmails.includes(emailId) &&
-        stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
-    ) {
-      client.send(
-        JSON.stringify({
-          messages: "Limit Reached. Please try again later.",
-          thread_Id: null,
-          tab_id: tabId,
-        }),
-      );
-      return;
-    }
+    // if (
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek >
+    //       (this.monthlyTokenLimit || 0) &&
+    //     !parsedWhiteListEmails.includes(emailId)) ||
+    //   (stat?.aiModel &&
+    //     stat.aiModel?.yearMonth === currentYearMonth &&
+    //     parsedWhiteListEmails.includes(emailId) &&
+    //     stat.aiModel.gpt + stat.aiModel.deepseek > this.whiteListUserTokenLimit)
+    // ) {
+    //   client.send(
+    //     JSON.stringify({
+    //       messages: "Limit Reached. Please try again later.",
+    //       thread_Id: null,
+    //       tab_id: tabId,
+    //     }),
+    //   );
+    //   return;
+    // }
 
     // Validate user input
     if (!text) {
@@ -785,18 +785,18 @@ export class AiAssistantService {
           if (parsed?.usage) {
             const tokenUsage = parsed.usage.total_tokens;
 
-            const eventMessage = {
-              userId: user._id.toString(),
-              tokenCount: tokenUsage,
-              model: model,
-            };
+            // const eventMessage = {
+            //   userId: user._id.toString(),
+            //   tokenCount: tokenUsage,
+            //   model: model,
+            // };
 
-            await this.producerService.produce(
-              TOPIC.AI_RESPONSE_GENERATED_TOPIC,
-              {
-                value: JSON.stringify(eventMessage),
-              },
-            );
+            // await this.producerService.produce(
+            //   TOPIC.AI_RESPONSE_GENERATED_TOPIC,
+            //   {
+            //     value: JSON.stringify(eventMessage),
+            //   },
+            // );
 
             const activityLog = {
               userId: user._id.toString(),
@@ -2058,20 +2058,20 @@ export class AiAssistantService {
       }
 
       // Check if user exceeded token limit
-      if (
-        (stat?.aiModel &&
-          stat.aiModel?.yearMonth === currentYearMonth &&
-          stat.aiModel.gpt + stat.aiModel.deepseek >
-            (this.monthlyTokenLimit || 0) &&
-          !parsedWhiteListEmails.includes(emailId)) ||
-        (stat?.aiModel &&
-          stat.aiModel?.yearMonth === currentYearMonth &&
-          parsedWhiteListEmails.includes(emailId) &&
-          stat.aiModel.gpt + stat.aiModel.deepseek >
-            this.whiteListUserTokenLimit)
-      ) {
-        return "Limit Reached. Please try again later.";
-      }
+      // if (
+      //   (stat?.aiModel &&
+      //     stat.aiModel?.yearMonth === currentYearMonth &&
+      //     stat.aiModel.gpt + stat.aiModel.deepseek >
+      //       (this.monthlyTokenLimit || 0) &&
+      //     !parsedWhiteListEmails.includes(emailId)) ||
+      //   (stat?.aiModel &&
+      //     stat.aiModel?.yearMonth === currentYearMonth &&
+      //     parsedWhiteListEmails.includes(emailId) &&
+      //     stat.aiModel.gpt + stat.aiModel.deepseek >
+      //       this.whiteListUserTokenLimit)
+      // ) {
+      //   return "Limit Reached. Please try again later.";
+      // }
 
       const response = await this.deepseekClient
         .path("/chat/completions")
@@ -2094,15 +2094,15 @@ export class AiAssistantService {
       const body = response.body as any;
       const tokens = body?.usage?.total_tokens;
 
-      const eventMessage = {
-            userId: user._id,
-            tokenCount: tokens,
-            model: "deepseek"
-          };
+      // const eventMessage = {
+      //       userId: user._id,
+      //       tokenCount: tokens,
+      //       model: "deepseek"
+      //     };
 
-      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-            value: JSON.stringify(eventMessage),
-          });
+      // await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+      //       value: JSON.stringify(eventMessage),
+      //     });
 
       const result = (response.body as any).choices?.[0]?.message?.content;
       return result;

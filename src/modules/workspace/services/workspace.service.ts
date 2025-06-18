@@ -638,8 +638,8 @@ export class WorkspaceService {
         text: "User Invited",
         template: "inviteWorkspaceEmail",
         context: {
-          firstname: user.name.split(" ")[0],
-          username: currentUsername.split(" ")[0],
+          firstname: user?.name?.split(" ")[0],
+          username: currentUsername?.split(" ")[0],
           userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
           workspacename: payload.workspaceName,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
@@ -659,6 +659,7 @@ export class WorkspaceService {
     payload: AddUserInWorkspaceDto,
     user: DecodedUserObject,
   ): Promise<object> {
+    console.log("-------------------here it is working->");
     let workspaceData = await this.workspaceRepository.get(payload.workspaceId);
     await this.checkAdminRole(payload.workspaceId, user._id);
     await this.roleCheck(payload.role);
