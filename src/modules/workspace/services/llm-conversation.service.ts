@@ -72,11 +72,8 @@ export class LlmConversationService {
 
       // Push messages to conversation
       if (messagesToAppend.length > 0) {
-        updateOps.$push = {
-          [`${providerField}.$[apiKeyElem].conversations.$[convElem].conversation`]: {
-            $each: messagesToAppend,
-          },
-        };
+        updateOps.$set = updateOps.$set || {};
+        updateOps.$set[`${providerField}.$[apiKeyElem].conversations.$[convElem].conversation`] = messagesToAppend;
       }
 
       // No operations to perform
