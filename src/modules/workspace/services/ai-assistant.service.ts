@@ -1783,7 +1783,12 @@ export class AiAssistantService {
           continue;
         }
 
-        const teamId = parsedData.teamId;
+        const feature = parsedData.feature;
+
+        if (feature === AiService.SparrowAI) {
+
+
+          const teamId = parsedData.teamId;
         const email = parsedData.emailId;
 
         const teamData = await this.teamRepository.get(teamId);
@@ -1825,9 +1830,7 @@ export class AiAssistantService {
           continue;
         }
 
-        const feature = parsedData.feature;
-
-        if (feature === AiService.SparrowAI) {
+        
           const text = parsedData.userInput;
           const threadId = parsedData.threadId;
           const tabId = parsedData.tabId;
