@@ -71,7 +71,7 @@ export class LlmConversationService {
       }
 
       // Push messages to conversation
-      if (messagesToAppend.length > 0) {
+      if (messagesToAppend) {
         updateOps.$set = updateOps.$set || {};
         updateOps.$set[`${providerField}.$[apiKeyElem].conversations.$[convElem].conversation`] = messagesToAppend;
       }
