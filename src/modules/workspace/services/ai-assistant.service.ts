@@ -42,6 +42,8 @@ import { parseWhitelistedEmailList } from "@src/modules/common/util/email.parser
 import {
   Models,
   AiService,
+  ClaudeModelVersion,
+  GoogleModelVersion,
   OpenAIModelVersion,
   DeepSeepModelVersion,
   Roles,
@@ -49,6 +51,12 @@ import {
 
 // ---- Instructions
 import { instructions } from "@src/modules/common/instructions/prompt";
+import { totalmem } from "node:os";
+import { Role } from "nest-access-control";
+import { TeamService } from "@src/modules/identity/services/team.service";
+import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
+import { UserLimitService } from "./userLimit.service";
+import { LimitCheckResult } from "@src/modules/common/enum/user-limit-enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
 // import { GoogleGenAI } from "@google/genai";
@@ -108,6 +116,8 @@ export class AiAssistantService {
     private readonly producerService: ProducerService,
     private readonly chatbotStatsService: ChatbotStatsService,
     private readonly userService: UserService,
+    private readonly teamRepository: TeamRepository,
+    private readonly userLimitService: UserLimitService,
   ) {
     // Retrieve configuration from environment variables
     this.endpoint = this.configService.get("ai.endpoint");
@@ -1771,6 +1781,48 @@ export class AiAssistantService {
         } catch (err) {
           client.send(
             JSON.stringify({ event: "error", message: "Invalid JSON format." }),
+          );
+          continue;
+        }
+
+        const teamId = parsedData.teamId;
+        const email = parsedData.emailId;
+
+        const teamData = await this.teamRepository.get(teamId);
+        if (!teamData || !teamData.users) {
+          client.send(
+            JSON.stringify({
+              event: "error",
+              message: "Team not found or invalid.",
+            }),
+          );
+          continue;
+        }
+
+        const user = teamData.users.find((u: any) => u.email === email);
+        if (!user) {
+          client.send(
+            JSON.stringify({
+              event: "error",
+              message: "User not found in team.",
+            }),
+          );
+          continue;
+        }
+
+        const planId = teamData.plan.id?.toString();
+
+        const status = await this.userLimitService.checkLimitAndLogRequest(
+          user.id,
+          teamId,
+          planId,
+        );
+        if (status === LimitCheckResult.LIMIT_REACHED) {
+          client.send(
+            JSON.stringify({
+              event: "error",
+              messages: "Limit Reached. Please try again later",
+            }),
           );
           continue;
         }

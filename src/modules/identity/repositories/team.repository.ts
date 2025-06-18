@@ -18,6 +18,7 @@ import { User } from "@src/modules/common/models/user.model";
 import { Team } from "@src/modules/common/models/team.model";
 import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { PlanDto } from "../payloads/plan.payload";
 import { DecodedUserObject } from "@src/types/fastify";
 
 /**
@@ -37,6 +38,7 @@ export class TeamRepository {
    */
   async create(
     teamData: CreateOrUpdateTeamDto,
+    plan: PlanDto,
     user: DecodedUserObject,
   ): Promise<InsertOneResult<Team>> {
     const params = {
@@ -62,6 +64,7 @@ export class TeamRepository {
       .insertOne({
         ...teamData,
         ...params,
+        plan,
       });
     return createdTeam;
   }

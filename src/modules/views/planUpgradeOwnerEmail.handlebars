@@ -1,0 +1,94 @@
+{{!< layoutName}} <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Plan Upgrade Request</title>
+
+
+        <style>
+            body {
+                font-family: "Inter", sans-serif;
+                box-sizing: border-box;
+                padding: 0;
+                margin: 0;
+                transition: background-color 0.3s, color 0.3s;
+            }
+
+            .container {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+
+            }
+
+            .container-data {
+                margin: auto;
+                max-width: 570px;
+                padding: 20px;
+                transition: background-color 0.3s, color 0.3s;
+            }
+
+            .email-text-style {
+                color: var(--email-text-color, #333);
+                font-family: "Inter", sans-serif;
+                font-size: 14px;
+                font-style: normal;
+                font-weight: 400;
+                line-height: 21px;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <div class="container">
+            <section style="width: 100%;">
+                <div class="container-data">
+
+                    {{> header}}
+
+                    <section>
+
+                        <div style="margin-bottom: 5%">
+                            <h2 class="email-text-style">
+                                Hi {{userName}},
+                            </h2>
+
+                            <p class="email-text-style">
+                                Your access is currently limited due to your team's plan restrictions.To unlock <br/> full collaboration features, please upgrade our current plan.
+                            </p>
+
+                            <p class="email-text-style">Your expertise will be invaluable as the hub collaborates and innovates together. Dive in <br/>by logging into Sparrow to explore your new hub and stay in sync with everything happening.
+                            </p>
+
+                            <p class="email-text-style">If you have any ideas or questions, feel free to share them with the Sparrow community. For additional assistance, reach out to us at <a href="mailto:{{sparrowEmail}}"
+                                    style="text-decoration-line: underline; color:#3670F7;">contactus@sparrowapp.dev</a>
+                            </p>
+
+                            <p class="email-text-style">
+                                Warm regards, <br> The Sparrow Team <br>
+                                <a href="{{sparrowWebsite}}"
+                                    style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7 ;">
+                                    {{sparrowWebsiteName}}</a>
+                            </p>
+
+
+                        </div>
+
+                        <hr>
+
+                    </section>
+
+
+                    {{> footer}}
+
+
+                </div>
+            </section>
+        </div>
+    </body>
+
+    </html>

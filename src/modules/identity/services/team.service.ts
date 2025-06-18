@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { CreateOrUpdateTeamDto, UpdateTeamDto } from "../payloads/team.payload";
+import { CreateOrUpdateTeamDto, ResponseTeam, UpdateTeamDto } from "../payloads/team.payload";
 import { TeamRepository } from "../repositories/team.repository";
 import {
   DeleteResult,
@@ -20,6 +20,8 @@ import { UserRepository } from "../repositories/user.repository";
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
+import { PlanRepository } from "../repositories/plan.repository";
+import { EmailService } from "@src/modules/common/services/email.service";
 import { DecodedUserObject } from "@src/types/fastify";
 
 /**
@@ -33,6 +35,8 @@ export class TeamService {
     private readonly configService: ConfigService,
     private readonly userInvitesRepository: UserInvitesRepository,
     private readonly userRepository: UserRepository,
+    private readonly planRepository: PlanRepository,
+    private readonly emailService: EmailService,
   ) {}
 
   async isImageSizeValid(size: number) {
@@ -92,6 +96,7 @@ export class TeamService {
     image?: MemoryStorageFile,
   ): Promise<InsertOneResult<Team>> {
     let team;
+    const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
 
     const dynamicUrl = await this.generateUniqueTeamUrl(teamData.name);
     if (image) {
@@ -124,10 +129,24 @@ export class TeamService {
         githubUrl: "",
       };
     }
-    const createdTeam = await this.teamRepository.create(team, user);
+
+    let hubPlan;
+
     const userData = await this.userRepository.findUserByUserId(
       new ObjectId(user._id),
     );
+
+    const plans = await this.planRepository.getPlans();
+    for (let i = 0; i < plans.length; i++) {
+      if (plans[i].name === defaultHubPlan) {
+        hubPlan = {
+          id: plans[i]._id,
+          name: plans[i].name,
+        };
+      }
+    }
+
+    const createdTeam = await this.teamRepository.create(team, hubPlan, user);
     const updatedUserTeams = [...userData.teams];
     updatedUserTeams.push({
       id: createdTeam.insertedId,
@@ -164,13 +183,13 @@ export class TeamService {
    */
   async get(id: string): Promise<WithId<Team>> {
     const data = await this.teamRepository.get(id);
-    const validInvites = data?.invites?.filter((invite) => {
-      if (new Date(invite?.expiresAt) > new Date()) {
-        return true;
-      }
-      return false;
-    });
-    data.invites = validInvites || [];
+    // const validInvites = data?.invites?.filter((invite) => {
+    //   if (new Date(invite?.expiresAt) > new Date()) {
+    //     return true;
+    //   }
+    //   return false;
+    // });
+    // data.invites = validInvites || [];
     data?.invites?.forEach((invite) => {
       delete invite.inviteId;
       delete invite.isAccepted;
@@ -184,7 +203,7 @@ export class TeamService {
    * @param {string} id
    * @returns {Promise<Team>} queried team data
    */
-  async getPublic(id: string): Promise<WithId<Team>> {
+  async getPublic(id: string): Promise<WithId<ResponseTeam>> {
     const data = await this.teamRepository.get(id);
     const owner = data.users?.filter((user) => user.role === "owner") || [];
     return {
@@ -278,6 +297,11 @@ export class TeamService {
     return data;
   }
 
+  public isInviteExpired(expiresAt: Date): boolean {
+    const now = new Date();
+    return new Date(expiresAt) < now;
+  }
+
   async getAllTeams(
     userId: string,
     currentUser: DecodedUserObject,
@@ -297,13 +321,9 @@ export class TeamService {
       const teamData: WithId<TeamWithNewInviteTag> = await this.get(
         id.toString(),
       );
-
-      teamData.workspaces = teamData.workspaces.filter((_workspace) => {
-        if (userWorkspaceIds.includes(_workspace.id.toString())) {
-          return true;
-        }
-        return false;
-      });
+      teamData.workspaces = teamData.workspaces.filter((_workspace) =>
+        userWorkspaceIds.includes(_workspace.id.toString()),
+      );
 
       teamData.isNewInvite = isNewInvite;
 
@@ -313,29 +333,25 @@ export class TeamService {
       user.email,
     );
     const teamIds = existingTeams?.teamIds || [];
-    if (teamIds) {
-      for (const teamId of teamIds) {
-        const teamData: WithId<TeamWithNewInviteTag> = await this.get(teamId);
-        // Find the invite that matches the user's email (or another criterion)
-        const specificInvite = teamData.invites.find(
-          (invite) => invite.email === user.email,
-        );
-        let createdById = null;
-        if (specificInvite) {
-          createdById = specificInvite.createdBy.toString();
-        }
-        let senderData = null;
-        if (createdById) {
-          senderData = await this.userRepository.getUserById(
-            createdById,
-            currentUser,
-          );
+    for (const teamId of teamIds) {
+      const teamData: WithId<TeamWithNewInviteTag> = await this.get(teamId);
+      const specificInvite = teamData.invites.find(
+        (invite) => invite.email === user.email,
+      );
+      const isValidInvite =
+        specificInvite && !this.isInviteExpired(specificInvite.expiresAt);
+      if (isValidInvite) {
+        const createdById = specificInvite?.createdBy?.toString();
+        let senderData;
+        if(createdById){
+          senderData = await this.userRepository.getUserById(createdById);
         }
         const team: any = {
           _id: teamId,
           logo: teamData.logo,
           name: teamData.name,
           hubUrl: teamData.hubUrl,
+          plan: teamData.plan,
           workspaces: [],
           description: senderData?.name || "No creator found",
         };
@@ -418,5 +434,33 @@ export class TeamService {
       return false;
     });
     return teamDetails;
+  }
+
+  async teamPlanUpgradeOwner(teamId: string) {
+    const teamDetails = await this.teamRepository.get(teamId);
+    const isTeamOwnerId = teamDetails?.owner;
+    if (isTeamOwnerId) {
+      const userDetails = await this.userRepository.getUserById(isTeamOwnerId);
+      const transporter = this.emailService.createTransporter();
+      const mailOptions = {
+        from: this.configService.get("app.senderEmail"),
+        to: userDetails?.email,
+        text: "Rquest for Plan Upgrade",
+        template: "planUpgradeOwnerEmail",
+        context: {
+          teamName: teamDetails?.name,
+          userName: userDetails?.name || userDetails?.email,
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName: this.configService.get(
+            "support.sparrowWebsiteName",
+          ),
+        },
+        subject: `Request to Upgrade Plan`,
+      };
+
+      const promise = [this.emailService.sendEmail(transporter, mailOptions)];
+      Promise.all(promise);
+    }
   }
 }

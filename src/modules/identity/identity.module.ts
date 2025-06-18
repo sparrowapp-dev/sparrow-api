@@ -9,10 +9,13 @@ import { UserService } from "./services/user.service";
 import { UserRepository } from "./repositories/user.repository";
 import { UserController } from "./controllers/user.controller";
 import { TeamService } from "./services/team.service";
+import { PlanService } from "./services/plan.service";
+import { PlanRepository } from "./repositories/plan.repository";
 import { TeamUserService } from "./services/team-user.service";
 import { TeamRepository } from "./repositories/team.repository";
 import { UserInvitesRepository } from "./repositories/userInvites.repository";
 import { TeamController } from "./controllers/team.controller";
+import { PlanController } from "./controllers/plan.controller";
 import { RefreshTokenStrategy } from "./strategies/refresh-token.strategy";
 import { HubSpotService } from "./services/hubspot.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
@@ -46,8 +49,10 @@ import { GoogleStrategy } from "./strategies/google.strategy";
     JwtService,
     UserRepository,
     TeamService,
+    PlanService,
     TeamUserService,
     TeamRepository,
+    PlanRepository,
     {
       provide: GoogleStrategy,
       useFactory: (configService: ConfigService) => {
@@ -70,11 +75,13 @@ import { GoogleStrategy } from "./strategies/google.strategy";
     UserService,
     UserRepository,
     TeamService,
+    PlanService,
     TeamUserService,
     TeamRepository,
+    PlanRepository,
     UserInvitesRepository,
     HubSpotService,
   ],
-  controllers: [AuthController, UserController, TeamController],
+  controllers: [AuthController, UserController, TeamController, PlanController],
 })
 export class IdentityModule {}

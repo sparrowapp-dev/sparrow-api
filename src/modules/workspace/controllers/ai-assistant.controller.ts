@@ -15,6 +15,7 @@ import {
   ErrorResponsePayload,
   ChatBotPayload,
 } from "../payloads/ai-assistant.payload";
+import { UserLimitGuard } from "@src/modules/identity/guards/user-limt-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @ApiBearerAuth()
@@ -39,6 +40,7 @@ export class AiAssistantController {
   })
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
   @Post("prompt")
+  @UseGuards(UserLimitGuard)
   async generate(
     @Body() prompt: PromptPayload,
     @Res() res: FastifyReply,
