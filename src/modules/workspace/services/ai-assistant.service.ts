@@ -21,7 +21,7 @@ import { Thread } from "openai/resources/beta/threads/threads";
 import type { IncomingMessage } from "node:http";
 
 // import { GoogleGenAI } from "@google/genai";
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { toFile } from '@anthropic-ai/sdk';
 
 // ---- Payload
 import {
@@ -65,6 +65,11 @@ import {
   MemoryStorageFile,
   UploadedFile,
 } from "@blazity/nest-file-fastify";
+import fs from "fs"
+import * as path from 'path';
+import { tmpdir } from 'os';
+import { v4 as uuidv4 } from 'uuid';
+
 // import { GoogleGenAI } from "@google/genai";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
@@ -860,8 +865,8 @@ export class AiAssistantService {
   }
 
   private async createAnthropicClient(
-    client: WebSocket,
     authKey: string,
+    client?: WebSocket,
   ): Promise<Anthropic | null> {
     try {
       const Anthropiclient = new Anthropic({
@@ -1912,8 +1917,8 @@ export class AiAssistantService {
           if (model === Models.Anthropic) {
             // Create OpenAI client
             const Anthropicclient = await this.createAnthropicClient(
-              client,
               authKey,
+              client,
             );
 
             // Process the LLM request
@@ -2122,30 +2127,71 @@ export class AiAssistantService {
 
 
 
-  public async uploadDocumentWithModel(doc: MemoryStorageFile, model: string, authKey: string): Promise<string> {
-    try {
-      if (!doc || !model || !authKey) {
-        throw new BadRequestException('Missing required fields');
-      }
+  public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string): Promise<string[]> {
+  if (!docs?.length || !model || !authKey) {
+    throw new BadRequestException('Missing required fields');
+  }
 
-      if (model === Models.OpenAI) {
-        const OpenAIclient = await this.createOpenAIClient(authKey);
+  if (model === Models.OpenAI) {
+    const OpenAIclient = await this.createOpenAIClient(authKey);
+    const { writeFile, unlink } = fs.promises;
 
-        const stream = bufferToStream(doc.buffer);
+    const fileIds: string[] = [];
+
+    for (const doc of docs) {
+      const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+      try {
+        await writeFile(tempFilePath, new Uint8Array(doc.buffer));
 
         const file = await OpenAIclient.files.create({
-          file: stream,
+          file: fs.createReadStream(tempFilePath),
           purpose: 'assistants',
         });
 
-        console.log('File Uploaded Id', file.id);
+        fileIds.push(file.id);
+      } catch (err) {
+        console.error(`Upload failed for ${doc.fieldname}:`, err);
+      } finally {
+        unlink(tempFilePath).catch(() =>
+          console.warn(`Failed to delete temp file: ${tempFilePath}`)
+        );
       }
-
-      return 'success';
-    } catch (error) {
-      console.error('Error in Uploading Document', error);
-      throw new BadRequestException('An error occurred while processing the request.');
     }
+    return fileIds;
   }
+
+  if (model === Models.Anthropic) {
+
+    const AnthropicClient = await this.createAnthropicClient(authKey);
+    const { writeFile, unlink } = fs.promises;
+
+    const fileIds: string[] = [];
+
+    for (const doc of docs) {
+      const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+      try {
+        await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+
+        const file = await AnthropicClient.beta.files.upload({
+          file: await toFile(fs.createReadStream('/path/to/document.pdf'), undefined, { type: 'application/pdf' }),
+          betas: ['files-api-2025-04-14'],
+          headers: {
+            'anthropic-beta': 'beta-feature-name'
+          }
+        });
+
+        fileIds.push(file.id);
+      } catch (err) {
+        console.error(`Upload failed for ${doc.fieldname}:`, err);
+      } finally {
+        unlink(tempFilePath).catch(() =>
+          console.warn(`Failed to delete temp file: ${tempFilePath}`)
+        );
+      }
+    }
+    return fileIds;
+  }
+  throw new BadRequestException(`Unsupported model: ${model}`);
+}
 
 }
