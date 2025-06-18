@@ -638,8 +638,8 @@ export class WorkspaceService {
         text: "User Invited",
         template: "inviteWorkspaceEmail",
         context: {
-          firstname: user.name.split(" ")[0],
-          username: currentUsername.split(" ")[0],
+          firstname: user?.name?.split(" ")[0],
+          username: currentUsername?.split(" ")[0],
           userRole: userRole.charAt(0).toUpperCase() + userRole.slice(1),
           workspacename: payload.workspaceName,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
