@@ -21,7 +21,7 @@ import { Thread } from "openai/resources/beta/threads/threads";
 import type { IncomingMessage } from "node:http";
 
 // import { GoogleGenAI } from "@google/genai";
-import Anthropic, { toFile } from '@anthropic-ai/sdk';
+import  { Anthropic , toFile } from '@anthropic-ai/sdk';
 
 // ---- Payload
 import {
@@ -2008,70 +2008,94 @@ export class AiAssistantService {
 
 
   public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string): Promise<string[]> {
-  if (!docs?.length || !model || !authKey) {
-    throw new BadRequestException('Missing required fields');
-  }
-
-  if (model === Models.OpenAI) {
-    const OpenAIclient = await this.createOpenAIClient(authKey);
-    const { writeFile, unlink } = fs.promises;
-
-    const fileIds: string[] = [];
-
-    for (const doc of docs) {
-      const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
-      try {
-        await writeFile(tempFilePath, new Uint8Array(doc.buffer));
-
-        const file = await OpenAIclient.files.create({
-          file: fs.createReadStream(tempFilePath),
-          purpose: 'assistants',
-        });
-
-        fileIds.push(file.id);
-      } catch (err) {
-        console.error(`Upload failed for ${doc.fieldname}:`, err);
-      } finally {
-        unlink(tempFilePath).catch(() =>
-          console.warn(`Failed to delete temp file: ${tempFilePath}`)
-        );
-      }
+    if (!docs?.length || !model || !authKey) {
+      throw new BadRequestException('Missing required fields');
     }
-    return fileIds;
-  }
 
-  if (model === Models.Anthropic) {
+    if (model === Models.OpenAI) {
+      const OpenAIclient = await this.createOpenAIClient(authKey);
+      const { writeFile, unlink } = fs.promises;
 
-    const AnthropicClient = await this.createAnthropicClient(authKey);
-    const { writeFile, unlink } = fs.promises;
+      const fileIds: string[] = [];
 
-    const fileIds: string[] = [];
+      for (const doc of docs) {
+        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+        try {
+          await writeFile(tempFilePath, new Uint8Array(doc.buffer));
 
-    for (const doc of docs) {
-      const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
-      try {
-        await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+          const file = await OpenAIclient.files.create({
+            file: fs.createReadStream(tempFilePath),
+            purpose: 'assistants',
+          });
 
-        const file = await AnthropicClient.beta.files.upload({
-          file: await toFile(fs.createReadStream('/path/to/document.pdf'), undefined, { type: 'application/pdf' }),
-          betas: ['files-api-2025-04-14'],
-          headers: {
-            'anthropic-beta': 'beta-feature-name'
-          }
-        });
-
-        fileIds.push(file.id);
-      } catch (err) {
-        console.error(`Upload failed for ${doc.fieldname}:`, err);
-      } finally {
-        unlink(tempFilePath).catch(() =>
-          console.warn(`Failed to delete temp file: ${tempFilePath}`)
-        );
+          fileIds.push(file.id);
+        } catch (err) {
+          console.error(`Upload failed for ${doc.fieldname}:`, err);
+        } finally {
+          unlink(tempFilePath).catch(() =>
+            console.warn(`Failed to delete temp file: ${tempFilePath}`)
+          );
+        }
       }
+      return fileIds;
     }
-    return fileIds;
-  }
-  throw new BadRequestException(`Unsupported model: ${model}`);
-}
 
+    if (model === Models.Anthropic) {
+
+      const AnthropicClient = await this.createAnthropicClient(authKey);
+      const { writeFile, unlink } = fs.promises;
+
+      const fileIds: string[] = [];
+
+      for (const doc of docs) {
+        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+        try {
+          await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+
+          const file = await AnthropicClient.beta.files.upload({
+            file: await toFile(fs.createReadStream(tempFilePath)),
+            betas: ['files-api-2025-04-14'],
+          });
+
+          fileIds.push(file.id);
+        } catch (err) {
+          console.error(`Upload failed for ${doc.fieldname}:`, err);
+        } finally {
+          unlink(tempFilePath).catch(() =>
+            console.warn(`Failed to delete temp file: ${tempFilePath}`)
+          );
+        }
+      }
+      return fileIds;
+    }
+
+    if (model === Models.Google) {
+
+      const GeminiClient = await initializeGenAI(authKey);
+      const { writeFile, unlink } = fs.promises;
+
+      const fileIds: string[] = [];
+
+      for (const doc of docs) {
+        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+        try {
+          await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+
+          const file = await GeminiClient.files.upload({
+            file: tempFilePath
+          });
+
+          fileIds.push(file.uri);
+        } catch (err) {
+          console.error(`Upload failed for ${doc.fieldname}:`, err);
+        } finally {
+          unlink(tempFilePath).catch(() =>
+            console.warn(`Failed to delete temp file: ${tempFilePath}`)
+          );
+        }
+      }
+      return fileIds;
+    }
+    throw new BadRequestException(`Unsupported model: ${model}`);
+  }
 }
