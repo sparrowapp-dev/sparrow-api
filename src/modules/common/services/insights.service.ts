@@ -25,6 +25,13 @@ export class InsightsService {
     const azureInsightsConnectionString = this.configService.get(
       "azure.insightsConnectionString",
     );
+    if (!azureInsightsConnectionString) {
+      console.warn(
+        "Application Insights is disabled: No connection string provided.",
+      );
+      return;
+    }
+
     if (!this.client) {
       try {
         appInsights
