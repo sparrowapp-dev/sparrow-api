@@ -59,6 +59,12 @@ import { UserLimitService } from "./userLimit.service";
 import { LimitCheckResult } from "@src/modules/common/enum/user-limit-enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
+import { Readable } from 'stream';
+import {
+  FileInterceptor,
+  MemoryStorageFile,
+  UploadedFile,
+} from "@blazity/nest-file-fastify";
 // import { GoogleGenAI } from "@google/genai";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
@@ -831,8 +837,8 @@ export class AiAssistantService {
   }
 
   private async createOpenAIClient(
-    client: WebSocket,
     authKey: string,
+    client?: WebSocket,
   ): Promise<OpenAI | null> {
     try {
       const OpenAIclient = new OpenAI({
@@ -1884,7 +1890,7 @@ export class AiAssistantService {
           // Only support OpenAI model currently
           if (model === Models.OpenAI) {
             // Create OpenAI client
-            const OpenAIclient = await this.createOpenAIClient(client, authKey);
+            const OpenAIclient = await this.createOpenAIClient(authKey, client);
 
             // Process the LLM request
             await this.openaiLLMService(
@@ -2113,4 +2119,33 @@ export class AiAssistantService {
       );
     }
   }
+
+
+
+  public async uploadDocumentWithModel(doc: MemoryStorageFile, model: string, authKey: string): Promise<string> {
+    try {
+      if (!doc || !model || !authKey) {
+        throw new BadRequestException('Missing required fields');
+      }
+
+      if (model === Models.OpenAI) {
+        const OpenAIclient = await this.createOpenAIClient(authKey);
+
+        const stream = bufferToStream(doc.buffer);
+
+        const file = await OpenAIclient.files.create({
+          file: stream,
+          purpose: 'assistants',
+        });
+
+        console.log('File Uploaded Id', file.id);
+      }
+
+      return 'success';
+    } catch (error) {
+      console.error('Error in Uploading Document', error);
+      throw new BadRequestException('An error occurred while processing the request.');
+    }
+  }
+
 }

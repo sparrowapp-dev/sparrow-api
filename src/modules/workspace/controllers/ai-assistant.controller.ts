@@ -1,5 +1,6 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Post, Req, Res, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AiAssistantService } from "../services/ai-assistant.service";
+import { ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FastifyReply } from "fastify";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -17,6 +18,11 @@ import {
 } from "../payloads/ai-assistant.payload";
 import { UserLimitGuard } from "@src/modules/identity/guards/user-limt-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
+import {
+  FileInterceptor,
+  MemoryStorageFile,
+  UploadedFile,
+} from "@blazity/nest-file-fastify";
 
 @ApiBearerAuth()
 @ApiTags("AI Support")
@@ -81,4 +87,47 @@ export class AiAssistantController {
     return res.status(response.httpStatusCode).send(response);
   }
 
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Upload document with model name',
+    description: 'Uploads a document file and model name',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        doc: {
+          type: 'string',
+          format: 'binary',
+        },
+        model: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('doc'))
+  @ApiResponse({ status: 201, description: 'Document uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Upload failed' })
+  async uploadDocWithModel(
+    @UploadedFile() doc: MemoryStorageFile,
+    @Body('model') model: string,
+    @Body('authKey') authKey: string,
+    @Req() req: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+
+    console.log("Document Uploaded: ", doc)
+    console.log("Model: ", model)
+    console.log("Auth Key: ", authKey)
+     
+    const result = await this.aiAssistantService.uploadDocumentWithModel(doc, model, authKey);
+
+    // return res.status(201).send({
+    //   message: 'Upload successful',
+    //   data: result,
+    // });
+  }
 }
