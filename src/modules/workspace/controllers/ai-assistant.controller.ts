@@ -71,6 +71,7 @@ export class AiAssistantController {
   }
 
   @Post("generate-prompt")
+  @UseGuards(UserLimitGuard)
   async GeneratePrompt(@Body() payload: ChatBotPayload, @Res() res: FastifyReply) {
     const data = await this.aiAssistantService.promptGeneration(payload);
     const response = new ApiResponseService(

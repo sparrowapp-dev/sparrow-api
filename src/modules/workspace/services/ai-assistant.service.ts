@@ -1785,51 +1785,51 @@ export class AiAssistantService {
           continue;
         }
 
-        const teamId = parsedData.teamId;
-        const email = parsedData.emailId;
-
-        const teamData = await this.teamRepository.get(teamId);
-        if (!teamData || !teamData.users) {
-          client.send(
-            JSON.stringify({
-              event: "error",
-              message: "Team not found or invalid.",
-            }),
-          );
-          continue;
-        }
-
-        const user = teamData.users.find((u: any) => u.email === email);
-        if (!user) {
-          client.send(
-            JSON.stringify({
-              event: "error",
-              message: "User not found in team.",
-            }),
-          );
-          continue;
-        }
-
-        const planId = teamData.plan.id?.toString();
-
-        const status = await this.userLimitService.checkLimitAndLogRequest(
-          user.id,
-          teamId,
-          planId,
-        );
-        if (status === LimitCheckResult.LIMIT_REACHED) {
-          client.send(
-            JSON.stringify({
-              event: "error",
-              messages: "Limit Reached. Please try again later",
-            }),
-          );
-          continue;
-        }
-
         const feature = parsedData.feature;
 
         if (feature === AiService.SparrowAI) {
+          const teamId = parsedData.teamId;
+          const email = parsedData.emailId;
+
+          const teamData = await this.teamRepository.get(teamId);
+          if (!teamData || !teamData.users) {
+            client.send(
+              JSON.stringify({
+                event: "error",
+                message: "Team not found or invalid.",
+              }),
+            );
+            continue;
+          }
+
+          const user = teamData.users.find((u: any) => u.email === email);
+          if (!user) {
+            client.send(
+              JSON.stringify({
+                event: "error",
+                message: "User not found in team.",
+              }),
+            );
+            continue;
+          }
+
+          const planId = teamData.plan.id?.toString();
+
+          const status = await this.userLimitService.checkLimitAndLogRequest(
+            user.id,
+            teamId,
+            planId,
+          );
+          if (status === LimitCheckResult.LIMIT_REACHED) {
+            client.send(
+              JSON.stringify({
+                event: "error",
+                messages: "Limit Reached. Please try again later",
+              }),
+            );
+            continue;
+          }
+
           const text = parsedData.userInput;
           const threadId = parsedData.threadId;
           const tabId = parsedData.tabId;
