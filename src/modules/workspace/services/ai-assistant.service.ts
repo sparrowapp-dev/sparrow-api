@@ -59,12 +59,7 @@ import { UserLimitService } from "./userLimit.service";
 import { LimitCheckResult } from "@src/modules/common/enum/user-limit-enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
-import { Readable } from 'stream';
-import {
-  FileInterceptor,
-  MemoryStorageFile,
-  UploadedFile,
-} from "@blazity/nest-file-fastify";
+import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 import fs from "fs"
 import * as path from 'path';
 import { tmpdir } from 'os';

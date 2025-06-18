@@ -18,7 +18,6 @@ import {
 } from "../payloads/ai-assistant.payload";
 import { UserLimitGuard } from "@src/modules/identity/guards/user-limt-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
-import { Readable } from 'stream';
 import {
   FilesInterceptor,
   MemoryStorageFile,
