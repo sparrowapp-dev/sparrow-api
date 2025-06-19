@@ -213,6 +213,7 @@ export class AdminHubsService {
             },
             createdAt: team?.createdAt,
             updatedAt: team?.updatedAt,
+            plan: team?.plan,
           };
         }),
       );
