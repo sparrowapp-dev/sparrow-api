@@ -626,7 +626,7 @@ export class WorkspaceService {
   async inviteUserInWorkspaceEmail(
     payload: WorkspaceInviteMailDto,
     userRole: string,
-    currentUsername?: string,
+    currentUsername: string,
   ) {
     const transporter = this.emailService.createTransporter();
 
