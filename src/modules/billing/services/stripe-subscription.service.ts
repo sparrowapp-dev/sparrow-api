@@ -374,8 +374,11 @@ export class StripeSubscriptionService {
         return;
       }
 
-      // Get period data from the line item
-      const period = invoice.lines?.data?.[0]?.period || {};
+      const validLineItem = invoice.lines?.data?.find(
+        (item: any) => item.amount > 0,
+      );
+
+      const period = validLineItem?.period;
 
       // Create billing details object with successful payment status
       const billingDetails = {
