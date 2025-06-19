@@ -5,11 +5,14 @@ import {
   IsDate,
   IsDateString,
   IsEnum,
+  IsInt,
   IsMongoId,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from "class-validator";
 import { HTTPMethods } from "fastify";
@@ -428,6 +431,13 @@ export class MockRequestResponseMetaData {
   @IsBoolean()
   @IsOptional()
   isMockResponseActive?: boolean;
+
+  @ApiProperty({ example: 60 })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  responseWeightRatio?: number;
 
   @ApiProperty({ example: "body" })
   @IsString()
