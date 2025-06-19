@@ -1,4 +1,4 @@
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Add build argument for GitHub token
@@ -42,7 +42,7 @@ ENV NODE_ENV production
 # RUN corepack enable pnpm && pnpm i --frozen-lockfile --prod
 RUN pnpm install --frozen-lockfile --prod
 
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Create the logs directory and give ownership to the node user
