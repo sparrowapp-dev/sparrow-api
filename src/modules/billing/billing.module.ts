@@ -1,6 +1,5 @@
 import { DynamicModule, Module, Provider } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { ScheduleModule } from "@nestjs/schedule";
 import { StripeController } from "./controllers/stripe.controller";
 import { PaymentMethodsController } from "./controllers/payment-methods.controller";
 import { StripeSubscriptionRepository } from "./repositories/stripe-subscription.repository";
@@ -26,10 +25,7 @@ try {
 @Module({})
 export class BillingModule {
   static register(options?: any): DynamicModule {
-    const imports = [
-      ConfigModule.forRoot({ isGlobal: true }),
-      ScheduleModule.forRoot(),
-    ];
+    const imports = [ConfigModule.forRoot({ isGlobal: true })];
 
     const providers: Provider[] = [
       StripeSubscriptionRepository,
@@ -38,7 +34,10 @@ export class BillingModule {
       StripeSchedulerService,
     ];
     const controllers = [];
-    const exports: Provider[] = [];
+    const exports: Provider[] = [
+      StripeSubscriptionService,
+      StripeSubscriptionRepository,
+    ];
 
     // Only add Stripe if the module was successfully imported
     if (StripeModule) {
