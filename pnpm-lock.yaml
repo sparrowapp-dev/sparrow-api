@@ -74,6 +74,9 @@ importers:
       '@nestjs/platform-ws':
         specifier: ^10.4.11
         version: 10.4.15(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/websockets@10.4.15)(rxjs@7.5.6)
+      '@nestjs/schedule':
+        specifier: ^6.0.0
+        version: 6.0.0(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)
       '@nestjs/swagger':
         specifier: ^7.1.7
         version: 7.4.2(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)
@@ -215,10 +218,6 @@ importers:
       ws:
         specifier: ^8.18.0
         version: 8.18.0
-    optionalDependencies:
-      '@sparrowapp-dev/stripe-billing':
-        specifier: ^1.0.1
-        version: 1.0.1(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)
     devDependencies:
       '@compodoc/compodoc':
         specifier: 1.1.19
@@ -292,6 +291,10 @@ importers:
       typescript:
         specifier: 5.7.2
         version: 5.7.2
+    optionalDependencies:
+      '@sparrowapp-dev/stripe-billing':
+        specifier: ^1.0.26
+        version: 1.0.26(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)
 
 packages:
 
@@ -1378,6 +1381,12 @@ packages:
       '@nestjs/websockets': ^10.0.0
       rxjs: ^7.1.0
 
+  '@nestjs/schedule@6.0.0':
+    resolution: {integrity: sha512-aQySMw6tw2nhitELXd3EiRacQRgzUKD9mFcUZVOJ7jPLqIBvXOyvRWLsK9SdurGA+jjziAlMef7iB5ZEFFoQpw==}
+    peerDependencies:
+      '@nestjs/common': ^10.0.0 || ^11.0.0
+      '@nestjs/core': ^10.0.0 || ^11.0.0
+
   '@nestjs/swagger@7.4.2':
     resolution: {integrity: sha512-Mu6TEn1M/owIvAx2B4DUQObQXqo2028R2s9rSZ/hJEgBK95+doTwS0DjmVA2wTeZTyVtXOoN7CsoM5pONBzvKQ==}
     peerDependencies:
@@ -1960,8 +1969,8 @@ packages:
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
 
-  '@sparrowapp-dev/stripe-billing@1.0.1':
-    resolution: {integrity: sha512-pr+K88S+j6Er378xhXZATFnVyfFeF3DkA0VDqKB23iK7Wc7drffaGEgEe/2WkVBPEiKUsIYtJClv8oC9EmpCZA==, tarball: https://npm.pkg.github.com/download/@sparrowapp-dev/stripe-billing/1.0.1/bf8d8a7399e375f5323950a7d6817dea0db36bd0}
+  '@sparrowapp-dev/stripe-billing@1.0.26':
+    resolution: {integrity: sha512-X+99YEEp8xBrnf2/GBz15yYrp1FYDJstKvBfeOEM4VYHM04N9c8YNs1FY63d1LS+1XC0ZTZxNi5Qp2BAhibXOg==, tarball: https://npm.pkg.github.com/download/@sparrowapp-dev/stripe-billing/1.0.26/ad3fff36e166ad472939d04487b9107099a144f3}
     peerDependencies:
       '@nestjs/common': ^10.0.0 || ^11.0.0
       '@nestjs/core': ^10.0.0 || ^11.0.0
@@ -2061,6 +2070,9 @@ packages:
 
   '@types/jsonwebtoken@9.0.9':
     resolution: {integrity: sha512-uoe+GxEuHbvy12OUQct2X9JenKM3qAscquYymuQN4fMWG9DBQtykrQEFcAbVACF7qaLw9BePSodUL0kquqBJpQ==}
+
+  '@types/luxon@3.6.2':
+    resolution: {integrity: sha512-R/BdP7OxEMc44l2Ex5lSXHoIXTB2JLNa3y2QISIbr58U/YcsffyQrYW//hZSdrfxrjRZj3GcUoxMPGdO8gSYuw==}
 
   '@types/methods@1.1.4':
     resolution: {integrity: sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==}
@@ -2790,6 +2802,10 @@ packages:
 
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
+
+  cron@4.3.0:
+    resolution: {integrity: sha512-ciiYNLfSlF9MrDqnbMdRWFiA6oizSF7kA1osPP9lRzNu0Uu+AWog1UKy7SkckiDY2irrNjeO6qLyKnXC8oxmrw==}
+    engines: {node: '>=18.x'}
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -4222,6 +4238,10 @@ packages:
 
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
+
+  luxon@3.6.1:
+    resolution: {integrity: sha512-tJLxrKJhO2ukZ5z0gyjY1zPh3Rh88Ej9P7jNrZiHMUXHae1yvI2imgOZtL1TO8TW6biMMKfTtAOoEJANgtWBMQ==}
+    engines: {node: '>=12'}
 
   macos-release@2.5.1:
     resolution: {integrity: sha512-DXqXhEM7gW59OjZO8NIjBCz9AQ1BEMrfiOAl4AYByHCtVHRF4KoGNO8mqQeM8lRCtQe/UnJ4imO/d2HdkKsd+A==}
@@ -7517,6 +7537,12 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+  '@nestjs/schedule@6.0.0(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)':
+    dependencies:
+      '@nestjs/common': 10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6)
+      '@nestjs/core': 10.4.15(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/platform-express@10.4.18)(@nestjs/websockets@10.4.15)(reflect-metadata@0.1.13)(rxjs@7.5.6)
+      cron: 4.3.0
+
   '@nestjs/swagger@7.4.2(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)':
     dependencies:
       '@microsoft/tsdoc': 0.15.1
@@ -8270,7 +8296,7 @@ snapshots:
 
   '@socket.io/component-emitter@3.1.2': {}
 
-  '@sparrowapp-dev/stripe-billing@1.0.1(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)':
+  '@sparrowapp-dev/stripe-billing@1.0.26(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)':
     dependencies:
       '@nestjs/common': 10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6)
       '@nestjs/config': 3.3.0(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(rxjs@7.8.2)
@@ -8406,6 +8432,8 @@ snapshots:
     dependencies:
       '@types/ms': 2.1.0
       '@types/node': 16.11.56
+
+  '@types/luxon@3.6.2': {}
 
   '@types/methods@1.1.4': {}
 
@@ -9286,6 +9314,11 @@ snapshots:
       - ts-node
 
   create-require@1.1.1: {}
+
+  cron@4.3.0:
+    dependencies:
+      '@types/luxon': 3.6.2
+      luxon: 3.6.1
 
   cross-spawn@7.0.6:
     dependencies:
@@ -11108,6 +11141,8 @@ snapshots:
       yallist: 3.1.1
 
   lunr@2.3.9: {}
+
+  luxon@3.6.1: {}
 
   macos-release@2.5.1: {}
 

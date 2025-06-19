@@ -1,5 +1,20 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Inject,
+  Optional,
+} from "@nestjs/common";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
+
+// Dynamically import Stripe service class
+let StripeService: any;
+try {
+  const stripeBilling = require("@sparrowapp-dev/stripe-billing");
+  StripeService = stripeBilling.StripeService;
+} catch (error) {
+  console.warn("Stripe service not available");
+}
 
 /**
  * Service for handling Stripe subscription operations
@@ -10,7 +25,14 @@ export class StripeSubscriptionService {
 
   constructor(
     private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
-  ) {}
+    @Optional() @Inject(StripeService) private readonly stripeService: any,
+  ) {
+    if (!this.stripeService) {
+      this.logger.warn(
+        "Stripe service not available, some features will be limited",
+      );
+    }
+  }
 
   /**
    * Handle subscription creation event
@@ -173,8 +195,34 @@ export class StripeSubscriptionService {
         }
       }
 
-      // Check if this is a payment failure during a plan upgrade
-      const isUpgradeFailure = invoice.billing_reason === "subscription_update";
+      // Determine the billing reason to handle the case properly
+      const billingReason = invoice.billing_reason || "unknown";
+      this.logger.log(
+        `Invoice payment failed with billing reason: ${billingReason}`,
+      );
+
+      // Extract current period dates from the invoice or the existing billing record
+      let currentPeriodStart = null;
+      let currentPeriodEnd = null;
+
+      // Try to get period information from the invoice line items
+      if (invoice.lines?.data?.[0]?.period) {
+        currentPeriodStart = invoice.lines.data[0].period.start
+          ? new Date(invoice.lines.data[0].period.start * 1000)
+          : null;
+        currentPeriodEnd = invoice.lines.data[0].period.end
+          ? new Date(invoice.lines.data[0].period.end * 1000)
+          : null;
+      }
+
+      // If not found in the invoice, use the existing billing record
+      if (!currentPeriodStart && team.billing?.current_period_start) {
+        currentPeriodStart = team.billing.current_period_start;
+      }
+
+      if (!currentPeriodEnd && team.billing?.current_period_end) {
+        currentPeriodEnd = team.billing.current_period_end;
+      }
 
       // Create billing details object with failed payment status
       const billingDetails = {
@@ -188,19 +236,36 @@ export class StripeSubscriptionService {
           ? new Date(invoice.next_payment_attempt * 1000)
           : null,
         attempt_count: invoice.attempt_count,
+        billing_reason: billingReason,
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+        requires_action_at_period_end:
+          billingReason === "subscription_update" ||
+          billingReason === "subscription_cycle",
+        failed_at: new Date(),
         updatedBy: "system-stripe-webhook",
       };
 
-      if (isUpgradeFailure) {
-        // For upgrade failures, keep the current plan but update the billing status
-        const team = await this.stripeSubscriptionRepo.findTeamById(
-          metadata.hubId,
+      // For mid-cycle upgrade failures, we need to ensure we have a way to track when to take action
+      if (billingReason === "subscription_update" && currentPeriodEnd) {
+        this.logger.log(
+          `Mid-cycle upgrade payment failed. Current billing cycle ends at: ${currentPeriodEnd.toISOString()}. Marking for review at cycle end.`,
         );
-        if (!team) {
-          this.logger.error(`Team not found with ID: ${metadata.hubId}`);
-          return;
-        }
+      }
 
+      // Check if this is a first payment (subscription creation) failure
+      const isFirstPayment = billingReason === "subscription_create";
+
+      // Check if this is a payment failure during a plan upgrade
+      const isUpgradeFailure = billingReason === "subscription_update";
+
+      // Check if this is a renewal payment failure
+      const isRenewalFailure = billingReason === "subscription_cycle";
+
+      // For renewal failures, we only mark the billing status as failed but keep the current plan
+      // until either payment succeeds or Stripe cancels the subscription after all retry attempts
+      if (isRenewalFailure || isUpgradeFailure) {
+        // Update only the billing status, but keep the current plan
         await this.updateTeamPlanWithBilling(
           metadata.hubId,
           {
@@ -211,10 +276,11 @@ export class StripeSubscriptionService {
         );
 
         this.logger.log(
-          `Updated billing status for team ${metadata.hubId} due to payment failure during plan upgrade`,
+          `Updated billing status for team ${metadata.hubId} to payment_failed. Keeping current plan active until final payment resolution or billing cycle end (${currentPeriodEnd?.toISOString() || "unknown"}).`,
         );
-      } else {
-        // For regular subscription payment failures, downgrade to Community plan
+      } else if (isFirstPayment) {
+        // For first payment failures (subscription creation), downgrade to Community plan
+        // because the customer has never had access to the paid plan
         const communityPlan =
           await this.stripeSubscriptionRepo.findPlanByName("Community");
         if (!communityPlan) {
@@ -242,7 +308,21 @@ export class StripeSubscriptionService {
           );
 
         this.logger.log(
-          `Successfully downgraded team ${metadata.hubId} and ${workspaceUpdateResult.modifiedCount} workspaces to Community plan due to payment failure`,
+          `Downgraded team ${metadata.hubId} and ${workspaceUpdateResult.modifiedCount} workspaces to Community plan due to initial payment failure`,
+        );
+      } else {
+        // For other types of payment failures, just update the billing status
+        await this.updateTeamPlanWithBilling(
+          metadata.hubId,
+          {
+            id: team.plan.id,
+            name: team.plan.name,
+          },
+          billingDetails,
+        );
+
+        this.logger.log(
+          `Updated billing status for team ${metadata.hubId} to payment_failed due to ${billingReason}`,
         );
       }
     } catch (error) {
@@ -649,5 +729,76 @@ export class StripeSubscriptionService {
       latest_invoice: subscription.latest_invoice,
       updatedBy: "system-stripe-webhook",
     };
+  }
+
+  /**
+   * Check for subscriptions that need action at the end of their billing cycles
+   * This method should be called by a scheduled job/cron
+   */
+  async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
+    try {
+      const now = new Date();
+
+      // Find all teams with failed payments that require action at the end of their billing cycle
+      // and where the current_period_end date has passed
+      const teamsToProcess =
+        await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
+          now,
+        );
+
+      if (!teamsToProcess || teamsToProcess.length === 0) {
+        this.logger.log("No subscriptions requiring end-of-cycle action found");
+        return;
+      }
+
+      this.logger.log(
+        `Found ${teamsToProcess.length} subscriptions requiring end-of-cycle action`,
+      );
+
+      // Process each team that needs action
+      for (const team of teamsToProcess) {
+        try {
+          if (!team.billing?.subscriptionId) {
+            this.logger.warn(
+              `Team ${team._id} marked for end-of-cycle action but has no subscription ID`,
+            );
+            continue;
+          }
+
+          this.logger.log(
+            `Processing end-of-cycle action for team ${team._id}, subscription ${team.billing.subscriptionId}. Billing cycle ended at ${team.billing.current_period_end.toISOString()}`,
+          );
+
+          // Check if Stripe service is available before attempting to cancel
+          if (!this.stripeService) {
+            this.logger.error(
+              `Cannot cancel subscription ${team.billing.subscriptionId} for team ${team._id} - Stripe service is not available`,
+            );
+            continue;
+          }
+
+          // Cancel the subscription immediately through Stripe
+          await this.stripeService.cancelSubscription(
+            team.billing.subscriptionId,
+            true, // cancelImmediately = true
+          );
+
+          this.logger.log(
+            `Canceled subscription ${team.billing.subscriptionId} for team ${team._id} due to unresolved payment failure at billing cycle end`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Error processing end-of-cycle action for team ${team._id}: ${error.message}`,
+            error.stack,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error checking subscriptions requiring end-of-cycle action: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 }
