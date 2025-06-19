@@ -56,7 +56,7 @@ export class LlmConversationService {
       
       const data = payload.data as Record<string, any>;
       const providerField = provider.toLowerCase();
-      const messagesToAppend = data.conversation ?? [];
+      const messagesToAppend = data.conversation;
       const { conversation, id, ...metaUpdates } = data;
 
       const updateOps: any = {};

@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsObject,
   IsBoolean,
+  IsNotEmpty,
 } from "class-validator";
 
 export class CreateCustomerDto {
@@ -118,22 +119,45 @@ export class SubscriptionResponseDto {
 
 export class UpdateSubscriptionDto {
   @ApiProperty({
-    description: "The new Stripe price ID for the subscription",
+    description: "The new Stripe price ID for the subscription plan",
     example: "price_67890",
   })
   @IsString()
+  @IsNotEmpty()
   priceId: string;
 
+  @ApiPropertyOptional({
+    description: "Payment method ID to use for this subscription",
+    example: "pm_12345",
+  })
+  @IsOptional()
   @IsString()
-  paymentMethodId: string;
+  paymentMethodId?: string;
 
   @ApiPropertyOptional({
-    description: "Additional metadata to update on the subscription",
-    example: { planName: "Enterprise", userId: "12345" },
+    description: "Additional metadata for the subscription",
+    example: { orderId: "12345", planName: "Premium" },
   })
   @IsOptional()
   @IsObject()
   metadata?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: "Proration behavior for subscription updates",
+    example: "create_prorations",
+    enum: ["create_prorations", "none", "always_invoice"],
+  })
+  @IsOptional()
+  @IsString()
+  prorationBehavior?: "create_prorations" | "none" | "always_invoice";
+
+  @ApiPropertyOptional({
+    description: "Whether to apply changes at the end of the current period",
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  atPeriodEnd?: boolean;
 }
 
 export class CancelSubscriptionDto {
