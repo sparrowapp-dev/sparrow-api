@@ -736,6 +736,7 @@ export class WorkspaceService {
         workspaceName: workspaceData.name,
       },
       payload.role,
+      user.name,
     );
 
     await this.teamUserService.sendInvite(
