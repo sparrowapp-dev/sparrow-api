@@ -244,7 +244,7 @@ export class AdminHubsService {
 
     // Count collaborators excluding owners
     const collaboratorCount = team.users.filter(
-      (user: any) => user.role !== "owner"
+      (user: any) => user.role !== "owner",
     ).length;
 
     return {
