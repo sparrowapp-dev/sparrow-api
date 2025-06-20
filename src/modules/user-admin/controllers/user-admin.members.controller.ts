@@ -38,6 +38,7 @@ import { TeamService } from "@src/modules/identity/services/team.service";
 import { AddTeamUserDto } from "@src/modules/identity/payloads/teamUser.payload";
 import { WorkspaceService } from "@src/modules/workspace/services/workspace.service";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { HubInviteGuard } from "@src/modules/identity/guards/hub-invite.guard";
 
 @Controller("api/admin")
 @ApiTags("admin hub members")
@@ -121,7 +122,7 @@ export class AdminMembersController {
    * Send invites to users to join a hub
    */
   @Post("hub/:hubId/invite")
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, HubInviteGuard)
   @Roles("admin")
   @ApiOperation({
     summary: "Send invites to users for a hub",
