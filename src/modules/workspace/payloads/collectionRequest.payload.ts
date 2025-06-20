@@ -796,6 +796,13 @@ export class UpdateCollectionMockRequestResponseDto {
   @IsBoolean()
   @IsOptional()
   isMockResponseActive?: boolean;
+
+  @ApiProperty({ example: 60 })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  responseWeightRatio?: number;
 }
 
 export class FolderPayload {
