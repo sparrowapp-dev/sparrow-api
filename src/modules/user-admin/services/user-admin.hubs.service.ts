@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
 import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.repository";
+import { TeamRole } from "@src/modules/common/enum/roles.enum";
 
 interface SortOptions {
   sortBy: string;
@@ -244,7 +245,7 @@ export class AdminHubsService {
 
     // Count collaborators excluding owners
     const collaboratorCount = team.users.filter(
-      (user: any) => user.role !== "owner",
+      (user: any) => user.role !== TeamRole.OWNER,
     ).length;
 
     return {
