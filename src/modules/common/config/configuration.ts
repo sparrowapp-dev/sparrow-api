@@ -95,7 +95,8 @@ export default () => ({
     deepseekApiKey: process.env.DEEPSEEK_API_KEY,
     deepseekApiVersion: process.env.DEEPSEEK_API_VERSION,
     deepseekURL: "https://api.deepseek.com",
-    conversationLimit: 30
+    conversationLimit: 30,
+    conversationConatiner: process.env.AI_CONVERSATION_BLOB_CONTAINER
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,

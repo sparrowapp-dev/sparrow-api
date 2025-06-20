@@ -16,6 +16,7 @@ import { FeedbackFiles } from "../models/feedback.model";
 export class BlobStorageService {
   private blobServiceClient: BlobServiceClient;
   private containerClient: ContainerClient;
+  private aiContainerClient: ContainerClient;
 
   /**
    * Constructor to initialize BlobStorageService with required dependencies.
@@ -28,6 +29,9 @@ export class BlobStorageService {
     const feedbackBlobContainer = this.configService.get(
       "feedbackBlob.container",
     );
+    const aiConversationBLobContainer = this.configService.get(
+      "ai.conversationConatiner"
+    )
 
     try {
       /**
@@ -41,6 +45,12 @@ export class BlobStorageService {
        */
       this.containerClient = this.blobServiceClient.getContainerClient(
         feedbackBlobContainer,
+      );
+      /**
+       * Get a ContainerClient instance for the 'AI Conversation Doc' container.
+       */
+      this.aiContainerClient = this.blobServiceClient.getContainerClient(
+        aiConversationBLobContainer,
       );
     } catch (e) {
       console.error(e);
@@ -98,5 +108,41 @@ export class BlobStorageService {
       mimetype: file.mimetype,
     };
     return blobResponse;
+  }
+
+  /**
+   * Uploads a AI Document to Azure Blob Storage.
+   * @param file - file that needs to be uploaded, represented by MemoryStorageFile.
+   * @returns AI Doc object containing metadata about the uploaded file.
+   */
+  async uploadAiDoc(file: MemoryStorageFile): Promise<string> {
+    const fileId = uuidv4();
+    const uniqueFileName = `${fileId}-${
+      file.fieldname
+    }.${await this.getFileExtension(file.mimetype)}`;
+    if (!this.aiContainerClient) {
+      throw new BadRequestException(
+        "Azure blob container is not connected to backend server.",
+      );
+    }
+    const blockBlobClient =
+      this.aiContainerClient.getBlockBlobClient(uniqueFileName);
+
+    // Set Content-Type and Content-Disposition headers
+    const uploadOptions = {
+      blobHTTPHeaders: {
+        blobContentType: file.mimetype, // Set the MIME type
+        blobContentDisposition: "inline", // Display the image inline in the browser
+      },
+    };
+
+    await blockBlobClient.upload(
+      file.buffer,
+      file.buffer.length,
+      uploadOptions,
+    );
+    
+    const docURL = blockBlobClient.url;
+    return docURL;
   }
 }
