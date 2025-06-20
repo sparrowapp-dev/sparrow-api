@@ -602,9 +602,6 @@ export class StripeController {
             event.data.object.status === "open" &&
             event.data.object.attempt_count === 0
           ) {
-            console.log(
-              `Skipping invoice.payment_failed event for invoice ${event.data.object.id} - appears to be 3DS authentication scenario (status: ${event.data.object.status}, attempt_count: ${event.data.object.attempt_count})`,
-            );
             break;
           }
 
