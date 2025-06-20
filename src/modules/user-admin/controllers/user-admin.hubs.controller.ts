@@ -262,4 +262,46 @@ export class AdminHubsController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Get("hub-statistics")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @ApiOperation({
+    summary: "Get hub statistics with collaborator and workspace counts",
+    description: "Returns collaborator count (excluding owners) and workspace count for a specific hub",
+  })
+  @ApiQuery({ name: "hUbId", required: true, type: String, description: "Hub ID to get statistics for" })
+  @ApiResponse({
+    status: 200,
+    description: "Hub statistics retrieved successfully",
+    schema: {
+      type: "object",
+      properties: {
+        teamId: { type: "string" },
+        teamName: { type: "string" },
+        collaboratorCount: { type: "number" },
+        workspaceCount: { type: "number" },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: "Failed to retrieve hub statistics" })
+  @ApiResponse({ status: 404, description: "hHub not found" })
+  async getTeamStatistics(
+    @Query("hubId") teamId: string,
+    @Res() res: FastifyReply,
+  ) {
+    if (!teamId) {
+      throw new UnauthorizedException("Hub ID is required");
+    }
+
+    const data = await this.hubsService.getTeamStatistics(teamId);
+
+    const responseData = new ApiResponseService(
+      "Hub statistics retrieved successfully",
+      HttpStatusCode.OK,
+      data,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }
