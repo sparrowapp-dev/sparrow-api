@@ -234,4 +234,25 @@ export class AdminHubsService {
       throw new Error(`Failed to fetch hubs: ${error.message}`);
     }
   }
+
+  async getTeamStatistics(teamId: string) {
+    const team = await this.teamsRepo.findHubById(teamId);
+
+    if (!team) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Count collaborators excluding owners
+    const collaboratorCount = team.users.filter(
+      (user: any) => user.role !== "owner"
+    ).length;
+
+    return {
+      teamId: team._id,
+      teamName: team.name,
+      collaboratorCount,
+      workspaceCount: team.workspaces?.length || 0,
+      pendingInvites: team.invites?.length || 0,
+    };
+  }
 }
