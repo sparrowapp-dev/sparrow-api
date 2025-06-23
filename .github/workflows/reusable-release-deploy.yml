@@ -28,7 +28,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }} 
 
       - run: |
-          docker build . -t sparrowapi/sparrow-api:${{ github.run_number }}
+          docker build . -t sparrowapi/sparrow-api:${{ github.run_number }} --build-arg GITHUB_TOKEN=${{ secrets.SPARROW_GITHUB_TOKEN }}
           docker push sparrowapi/sparrow-api:${{ github.run_number }}
   deploy:
     needs: build
