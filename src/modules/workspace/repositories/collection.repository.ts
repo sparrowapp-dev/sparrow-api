@@ -1710,7 +1710,7 @@ export class CollectionRepository {
           "items.$[i].items.$[j].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
       }
-       if (mockRequestResponse?.isMockResponseActive !== undefined) {
+       if (mockRequestResponse?.responseWeightRatio!== undefined) {
         updateObject[
           "items.$[i].items.$[j].mockRequestResponse.responseWeightRatio"
         ] = mockRequestResponse.responseWeightRatio;
@@ -1749,9 +1749,9 @@ export class CollectionRepository {
           "items.$[i].items.$[j].items.$[k].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
       }
-       if (mockRequestResponse?.isMockResponseActive !== undefined) {
+       if (mockRequestResponse?.responseWeightRatio !== undefined) {
         updateObject[
-          "items.$[i].items.$[j].mockRequestResponse.responseWeightRatio"
+          "items.$[i].items.$[j].items.$[k].mockRequestResponse.responseWeightRatio"
         ] = mockRequestResponse.responseWeightRatio;
       }
       await this.db.collection<Collection>(Collections.COLLECTION).updateOne(
