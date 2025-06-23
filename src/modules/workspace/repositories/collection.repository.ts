@@ -1710,7 +1710,7 @@ export class CollectionRepository {
           "items.$[i].items.$[j].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
       }
-       if (mockRequestResponse?.responseWeightRatio!== undefined) {
+       if (mockRequestResponse?.responseWeightRatio !== undefined) {
         updateObject[
           "items.$[i].items.$[j].mockRequestResponse.responseWeightRatio"
         ] = mockRequestResponse.responseWeightRatio;
