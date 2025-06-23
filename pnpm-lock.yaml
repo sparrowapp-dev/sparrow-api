@@ -122,6 +122,9 @@ importers:
       class-validator:
         specifier: ^0.14.0
         version: 0.14.1
+      crypto-js:
+        specifier: ^4.2.0
+        version: 4.2.0
       curlconverter:
         specifier: ^4.9.0
         version: 4.12.0
@@ -225,6 +228,9 @@ importers:
       '@types/chai':
         specifier: ^4.3.5
         version: 4.3.20
+      '@types/crypto-js':
+        specifier: ^4.2.2
+        version: 4.2.2
       '@types/gravatar':
         specifier: 1.8.3
         version: 1.8.3
@@ -2046,6 +2052,9 @@ packages:
 
   '@types/cors@2.8.17':
     resolution: {integrity: sha512-8CGDvrBj1zgo2qE+oS3pOCyYNqCPryMWY2bGfwA0dcfopWGgxs+78df0Rs3rc9THP4JkOhLsAa+15VdpAqkcUA==}
+
+  '@types/crypto-js@4.2.2':
+    resolution: {integrity: sha512-sDOLlVbHhXpAUAL0YHDUUwDZf3iN4Bwi4W6a0W0b+QcAezUbRtH4FVb+9J4h+XFPW7l/gQ9F8qC7P+Ec4k8QVQ==}
 
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
@@ -8462,6 +8471,8 @@ snapshots:
   '@types/cors@2.8.17':
     dependencies:
       '@types/node': 16.11.56
+
+  '@types/crypto-js@4.2.2': {}
 
   '@types/estree@1.0.7': {}
 

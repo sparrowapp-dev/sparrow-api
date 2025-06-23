@@ -5,6 +5,7 @@ import { ConfigService } from "@nestjs/config";
 
 // Enum
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
+import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { LlmConversation , ConversationModel , UserConversationModel } from "../payloads/llm-conversation.payload";
 
 @Injectable()
@@ -14,7 +15,8 @@ export class LlmConversationRepository {
 
   constructor(
     @Inject("DATABASE_CONNECTION") private db: Db,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly encryptionService: EncryptionService
   ) {
    this.conversationLimit = this.configService.get("ai.conversationLimit");
   }
@@ -26,27 +28,28 @@ export class LlmConversationRepository {
   ): Promise<any[] | null> {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
- 
+    // Encrypt the incoming apiKey
+    const encryptedApiKey = this.encryptionService.encrypt(apiKey);
+
     const document = await collection.findOne({
       [providerField]: {
         $elemMatch: {
-          value: apiKey,
+          value: encryptedApiKey,
         },
       },
     });
- 
+
     if (!document || !document[providerField]) {
       return null;
     }
- 
+
     const providerEntry = document[providerField].find(
-      (entry: { value: string }) => entry.value === apiKey,
+      (entry: { value: string }) => entry.value === encryptedApiKey,
     );
- 
+
     const conversations = providerEntry?.conversations;
     await new Promise((resolve) => setTimeout(resolve, 10000));
- 
-    // Sort by date and time, latest first
+
     return (
       conversations?.sort(
         (
@@ -67,6 +70,7 @@ export class LlmConversationRepository {
   ): Promise<string> {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
+    const encryptedApiKey = this.encryptionService.encrypt(apiKey);
 
     const conversationWithId = {
       ...conversation,
@@ -82,7 +86,7 @@ export class LlmConversationRepository {
     if (providerDoc) {
       // Look for matching API key
       const apiKeyEntryIndex = providerDoc[providerField].findIndex(
-        (entry: any) => entry.value === apiKey
+        (entry: any) => entry.value === encryptedApiKey
       );
 
       if (apiKeyEntryIndex !== -1) {
@@ -107,7 +111,7 @@ export class LlmConversationRepository {
         const updateQuery = {
           $push: {
             [providerField]: {
-              value: apiKey,
+              value: encryptedApiKey,
               conversations: [conversationWithId],
             },
           },
@@ -122,7 +126,7 @@ export class LlmConversationRepository {
     const newProviderEntry = {
       [providerField]: [
         {
-          value: apiKey,
+          value: encryptedApiKey,
           conversations: [conversationWithId],
         },
       ],
@@ -148,18 +152,19 @@ export class LlmConversationRepository {
     try {
       const collection = this.db.collection(Collections.LLMCONVERSATION);
       const providerField = provider.toLowerCase();
+      const encryptedApiKey = this.encryptionService.encrypt(apiKey);
 
       if (!updateOps || Object.keys(updateOps).length === 0) return;
 
       const result = await collection.updateOne(
         {
-          [`${providerField}.value`]: apiKey,
+          [`${providerField}.value`]: encryptedApiKey,
           [`${providerField}.conversations.id`]: conversationId,
         },
         updateOps,
         {
           arrayFilters: [
-            { "apiKeyElem.value": apiKey },
+            { "apiKeyElem.value": encryptedApiKey },
             { "convElem.id": conversationId },
           ],
         }
@@ -177,10 +182,11 @@ export class LlmConversationRepository {
   async deleteConversation(provider: string, apiKey: string, conversationId: string): Promise<void> {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
+    const encryptedApiKey = this.encryptionService.encrypt(apiKey);
 
     await collection.updateOne(
       {
-        [`${providerField}.value`]: apiKey,
+        [`${providerField}.value`]: encryptedApiKey,
       },
       {
         $pull: {
