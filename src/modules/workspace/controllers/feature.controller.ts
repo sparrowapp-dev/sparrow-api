@@ -12,6 +12,7 @@ import {
   Param,
   Post,
   Put,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -28,6 +29,7 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 
 // ---- Guard
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Feature Controller
@@ -58,8 +60,10 @@ export class FeatureController {
   async addFeature(
     @Body() addFeatureDto: AddFeatureDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.featureService.addFeature(addFeatureDto);
+    const user = request.user;
+    await this.featureService.addFeature(addFeatureDto, user._id);
     // Retrieve the added feature for confirmation
     const feature = await this.featureService.getFeature(addFeatureDto.name);
     const responseData = new ApiResponseService(
@@ -89,8 +93,10 @@ export class FeatureController {
     @Param("name") name: string,
     @Body() updateFeatureDto: UpdateFeatureDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.featureService.updateFeature(name, updateFeatureDto);
+    const user = request.user;
+    await this.featureService.updateFeature(name, updateFeatureDto, user._id);
     // Retrieve the updated feature for confirmation
     const feature = await this.featureService.getFeature(name);
     const responseData = new ApiResponseService(

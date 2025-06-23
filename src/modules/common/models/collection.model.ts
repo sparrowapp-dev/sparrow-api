@@ -30,6 +30,8 @@ export enum ItemTypeEnum {
   GRAPHQL = "GRAPHQL",
   REQUEST_RESPONSE = "REQUEST_RESPONSE",
   MOCK_REQUEST = "MOCK_REQUEST",
+  MOCK_REQUEST_RESPONSE = "MOCK_REQUEST_RESPONSE",
+  AI_REQUEST = "AI_REQUEST",
 }
 
 export enum BodyModeEnum {
@@ -421,6 +423,50 @@ export class RequestResponseMetaData {
   selectedResponseBodyType?: ResponseBodyModeEnum;
 }
 
+export class MockRequestResponseMetaData {
+  @ApiProperty({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isMockResponseActive?: boolean;
+
+  @ApiProperty({ example: "body" })
+  @IsString()
+  @IsOptional()
+  responseBody?: string;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  responseHeaders?: KeyValue[];
+
+  @ApiProperty({ example: "200 OK" })
+  @IsString()
+  @IsOptional()
+  responseStatus?: string;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ ResponseBodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedResponseBodyType?: ResponseBodyModeEnum;
+}
+
 export class MockRequestMetaData {
   @ApiProperty({ example: "put" })
   @IsNotEmpty()
@@ -531,6 +577,34 @@ export class MockRequestMetaData {
   @IsString()
   @IsOptional()
   selectedResponseBodyType?: ResponseBodyModeEnum;
+}
+
+export class AiRequestMetaData {
+  @ApiProperty({ example: "openai" })
+  @IsNotEmpty()
+  aiModelProvider: "openai" | "anthropic" | "deepseek" | "gemini";
+
+  @ApiProperty({ example: "gpt-4o" })
+  @IsString()
+  @IsNotEmpty()
+  aiModelVariant: string; //ToDo: Add proper types (for type safety) for possible model versions
+
+  @ApiProperty({ example: "Answer the user queries." })
+  @IsString()
+  @IsNotEmpty()
+  systemPrompt: string;
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      bearerToken: "Bearer xyz",
+    },
+  })
+  @IsArray()
+  @Type(() => Auth)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  auth?: Auth;
 }
 
 /**
@@ -756,6 +830,11 @@ export class CollectionItem {
   @Type(() => MockRequestMetaData)
   mockRequest?: MockRequestMetaData;
 
+  @ApiProperty({ type: MockRequestResponseMetaData })
+  @IsOptional()
+  @Type(() => MockRequestResponseMetaData)
+  mockRequestResponse?: MockRequestResponseMetaData;
+
   @ApiProperty({ type: WebSocketMetaData })
   @IsOptional()
   @Type(() => WebSocketMetaData)
@@ -770,6 +849,11 @@ export class CollectionItem {
   @IsOptional()
   @Type(() => GraphQLMetaData)
   graphql?: GraphQLMetaData;
+
+  @ApiProperty({ type: AiRequestMetaData })
+  @IsOptional()
+  @Type(() => AiRequestMetaData)
+  aiRequest?: AiRequestMetaData;
 
   @IsOptional()
   @IsBoolean()

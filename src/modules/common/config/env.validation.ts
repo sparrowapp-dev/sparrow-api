@@ -44,8 +44,4 @@ export class EnvironmentVariables {
   @Type(() => Number)
   @IsNumber()
   REFRESH_TOKEN_MAX_LIMIT: number;
-
-  @IsString()
-  @IsNotEmpty()
-  KAFKA_BROKER: string;
 }

@@ -17,7 +17,7 @@ spec:
         app: release-api-v2
     spec:
       containers:
-        - image: sparrowapi/sparrow-api:_BUILD__ID_
+        - image: sparrowprod.azurecr.io/sparrow-api:_BUILD__ID_
           name: release-api-v2
           imagePullPolicy: Always
           resources: {}
@@ -140,11 +140,6 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: GOOGLE_CLIENT_SECRET
-            - name: KAFKA_BROKER
-              valueFrom:
-                secretKeyRef:
-                  name: release-api-v2-secret
-                  key: KAFKA_BROKER
             - name: APP_UPDATE_AVAILABLE
               valueFrom:
                 secretKeyRef:
@@ -310,6 +305,26 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: DEEPSEEK_API_VERSION
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: DB_NAME 
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: STRIPE_SECRET_KEY
+            - name: STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: STRIPE_PUBLISHABLE_KEY
+            - name: STRIPE_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: STRIPE_WEBHOOK
 
 ---
 apiVersion: v1

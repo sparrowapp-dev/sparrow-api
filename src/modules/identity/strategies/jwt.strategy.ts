@@ -5,8 +5,9 @@ import { ConfigService } from "@nestjs/config";
 import { Db, ObjectId } from "mongodb";
 import { JwtPayload } from "../payloads/jwt.payload";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
+import { DecodedUserObject } from "@src/types/fastify";
 
 /**
  * Jwt Strategy Class
@@ -22,7 +23,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     readonly configService: ConfigService,
     @Inject("DATABASE_CONNECTION")
     private db: Db,
-    private contextService: ContextService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -52,18 +52,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
-    this.contextService.set("user", user);
 
-    // if admin role exists we return the whole obj (this is only used for admin api's)
-    if (role) {
-      return {
-        _id: user._id,
-        email: user.email,
-        name: user.name,
-        role: role,
-      };
-    }
+    const userObj: DecodedUserObject = {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      role: role,
+      teams: user.teams,
+      workspaces: user.workspaces,
+    };
 
-    return user._id;
+    // Return user object with necessary fields
+    return userObj;
   }
 }

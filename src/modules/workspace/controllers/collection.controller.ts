@@ -11,7 +11,6 @@ import {
   Res,
   UseGuards,
   UseInterceptors,
-  BadRequestException,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -31,16 +30,18 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { WorkspaceService } from "../services/workspace.service";
 import {
   BranchChangeDto,
+  CollectionAiRequestDto,
   CollectionGraphQLDto,
+  CollectionMockRequestResponseDto,
   CollectionRequestDto,
   CollectionRequestResponseDto,
   CollectionSocketIODto,
   CollectionWebSocketDto,
   FolderPayload,
+  UpdateCollectionMockRequestResponseDto,
   UpdateCollectionRequestResponseDto,
 } from "../payloads/collectionRequest.payload";
 import { CollectionRequestService } from "../services/collection-request.service";
-import { ContextService } from "@src/modules/common/services/context.service";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import {
   FileInterceptor,
@@ -49,6 +50,7 @@ import {
 } from "@blazity/nest-file-fastify";
 import { CollectionTypeEnum } from "@src/modules/common/models/collection.model";
 import { UserService } from "@src/modules/identity/services/user.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @ApiBearerAuth()
 @ApiTags("collection")
@@ -58,7 +60,6 @@ export class collectionController {
     private readonly collectionService: CollectionService,
     private readonly workSpaceService: WorkspaceService,
     private readonly collectionRequestService: CollectionRequestService,
-    private readonly contextService: ContextService,
     private readonly userService: UserService,
   ) {}
 
@@ -74,10 +75,14 @@ export class collectionController {
   async createCollection(
     @Body() createCollectionDto: Partial<CreateCollectionDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const workspaceId = createCollectionDto.workspaceId;
-    const data =
-      await this.collectionService.createCollection(createCollectionDto);
+    const data = await this.collectionService.createCollection(
+      createCollectionDto,
+      user,
+    );
     if (createCollectionDto?.collectionType === CollectionTypeEnum.MOCK) {
       await this.collectionService.updateMockCollectionUrl(
         data.insertedId.toString(),
@@ -86,10 +91,14 @@ export class collectionController {
     const collection = await this.collectionService.getCollection(
       data.insertedId.toString(),
     );
-    await this.workSpaceService.addCollectionInWorkSpace(workspaceId, {
-      id: collection._id,
-      name: createCollectionDto.name,
-    });
+    await this.workSpaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: collection._id,
+        name: createCollectionDto.name,
+      },
+      user._id,
+    );
 
     const responseData = new ApiResponseService(
       "Collection Created",
@@ -112,13 +121,16 @@ export class collectionController {
   @ApiResponse({ status: 400, description: "Fetch Collection Request Failed" })
   async getCollection(
     @Param("workspaceId") workspaceId: string,
-    @Req() req: any,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const collection =
-      await this.collectionService.getAllCollections(workspaceId);
+    const user = request.user;
+    const collection = await this.collectionService.getAllCollections(
+      workspaceId,
+      user,
+    );
     await this.userService.updateLastActive(
-      req.user ? req.user.toString() : "",
+      request.user._id ? request.user._id.toString() : "",
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -167,11 +179,14 @@ export class collectionController {
     @Param("workspaceId") workspaceId: string,
     @Body() updateCollectionDto: Partial<UpdateCollectionDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     await this.collectionService.updateCollection(
       collectionId,
       updateCollectionDto,
       workspaceId,
+      user,
     );
 
     const collection = await this.collectionService.getCollection(collectionId);
@@ -179,6 +194,7 @@ export class collectionController {
       workspaceId,
       collectionId,
       updateCollectionDto.name,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -204,11 +220,14 @@ export class collectionController {
     @Param("workspaceId") workspaceId: string,
     @Body() updateCollectionDto: Partial<UpdateMockCollectionStatusDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     await this.collectionService.updateMockCollectionRunningStatus(
       workspaceId,
       collectionId,
       updateCollectionDto.isMockCollectionRunning,
+      user,
     );
 
     const collection = await this.collectionService.getCollection(collectionId);
@@ -232,15 +251,19 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const collection = await this.collectionService.deleteCollection(
       collectionId,
       workspaceId,
+      user,
     );
 
     await this.workSpaceService.deleteCollectionInWorkSpace(
       workspaceId.toString(),
       collectionId,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Collection Removed",
@@ -263,12 +286,17 @@ export class collectionController {
     @Param("workspaceId") workspaceId: string,
     @Body() body: Partial<FolderPayload>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const newFolder = await this.collectionRequestService.addFolder({
-      collectionId,
-      workspaceId,
-      ...body,
-    });
+    const user = request.user;
+    const newFolder = await this.collectionRequestService.addFolder(
+      {
+        collectionId,
+        workspaceId,
+        ...body,
+      },
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.CREATED,
@@ -291,13 +319,18 @@ export class collectionController {
     @Param("folderId") folderId: string,
     @Body() body: Partial<FolderPayload>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const updatedfolder = await this.collectionRequestService.updateFolder({
-      collectionId,
-      workspaceId,
-      folderId,
-      ...body,
-    });
+    const user = request.user;
+    const updatedfolder = await this.collectionRequestService.updateFolder(
+      {
+        collectionId,
+        workspaceId,
+        folderId,
+        ...body,
+      },
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -320,14 +353,19 @@ export class collectionController {
     @Param("folderId") folderId: string,
     @Body() branchNameDto: Partial<BranchChangeDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const payload = {
       collectionId: collectionId,
       workspaceId: workspaceId,
       folderId: folderId,
       currentBranch: branchNameDto.branchName,
     };
-    const response = await this.collectionRequestService.deleteFolder(payload);
+    const response = await this.collectionRequestService.deleteFolder(
+      payload,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -348,12 +386,14 @@ export class collectionController {
   async addRequest(
     @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
-    const user = await this.contextService.get("user");
     await this.workSpaceService.IsWorkspaceAdminOrEditor(
       requestDto.workspaceId,
+      user._id,
     );
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
     const noOfRequests =
@@ -362,7 +402,7 @@ export class collectionController {
       collectionId,
       requestDto,
       noOfRequests,
-      user.name,
+      user,
       requestDto?.folderId,
     );
     const responseData = new ApiResponseService(
@@ -386,24 +426,27 @@ export class collectionController {
     @Param("requestId") requestId: string,
     @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
     await this.workSpaceService.IsWorkspaceAdminOrEditor(
       requestDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
-    const request = await this.collectionRequestService.updateRequest(
+    const result = await this.collectionRequestService.updateRequest(
       collectionId,
       requestId,
       requestDto,
+      user,
     );
 
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
-      request,
+      result,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
@@ -421,13 +464,15 @@ export class collectionController {
     @Param("requestId") requestId: string,
     @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
     await this.workSpaceService.IsWorkspaceAdminOrEditor(
       requestDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
     const noOfRequests =
       await this.collectionRequestService.getNoOfRequest(collectionId);
@@ -436,6 +481,7 @@ export class collectionController {
       requestId,
       noOfRequests,
       requestDto,
+      user,
     );
     const collection = await this.collectionService.getCollection(collectionId);
 
@@ -459,10 +505,13 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Body() branchChangeDto: BranchChangeDto,
     @Res() res: FastifyReply,
+    @Req() req: ExtendedFastifyRequest,
   ) {
+    const user = req.user;
     const branch = await this.collectionService.getBranchData(
       collectionId,
       branchChangeDto.branchName,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Branch switched Successfully",
@@ -490,9 +539,13 @@ export class collectionController {
   async addWebSocket(
     @Body() websocketDto: Partial<CollectionWebSocketDto>,
     @Res() res: FastifyReply,
+    @Req() req: ExtendedFastifyRequest,
   ) {
-    const websocketObj =
-      await this.collectionRequestService.addWebSocket(websocketDto);
+    const user = req.user;
+    const websocketObj = await this.collectionRequestService.addWebSocket(
+      websocketDto,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -521,10 +574,13 @@ export class collectionController {
     @Param("websocketId") websocketId: string,
     @Body() websocketDto: Partial<CollectionWebSocketDto>,
     @Res() res: FastifyReply,
+    @Req() req: ExtendedFastifyRequest,
   ) {
+    const user = req.user;
     const websocket = await this.collectionRequestService.updateWebSocket(
       websocketId,
       websocketDto,
+      user,
     );
 
     const responseData = new ApiResponseService(
@@ -555,10 +611,13 @@ export class collectionController {
     @Param("websocketId") websocketId: string,
     @Body() websocketDto: Partial<CollectionWebSocketDto>,
     @Res() res: FastifyReply,
+    @Req() req: ExtendedFastifyRequest,
   ) {
+    const user = req.user;
     await this.collectionRequestService.deleteWebSocket(
       websocketId,
       websocketDto,
+      user,
     );
     const collection = await this.collectionService.getCollection(
       websocketDto.collectionId,
@@ -600,13 +659,16 @@ export class collectionController {
     @Res() res: FastifyReply,
     @UploadedFile()
     file: MemoryStorageFile,
+    @Req() req: ExtendedFastifyRequest,
   ) {
     const dataBuffer = file.buffer;
     const dataString = dataBuffer.toString("utf8");
     const dataObj = JSON.parse(dataString);
+    const user = req.user;
     const collection = await this.collectionService.importPostmanCollection(
       dataObj,
       workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
       "Postman Collection Imported",
@@ -636,9 +698,13 @@ export class collectionController {
   async addSocketIO(
     @Body() socketioDto: Partial<CollectionSocketIODto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const socketioObj =
-      await this.collectionRequestService.addSocketIO(socketioDto);
+    const user = request.user;
+    const socketioObj = await this.collectionRequestService.addSocketIO(
+      socketioDto,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -669,10 +735,13 @@ export class collectionController {
     @Param("socketioId") socketioId: string,
     @Body() socketioDto: Partial<CollectionSocketIODto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const socketio = await this.collectionRequestService.updateSocketIO(
       socketioId,
       socketioDto,
+      user,
     );
 
     const responseData = new ApiResponseService(
@@ -705,8 +774,14 @@ export class collectionController {
     @Param("socketioId") socketioId: string,
     @Body() socketioDto: Partial<CollectionSocketIODto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.collectionRequestService.deleteSocketIO(socketioId, socketioDto);
+    const user = request.user;
+    await this.collectionRequestService.deleteSocketIO(
+      socketioId,
+      socketioDto,
+      user,
+    );
     const collection = await this.collectionService.getCollection(
       socketioDto.collectionId,
     );
@@ -738,9 +813,13 @@ export class collectionController {
   async addGraphQL(
     @Body() graphqlDto: Partial<CollectionGraphQLDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const graphqlObj =
-      await this.collectionRequestService.addGraphQL(graphqlDto);
+    const user = request.user;
+    const graphqlObj = await this.collectionRequestService.addGraphQL(
+      graphqlDto,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -771,10 +850,13 @@ export class collectionController {
     @Param("graphqlId") graphqlId: string,
     @Body() graphqlDto: Partial<CollectionGraphQLDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const graphql = await this.collectionRequestService.updateGraphQL(
       graphqlId,
       graphqlDto,
+      user,
     );
 
     const responseData = new ApiResponseService(
@@ -807,8 +889,14 @@ export class collectionController {
     @Param("graphqlId") graphqlId: string,
     @Body() graphqlDto: Partial<CollectionGraphQLDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.collectionRequestService.deleteGraphQL(graphqlId, graphqlDto);
+    const user = request.user;
+    await this.collectionRequestService.deleteGraphQL(
+      graphqlId,
+      graphqlDto,
+      user,
+    );
     const collection = await this.collectionService.getCollection(
       graphqlDto.collectionId,
     );
@@ -838,10 +926,13 @@ export class collectionController {
   async addRequestResponse(
     @Body() requestResponseDto: Partial<CollectionRequestResponseDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const requestResponseObj =
       await this.collectionRequestService.addRequestResponse(
         requestResponseDto,
+        user,
       );
     const responseData = new ApiResponseService(
       "Success",
@@ -871,11 +962,14 @@ export class collectionController {
     @Param("responseId") responseId: string,
     @Body() requestResponseDto: Partial<UpdateCollectionRequestResponseDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const requestResponse =
       await this.collectionRequestService.updateRequestResponse(
         responseId,
         requestResponseDto,
+        user,
       );
 
     const responseData = new ApiResponseService(
@@ -906,10 +1000,13 @@ export class collectionController {
     @Param("responseId") responseId: string,
     @Body() requestResponseDto: Partial<CollectionRequestResponseDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     await this.collectionRequestService.deleteRequestResponse(
       responseId,
       requestResponseDto,
+      user,
     );
     const collection = await this.collectionService.getCollection(
       requestResponseDto.collectionId,
@@ -934,12 +1031,14 @@ export class collectionController {
   async addMockRequest(
     @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
-    const user = await this.contextService.get("user");
     await this.workSpaceService.IsWorkspaceAdminOrEditor(
       requestDto.workspaceId,
+      user._id,
     );
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
     const noOfRequests =
@@ -948,7 +1047,7 @@ export class collectionController {
       collectionId,
       requestDto,
       noOfRequests,
-      user.name,
+      user,
       requestDto?.folderId,
     );
     const responseData = new ApiResponseService(
@@ -972,24 +1071,27 @@ export class collectionController {
     @Param("requestId") requestId: string,
     @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
     await this.workSpaceService.IsWorkspaceAdminOrEditor(
       requestDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
-    const request = await this.collectionRequestService.updateMockRequest(
+    const result = await this.collectionRequestService.updateMockRequest(
       collectionId,
       requestId,
       requestDto,
+      user,
     );
 
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
-      request,
+      result,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
@@ -1010,13 +1112,15 @@ export class collectionController {
     @Param("requestId") requestId: string,
     @Body() requestDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const collectionId = requestDto.collectionId;
     const workspaceId = requestDto.workspaceId;
     await this.workSpaceService.IsWorkspaceAdminOrEditor(
       requestDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.collectionRequestService.checkPermission(workspaceId, user._id);
     const noOfRequests =
       await this.collectionRequestService.getNoOfRequest(collectionId);
@@ -1025,9 +1129,123 @@ export class collectionController {
       requestId,
       noOfRequests,
       requestDto,
+      user,
     );
     const collection = await this.collectionService.getCollection(collectionId);
 
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to add a new AI request instance. This can be either an individual
+   * AI request instance or a folder-based AI request, and it will be stored in the collection.
+   *
+   * @param aiRequestDto The DTO containing the details of the AI request to be added.
+   * @param res The response object.
+   * @returns The response containing the status and the added aiRequest object.
+   */
+  @Post("ai-request")
+  @ApiOperation({
+    summary: "Add a AI request",
+    description:
+      "This will add a AI request which will be individual AI request or folder based AI request in collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "AI Request Updated Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Update a AI request" })
+  async addAiRequest(
+    @Body() aiRequestDto: Partial<CollectionAiRequestDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const aiRequestObj =
+      await this.collectionRequestService.addAiRequest(aiRequestDto, user);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      aiRequestObj,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to update an existing AI request instance in the collection.
+   * This can be used for both individual and folder-based AI request instances.
+   *
+   * @param aiRequestId The ID of the AI request to be updated.
+   * @param aiRequestDto The DTO containing the updated details of the AI request.
+   * @param res The response object.
+   * @returns The response containing the status and the updated AI request object.
+   */
+  @Put("ai-request/:aiRequestId")
+  @ApiOperation({
+    summary: "Update a AI request",
+    description:
+      "This will update a AI request which will be individual AI request or folder based AI request in collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "AI request saved Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to save AI request" })
+  async updateAiRequest(
+    @Param("aiRequestId") aiRequestId: string,
+    @Body() aiRequestDto: Partial<CollectionAiRequestDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const aiRequest = await this.collectionRequestService.updateAiRequest(
+      aiRequestId,
+      aiRequestDto,
+      user
+    );
+
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      aiRequest,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to delete a specific AI request instance from a collection.
+   * Supports both individual and folder-based AI request deletions.
+   *
+   * @param aiRequestId The ID of the AI request to be deleted.
+   * @param aiRequestDto The DTO containing the details of the AI request to be deleted.
+   * @param res The response object.
+   * @returns The response containing the status and the updated collection.
+   */
+  @Delete("ai-request/:aiRequestId")
+  @ApiOperation({
+    summary: "Delete a AI request",
+    description:
+      "This will delete a AI request which will be individual AI request or folder based AI request in collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "AI request Deleted Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to delete AI request" })
+  async deleteAiRequest(
+    @Param("aiRequestId") aiRequestId: string,
+    @Body() aiRequestDto: Partial<CollectionAiRequestDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    await this.collectionRequestService.deleteAiRequest(
+      aiRequestId,
+      aiRequestDto,
+      user
+    );
+    const collection = await this.collectionService.getCollection(
+      aiRequestDto.collectionId,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -1049,8 +1267,10 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.workSpaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    const user = request.user;
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
 
     const collection = await this.collectionService.getCollection(collectionId);
     const responseData = new ApiResponseService(
@@ -1079,11 +1299,14 @@ export class collectionController {
     @Param("collectionId") collectionId: string,
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const mockCollection =
       await this.collectionService.createMockCollectionFromExisting(
         collectionId,
         workspaceId,
+        user,
       );
 
     const createdCollection = await this.collectionService.getCollection(
@@ -1096,6 +1319,124 @@ export class collectionController {
       createdCollection,
     );
 
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to add a mock response to a mock request in the collection.
+   *
+   * @param mockRequestResponseDto The mock request response data.
+   * @param res The Fastify response object.
+   * @returns The response object with status and data.
+   */
+  @Post("mock-response")
+  @ApiOperation({
+    summary: "Add A Mock Response",
+    description:
+      "This will add a mock response inside mock request in collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Mock Response Added Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to add a mock response" })
+  async addMockRequestResponse(
+    @Body() mockRequestResponseDto: Partial<CollectionMockRequestResponseDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const mockRequestResponseObj =
+      await this.collectionRequestService.addMockRequestResponse(
+        mockRequestResponseDto,
+        user,
+      );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      mockRequestResponseObj,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to update a mock response inside a mock request in the collection.
+   *
+   * @param responseId The ID of the mock response to update.
+   * @param mockRequestResponseDto The updated mock request response data.
+   * @param res The Fastify response object.
+   * @returns The response object with status and data.
+   */
+  @Patch("mock-response/:responseId")
+  @ApiOperation({
+    summary: "Update a mock response",
+    description:
+      "This will update a mock response inside a mock request in collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Mock Response saved Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to save mock response" })
+  async updateMockRequestResponse(
+    @Param("responseId") responseId: string,
+    @Body()
+    mockRequestResponseDto: Partial<UpdateCollectionMockRequestResponseDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const mockRequestResponse =
+      await this.collectionRequestService.updateMockRequestResponse(
+        responseId,
+        mockRequestResponseDto,
+        user,
+      );
+
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      mockRequestResponse,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to delete a mock response inside a mock request in the collection.
+   *
+   * @param responseId The ID of the mock response to delete.
+   * @param mockRequestResponseDto The mock request response data, including collection ID.
+   * @param res The Fastify response object.
+   * @returns The response object with status and updated collection data.
+   */
+  @Delete("mock-response/:responseId")
+  @ApiOperation({
+    summary: "Delete a Mock Response",
+    description:
+      "This will delete a Mock Response inside a Mock Request in collection",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Mock Response Deleted Successfully",
+  })
+  @ApiResponse({ status: 400, description: "Failed to delete Mock Response" })
+  async deleteMockRequestResponse(
+    @Param("responseId") responseId: string,
+    @Body() mockRequestResponseDto: Partial<CollectionMockRequestResponseDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    await this.collectionRequestService.deleteMockRequestResponse(
+      responseId,
+      mockRequestResponseDto,
+      user,
+    );
+    const collection = await this.collectionService.getCollection(
+      mockRequestResponseDto.collectionId,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collection,
+    );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

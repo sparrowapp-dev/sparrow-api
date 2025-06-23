@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -26,6 +27,7 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { EnvironmentType } from "@src/modules/common/models/environment.model";
 import { WorkspaceService } from "../services/workspace.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @ApiBearerAuth()
 @ApiTags("environment")
@@ -48,20 +50,27 @@ export class EnvironmentController {
   async createCollection(
     @Body() createEnvironmentDto: CreateEnvironmentDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const workspaceId = createEnvironmentDto.workspaceId;
     const data = await this.environmentService.createEnvironment(
       createEnvironmentDto,
       EnvironmentType.LOCAL,
+      user,
     );
     const environment = await this.environmentService.getEnvironment(
       data.insertedId.toString(),
     );
-    await this.workspaceService.addEnvironmentInWorkSpace(workspaceId, {
-      id: environment._id,
-      name: environment.name,
-      type: environment.type,
-    });
+    await this.workspaceService.addEnvironmentInWorkSpace(
+      workspaceId,
+      {
+        id: environment._id,
+        name: environment.name,
+        type: environment.type,
+      },
+      user._id,
+    );
     const responseData = new ApiResponseService(
       "Environment Created",
       HttpStatusCode.CREATED,
@@ -82,15 +91,19 @@ export class EnvironmentController {
     @Param("workspaceId") workspaceId: string,
     @Param("environmentId") environmentId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const environment = await this.environmentService.deleteEnvironment(
       environmentId,
       workspaceId,
+      user,
     );
 
     await this.workspaceService.deleteEnvironmentInWorkSpace(
       workspaceId.toString(),
       environmentId,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Environment Removed",
@@ -114,9 +127,13 @@ export class EnvironmentController {
   async getEnvironment(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const environment =
-      await this.environmentService.getAllEnvironments(workspaceId);
+    const user = request.user;
+    const environment = await this.environmentService.getAllEnvironments(
+      workspaceId,
+      user._id,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -162,11 +179,14 @@ export class EnvironmentController {
     @Param("environmentId") environmentId: string,
     @Body() updateEnvironmentDto: Partial<UpdateEnvironmentDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     await this.environmentService.updateEnvironment(
       environmentId,
       updateEnvironmentDto,
       workspaceId,
+      user,
     );
 
     const environment =
@@ -175,6 +195,7 @@ export class EnvironmentController {
       workspaceId,
       environmentId,
       updateEnvironmentDto.name,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -199,10 +220,13 @@ export class EnvironmentController {
     @Param("workspaceId") workspaceId: string,
     @Param("environmentId") environmentId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const environment = await this.environmentService.getIndividualEnvironment(
       workspaceId,
       environmentId,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Success",

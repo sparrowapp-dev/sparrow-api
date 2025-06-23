@@ -9,6 +9,9 @@ import {
   Param,
   Delete,
   Put,
+  Req,
+  UnauthorizedException,
+  BadRequestException,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import {
@@ -34,6 +37,8 @@ import { TeamUserService } from "@src/modules/identity/services/team-user.servic
 import { TeamService } from "@src/modules/identity/services/team.service";
 import { AddTeamUserDto } from "@src/modules/identity/payloads/teamUser.payload";
 import { WorkspaceService } from "@src/modules/workspace/services/workspace.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { HubInviteGuard } from "@src/modules/identity/guards/hub-invite.guard";
 
 @Controller("api/admin")
 @ApiTags("admin hub members")
@@ -58,15 +63,18 @@ export class AdminMembersController {
     @Query("limit") limit: string = "10",
     @Query("search") search = "",
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     const parsedPage = parseInt(page, 10);
     const parsedLimit = parseInt(limit, 10);
+    const currentUser = request.user;
 
     const data = await this.adminMembersService.getPaginatedHubMembers(
       hubId,
       parsedPage,
       parsedLimit,
       search,
+      currentUser,
     );
 
     const responseData = new ApiResponseService(
@@ -114,7 +122,7 @@ export class AdminMembersController {
    * Send invites to users to join a hub
    */
   @Post("hub/:hubId/invite")
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, HubInviteGuard)
   @Roles("admin")
   @ApiOperation({
     summary: "Send invites to users for a hub",
@@ -136,12 +144,17 @@ export class AdminMembersController {
     @Param("hubId") hubId: string,
     @Body() addTeamUserDto: AddTeamUserDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     try {
-      await this.teamUserService.sendInvite({
-        teamId: hubId,
-        ...addTeamUserDto,
-      });
+      const user = request.user;
+      await this.teamUserService.sendInvite(
+        {
+          teamId: hubId,
+          ...addTeamUserDto,
+        },
+        user,
+      );
 
       const hub = await this.teamService.get(hubId);
 
@@ -186,9 +199,11 @@ export class AdminMembersController {
     @Param("hubId") hubId: string,
     @Param("email") email: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     try {
-      await this.teamUserService.removeInviteByOwner(hubId, email);
+      const user = request.user;
+      await this.teamUserService.removeInviteByOwner(hubId, user._id, email);
 
       const hub = await this.teamService.get(hubId);
 
@@ -233,9 +248,11 @@ export class AdminMembersController {
     @Param("hubId") hubId: string,
     @Param("email") email: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     try {
-      await this.teamUserService.resendInvite(hubId, email);
+      const user = request.user;
+      await this.teamUserService.resendInvite(hubId, email, user);
 
       const hub = await this.teamService.get(hubId);
 
@@ -266,8 +283,10 @@ export class AdminMembersController {
     @Query("userId") userId: string,
     @Query("teamId") teamId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.teamUserService.demoteTeamAdmin({ teamId, userId });
+    const currentUser = request.user;
+    await this.teamUserService.demoteTeamAdmin({ teamId, userId }, currentUser);
     const team = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "Admin Demoted",
@@ -284,8 +303,10 @@ export class AdminMembersController {
     @Query("userId") userId: string,
     @Query("teamId") teamId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.teamUserService.addAdmin({ teamId, userId });
+    const currentUser = request.user;
+    await this.teamUserService.addAdmin({ teamId, userId }, currentUser);
     const team = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "Admin added",
@@ -302,8 +323,10 @@ export class AdminMembersController {
     @Query("userId") userId: string,
     @Query("teamId") teamId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.teamUserService.removeUser({ teamId, userId });
+    const currentUser = request.user;
+    await this.teamUserService.removeUser({ teamId, userId }, currentUser._id);
     const team = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "User Removed",
@@ -320,12 +343,14 @@ export class AdminMembersController {
     @Query("workspaceId") workspaceId: string,
     @Query("userId") userId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const params = {
       userId: userId,
       workspaceId: workspaceId,
     };
-    await this.workspaceService.removeUserFromWorkspace(params);
+    await this.workspaceService.removeUserFromWorkspace(params, currentUser);
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
       "User Removed",
@@ -333,5 +358,102 @@ export class AdminMembersController {
       workspace,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @Get("stripe-customer")
+  @ApiOperation({
+    summary: "Get Stripe customer ID for a hub",
+    description: "Returns the stored Stripe customer ID for the specified hub",
+  })
+  @ApiQuery({
+    name: "hubId",
+    required: true,
+    type: String,
+    description: "The ID of the hub to fetch the customer ID for",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Customer ID retrieved successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Hub not found" })
+  async getStripeCustomerId(
+    @Query("hubId") hubId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const customerId =
+      await this.adminMembersService.getStripeCustomerId(hubId);
+
+    const response = { customerId: customerId };
+
+    const responseData = new ApiResponseService(
+      "Stripe customer ID retrieved",
+      HttpStatusCode.OK,
+      response,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @Post("stripe-customer")
+  @ApiOperation({
+    summary: "Save Stripe customer ID for a hub",
+    description: "Saves the Stripe customer ID for the specified hub",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        customerId: {
+          type: "string",
+          description: "Stripe customer ID",
+          example: "cus_123456789",
+        },
+        hubId: {
+          type: "string",
+          description: "Hub ID",
+          example: "60d6ec9f1d9a4c001f3a8f5d",
+        },
+      },
+      required: ["customerId", "hubId"],
+    },
+  })
+  @ApiResponse({ status: 200, description: "Customer ID saved successfully" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 404, description: "Hub not found" })
+  async saveStripeCustomerId(@Req() req: any, @Res() res: FastifyReply) {
+    try {
+      const userId = req.user._id;
+
+      const { customerId, hubId } = req.body;
+
+      await this.adminMembersService.saveStripeCustomerId(
+        hubId,
+        customerId,
+        userId,
+      );
+
+      const responseData = new ApiResponseService(
+        "Stripe customer ID saved successfully",
+        HttpStatusCode.OK,
+        { success: true },
+      );
+
+      return res.status(responseData.httpStatusCode).send(responseData);
+    } catch (error) {
+      console.error("Error saving Stripe customer ID:", error);
+
+      const responseData = new ApiResponseService(
+        error.message || "Failed to save customer ID",
+        error.status || HttpStatusCode.BAD_REQUEST,
+        null,
+      );
+
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
   }
 }

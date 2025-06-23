@@ -1,15 +1,11 @@
 import { BadRequestException, Injectable, OnModuleInit } from "@nestjs/common";
 import { WorkspaceService } from "../services/workspace.service";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
-import { ConsumerService } from "@src/modules/common/services/kafka/consumer.service";
-import { SUBSCRIPTION } from "@src/modules/common/enum/subscription.enum";
+import { ConsumerService } from "@src/modules/common/services/event-consumer.service";
 import { ConfigService } from "@nestjs/config";
 import { CollectionService } from "../services/collection.service";
 import { EnvironmentService } from "../services/environment.service";
 import { EnvironmentType } from "@src/modules/common/models/environment.model";
-import { TeamUserService } from "@src/modules/identity/services/team-user.service";
-import { TeamService } from "@src/modules/identity/services/team.service";
-import { ContextService } from "@src/modules/common/services/context.service";
 
 @Injectable()
 export class WorkspaceHandler implements OnModuleInit {
@@ -19,22 +15,25 @@ export class WorkspaceHandler implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly collectionService: CollectionService,
     private readonly environmentService: EnvironmentService,
-    private readonly teamUserService: TeamUserService,
-    private readonly teamService: TeamService,
-    private readonly contextService: ContextService,
   ) {}
 
   async onModuleInit() {
     await this.consumerService.consume({
       topic: { topic: TOPIC.CREATE_USER_TOPIC },
-      config: { groupId: SUBSCRIPTION.CREATE_USER_SUBSCRIPTION },
       onMessage: async (message) => {
         // This is a Hack for now, it needs to be rectified in future with any other method or library.
         setTimeout(async () => {
           const messageString = message.value.toString();
           const messageJson = JSON.parse(messageString);
-          const workspace = await this.workspaceService.create(messageJson);
-          // const user = await this.contextService.get("user");
+          let user = null;
+          if (messageJson.user) {
+            user = messageJson.user;
+            delete messageJson.user;
+          }
+          const workspace = await this.workspaceService.create(
+            messageJson,
+            user,
+          );
           // const teams = await this.teamService.getTeams();
           // for (const team of teams) {
           //   const matchedInvite = team?.invites?.find(
@@ -76,6 +75,7 @@ export class WorkspaceHandler implements OnModuleInit {
           const environment = await this.environmentService.createEnvironment(
             sampleEnvironment,
             EnvironmentType.LOCAL,
+            user,
           );
           await this.workspaceService.addEnvironmentInWorkSpace(
             workspace.insertedId.toString(),
@@ -84,12 +84,14 @@ export class WorkspaceHandler implements OnModuleInit {
               name: sampleEnvironment.name,
               type: EnvironmentType.LOCAL,
             },
+            user,
           );
           const collection =
-            await this.collectionService.createDefaultCollection();
+            await this.collectionService.createDefaultCollection(user);
           await this.workspaceService.addCollectionInWorkSpace(
             workspace.insertedId.toString(),
             { id: collection.insertedId, name: "Sample Collection" },
+            user,
           );
         }, this.configService.get("app.kafkaHitTimeInterval"));
       },

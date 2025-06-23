@@ -161,11 +161,6 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: GOOGLE_CLIENT_SECRET
-            - name: KAFKA_BROKER
-              valueFrom:
-                secretKeyRef:
-                  name: sparrow-api-secret
-                  key: KAFKA_BROKER
             - name: REFRESH_TOKEN_MAX_LIMIT
               valueFrom:
                 secretKeyRef:
@@ -341,9 +336,26 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: DEEPSEEK_API_VERSION
-
-      imagePullSecrets:
-        - name: acr-secret
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DB_NAME   
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_SECRET_KEY
+            - name: STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_PUBLISHABLE_KEY
+            - name: STRIPE_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_WEBHOOK
 
 ---
 apiVersion: v1

@@ -46,6 +46,9 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ObjectId } from "mongodb";
 import { FastifyRequest } from "fastify/types/request";
 import { BodyModeEnum } from "@src/modules/common/models/collection.model";
+import { WorkspaceInviteGuard } from "@src/modules/workspace/guards/plan-limits/workspace-invite.guard";
+import { CreateWorkspaceGuard } from "../guards/plan-limits/create-workspace-guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Workspace Controller
@@ -65,14 +68,16 @@ export class WorkSpaceController {
     summary: "Create a new User Workspace",
     description: "This will create a new Workspace for User",
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CreateWorkspaceGuard)
   @ApiResponse({ status: 201, description: "Workspace Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Workspace Failed" })
   async createWorkspace(
     @Body() createWorkspaceDto: CreateWorkspaceDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.create(createWorkspaceDto);
+    const user = request.user;
+    const data = await this.workspaceService.create(createWorkspaceDto, user);
 
     const workspace = await this.workspaceService.get(
       data.insertedId.toString(),
@@ -123,8 +128,13 @@ export class WorkSpaceController {
   async getAllWorkspaces(
     @Param("userId") userId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.getAllWorkSpaces(userId);
+    const currentUser = request.user;
+    const data = await this.workspaceService.getAllWorkSpaces(
+      userId,
+      currentUser,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -199,8 +209,10 @@ export class WorkSpaceController {
     @Param("workspaceId") workspaceId: string,
     @Body() updateWorkspaceDto: Partial<UpdateWorkspaceDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.workspaceService.update(workspaceId, updateWorkspaceDto);
+    const user = request.user;
+    await this.workspaceService.update(workspaceId, updateWorkspaceDto, user);
 
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
@@ -222,8 +234,10 @@ export class WorkSpaceController {
   async deleteWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.delete(workspaceId);
+    const user = request.user;
+    const data = await this.workspaceService.delete(workspaceId, user._id);
     const responseData = new ApiResponseService(
       "Workspace Deleted",
       HttpStatusCode.OK,
@@ -237,20 +251,25 @@ export class WorkSpaceController {
     summary: "Add Users in Workspace",
     description: "You can add multiple users to your Workspace",
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceInviteGuard)
   @ApiResponse({ status: 201, description: "Users Added Successfully" })
   @ApiResponse({ status: 400, description: "Failed to Add Users" })
   async addUserWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Body() payload: AddWorkspaceUserDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const params = {
       users: payload.users,
       workspaceId: workspaceId,
       role: payload.role,
     };
-    const response = await this.workspaceService.addUserInWorkspace(params);
+    const response = await this.workspaceService.addUserInWorkspace(
+      params,
+      user,
+    );
     const workspace = await this.workspaceService.get(workspaceId);
     const data = {
       ...workspace,
@@ -287,11 +306,14 @@ export class WorkSpaceController {
     @Param("workspaceId") workspaceId: string,
     @Body() payload: AddUsersWithRolesInWorkspaceDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     // Call the workspace service to add users with roles in the workspace
     const response = await this.workspaceService.addUsersWithRolesInWorkspace(
       payload,
       workspaceId,
+      user,
     );
     const workspace = await this.workspaceService.get(workspaceId);
     const data = {
@@ -320,13 +342,15 @@ export class WorkSpaceController {
     @Param("userId") userId: string,
     @Body() data: UserWorkspaceRoleDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const params = {
       userId: userId,
       workspaceId: workspaceId,
       role: data.role,
     };
-    await this.workspaceService.changeUserRole(params);
+    await this.workspaceService.changeUserRole(params, currentUser);
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
       "Role Changed",
@@ -348,12 +372,14 @@ export class WorkSpaceController {
     @Param("workspaceId") workspaceId: string,
     @Param("userId") userId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const params = {
       userId: userId,
       workspaceId: workspaceId,
     };
-    await this.workspaceService.removeUserFromWorkspace(params);
+    await this.workspaceService.removeUserFromWorkspace(params, currentUser);
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
       "User Removed",
@@ -377,6 +403,7 @@ export class WorkSpaceController {
     @Res() res: FastifyReply,
     @UploadedFile()
     file: MemoryStorageFile,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     const dataBuffer = file.buffer;
     const dataString = dataBuffer.toString("utf8");
@@ -384,12 +411,17 @@ export class WorkSpaceController {
       file.mimetype === BodyModeEnum["application/json"]
         ? JSON.parse(dataString)
         : yml.load(dataString);
-    const collectionObj = await this.parserService.parse(dataObj);
+    const user = request.user;
+    const collectionObj = await this.parserService.parse(dataObj, user);
 
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj.collection._id),
-      name: collectionObj.collection.name,
-    });
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: new ObjectId(collectionObj.collection._id),
+        name: collectionObj.collection.name,
+      },
+      user._id,
+    );
     const collection = await this.collectionService.getCollection(
       collectionObj.collection._id.toString(),
     );
@@ -413,6 +445,7 @@ export class WorkSpaceController {
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
     @Body() importCollectionDto: ImportCollectionDto,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     const activeSync = importCollectionDto.activeSync ?? false;
     const data = importCollectionDto.urlData.data;
@@ -420,9 +453,10 @@ export class WorkSpaceController {
     const dataObj = responseType.includes(BodyModeEnum["application/json"])
       ? data
       : yml.load(data);
-
+    const user = request.user;
     const collectionObj = await this.parserService.parse(
       dataObj,
+      user,
       activeSync,
       workspaceId,
       importCollectionDto.url,
@@ -431,11 +465,15 @@ export class WorkSpaceController {
       importCollectionDto?.localRepositoryPath,
     );
     if (!collectionObj.existingCollection) {
-      await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-        id: new ObjectId(collectionObj.collection._id),
-        name: collectionObj.collection.name,
-        activeSync: collectionObj.collection.activeSync,
-      });
+      await this.workspaceService.addCollectionInWorkSpace(
+        workspaceId,
+        {
+          id: new ObjectId(collectionObj.collection._id),
+          name: collectionObj.collection.name,
+          activeSync: collectionObj.collection.activeSync,
+        },
+        user._id,
+      );
     }
     const responseData = new ApiResponseService(
       "Collection Imported",
@@ -461,17 +499,23 @@ export class WorkSpaceController {
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
     @Body() jsonObj: string,
+    @Req() req: ExtendedFastifyRequest,
   ) {
     const responseType = request.headers["content-type"];
     const dataObj =
       responseType === BodyModeEnum["application/json"]
         ? jsonObj
         : (yml.load(jsonObj) as string);
-    const collectionObj = await this.parserService.parse(dataObj);
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj.collection._id),
-      name: collectionObj.collection.name,
-    });
+    const user = req.user;
+    const collectionObj = await this.parserService.parse(dataObj, user);
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: new ObjectId(collectionObj.collection._id),
+        name: collectionObj.collection.name,
+      },
+      user._id,
+    );
 
     const collection = await this.collectionService.getCollection(
       collectionObj.collection._id.toString(),
@@ -495,10 +539,13 @@ export class WorkSpaceController {
     @Param("userId") userId: string,
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const data = await this.workspaceService.disableWorkspaceNewInvite(
       userId,
       workspaceId,
+      currentUser,
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -585,10 +632,13 @@ export class WorkSpaceController {
     @Param("workspaceId") workspaceId: string,
     @Body() payload: UpdateWorkspaceTypeDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     await this.workspaceService.updateWorkspaceType(
       workspaceId,
       payload.workspaceType,
+      user._id,
     );
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(

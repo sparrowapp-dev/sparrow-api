@@ -17,7 +17,7 @@ jobs:
               password: ${{ secrets.REGISTRY_PASSWORD }}
 
          - run: |
-              docker build . -t sparrowprod.azurecr.io/sparrow-api:${{ github.run_number }}
+              docker build . -t sparrowprod.azurecr.io/sparrow-api:${{ github.run_number }} --build-arg GITHUB_TOKEN=${{ secrets.SPARROW_GITHUB_TOKEN }}
               docker push sparrowprod.azurecr.io/sparrow-api:${{ github.run_number }}
    deploy:
       needs: build

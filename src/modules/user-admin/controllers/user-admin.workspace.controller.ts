@@ -37,6 +37,7 @@ import {
   AddWorkspaceUserDto,
   UserWorkspaceRoleDto,
 } from "@src/modules/workspace/payloads/workspaceUser.payload";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @Controller("api/admin")
 @ApiTags("admin workspace")
@@ -120,8 +121,10 @@ export class AdminWorkspaceController {
   async adminCreateWorkspace(
     @Body() adminCreateDto: CreateWorkspaceDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.create(adminCreateDto);
+    const user = request.user;
+    const data = await this.workspaceService.create(adminCreateDto, user);
 
     const workspace = await this.workspaceService.get(
       data.insertedId.toString(),
@@ -204,8 +207,10 @@ export class AdminWorkspaceController {
   async deleteWorkspace(
     @Query("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.delete(workspaceId);
+    const user = request.user;
+    const data = await this.workspaceService.delete(workspaceId, user._id);
     const responseData = new ApiResponseService(
       "Workspace Deleted",
       HttpStatusCode.OK,
@@ -223,8 +228,10 @@ export class AdminWorkspaceController {
     @Query("workspaceId") workspaceId: string,
     @Body() updateWorkspaceDto: Partial<UpdateWorkspaceDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.workspaceService.update(workspaceId, updateWorkspaceDto);
+    const user = request.user;
+    await this.workspaceService.update(workspaceId, updateWorkspaceDto, user);
 
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
@@ -244,10 +251,13 @@ export class AdminWorkspaceController {
     @Query("workspaceId") workspaceId: string,
     @Body() payload: UpdateWorkspaceTypeDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     await this.workspaceService.updateWorkspaceType(
       workspaceId,
       payload.workspaceType,
+      user._id,
     );
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
@@ -267,13 +277,18 @@ export class AdminWorkspaceController {
     @Query("workspaceId") workspaceId: string,
     @Body() payload: AddWorkspaceUserDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const params = {
       users: payload.users,
       workspaceId: workspaceId,
       role: payload.role,
     };
-    const response = await this.workspaceService.addUserInWorkspace(params);
+    const response = await this.workspaceService.addUserInWorkspace(
+      params,
+      user,
+    );
     const workspace = await this.workspaceService.get(workspaceId);
     const data = {
       ...workspace,
@@ -297,13 +312,15 @@ export class AdminWorkspaceController {
     @Query("userId") userId: string,
     @Body() data: UserWorkspaceRoleDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const params = {
       userId: userId,
       workspaceId: workspaceId,
       role: data.role,
     };
-    await this.workspaceService.changeUserRole(params);
+    await this.workspaceService.changeUserRole(params, currentUser);
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
       "Role Changed",

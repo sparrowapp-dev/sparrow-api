@@ -38,6 +38,9 @@ import {
   UpdateTeamDto,
 } from "@src/modules/identity/payloads/team.payload";
 import { TeamService } from "@src/modules/identity/services/team.service";
+import { PlanService } from "@src/modules/identity/services/plan.service";
+import { Plan } from "@src/modules/common/models/plan.model";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @Controller("api/admin")
 @ApiTags("admin hubs")
@@ -46,6 +49,7 @@ export class AdminHubsController {
   constructor(
     private readonly hubsService: AdminHubsService,
     private readonly teamService: TeamService,
+    private readonly planService: PlanService,
   ) {}
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("admin")
@@ -176,8 +180,10 @@ export class AdminHubsController {
     @Body() createHubDto: CreateOrUpdateTeamDto,
     @Res() res: FastifyReply,
     @UploadedFile() image: MemoryStorageFile,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.teamService.create(createHubDto, image);
+    const user = request.user;
+    const data = await this.teamService.create(createHubDto, user, image);
     const hub = await this.teamService.get(data.insertedId.toString());
 
     const responseData = new ApiResponseService(
@@ -199,11 +205,13 @@ export class AdminHubsController {
   @ApiResponse({ status: 200, description: "Fetch Team Request Received" })
   @ApiResponse({ status: 400, description: "Fetch Team Request Failed" })
   async getTeam(@Param("teamId") teamId: string, @Res() res: FastifyReply) {
-    const data = await this.teamService.get(teamId);
+    let data = await this.teamService.get(teamId);
+    const plan = await this.planService.get(data?.plan?.id?.toString());
+    const responseObject = { ...data, plan: plan };
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
-      data,
+      responseObject,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
@@ -242,14 +250,67 @@ export class AdminHubsController {
     @Res() res: FastifyReply,
     @UploadedFile()
     image: MemoryStorageFile,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.teamService.update(teamId, updateTeamDto, image);
+    const user = request.user;
+    await this.teamService.update(teamId, updateTeamDto, user._id, image);
     const team = await this.teamService.get(teamId);
     const responseData = new ApiResponseService(
       "Team Updated",
       HttpStatusCode.CREATED,
       team,
     );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get("hub-statistics")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @ApiOperation({
+    summary: "Get hub statistics with collaborator and workspace counts",
+    description:
+      "Returns collaborator count (excluding owners) and workspace count for a specific hub",
+  })
+  @ApiQuery({
+    name: "hUbId",
+    required: true,
+    type: String,
+    description: "Hub ID to get statistics for",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Hub statistics retrieved successfully",
+    schema: {
+      type: "object",
+      properties: {
+        teamId: { type: "string" },
+        teamName: { type: "string" },
+        collaboratorCount: { type: "number" },
+        workspaceCount: { type: "number" },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to retrieve hub statistics",
+  })
+  @ApiResponse({ status: 404, description: "hHub not found" })
+  async getTeamStatistics(
+    @Query("hubId") teamId: string,
+    @Res() res: FastifyReply,
+  ) {
+    if (!teamId) {
+      throw new UnauthorizedException("Hub ID is required");
+    }
+
+    const data = await this.hubsService.getTeamStatistics(teamId);
+
+    const responseData = new ApiResponseService(
+      "Hub statistics retrieved successfully",
+      HttpStatusCode.OK,
+      data,
+    );
+
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

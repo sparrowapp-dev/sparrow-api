@@ -21,22 +21,22 @@ export class AIResponseDto {
    * @example "thread_34789"
    */
   @ApiProperty({
-    required: true,
+    required: false,
     example: "thread_34789",
   })
   @IsNotEmpty()
-  threadId: string;
+  threadId?: string;
 
   /**
    * The message ID associated with the response.
    * @example "msg_34789"
    */
   @ApiProperty({
-    required: true,
+    required: false,
     example: "msg_34789",
   })
   @IsNotEmpty()
-  messageId: string;
+  messageId?: string;
 }
 
 /**
@@ -56,8 +56,8 @@ export class PromptPayload {
    */
   @IsString()
   @IsOptional()
-  @ApiProperty({ required: true, example: "thread id" })
-  threadId: string;
+  @ApiProperty({ required: true, example: "openai or deepseek" })
+  model: string;
 
   /**
    * Additional instructions for the assistant which will
@@ -153,7 +153,11 @@ export class ChatBotPayload {
    */
   @IsString()
   @IsOptional()
-  @ApiProperty({ required: true, example: '[{"role": "user", "content": "Hello!"}, {"role": "assistant", "content": "Hi there! How can I help you?"}]' })
+  @ApiProperty({
+    required: true,
+    example:
+      '[{"role": "user", "content": "Hello!"}, {"role": "assistant", "content": "Hi there! How can I help you?"}]',
+  })
   conversation?: string;
 
   /**
@@ -259,6 +263,14 @@ export class ChatBotPayload {
   @IsOptional()
   @ApiProperty({ required: false, example: "sparrow-ai OR llm-evaluation" })
   feature?: string;
+
+  /**
+   * Team Id
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "683ff7a8a30481c5901fc386" })
+  teamId?: string;
 }
 
 export class ErrorResponsePayload {

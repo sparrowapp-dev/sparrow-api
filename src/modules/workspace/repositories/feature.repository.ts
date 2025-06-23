@@ -4,6 +4,7 @@ import {
   Db,
   DeleteResult,
   InsertOneResult,
+  ObjectId,
   UpdateResult,
   WithId,
 } from "mongodb";
@@ -11,7 +12,6 @@ import {
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 
 // ---- Service
-import { ContextService } from "@src/modules/common/services/context.service";
 
 // ---- Model and Payload
 import { Feature } from "@src/modules/common/models/feature.model";
@@ -25,10 +25,7 @@ import { UpdateFeatureDto } from "../payloads/feature.payload";
  */
 @Injectable()
 export class FeatureRepository {
-  constructor(
-    @Inject("DATABASE_CONNECTION") private db: Db,
-    private readonly contextService: ContextService,
-  ) {}
+  constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
 
   /**
    * Adds a new feature to the database.
@@ -79,10 +76,11 @@ export class FeatureRepository {
   async updateFeature(
     name: string,
     updateFeatureDto: UpdateFeatureDto,
+    userId: ObjectId,
   ): Promise<UpdateResult> {
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: userId.toString(),
     };
     const data = await this.db
       .collection(Collections.FEATURES)

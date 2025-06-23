@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Post,
+  Req,
   Res,
   UseGuards,
   UseInterceptors,
@@ -35,6 +36,7 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 // ---- Services
 import { FeedbackService } from "../services/feedback.service";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Feedback Controller
@@ -97,10 +99,13 @@ export class FeedbackController {
     @Res() res: FastifyReply,
     @UploadedFiles()
     files: MemoryStorageFile[],
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const feature = await this.feedbackService.addFeedback(
       addFeedbackDto,
       files,
+      user._id,
     ); // Calls the feedback service to add new feedback
     const responseData = new ApiResponseService(
       "Feedback Added",

@@ -38,6 +38,7 @@ import { RefreshTokenRequest } from "./auth.controller";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { VerificationPayload } from "../payloads/verification.payload";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 /**
  * User Controller
  */
@@ -74,8 +75,13 @@ export class UserController {
     description: "This will return  information about a specific user",
   })
   @UseGuards(JwtAuthGuard)
-  async getUser(@Param("userId") id: string, @Res() res: FastifyReply) {
-    const data = await this.userService.getUserById(id);
+  async getUser(
+    @Param("userId") id: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const currentUser = request.user;
+    const data = await this.userService.getUserById(id, currentUser);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -114,8 +120,14 @@ export class UserController {
     @Param("userId") id: string,
     @Body() updateUserDto: Partial<UpdateUserDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const user = await this.userService.updateUser(id, updateUserDto);
+    const currentUser = request.user;
+    const user = await this.userService.updateUser(
+      id,
+      updateUserDto,
+      currentUser,
+    );
     const responseData = new ApiResponseService(
       "User Updated",
       HttpStatusCode.OK,

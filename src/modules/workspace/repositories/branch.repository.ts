@@ -3,7 +3,7 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { Db, InsertOneResult, ObjectId, UpdateResult, WithId } from "mongodb";
 
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import { Branch } from "@src/modules/common/models/branch.model";
 import {
   CollectionItem,
@@ -18,10 +18,7 @@ import {
 
 @Injectable()
 export class BranchRepository {
-  constructor(
-    @Inject("DATABASE_CONNECTION") private db: Db,
-    private readonly contextService: ContextService,
-  ) {}
+  constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
 
   async addBranch(branch: Branch): Promise<InsertOneResult<Branch>> {
     const response = await this.db
@@ -29,10 +26,14 @@ export class BranchRepository {
       .insertOne(branch);
     return response;
   }
-  async updateBranch(branchId: string, items: CollectionItem[]): Promise<void> {
+  async updateBranch(
+    branchId: string,
+    items: CollectionItem[],
+    userId: ObjectId,
+  ): Promise<void> {
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: userId.toString(),
     };
     await this.db.collection<Branch>(Collections.BRANCHES).updateOne(
       {
@@ -125,13 +126,13 @@ export class BranchRepository {
     branchName: string,
     requestId: string,
     request: Partial<CollectionRequestDto>,
+    userId: ObjectId,
   ): Promise<CollectionRequestItem> {
     const branch = await this.getBranchByCollection(collectionId, branchName);
     const _id = branch._id;
-    const user = await this.contextService.get("user");
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: user._id,
+      updatedBy: userId.toString(),
     };
     if (request.items.type === ItemTypeEnum.REQUEST) {
       request.items = { ...request.items, ...defaultParams };
@@ -141,7 +142,7 @@ export class BranchRepository {
           $set: {
             "items.$": request.items,
             updatedAt: new Date(),
-            updatedBy: user._id,
+            updatedBy: userId.toString(),
           },
         },
       );
@@ -158,7 +159,7 @@ export class BranchRepository {
           $set: {
             "items.$[i].items.$[j]": request.items.items,
             updatedAt: new Date(),
-            updatedBy: user._id,
+            updatedBy: userId.toString(),
           },
         },
         {
@@ -173,6 +174,7 @@ export class BranchRepository {
     collectionId: string,
     branchName: string,
     requestId: string,
+    userId: ObjectId,
     folderId?: string,
   ): Promise<UpdateResult<Branch>> {
     const branch = await this.getBranchByCollection(collectionId, branchName);
@@ -190,7 +192,7 @@ export class BranchRepository {
           },
           $set: {
             updatedAt: new Date(),
-            updatedBy: this.contextService.get("user")._id,
+            updatedBy: userId.toString(),
           },
         },
         {
@@ -208,7 +210,7 @@ export class BranchRepository {
           },
           $set: {
             updatedAt: new Date(),
-            updatedBy: this.contextService.get("user")._id,
+            updatedBy: userId.toString(),
           },
         },
       );

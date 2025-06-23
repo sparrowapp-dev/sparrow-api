@@ -7,7 +7,7 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -44,7 +44,7 @@ export class AuthController {
    */
   constructor(
     private readonly authService: AuthService,
-    private readonly contextService: ContextService,
+
     private readonly userService: UserService,
     private readonly configService: ConfigService,
     private readonly hubspotService: HubSpotService,
@@ -158,7 +158,6 @@ export class AuthController {
     let id: ObjectId;
     if (isUserExists) {
       id = isUserExists._id;
-      this.contextService.set("user", isUserExists);
       // Removing refresh token limit check until refresh token flow is fixed - Nayan (Feb 28, 2024)
       // await this.authService.checkRefreshTokenLimit(isUserExists);
     } else {
@@ -167,11 +166,6 @@ export class AuthController {
         name,
         email,
       );
-      await this.contextService.set("user", {
-        _id: user.insertedId,
-        name,
-        email,
-      });
       id = user.insertedId;
       if (this.configService.get("hubspot.hubspotEnabled") === "true") {
         await this.hubspotService.createContact(email, name);

@@ -6,7 +6,6 @@ import { ConfigService } from "@nestjs/config";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { Db, ObjectId } from "mongodb";
-import { ContextService } from "@src/modules/common/services/context.service";
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(
@@ -17,7 +16,6 @@ export class RefreshTokenStrategy extends PassportStrategy(
     readonly configService: ConfigService,
     @Inject("DATABASE_CONNECTION")
     private db: Db,
-    private contextService: ContextService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -43,7 +41,6 @@ export class RefreshTokenStrategy extends PassportStrategy(
     if (!user) {
       throw new UnauthorizedException(ErrorMessages.JWTFailed);
     }
-    this.contextService.set("user", user);
 
     return { _id: payload._id, refreshToken };
   }

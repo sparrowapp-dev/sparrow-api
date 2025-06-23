@@ -14,8 +14,8 @@ import { WorkspaceModule } from "../workspace.module";
 import { IdentityModule } from "@src/modules/identity/identity.module";
 import { AppModule } from "@src/modules/app/app.module";
 import { WorkspaceService } from "../services/workspace.service";
-import { ContextService } from "@src/modules/common/services/context.service";
 import { PostmanParserService } from "@src/modules/common/services/postman.parser.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Test suite for the collectionController's addSocketIO method.
@@ -38,7 +38,6 @@ describe("collectionController - addSocketIO", () => {
         CollectionService,
         CollectionRepository,
         WorkspaceService,
-        ContextService,
         PostmanParserService,
       ],
     }).compile();
@@ -97,6 +96,7 @@ describe("collectionController - addSocketIO", () => {
     await controller.addSocketIO(
       mockSocketioDto,
       mockResponse as unknown as FastifyReply,
+      {} as ExtendedFastifyRequest,
     );
 
     // Assertions to check if the response status and send method are called with expected values
@@ -152,6 +152,7 @@ describe("collectionController - addSocketIO", () => {
     await controller.addGraphQL(
       mockGraphqlDto,
       mockResponse as unknown as FastifyReply,
+      {} as ExtendedFastifyRequest,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatusCode.Ok);

@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Put,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -33,6 +34,9 @@ import {
   CreateTestflowDto,
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
+import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
+import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Controller responsible for handling Testflow operations
@@ -71,15 +75,19 @@ export class TestflowController {
     description:
       "This will create a testflow and add this testflow in user's workspace",
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CreateTestflowGuard)
   @ApiResponse({ status: 201, description: "Testflow Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Testflow Failed" })
   async createTestflow(
     @Body() createTestflowDto: CreateTestflowDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const testflow =
-      await this.testflowService.createTestflow(createTestflowDto);
+    const user = request.user;
+    const testflow = await this.testflowService.createTestflow(
+      createTestflowDto,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Testflow Created",
       HttpStatusCode.CREATED,
@@ -138,7 +146,7 @@ export class TestflowController {
     summary: "Update An Testflow",
     description: "This will update an Testflow",
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CreateTestflowBlockGuard)
   @ApiResponse({ status: 200, description: "Testflow Updated Successfully" })
   @ApiResponse({ status: 400, description: "Update Testflow Failed" })
   async updateTestflow(
@@ -146,11 +154,14 @@ export class TestflowController {
     @Param("testflowId") testflowId: string,
     @Body() updateTestflowDto: Partial<UpdateTestflowDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const testflow = await this.testflowService.updateTestflow(
       testflowId,
       updateTestflowDto,
       workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -183,10 +194,13 @@ export class TestflowController {
     @Param("workspaceId") workspaceId: string,
     @Param("testflowId") testflowId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const testflow = await this.testflowService.deleteTestflow(
       testflowId,
       workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
       "Testflow Removed",
@@ -220,8 +234,13 @@ export class TestflowController {
   async getTestflows(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const testflow = await this.testflowService.getAllTestflows(workspaceId);
+    const user = request.user;
+    const testflow = await this.testflowService.getAllTestflows(
+      workspaceId,
+      user._id,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,

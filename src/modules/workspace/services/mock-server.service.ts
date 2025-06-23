@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { FastifyReply, FastifyRequest, HTTPMethods } from "fastify";
+import { FastifyRequest, HTTPMethods } from "fastify";
 import { CollectionRepository } from "../repositories/collection.repository";
 import { ObjectId } from "mongodb";
 import { ConfigService } from "@nestjs/config";
@@ -10,6 +10,7 @@ import {
   BodyModeEnum,
   MockRequestHistory,
 } from "@src/modules/common/models/collection.model";
+import * as Sentry from "@sentry/nestjs";
 
 /**
  * Mock Server Service - Service responsible for handling operations related to mock server and requests.
@@ -26,16 +27,43 @@ export class MockServerService {
 
   async handleMockRequests(
     req: FastifyRequest,
-    res?: FastifyReply,
   ): Promise<MockRequestResponseDto> {
     try {
       const startTime = Date.now();
       const url = req.url; // e.g. /api/mock/6825983c9ab55fe3b6dcc05f/user
       const method = req.method.toUpperCase();
+      // Get all query parameters as an array of key-value objects
+      const queryParamsArray = Object.entries(req.query || {}).map(
+        ([key, value]) => ({
+          key,
+          value,
+        }),
+      );
 
-      // Extract collectionId
-      const segments = url.split("/");
+      // Split URL and query string first to get clean base URL
+      const [baseUrl] = url.split("?");
+
+      // Extract collectionId from clean base URL
+      const segments = baseUrl.split("/");
       const collectionId = segments[3] || null; // 3rd index (after /api/mock)
+      // Remove query parameters from collectionId if they exist
+      // if (collectionId && collectionId.includes("?")) {
+      //   collectionId = collectionId.split("?")[0];
+      // }
+      // Extract the rest of the URL after the collection ID with leading slash
+      let restUrl =
+        segments.length > 4 ? "/" + segments.slice(4).join("/") : "";
+      // Add query parameters to restUrl if they exist
+      if (queryParamsArray.length > 0) {
+        const queryString = queryParamsArray
+          .map(
+            ({ key, value }) =>
+              `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+          )
+          .join("&");
+
+        restUrl += `?${queryString}`;
+      }
       if (collectionId) {
         const modifiedCollectionId = new ObjectId(collectionId);
         const collection =
@@ -64,22 +92,133 @@ export class MockServerService {
               const mockUrl = `${baseUrl}${url}`;
 
               if (
-                mock?.url === mockUrl &&
+                mock?.url === restUrl &&
                 mock?.method?.toUpperCase() === method
               ) {
+                // Filter active mock responses
+                const activeMockResponses =
+                  item?.items?.filter(
+                    (responseItem: any) =>
+                      responseItem.mockRequestResponse?.isMockResponseActive ===
+                      true,
+                  ) || [];
+
+                let selectedResponse = null;
+                let responseStatus = 200;
+                let responseBody = "";
+                let selectedResponseBodyType = BodyModeEnum["text/plain"];
+                let responseHeaders = [];
+
+                // If there are active mock responses, randomly select one
+                if (activeMockResponses?.length > 0) {
+                  const randomIndex = Math.floor(
+                    Math.random() * activeMockResponses.length,
+                  );
+                  selectedResponse = activeMockResponses[randomIndex];
+
+                  responseStatus =
+                    selectedResponse.mockRequestResponse?.responseStatus || 200;
+                  responseBody =
+                    selectedResponse.mockRequestResponse?.responseBody || "";
+                  selectedResponseBodyType =
+                    selectedResponse.mockRequestResponse
+                      ?.selectedResponseBodyType ||
+                    mock.selectedResponseBodyType;
+                  responseHeaders =
+                    selectedResponse.mockRequestResponse?.responseHeaders || [];
+                } else {
+                  // Fallback to original mock response if no active responses
+                  responseStatus = 200;
+                  responseBody = "";
+                }
+                // Filter headers that have key, value, are checked, and are valid HTTP headers
+                const filteredResponseHeaders = responseHeaders.filter(
+                  (header: any) => {
+                    try {
+                      // Basic checks
+                      if (!header?.key || !header?.value || !header?.checked) {
+                        return false;
+                      }
+
+                      const headerName = header.key.toString().trim();
+                      const headerValue = header.value.toString().trim();
+
+                      // Validate header name and value exist after trimming
+                      if (!headerName || !headerValue) return false;
+
+                      // Header name (key) length limit - typically 8KB but practically much smaller
+                      // Most servers limit header names to 256 characters or less
+                      if (headerName.length > 256) {
+                        return false;
+                      }
+
+                      // Header value length limit - typically 8KB per header
+                      // Some servers have stricter limits (4KB or less)
+                      if (headerValue.length > 8192) {
+                        return false;
+                      }
+
+                      // Validate header name (key) - must follow HTTP header name rules
+                      // Only ASCII letters, digits, and hyphens allowed
+                      const validHeaderNameRegex = /^[a-zA-Z0-9\-]+$/;
+                      if (!validHeaderNameRegex.test(headerName)) {
+                        return false;
+                      }
+
+                      // Header name cannot start or end with hyphen
+                      if (
+                        headerName.startsWith("-") ||
+                        headerName.endsWith("-")
+                      ) {
+                        return false;
+                      }
+
+                      // Validate header value - should not contain control characters
+                      // Allows printable ASCII + extended ASCII, plus tab (0x09)
+                      const validHeaderValueRegex =
+                        /^[\x09\x20-\x7E\x80-\xFF]*$/;
+                      if (!validHeaderValueRegex.test(headerValue)) {
+                        return false;
+                      }
+
+                      // Block certain headers that shouldn't be set manually
+                      const blockedHeaders = [
+                        "content-length",
+                        "transfer-encoding",
+                        "connection",
+                        "upgrade",
+                        "host",
+                        "expect",
+                        "trailer",
+                      ];
+                      if (blockedHeaders.includes(headerName.toLowerCase())) {
+                        return false;
+                      }
+
+                      return true;
+                    } catch (error) {
+                      console.warn(
+                        "Invalid header detected:",
+                        header,
+                        error.message,
+                      );
+                      Sentry.captureException(error.message);
+                      return false;
+                    }
+                  },
+                );
                 const responseData = {
-                  status:
-                    mock?.responseStatus && mock.responseStatus !== ""
-                      ? mock.responseStatus
-                      : 200,
-                  body: mock.responseBody ?? "",
-                  contentType: mock.selectedResponseBodyType,
+                  status: responseStatus,
+                  body: responseBody,
+                  contentType:
+                    selectedResponseBodyType || BodyModeEnum["text/plain"],
+                  responseHeaders: filteredResponseHeaders,
                 };
 
                 const duration = Math.round(Date.now() - startTime);
 
                 const mockEndpoint = (url: string) => {
-                  const regex = /\/api\/mock\/[a-f0-9]+(\/.*)/;
+                  const regex = /\/api\/mock\/[a-f0-9]+(.*)$/;
                   const match = url.match(regex);
                   return match ? match[1] : "";
                 };
@@ -90,14 +229,14 @@ export class MockServerService {
                   name: item.name,
                   url: mockEndpoint(url),
                   method: req.method as HTTPMethods,
-                  responseStatus: responseData.status,
+                  responseStatus: responseData.status.toString(),
                   duration: duration,
                   requestHeaders: mock.headers,
                   requestBody: mock.body,
                   selectedRequestBodyType: mock.selectedRequestBodyType,
-                  selectedResponseBodyType: mock.selectedResponseBodyType,
-                  responseHeaders: mock.responseHeaders,
-                  responseBody: mock?.responseBody ?? "",
+                  selectedResponseBodyType: responseData.contentType,
+                  responseHeaders: responseData.responseHeaders,
+                  responseBody: responseData?.body ?? "",
                 };
 
                 await this.storeRequestHistory(collectionId, historyEntry);

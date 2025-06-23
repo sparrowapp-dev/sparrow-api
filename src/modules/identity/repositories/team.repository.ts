@@ -7,7 +7,7 @@ import {
   UpdateResult,
   WithId,
 } from "mongodb";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import {
   CreateOrUpdateTeamDto,
   TeamDto,
@@ -18,6 +18,8 @@ import { User } from "@src/modules/common/models/user.model";
 import { Team } from "@src/modules/common/models/team.model";
 import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { PlanDto } from "../payloads/plan.payload";
+import { DecodedUserObject } from "@src/types/fastify";
 
 /**
  * Team Service
@@ -27,7 +29,6 @@ export class TeamRepository {
   constructor(
     @Inject("DATABASE_CONNECTION")
     private db: Db,
-    private readonly contextService: ContextService,
   ) {}
 
   /**
@@ -37,13 +38,13 @@ export class TeamRepository {
    */
   async create(
     teamData: CreateOrUpdateTeamDto,
+    plan: PlanDto,
+    user: DecodedUserObject,
   ): Promise<InsertOneResult<Team>> {
-    const user = this.contextService.get("user");
-
     const params = {
       users: [
         {
-          id: user._id,
+          id: user._id.toString(),
           email: user.email,
           name: user.name,
           role: TeamRole.OWNER,
@@ -52,10 +53,10 @@ export class TeamRepository {
       workspaces: [] as WorkspaceDto[],
       owner: user._id.toString(),
       admins: [] as string[],
-      createdBy: user._id,
+      createdBy: user._id.toString(),
       createdAt: new Date(),
       updatedAt: new Date(),
-      updatedBy: user._id,
+      updatedBy: user._id.toString(),
     };
 
     const createdTeam = await this.db
@@ -63,6 +64,7 @@ export class TeamRepository {
       .insertOne({
         ...teamData,
         ...params,
+        plan,
       });
     return createdTeam;
   }
