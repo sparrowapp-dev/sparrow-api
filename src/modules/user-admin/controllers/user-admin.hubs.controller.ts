@@ -268,9 +268,15 @@ export class AdminHubsController {
   @Roles("admin")
   @ApiOperation({
     summary: "Get hub statistics with collaborator and workspace counts",
-    description: "Returns collaborator count (excluding owners) and workspace count for a specific hub",
+    description:
+      "Returns collaborator count (excluding owners) and workspace count for a specific hub",
   })
-  @ApiQuery({ name: "hUbId", required: true, type: String, description: "Hub ID to get statistics for" })
+  @ApiQuery({
+    name: "hUbId",
+    required: true,
+    type: String,
+    description: "Hub ID to get statistics for",
+  })
   @ApiResponse({
     status: 200,
     description: "Hub statistics retrieved successfully",
@@ -284,7 +290,10 @@ export class AdminHubsController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: "Failed to retrieve hub statistics" })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to retrieve hub statistics",
+  })
   @ApiResponse({ status: 404, description: "hHub not found" })
   async getTeamStatistics(
     @Query("hubId") teamId: string,

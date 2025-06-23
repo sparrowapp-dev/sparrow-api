@@ -453,12 +453,15 @@ export class StripeSubscriptionService {
 
       // Only update if the team has a billing record and the voided invoice is the latest one
       if (team.billing && team.billing.latest_invoice === invoice.id) {
+        const communityPlan =
+          await this.stripeSubscriptionRepo.findPlanByName("Community");
+        if (!communityPlan) {
+          this.logger.error("Community plan not found in database");
+          return;
+        }
         const updatedBilling = {
           ...team.billing,
-          status:
-            team.billing.status === "payment_failed"
-              ? "active"
-              : team.billing.status,
+          status: "voided",
           invoice_voided: true,
           voided_at: new Date(),
           updatedBy: "system-stripe-webhook",
@@ -467,13 +470,18 @@ export class StripeSubscriptionService {
         await this.stripeSubscriptionRepo.updateTeamPlan(
           metadata.hubId,
           {
-            id: team.plan.id,
-            name: team.plan.name,
+            id: communityPlan._id,
+            name: communityPlan.name,
           },
           {
             billing: updatedBilling,
           },
         );
+
+        await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
+          id: communityPlan._id,
+          name: communityPlan.name,
+        });
 
         this.logger.log(
           `Updated team ${metadata.hubId} billing status for voided invoice ${invoice.id}`,
@@ -507,6 +515,25 @@ export class StripeSubscriptionService {
       this.logger.log(
         `Subscription ${subscription.id} has been deleted. Downgrading team plan.`,
       );
+
+      // Void any open invoices associated with this subscription
+      if (this.stripeService && subscription.latest_invoice) {
+        try {
+          await this.stripeService.voidInvoice(subscription.latest_invoice);
+          this.logger.log(
+            `Voided latest invoice ${subscription.latest_invoice} for deleted subscription ${subscription.id}`,
+          );
+        } catch (invoiceError) {
+          // Log but don't fail the entire process if invoice voiding fails
+          this.logger.warn(
+            `Failed to void invoice ${subscription.latest_invoice} for subscription ${subscription.id}: ${invoiceError.message}`,
+          );
+        }
+      } else if (!this.stripeService) {
+        this.logger.warn(
+          "Stripe service not available, cannot void invoices for deleted subscription",
+        );
+      }
 
       // Find the community plan for downgrade
       const communityPlan =
