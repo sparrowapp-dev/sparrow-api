@@ -1831,13 +1831,11 @@ export class CollectionRepository {
           },
           {
             arrayFilters: [
-              { "i.id": folderId }, // Locate the folder
+              { "i.id": folderId }, // Locate the folder in collection
               { "j.id": mockRequestId }, // Locate the mock request inside the folder
             ],
           },
         );
     }
   }
-
-  // ...existing code...
 }
