@@ -1710,6 +1710,11 @@ export class CollectionRepository {
           "items.$[i].items.$[j].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
       }
+       if (mockRequestResponse?.responseWeightRatio !== undefined) {
+        updateObject[
+          "items.$[i].items.$[j].mockRequestResponse.responseWeightRatio"
+        ] = mockRequestResponse.responseWeightRatio;
+      }
       await this.db.collection<Collection>(Collections.COLLECTION).updateOne(
         {
           _id,
@@ -1743,6 +1748,11 @@ export class CollectionRepository {
         updateObject[
           "items.$[i].items.$[j].items.$[k].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
+      }
+       if (mockRequestResponse?.responseWeightRatio !== undefined) {
+        updateObject[
+          "items.$[i].items.$[j].items.$[k].mockRequestResponse.responseWeightRatio"
+        ] = mockRequestResponse.responseWeightRatio;
       }
       await this.db.collection<Collection>(Collections.COLLECTION).updateOne(
         {
