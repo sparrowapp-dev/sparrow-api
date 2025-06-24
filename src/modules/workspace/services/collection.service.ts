@@ -843,19 +843,19 @@ export class CollectionService {
         if (originalUrl) {
           if (originalUrl.startsWith("{{")) {
             const pathMatch = originalUrl.match(/}}(.*)$/);
-            newUrl = mockCollectionUrl + (pathMatch?.[1] || "");
+            newUrl = pathMatch?.[1] || "";
           } else {
             try {
               const urlObj = new URL(originalUrl);
               const pathAndQuery =
                 urlObj.pathname + urlObj.search + urlObj.hash;
-              newUrl = mockCollectionUrl + pathAndQuery;
+              newUrl = pathAndQuery;
             } catch (error) {
               const pathMatch = originalUrl.match(/^https?:\/\/[^\/]+(.*)$/);
               if (pathMatch) {
-                newUrl = mockCollectionUrl + pathMatch[1];
+                newUrl = pathMatch[1];
               } else {
-                newUrl = mockCollectionUrl;
+                newUrl = "";
               }
             }
           }

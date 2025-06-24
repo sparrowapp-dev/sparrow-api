@@ -1710,7 +1710,7 @@ export class CollectionRepository {
           "items.$[i].items.$[j].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
       }
-       if (mockRequestResponse?.responseWeightRatio !== undefined) {
+      if (mockRequestResponse?.responseWeightRatio !== undefined) {
         updateObject[
           "items.$[i].items.$[j].mockRequestResponse.responseWeightRatio"
         ] = mockRequestResponse.responseWeightRatio;
@@ -1749,7 +1749,7 @@ export class CollectionRepository {
           "items.$[i].items.$[j].items.$[k].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
       }
-       if (mockRequestResponse?.responseWeightRatio !== undefined) {
+      if (mockRequestResponse?.responseWeightRatio !== undefined) {
         updateObject[
           "items.$[i].items.$[j].items.$[k].mockRequestResponse.responseWeightRatio"
         ] = mockRequestResponse.responseWeightRatio;
@@ -1842,7 +1842,7 @@ export class CollectionRepository {
           },
           {
             arrayFilters: [
-              { "i.id": folderId }, // Locate the folder
+              { "i.id": folderId }, // Locate the folder in collection
               { "j.id": mockRequestId }, // Locate the mock request inside the folder
             ],
           },
