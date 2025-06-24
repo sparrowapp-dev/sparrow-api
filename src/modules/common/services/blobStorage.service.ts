@@ -117,9 +117,10 @@ export class BlobStorageService {
    */
   async uploadAiDoc(file: MemoryStorageFile): Promise<string> {
     const fileId = uuidv4();
+    const name = await this.getFileExtension(file.mimetype);
     const uniqueFileName = `${fileId}-${
       file.fieldname
-    }.${await this.getFileExtension(file.mimetype)}`;
+    }.${name}`;
     if (!this.aiContainerClient) {
       throw new BadRequestException(
         "Azure blob container is not connected to backend server.",
