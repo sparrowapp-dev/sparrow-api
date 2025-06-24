@@ -108,11 +108,25 @@ export class MockServerService {
 
                 // If there are active mock responses, randomly select one
                 if (activeMockResponses?.length > 0) {
-                  const randomIndex = Math.floor(
-                    Math.random() * activeMockResponses.length,
-                  );
-                  selectedResponse = activeMockResponses[randomIndex];
+                    // Calculate total weight of all responses
+                  const totalWeight = activeMockResponses.reduce((sum: number, response: any) => {
+                    const weight = response.mockRequestResponse?.responseWeightRatio;
+                    return sum + weight;
+                  }, 0);
 
+                  // Generate a random number between 0 and total weight
+                  const randomValue = Math.floor(Math.random() * totalWeight);
+
+                  // Select response based on weight distribution
+                  let cumulativeWeight = 0;
+                  for (const response of activeMockResponses) {
+                    const weight = response.mockRequestResponse?.responseWeightRatio;
+                    cumulativeWeight += weight;
+                    if (randomValue <= cumulativeWeight) {
+                      selectedResponse = response;
+                      break;
+                    }
+                  }
                   responseStatus =
                     selectedResponse.mockRequestResponse?.responseStatus || 200;
                   responseBody =
