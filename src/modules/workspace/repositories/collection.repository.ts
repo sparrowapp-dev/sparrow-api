@@ -24,6 +24,7 @@ import {
   CollectionRequestItem,
   CollectionSocketIODto,
   CollectionWebSocketDto,
+  MockResponseRatioDto,
   UpdateCollectionMockRequestResponseDto,
   UpdateCollectionRequestResponseDto,
 } from "../payloads/collectionRequest.payload";
@@ -1850,6 +1851,11 @@ export class CollectionRepository {
           "items.$[i].items.$[j].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
       }
+      if (mockRequestResponse?.responseWeightRatio !== undefined) {
+        updateObject[
+          "items.$[i].items.$[j].mockRequestResponse.responseWeightRatio"
+        ] = mockRequestResponse.responseWeightRatio;
+      }
       await this.db.collection<Collection>(Collections.COLLECTION).updateOne(
         {
           _id,
@@ -1883,6 +1889,11 @@ export class CollectionRepository {
         updateObject[
           "items.$[i].items.$[j].items.$[k].mockRequestResponse.isMockResponseActive"
         ] = mockRequestResponse.isMockResponseActive;
+      }
+      if (mockRequestResponse?.responseWeightRatio !== undefined) {
+        updateObject[
+          "items.$[i].items.$[j].items.$[k].mockRequestResponse.responseWeightRatio"
+        ] = mockRequestResponse.responseWeightRatio;
       }
       await this.db.collection<Collection>(Collections.COLLECTION).updateOne(
         {
@@ -1972,7 +1983,7 @@ export class CollectionRepository {
           },
           {
             arrayFilters: [
-              { "i.id": folderId }, // Locate the folder
+              { "i.id": folderId }, // Locate the folder in collection
               { "j.id": mockRequestId }, // Locate the mock request inside the folder
             ],
           },
@@ -1980,5 +1991,112 @@ export class CollectionRepository {
     }
   }
 
-  // ...existing code...
+  /**
+   * Updates mock response ratios for multiple responses within a mock request
+   *
+   * @param collectionId - The ID of the collection
+   * @param mockRequestId - The ID of the mock request
+   * @param mockResponses - Array of response IDs with their ratios
+   * @param user - The user performing the update
+   * @param folderId - Optional folder ID if mock request is inside a folder
+   * @returns The result of the update operation
+   */
+  async updateMockResponseRatios(
+    collectionId: string,
+    mockRequestId: string,
+    mockResponses: MockResponseRatioDto[],
+    user: DecodedUserObject,
+    folderId?: string,
+  ): Promise<UpdateResult<Collection>> {
+    const _id = new ObjectId(collectionId);
+    const defaultParams = {
+      updatedAt: new Date(),
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+    };
+
+    if (!folderId) {
+      // Case: No Folder (mock request exists inside `items`)
+      const bulkOperations = mockResponses.map((response) => ({
+        updateOne: {
+          filter: {
+            _id,
+            "items.id": mockRequestId,
+            "items.items.id": response.mockResponseId,
+          },
+          update: {
+            $set: {
+              "items.$[i].items.$[j].mockRequestResponse.responseWeightRatio":
+                response.responseWeightRatio,
+              "items.$[i].items.$[j].updatedAt": defaultParams.updatedAt,
+              "items.$[i].items.$[j].updatedBy": defaultParams.updatedBy,
+              updatedAt: defaultParams.updatedAt,
+              updatedBy: defaultParams.updatedBy,
+            },
+          },
+          arrayFilters: [
+            { "i.id": mockRequestId },
+            { "j.id": response.mockResponseId },
+          ],
+        },
+      }));
+
+      // Execute bulk operations
+      await this.db
+        .collection<Collection>(Collections.COLLECTION)
+        .bulkWrite(bulkOperations);
+
+      return {
+        acknowledged: true,
+        matchedCount: mockResponses.length,
+        modifiedCount: mockResponses.length,
+        upsertedCount: 0,
+        upsertedId: null,
+      };
+    } else {
+      // Case: Inside a Folder (mock request exists inside `items.items`)
+      const bulkOperations = mockResponses.map((response) => ({
+        updateOne: {
+          filter: {
+            _id,
+            "items.id": folderId,
+            "items.items.id": mockRequestId,
+            "items.items.items.id": response.mockResponseId,
+          },
+          update: {
+            $set: {
+              "items.$[i].items.$[j].items.$[k].mockRequestResponse.responseWeightRatio":
+                response.responseWeightRatio,
+              "items.$[i].items.$[j].items.$[k].updatedAt":
+                defaultParams.updatedAt,
+              "items.$[i].items.$[j].items.$[k].updatedBy":
+                defaultParams.updatedBy,
+              updatedAt: defaultParams.updatedAt,
+              updatedBy: defaultParams.updatedBy,
+            },
+          },
+          arrayFilters: [
+            { "i.id": folderId },
+            { "j.id": mockRequestId },
+            { "k.id": response.mockResponseId },
+          ],
+        },
+      }));
+
+      // Execute bulk operations
+      await this.db
+        .collection<Collection>(Collections.COLLECTION)
+        .bulkWrite(bulkOperations);
+
+      return {
+        acknowledged: true,
+        matchedCount: mockResponses.length,
+        modifiedCount: mockResponses.length,
+        upsertedCount: 0,
+        upsertedId: null,
+      };
+    }
+  }
 }

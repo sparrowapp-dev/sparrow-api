@@ -256,4 +256,26 @@ export class AdminHubsService {
       pendingInvites: team.invites?.length || 0,
     };
   }
+
+  /**
+   * Submit feedback for a hub
+   * @param hubId The hub ID
+   * @param feedback The feedback string
+   * @returns Success result
+   */
+  async submitHubFeedback(hubId: string, feedback: string) {
+    const hub = await this.teamsRepo.findHubById(hubId);
+
+    if (!hub) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    const updateResult = await this.teamsRepo.updateTeamFeedback(hubId, feedback);
+
+    if (updateResult.modifiedCount === 0) {
+      throw new Error("Failed to save feedback");
+    }
+
+    return { success: true };
+  }
 }
