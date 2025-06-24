@@ -40,6 +40,7 @@ import {
   FolderPayload,
   UpdateCollectionMockRequestResponseDto,
   UpdateCollectionRequestResponseDto,
+  UpdateMockResponseRatioDto,
 } from "../payloads/collectionRequest.payload";
 import { CollectionRequestService } from "../services/collection-request.service";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
@@ -1164,8 +1165,10 @@ export class collectionController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    const aiRequestObj =
-      await this.collectionRequestService.addAiRequest(aiRequestDto, user);
+    const aiRequestObj = await this.collectionRequestService.addAiRequest(
+      aiRequestDto,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -1202,7 +1205,7 @@ export class collectionController {
     const aiRequest = await this.collectionRequestService.updateAiRequest(
       aiRequestId,
       aiRequestDto,
-      user
+      user,
     );
 
     const responseData = new ApiResponseService(
@@ -1241,7 +1244,7 @@ export class collectionController {
     await this.collectionRequestService.deleteAiRequest(
       aiRequestId,
       aiRequestDto,
-      user
+      user,
     );
     const collection = await this.collectionService.getCollection(
       aiRequestDto.collectionId,
@@ -1436,6 +1439,47 @@ export class collectionController {
       "Success",
       HttpStatusCode.OK,
       collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to update mock response ratios for multiple responses within a mock request.
+   *
+   * @param updateRatioDto The data containing mock response ratios to update.
+   * @param res The Fastify response object.
+   * @returns The response object with status and data.
+   */
+  @Patch("mock-response/ratios")
+  @ApiOperation({
+    summary: "Update Mock Response Ratios",
+    description:
+      "This will update the weight ratios for multiple mock responses within a mock request",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Mock Response Ratios Updated Successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to update mock response ratios",
+  })
+  async updateMockResponseRatios(
+    @Body() updateRatioDto: Partial<UpdateMockResponseRatioDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const result = await this.collectionRequestService.updateMockResponseRatios(
+      updateRatioDto,
+      user,
+    );
+
+    const responseData = new ApiResponseService(
+      "Mock Response Ratios Updated Successfully",
+      HttpStatusCode.OK,
+      result,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
