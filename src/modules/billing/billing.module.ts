@@ -5,6 +5,7 @@ import { PaymentMethodsController } from "./controllers/payment-methods.controll
 import { StripeSubscriptionRepository } from "./repositories/stripe-subscription.repository";
 import { StripeSubscriptionService } from "./services/stripe-subscription.service";
 import { StripeWebhookGateway } from "./gateways/stripe-webhook.gateway";
+import { StripeSchedulerService } from "./services/stripe-scheduler.service";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -30,9 +31,13 @@ export class BillingModule {
       StripeSubscriptionRepository,
       StripeSubscriptionService,
       StripeWebhookGateway,
+      StripeSchedulerService,
     ];
     const controllers = [];
-    const exports: Provider[] = [];
+    const exports: Provider[] = [
+      StripeSubscriptionService,
+      StripeSubscriptionRepository,
+    ];
 
     // Only add Stripe if the module was successfully imported
     if (StripeModule) {

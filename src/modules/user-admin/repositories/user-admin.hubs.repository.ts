@@ -148,4 +148,28 @@ export class AdminHubsRepository {
       );
     }
   }
+
+  /**
+   * Update team feedback in billing object
+   * @param hubId The team/hub ID
+   * @param feedback The feedback string
+   * @returns The update result
+   */
+  async updateTeamFeedback(hubId: string, feedback: string): Promise<any> {
+    try {
+      const hubObjectId = new ObjectId(hubId);
+
+      return await this.db.collection(Collections.TEAM).updateOne(
+        { _id: hubObjectId },
+        {
+          $set: {
+            "billing.feedback": feedback,
+          },
+        },
+      );
+    } catch (error) {
+      console.error("Error updating team feedback:", error);
+      throw new InternalServerErrorException("Failed to update team feedback");
+    }
+  }
 }

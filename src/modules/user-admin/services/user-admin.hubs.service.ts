@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
 import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.repository";
+import { TeamRole } from "@src/modules/common/enum/roles.enum";
 
 interface SortOptions {
   sortBy: string;
@@ -213,6 +214,7 @@ export class AdminHubsService {
             },
             createdAt: team?.createdAt,
             updatedAt: team?.updatedAt,
+            plan: team?.plan,
           };
         }),
       );
@@ -232,5 +234,51 @@ export class AdminHubsService {
       }
       throw new Error(`Failed to fetch hubs: ${error.message}`);
     }
+  }
+
+  async getTeamStatistics(teamId: string) {
+    const team = await this.teamsRepo.findHubById(teamId);
+
+    if (!team) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Count collaborators excluding owners
+    const collaboratorCount = team.users.filter(
+      (user: any) => user.role !== TeamRole.OWNER,
+    ).length;
+
+    return {
+      teamId: team._id,
+      teamName: team.name,
+      collaboratorCount,
+      workspaceCount: team.workspaces?.length || 0,
+      pendingInvites: team.invites?.length || 0,
+    };
+  }
+
+  /**
+   * Submit feedback for a hub
+   * @param hubId The hub ID
+   * @param feedback The feedback string
+   * @returns Success result
+   */
+  async submitHubFeedback(hubId: string, feedback: string) {
+    const hub = await this.teamsRepo.findHubById(hubId);
+
+    if (!hub) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    const updateResult = await this.teamsRepo.updateTeamFeedback(
+      hubId,
+      feedback,
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      throw new Error("Failed to save feedback");
+    }
+
+    return { success: true };
   }
 }

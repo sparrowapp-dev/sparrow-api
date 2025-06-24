@@ -307,7 +307,7 @@ export class StripeController {
   @ApiOperation({
     summary: "Update a subscription",
     description:
-      "Updates a subscription by changing the price (plan) or other attributes",
+      "Updates a subscription by changing the price (plan) or other attributes. Supports immediate upgrades and end-of-cycle downgrades.",
   })
   @ApiParam({
     name: "id",
@@ -333,6 +333,8 @@ export class StripeController {
         updateSubscriptionDto.priceId,
         updateSubscriptionDto.metadata,
         updateSubscriptionDto.paymentMethodId,
+        updateSubscriptionDto.prorationBehavior,
+        updateSubscriptionDto.atPeriodEnd,
       );
 
       return subscription;
@@ -373,7 +375,7 @@ export class StripeController {
 
       const subscription = await this.stripeService.cancelSubscription(
         subscriptionId,
-        cancelSubscriptionDto.cancelImmediately || false,
+        false, //disables cancellation at mid cycle
       );
 
       return { subscription };
@@ -594,6 +596,15 @@ export class StripeController {
           break;
 
         case "invoice.payment_failed":
+          // Skip processing if this is a 3DS authentication scenario
+          // Invoice status "open" with attempt_count 0 means payment is waiting for 3DS authentication
+          if (
+            event.data.object.status === "open" &&
+            event.data.object.attempt_count === 0
+          ) {
+            break;
+          }
+
           await this.stripeSubscriptionService.handleInvoicePaymentFailed(
             event.data.object,
           );
