@@ -96,7 +96,7 @@ export class CollectionRepository {
         );
 
         // Update selectedAuthType
-        updateOperations.$set.selectedAuthType = authInput.name;
+        // updateOperations.$set.selectedAuthType = authInput.name;
       }
 
       // Push the new auth with _id
@@ -130,7 +130,7 @@ export class CollectionRepository {
       { _id: new ObjectId(collectionId) },
       {
         $pull: {
-          auth: { _id: authId  },
+          auth: { authId: authId  },
         },
         $set: {
           updatedAt: new Date(),
@@ -148,51 +148,76 @@ export class CollectionRepository {
     return "Auth profile deleted successfully.";
   }
 
+  async findCollectionById(
+  collectionId: ObjectId,
+  user: DecodedUserObject,
+): Promise<any> {
+  const collection = await this.db.collection(Collections.COLLECTION).findOne({
+    _id: collectionId,
+  });
+  return collection;
+}
+
+
   async updateAuth(
   collectionId: string,
-  workspaceId: string,
   authId: string,
   user: DecodedUserObject,
-  payload: Partial<authCollection>
+  payload: Partial<authCollection>,
 ): Promise<string> {
+  if (!ObjectId.isValid(collectionId)) {
+    throw new BadRequestException('Invalid collectionId');
+  }
+
   const collectionObjectId = new ObjectId(collectionId);
-  const authObjectId = new ObjectId(authId);
 
   const collection = await this.db
     .collection(Collections.COLLECTION)
     .findOne({ _id: collectionObjectId });
 
+  if (!collection) {
+    throw new BadRequestException('Collection not found');
+  }
+
   const existingAuths = collection.auth || [];
-  const targetAuth = existingAuths.find((a: any) => a._id.toString() === authId);
 
-  // Handle defaultKey logic
-  let updatedAuths = existingAuths.map((auth: any) => {
-    // If this is the one being updated
-    if (auth._id.toString() === authId) {
-      return {
-        ...auth,
-        ...payload,
-        updatedAt: new Date(),
-        updatedBy: {
-          id: user._id.toString(),
-          name: user.name,
-        },
-      };
-    }
+  const targetIndex = existingAuths.findIndex((auth: any) => auth.authId === authId);
+  if (targetIndex === -1) {
+    throw new BadRequestException('Auth profile not found');
+  }
 
-    // If new defaultKey is true, remove default from others
-    if (payload.defaultKey === true) {
-      return {
-        ...auth,
-        defaultKey: false,
-      };
-    }
+  const updatedAuths = existingAuths.map((auth: any) => {
+  if (auth.authId === authId) {
+    const updatedFields = Object.entries(payload).reduce((acc, [key, val]) => {
+      if (val !== undefined) {
+        acc[key] = val;
+      }
+      return acc;
+    }, {} as Record<string, any>);
 
-    return auth;
-  });
+    return {
+      ...auth,
+      ...updatedFields,
+      updatedAt: new Date(),
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+    };
+  }
 
-  // If defaultKey is set true, update selectedAuthType
-  const updateOperations: any = {
+  if (payload.defaultKey === true) {
+    return {
+      ...auth,
+      defaultKey: false,
+    };
+  }
+
+  return auth;
+});
+
+
+  const updateDoc: any = {
     $set: {
       auth: updatedAuths,
       updatedAt: new Date(),
@@ -203,16 +228,23 @@ export class CollectionRepository {
     },
   };
 
+  // Update selectedAuthType if defaultKey is set to true
   if (payload.defaultKey === true && payload.name) {
-    updateOperations.$set.selectedAuthType = payload.name;
+    updateDoc.$set.selectedAuthType = payload.name;
   }
 
-  await this.db
+  const result = await this.db
     .collection(Collections.COLLECTION)
-    .updateOne({ _id: collectionObjectId }, updateOperations);
+    .updateOne({ _id: collectionObjectId }, updateDoc);
+
+  if (result.modifiedCount === 0) {
+    throw new BadRequestException('Auth profile update failed');
+  }
 
   return 'Auth profile updated successfully';
 }
+
+
 
   async updateBranchArray(
     id: string,

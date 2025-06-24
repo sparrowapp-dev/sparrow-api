@@ -196,6 +196,25 @@ export class SwitchCollectionBranchDto {
   currentBranch: string;
 }
 
+export class BasicAuthDto {
+  @IsString()
+  username: string;
+
+  @IsString()
+  password: string;
+}
+
+export class ApiKeyDto {
+  @IsString()
+  authKey: string;
+
+  @IsOptional()
+  authValue: string | unknown;
+
+  @IsString()
+  addTo: AddTo; 
+}
+
 export class authCollection {
   @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
   @IsMongoId()
@@ -208,7 +227,7 @@ export class authCollection {
   workspaceId: string;
 
   @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
-  @IsMongoId()
+  @IsString()
   @IsNotEmpty()
   authId: string;
 
@@ -228,7 +247,7 @@ export class authCollection {
   authType?: CollectionAuthModeEnum;
 
   @IsOptional()
-  @IsString()
+  @IsBoolean()
   @ApiProperty({ example: "openai-conve-123" })
   defaultKey?: boolean;
 
@@ -238,19 +257,12 @@ export class authCollection {
   bearerToken?: string;
 
   @IsOptional()
-  @IsString()
-  @ApiProperty({ example: "openai-conve-123" })
-  basicAuth?: {
-    username: string;
-    password: string;
-  };
+  @ValidateNested()
+  @Type(() => BasicAuthDto)
+  basicAuth?: BasicAuthDto;
 
   @IsOptional()
-  @IsString()
-  @ApiProperty({ example: "openai-conve-123" })
-  apiKey?: {
-    authKey: string;
-    authValue: string | unknown;
-    addTo: AddTo;
-  };
+  @ValidateNested()
+  @Type(() => ApiKeyDto)
+  apiKey?: ApiKeyDto;
 }

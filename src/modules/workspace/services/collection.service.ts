@@ -512,22 +512,29 @@ export class CollectionService {
     return data;
   }
 
+  async getAuthProfiles(collectionId: string, user: DecodedUserObject): Promise<any[]> {
+    const collectionObjectId = new ObjectId(collectionId);
+
+    const collection = await this.collectionRepository.findCollectionById(collectionObjectId, user);
+    return collection.auth || [];
+  }
+
+
   async updateAuthProfile(
-  payload: authCollection,
-  user: DecodedUserObject,
-): Promise<string> {
-  const { collectionId, workspaceId, authId, ...authUpdatePayload } = payload;
+    payload: authCollection,
+    user: DecodedUserObject,
+  ): Promise<string> {
+    const { collectionId, workspaceId, authId, ...authUpdatePayload } = payload;
 
-  const result = await this.collectionRepository.updateAuth(
-    collectionId,
-    workspaceId,
-    authId,
-    user,
-    authUpdatePayload,
-  );
+    const result = await this.collectionRepository.updateAuth(
+      collectionId,
+      authId,
+      user,
+      authUpdatePayload,
+    );
 
-  return result;
-}
+    return result;
+  }
 
 
   async deleteAuthProfile(

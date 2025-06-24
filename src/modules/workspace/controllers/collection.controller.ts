@@ -168,6 +168,31 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  @Get('auth-profiles/:collectionId')
+  @ApiOperation({
+    summary: 'Get all auth profiles for a collection',
+    description: 'Fetches all auth profiles stored in the given collection.',
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: 'List of auth profiles returned' })
+  @ApiResponse({ status: 404, description: 'Collection not found' })
+  async getAuthProfiles(
+    @Param('collectionId') collectionId: string,
+    @Res() res: FastifyReply,
+    @Req() req: ExtendedFastifyRequest,
+  ) {
+    const user = req.user;
+    const authProfiles = await this.collectionService.getAuthProfiles(collectionId, user);
+
+    const responseData = new ApiResponseService(
+      'Success',
+      HttpStatusCode.OK,
+      authProfiles,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Put(":collectionId/workspace/:workspaceId")
   @ApiOperation({
     summary: "Update A  Collections",
