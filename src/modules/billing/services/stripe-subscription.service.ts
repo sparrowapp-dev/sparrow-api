@@ -836,53 +836,41 @@ export class StripeSubscriptionService {
    * Handle subscription schedule updated event
    * @param subscriptionSchedule The updated Stripe subscription schedule object
    */
-  async handleSubscriptionScheduleUpdated(subscriptionSchedule: any): Promise<void> {
+  async handleSubscriptionScheduleUpdated(
+    subscriptionSchedule: any,
+  ): Promise<void> {
     try {
-      this.logger.log(
-        `Processing subscription_schedule.updated event for schedule ${subscriptionSchedule.id}`,
-      );
-
       // Find metadata in the phases - look for scheduled downgrade information
       let scheduledDowngradeMetadata = null;
       let targetPlanName = null;
       let startDate = null;
 
       // Check phases for scheduled downgrade metadata
-      if (subscriptionSchedule.phases && subscriptionSchedule.phases.length > 0) {
+      if (
+        subscriptionSchedule.phases &&
+        subscriptionSchedule.phases.length > 0
+      ) {
         for (const phase of subscriptionSchedule.phases) {
           if (phase.metadata && phase.metadata.scheduled_downgrade === "true") {
             scheduledDowngradeMetadata = phase.metadata;
-            targetPlanName = phase.metadata.planName || phase.metadata.new_price_id;
-            startDate = phase.start_date ? new Date(phase.start_date * 1000) : null;
+            targetPlanName =
+              phase.metadata.planName || phase.metadata.new_price_id;
+            startDate = phase.start_date
+              ? new Date(phase.start_date * 1000)
+              : null;
             break;
           }
         }
       }
 
-      // If no scheduled downgrade found, log and return
-      if (!scheduledDowngradeMetadata) {
-        this.logger.log(
-          `No scheduled downgrade found in subscription schedule ${subscriptionSchedule.id}`,
-        );
-        return;
-      }
+      if (!scheduledDowngradeMetadata) return;
 
       const hubId = scheduledDowngradeMetadata.hubId;
-      if (!hubId) {
-        this.logger.warn(
-          `No hubId found in subscription schedule ${subscriptionSchedule.id} metadata`,
-        );
-        return;
-      }
+      if (!hubId) return;
 
-      // Check if team exists
       const team = await this.stripeSubscriptionRepo.findTeamById(hubId);
-      if (!team) {
-        this.logger.error(`Team not found with ID: ${hubId}`);
-        return;
-      }
+      if (!team) return;
 
-      // Update team's billing information with scheduled downgrade details
       const currentBilling = team.billing || {};
       const scheduledDowngrade = {
         isScheduledDowngrade: true,
@@ -890,7 +878,8 @@ export class StripeSubscriptionService {
         planName: targetPlanName,
         scheduleId: subscriptionSchedule.id,
         originalSubscription: scheduledDowngradeMetadata.original_subscription,
-        downgradeAtPeriodEnd: scheduledDowngradeMetadata.downgrade_at_period_end === "true",
+        downgradeAtPeriodEnd:
+          scheduledDowngradeMetadata.downgrade_at_period_end === "true",
         userCount: scheduledDowngradeMetadata.userCount,
         scheduledAt: new Date(),
         updatedBy: "system-stripe-webhook",
@@ -902,7 +891,6 @@ export class StripeSubscriptionService {
         updatedBy: "system-stripe-webhook",
       };
 
-      // Update team with scheduled downgrade information
       await this.stripeSubscriptionRepo.updateTeamPlan(
         hubId,
         {
@@ -913,15 +901,7 @@ export class StripeSubscriptionService {
           billing: updatedBilling,
         },
       );
-
-      this.logger.log(
-        `Updated team ${hubId} with scheduled downgrade to ${targetPlanName} starting ${startDate?.toISOString() || 'at next billing cycle'}`,
-      );
     } catch (error) {
-      this.logger.error(
-        `Error handling subscription_schedule.updated event: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }
