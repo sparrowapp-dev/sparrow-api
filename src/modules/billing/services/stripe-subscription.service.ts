@@ -453,12 +453,15 @@ export class StripeSubscriptionService {
 
       // Only update if the team has a billing record and the voided invoice is the latest one
       if (team.billing && team.billing.latest_invoice === invoice.id) {
+        const communityPlan =
+          await this.stripeSubscriptionRepo.findPlanByName("Community");
+        if (!communityPlan) {
+          this.logger.error("Community plan not found in database");
+          return;
+        }
         const updatedBilling = {
           ...team.billing,
-          status:
-            team.billing.status === "payment_failed"
-              ? "active"
-              : team.billing.status,
+          status: "voided",
           invoice_voided: true,
           voided_at: new Date(),
           updatedBy: "system-stripe-webhook",
@@ -467,13 +470,18 @@ export class StripeSubscriptionService {
         await this.stripeSubscriptionRepo.updateTeamPlan(
           metadata.hubId,
           {
-            id: team.plan.id,
-            name: team.plan.name,
+            id: communityPlan._id,
+            name: communityPlan.name,
           },
           {
             billing: updatedBilling,
           },
         );
+
+        await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
+          id: communityPlan._id,
+          name: communityPlan.name,
+        });
 
         this.logger.log(
           `Updated team ${metadata.hubId} billing status for voided invoice ${invoice.id}`,
@@ -507,6 +515,25 @@ export class StripeSubscriptionService {
       this.logger.log(
         `Subscription ${subscription.id} has been deleted. Downgrading team plan.`,
       );
+
+      // Void any open invoices associated with this subscription
+      if (this.stripeService && subscription.latest_invoice) {
+        try {
+          await this.stripeService.voidInvoice(subscription.latest_invoice);
+          this.logger.log(
+            `Voided latest invoice ${subscription.latest_invoice} for deleted subscription ${subscription.id}`,
+          );
+        } catch (invoiceError) {
+          // Log but don't fail the entire process if invoice voiding fails
+          this.logger.warn(
+            `Failed to void invoice ${subscription.latest_invoice} for subscription ${subscription.id}: ${invoiceError.message}`,
+          );
+        }
+      } else if (!this.stripeService) {
+        this.logger.warn(
+          "Stripe service not available, cannot void invoices for deleted subscription",
+        );
+      }
 
       // Find the community plan for downgrade
       const communityPlan =
@@ -801,6 +828,80 @@ export class StripeSubscriptionService {
         `Error checking subscriptions requiring end-of-cycle action: ${error.message}`,
         error.stack,
       );
+      throw error;
+    }
+  }
+
+  /**
+   * Handle subscription schedule updated event
+   * @param subscriptionSchedule The updated Stripe subscription schedule object
+   */
+  async handleSubscriptionScheduleUpdated(
+    subscriptionSchedule: any,
+  ): Promise<void> {
+    try {
+      // Find metadata in the phases - look for scheduled downgrade information
+      let scheduledDowngradeMetadata = null;
+      let targetPlanName = null;
+      let startDate = null;
+
+      // Check phases for scheduled downgrade metadata
+      if (
+        subscriptionSchedule.phases &&
+        subscriptionSchedule.phases.length > 0
+      ) {
+        for (const phase of subscriptionSchedule.phases) {
+          if (phase.metadata && phase.metadata.scheduled_downgrade === "true") {
+            scheduledDowngradeMetadata = phase.metadata;
+            targetPlanName =
+              phase.metadata.planName || phase.metadata.new_price_id;
+            startDate = phase.start_date
+              ? new Date(phase.start_date * 1000)
+              : null;
+            break;
+          }
+        }
+      }
+
+      if (!scheduledDowngradeMetadata) return;
+
+      const hubId = scheduledDowngradeMetadata.hubId;
+      if (!hubId) return;
+
+      const team = await this.stripeSubscriptionRepo.findTeamById(hubId);
+      if (!team) return;
+
+      const currentBilling = team.billing || {};
+      const scheduledDowngrade = {
+        isScheduledDowngrade: true,
+        startDate: startDate,
+        planName: targetPlanName,
+        scheduleId: subscriptionSchedule.id,
+        originalSubscription: scheduledDowngradeMetadata.original_subscription,
+        downgradeAtPeriodEnd:
+          scheduledDowngradeMetadata.downgrade_at_period_end === "true",
+        userCount: scheduledDowngradeMetadata.userCount,
+        scheduledAt: new Date(),
+        updatedBy: "system-stripe-webhook",
+      };
+
+      const updatedBilling = {
+        ...currentBilling,
+        scheduledDowngrade: scheduledDowngrade,
+        updatedBy: "system-stripe-webhook",
+      };
+
+      await this.stripeSubscriptionRepo.updateTeamPlan(
+        hubId,
+        {
+          id: team.plan.id,
+          name: team.plan.name,
+        },
+        {
+          billing: updatedBilling,
+        },
+      );
+    } catch (error) {
       throw error;
     }
   }

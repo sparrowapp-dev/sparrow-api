@@ -40,13 +40,16 @@ export class MockServerService {
         }),
       );
 
-      // Extract collectionId
-      const segments = url.split("/");
-      let collectionId = segments[3] || null; // 3rd index (after /api/mock)
+      // Split URL and query string first to get clean base URL
+      const [baseUrl] = url.split("?");
+
+      // Extract collectionId from clean base URL
+      const segments = baseUrl.split("/");
+      const collectionId = segments[3] || null; // 3rd index (after /api/mock)
       // Remove query parameters from collectionId if they exist
-      if (collectionId && collectionId.includes("?")) {
-        collectionId = collectionId.split("?")[0];
-      }
+      // if (collectionId && collectionId.includes("?")) {
+      //   collectionId = collectionId.split("?")[0];
+      // }
       // Extract the rest of the URL after the collection ID with leading slash
       let restUrl =
         segments.length > 4 ? "/" + segments.slice(4).join("/") : "";
@@ -229,7 +232,7 @@ export class MockServerService {
                 const duration = Math.round(Date.now() - startTime);
 
                 const mockEndpoint = (url: string) => {
-                  const regex = /\/api\/mock\/[a-f0-9]+(\/.*)/;
+                  const regex = /\/api\/mock\/[a-f0-9]+(.*)$/;
                   const match = url.match(regex);
                   return match ? match[1] : "";
                 };

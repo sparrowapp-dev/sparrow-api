@@ -596,6 +596,15 @@ export class StripeController {
           break;
 
         case "invoice.payment_failed":
+          // Skip processing if this is a 3DS authentication scenario
+          // Invoice status "open" with attempt_count 0 means payment is waiting for 3DS authentication
+          if (
+            event.data.object.status === "open" &&
+            event.data.object.attempt_count === 0
+          ) {
+            break;
+          }
+
           await this.stripeSubscriptionService.handleInvoicePaymentFailed(
             event.data.object,
           );
@@ -674,6 +683,29 @@ export class StripeController {
           }
           break;
 
+        case "subscription_schedule.updated":
+          await this.stripeSubscriptionService.handleSubscriptionScheduleUpdated(
+            event.data.object,
+          );
+
+          // Extract hubId from the subscription schedule metadata
+          const scheduleHubId = this.extractHubIdFromSchedule(event.data.object);
+
+          if (scheduleHubId) {
+            const teamWithScheduleUpdate = await this.stripeSubscriptionRepo.findTeamById(
+              scheduleHubId,
+            );
+
+            this.stripeWebhookGateway.emitPaymentEvent(
+              PaymentEventType.SUBSCRIPTION_SCHEDULE_UPDATED,
+              {
+                subscriptionSchedule: event.data.object,
+                team: teamWithScheduleUpdate,
+              },
+            );
+          }
+          break;
+
         default:
           console.log(`Unhandled webhook event type: ${event.type}`);
       }
@@ -728,5 +760,24 @@ export class StripeController {
     }
 
     return { subscriptionId, metadata };
+  }
+
+  /**
+   * Extract hubId from subscription schedule phases metadata
+   * @param subscriptionSchedule The subscription schedule object from Stripe
+   * @returns The hubId string or null if not found
+   */
+  private extractHubIdFromSchedule(subscriptionSchedule: any): string | null {
+    if (!subscriptionSchedule.phases || subscriptionSchedule.phases.length === 0) {
+      return null;
+    }
+
+    for (const phase of subscriptionSchedule.phases) {
+      if (phase.metadata && phase.metadata.hubId) {
+        return phase.metadata.hubId;
+      }
+    }
+
+    return null;
   }
 }
