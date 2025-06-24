@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 
-import { UpdateCollectionDto } from "../payloads/collection.payload";
+import { authCollection, UpdateCollectionDto } from "../payloads/collection.payload";
 import {
   Db,
   DeleteResult,
@@ -30,6 +30,8 @@ import {
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { Workspace } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { v4 as uuidv4 } from "uuid";
+
 @Injectable()
 export class CollectionRepository {
   constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
@@ -63,14 +65,153 @@ export class CollectionRepository {
         name: user.name,
       },
     };
-    const data = await this.db
+
+    const updateOperations: any = {
+      $set: { ...defaultParams },
+    };
+
+    const authInput = updateCollectionDto.auth?.[0]; // expecting only one
+
+    if (authInput) {
+      const collection = await this.db
+        .collection(Collections.COLLECTION)
+        .findOne({ _id: collectionId });
+
+      const existingAuthNames = (collection?.auth || []).map((a: any) => a.name);
+
+      if (existingAuthNames.includes(authInput.name)) {
+        throw new BadRequestException("Please enter a unique name for Auth profile.");
+      }
+
+      // Assign _id to the new auth profile
+      authInput.authId = uuidv4();
+
+      // If marked as defaultKey, reset all others
+      if (authInput.defaultKey === true) {
+        await this.db.collection(Collections.COLLECTION).updateOne(
+          { _id: collectionId, "auth.defaultKey": true },
+          { $set: { "auth.$[elem].defaultKey": false } },
+          { arrayFilters: [{ "elem.defaultKey": true }] },
+        );
+
+        // Update selectedAuthType
+        updateOperations.$set.selectedAuthType = authInput.name;
+      }
+
+      // Push the new auth with _id
+      updateOperations.$push = { auth: authInput };
+
+      delete updateCollectionDto.auth;
+    }
+
+    // Include remaining updates
+    if (Object.keys(updateCollectionDto).length > 0) {
+      updateOperations.$set = {
+        ...updateOperations.$set,
+        ...updateCollectionDto,
+      };
+    }
+
+    const result = await this.db
       .collection(Collections.COLLECTION)
-      .updateOne(
-        { _id: collectionId },
-        { $set: { ...updateCollectionDto, ...defaultParams } },
-      );
-    return data;
+      .updateOne({ _id: collectionId }, updateOperations);
+
+    return result;
   }
+
+  async deleteAuth(
+    collectionId: string,
+    workspaceId: string,
+    authId: string,
+    user: DecodedUserObject,
+  ): Promise<string> {
+    const result = await this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: new ObjectId(collectionId) },
+      {
+        $pull: {
+          auth: { _id: authId  },
+        },
+        $set: {
+          updatedAt: new Date(),
+          updatedBy: {
+            id: user._id.toString(),
+            name: user.name,
+          },
+        },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      throw new BadRequestException("Auth profile not found or already deleted.");
+    }
+    return "Auth profile deleted successfully.";
+  }
+
+  async updateAuth(
+  collectionId: string,
+  workspaceId: string,
+  authId: string,
+  user: DecodedUserObject,
+  payload: Partial<authCollection>
+): Promise<string> {
+  const collectionObjectId = new ObjectId(collectionId);
+  const authObjectId = new ObjectId(authId);
+
+  const collection = await this.db
+    .collection(Collections.COLLECTION)
+    .findOne({ _id: collectionObjectId });
+
+  const existingAuths = collection.auth || [];
+  const targetAuth = existingAuths.find((a: any) => a._id.toString() === authId);
+
+  // Handle defaultKey logic
+  let updatedAuths = existingAuths.map((auth: any) => {
+    // If this is the one being updated
+    if (auth._id.toString() === authId) {
+      return {
+        ...auth,
+        ...payload,
+        updatedAt: new Date(),
+        updatedBy: {
+          id: user._id.toString(),
+          name: user.name,
+        },
+      };
+    }
+
+    // If new defaultKey is true, remove default from others
+    if (payload.defaultKey === true) {
+      return {
+        ...auth,
+        defaultKey: false,
+      };
+    }
+
+    return auth;
+  });
+
+  // If defaultKey is set true, update selectedAuthType
+  const updateOperations: any = {
+    $set: {
+      auth: updatedAuths,
+      updatedAt: new Date(),
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+    },
+  };
+
+  if (payload.defaultKey === true && payload.name) {
+    updateOperations.$set.selectedAuthType = payload.name;
+  }
+
+  await this.db
+    .collection(Collections.COLLECTION)
+    .updateOne({ _id: collectionObjectId }, updateOperations);
+
+  return 'Auth profile updated successfully';
+}
 
   async updateBranchArray(
     id: string,

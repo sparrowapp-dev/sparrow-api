@@ -1045,7 +1045,7 @@ export class Collection {
   @Type(() => Auth)
   @ValidateNested({ each: true })
   @IsOptional()
-  auth?: Auth;
+  auth?: Auth[];
 
   @ApiProperty()
   @IsString()

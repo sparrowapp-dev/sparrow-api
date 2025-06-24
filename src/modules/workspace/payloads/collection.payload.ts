@@ -21,6 +21,11 @@ import { HTTPMethods } from "fastify";
 import { Type } from "class-transformer";
 import { Auth } from "@src/modules/common/models/collection.rxdb.model";
 
+export enum AddTo {
+  Header = "Header",
+  QueryParameter = "Query Parameter",
+}
+
 export class collectionItemsRequestDto {
   @ApiProperty()
   @IsString()
@@ -131,7 +136,7 @@ export class UpdateCollectionDto {
   @Type(() => Auth)
   @ValidateNested({ each: true })
   @IsOptional()
-  auth?: Auth;
+  auth?: Auth[];
 
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()
@@ -189,4 +194,63 @@ export class SwitchCollectionBranchDto {
   @IsString()
   @IsNotEmpty()
   currentBranch: string;
+}
+
+export class authCollection {
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  collectionId: string;
+
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  authId: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "openai-conve-123" })
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "openai-conve-123" })
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "openai-conve-123" })
+  authType?: CollectionAuthModeEnum;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "openai-conve-123" })
+  defaultKey?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "openai-conve-123" })
+  bearerToken?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "openai-conve-123" })
+  basicAuth?: {
+    username: string;
+    password: string;
+  };
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "openai-conve-123" })
+  apiKey?: {
+    authKey: string;
+    authValue: string | unknown;
+    addTo: AddTo;
+  };
 }

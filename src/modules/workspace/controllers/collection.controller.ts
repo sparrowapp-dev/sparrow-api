@@ -22,6 +22,7 @@ import {
   CreateCollectionDto,
   UpdateCollectionDto,
   UpdateMockCollectionStatusDto,
+  authCollection
 } from "../payloads/collection.payload";
 import { FastifyReply } from "fastify";
 import { CollectionService } from "../services/collection.service";
@@ -201,6 +202,46 @@ export class collectionController {
       HttpStatusCode.OK,
       collection,
     );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Put("update-auth-profiles")
+  @ApiOperation({
+    summary: "Update an auth profile",
+    description: "This will update an auth profile ",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Auth profile Updated Successfully" })
+  @ApiResponse({ status: 400, description: "Update operation Failed" })
+  async updateAuthProfiles(@Body() payload: authCollection, @Res() res: FastifyReply, @Req() request: ExtendedFastifyRequest) {
+    const user = request.user;
+    const message = await this.collectionService.updateAuthProfile(payload, user);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      message,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Delete("delete-auth-profiles")
+  @ApiOperation({
+    summary: "Delete an auth profile",
+    description: "This will delete an auth profile ",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Auth profile Updated Successfully" })
+  @ApiResponse({ status: 400, description: "Deletion operation Failed" })
+  async deleteAuthProfiles(@Body() payload: authCollection, @Res() res: FastifyReply, @Req() request: ExtendedFastifyRequest) {
+    const user = request.user;
+    const message = await this.collectionService.deleteAuthProfile(payload, user);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      message,
+    );
+
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 

@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 
 import {
+  authCollection,
   CreateCollectionDto,
   UpdateCollectionDto,
 } from "../payloads/collection.payload";
@@ -76,6 +77,7 @@ export class CollectionService {
       updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
+      auth: []
     };
     const collection =
       await this.collectionRepository.addCollection(newCollection);
@@ -507,6 +509,38 @@ export class CollectionService {
         }),
       });
     }
+    return data;
+  }
+
+  async updateAuthProfile(
+  payload: authCollection,
+  user: DecodedUserObject,
+): Promise<string> {
+  const { collectionId, workspaceId, authId, ...authUpdatePayload } = payload;
+
+  const result = await this.collectionRepository.updateAuth(
+    collectionId,
+    workspaceId,
+    authId,
+    user,
+    authUpdatePayload,
+  );
+
+  return result;
+}
+
+
+  async deleteAuthProfile(
+    payload: authCollection,
+    user: DecodedUserObject,
+  ): Promise<string> {
+      const {collectionId , workspaceId, authId} = payload
+    const data = await this.collectionRepository.deleteAuth(
+      collectionId,
+      workspaceId,
+      authId,
+      user,
+    );
     return data;
   }
 

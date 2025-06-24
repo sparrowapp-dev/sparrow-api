@@ -4,6 +4,7 @@ import {
   ItemTypeEnum,
   SourceTypeEnum,
   PostmanBodyModeEnum,
+  CollectionAuthModeEnum,
 } from "./collection.model";
 
 export enum AddTo {
@@ -65,6 +66,12 @@ interface FormDataFileEntry {
 }
 
 export class Auth {
+  authId?:string
+  name?: string;
+  description?: string;
+  authType?: CollectionAuthModeEnum;
+  createdAt?: Date;
+  defaultKey?: boolean;
   bearerToken?: string;
   basicAuth?: {
     username: string;
