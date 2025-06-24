@@ -145,4 +145,33 @@ export class BlobStorageService {
     const docURL = blockBlobClient.url;
     return docURL;
   }
+
+  async deleteAiDocByUrl(fileUrl: string): Promise<string> {
+  if (!this.aiContainerClient) {
+    throw new BadRequestException(
+      'Azure blob container is not connected to backend server.',
+    );
+  }
+
+  try {
+    const url = new URL(fileUrl);
+
+    // Extract the blob name from the URL (everything after the last '/')
+    const blobName = decodeURIComponent(url.pathname.split('/').pop() || '');
+
+    if (!blobName) {
+      throw new BadRequestException('Invalid file URL');
+    }
+
+    const blockBlobClient = this.aiContainerClient.getBlockBlobClient(blobName);
+
+    const result = await blockBlobClient.deleteIfExists();
+
+    return "success"
+
+  } catch (error) {
+    console.error('Error deleting file from Azure Blob Storage:', error.message);
+  }
+}
+
 }
