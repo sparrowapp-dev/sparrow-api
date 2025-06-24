@@ -313,4 +313,48 @@ export class AdminHubsController {
 
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @Post("hub-feedback")
+  @ApiOperation({ summary: "Submit billing feedback" })
+  @ApiResponse({ status: 201, description: "Feedback submitted successfully" })
+  async submitHubFeedback(
+    @Body() { hubId, feedback }: { hubId: string; feedback: string },
+    @Res() res: FastifyReply,
+  ) {
+    try {
+      if (!hubId || feedback === undefined) {
+        const responseData = new ApiResponseService(
+          "hubId is required and feedback must be provided",
+          HttpStatusCode.BAD_REQUEST,
+          null,
+        );
+        return res.status(HttpStatusCode.BAD_REQUEST).send(responseData);
+      }
+
+      const result = await this.hubsService.submitHubFeedback(hubId, feedback);
+
+      const responseData = new ApiResponseService(
+        "Feedback submitted successfully",
+        HttpStatusCode.CREATED,
+        result,
+      );
+
+      return res.status(HttpStatusCode.CREATED).send(responseData);
+    } catch (error) {
+      const statusCode =
+        error.message === "Hub not found"
+          ? HttpStatusCode.NOT_FOUND
+          : HttpStatusCode.BAD_REQUEST;
+
+      const responseData = new ApiResponseService(
+        error.message || "Failed to submit feedback",
+        statusCode,
+        null,
+      );
+
+      return res.status(statusCode).send(responseData);
+    }
+  }
 }
