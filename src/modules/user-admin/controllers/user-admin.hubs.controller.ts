@@ -205,7 +205,7 @@ export class AdminHubsController {
   @ApiResponse({ status: 200, description: "Fetch Team Request Received" })
   @ApiResponse({ status: 400, description: "Fetch Team Request Failed" })
   async getTeam(@Param("teamId") teamId: string, @Res() res: FastifyReply) {
-    let data = await this.teamService.get(teamId);
+    const data = await this.teamService.get(teamId);
     const plan = await this.planService.get(data?.plan?.id?.toString());
     const responseObject = { ...data, plan: plan };
     const responseData = new ApiResponseService(

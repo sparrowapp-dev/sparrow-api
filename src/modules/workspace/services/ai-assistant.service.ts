@@ -135,6 +135,10 @@ export class AiAssistantService {
 
     // Initialize the AzureOpenAI client
     try {
+      if (!this.endpoint || !this.apiKey || !this.apiVersion) {
+        console.warn("GPT Client is disabled. Missing configuration values");
+        return;
+      }
       this.gptAssistantsClient = this.getGPTClient();
     } catch (e) {
       console.error(e);
@@ -142,6 +146,16 @@ export class AiAssistantService {
 
     // Initialize the DeepSeek client
     try {
+      if (
+        !this.deepseekEndpoint ||
+        !this.deepseekApiKey ||
+        !this.deepseekApiVersion
+      ) {
+        console.warn(
+          "Deepseek Client is disabled. Missing configuration values",
+        );
+        return;
+      }
       this.deepseekClient = this.getDeepSeekClient();
     } catch (e) {
       console.error(e);
@@ -206,44 +220,41 @@ export class AiAssistantService {
     data: PromptPayload,
     user: DecodedUserObject,
   ): Promise<AIResponseDto> {
-
-    const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`
+    const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`;
 
     const { text: prompt, model } = data;
 
-    const response = await this.deepseekClient
-        .path("/chat/completions")
-        .post({
-          body: {
-            messages: [
-              { role: "system", content: instructions },
-              { role: "user", content: prompt },
-            ],
-            model: DeepSeepModelVersion.DeepSeek_V3,
-          },
-        });
+    const response = await this.deepseekClient.path("/chat/completions").post({
+      body: {
+        messages: [
+          { role: "system", content: instructions },
+          { role: "user", content: prompt },
+        ],
+        model: DeepSeepModelVersion.DeepSeek_V3,
+      },
+    });
 
-      if (response.status !== "200") {
-        const data =
-          "Some Issue Occurred in Processing your Request. Please try again";
-        return {result: data};
-      }
+    if (response.status !== "200") {
+      const data =
+        "Some Issue Occurred in Processing your Request. Please try again";
+      return { result: data };
+    }
 
     const body = response.body as any;
     const tokens = body?.usage?.total_tokens;
 
     const eventMessage = {
-          userId: user._id,
-          tokenCount: tokens,
-          model: model
-        };
+      userId: user._id,
+      tokenCount: tokens,
+      model: model,
+    };
 
     await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-          value: JSON.stringify(eventMessage),
-        });
+      value: JSON.stringify(eventMessage),
+    });
 
     const output = (response.body as any).choices?.[0]?.message?.content;
-    return {result: output};
+    return { result: output };
 
     // const assistantId = await this.createAssistant(instructions);
     // if (!assistantId) {
@@ -596,7 +607,6 @@ export class AiAssistantService {
 
     // Fetch user details
     const user = await this.userService.getUserByEmail(emailId);
-    
 
     // Validate user input
     if (!text) {
@@ -1033,7 +1043,8 @@ export class AiAssistantService {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
         const timeTaken = Math.round(endTime - startTime);
-        let message = "Some Issue Occurred in Processing your Request. Please try again";
+        let message =
+          "Some Issue Occurred in Processing your Request. Please try again";
         let statusCode = 500;
 
         if (streamResponse === true) {
@@ -1045,10 +1056,10 @@ export class AiAssistantService {
             statusCode = innerError.error?.code || statusCode;
           }
         } else {
-          message =
-            error.message.match(/"message":"([^"]+)"/)?.[1] ||
-            message;
-          statusCode = parseInt(error.message?.match(/"code"\s*:\s*(\d+)/)?.[1]) || statusCode;
+          message = error.message.match(/"message":"([^"]+)"/)?.[1] || message;
+          statusCode =
+            parseInt(error.message?.match(/"code"\s*:\s*(\d+)/)?.[1]) ||
+            statusCode;
         }
 
         client.send(
@@ -1975,14 +1986,14 @@ export class AiAssistantService {
       const tokens = body?.usage?.total_tokens;
 
       const eventMessage = {
-            userId: user._id,
-            tokenCount: tokens,
-            model: "deepseek"
-          };
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
 
       await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-            value: JSON.stringify(eventMessage),
-          });
+        value: JSON.stringify(eventMessage),
+      });
 
       const result = (response.body as any).choices?.[0]?.message?.content;
       return result;
