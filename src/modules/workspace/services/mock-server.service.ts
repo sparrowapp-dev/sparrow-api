@@ -113,7 +113,7 @@ export class MockServerService {
                 if (activeMockResponses?.length > 0) {
                     // Calculate total weight of all responses
                   const totalWeight = activeMockResponses.reduce((sum: number, response: any) => {
-                    const weight = response.mockRequestResponse?.responseWeightRatio;
+                    const weight = response.mockRequestResponse?.responseWeightRatio ?? 0;
                     return sum + weight;
                   }, 0);
 
@@ -123,7 +123,7 @@ export class MockServerService {
                   // Select response based on weight distribution
                   let cumulativeWeight = 0;
                   for (const response of activeMockResponses) {
-                    const weight = response.mockRequestResponse?.responseWeightRatio;
+                    const weight = response.mockRequestResponse?.responseWeightRatio ?? 0;
                     cumulativeWeight += weight;
                     if (randomValue <= cumulativeWeight) {
                       selectedResponse = response;
