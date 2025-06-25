@@ -25,6 +25,69 @@ export enum AddTo {
   Header = "Header",
   QueryParameter = "Query Parameter",
 }
+export class BasicAuthDto {
+  @IsString()
+  username: string;
+
+  @IsString()
+  password: string;
+}
+
+export class ApiKeyDto {
+  @IsString()
+  authKey: string;
+
+  @IsOptional()
+  authValue: string | unknown;
+
+  @IsString()
+  addTo: AddTo; 
+}
+
+export class AuthContent {
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => BasicAuthDto)
+  basicAuth?: BasicAuthDto;
+
+  @IsString()
+  @IsOptional()
+  bearerToken?: string;
+
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => ApiKeyDto)
+  apiKey?: ApiKeyDto;
+}
+
+export class AuthProfiles {
+  @IsOptional()
+  authId?: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsEnum(CollectionAuthModeEnum)
+  @IsOptional()
+  authType?: CollectionAuthModeEnum;
+
+  @IsOptional()
+  createdAt?: Date;
+
+  @IsBoolean()
+  @IsOptional()
+  defaultKey?: boolean;
+
+  @ValidateNested()
+  @Type(() => AuthContent)
+  @IsOptional()
+  auth?: AuthContent;
+}
 
 export class collectionItemsRequestDto {
   @ApiProperty()
@@ -133,10 +196,10 @@ export class UpdateCollectionDto {
     },
   })
   @IsArray()
-  @Type(() => Auth)
+  @Type(() => AuthProfiles)
   @ValidateNested({ each: true })
   @IsOptional()
-  auth?: Auth[];
+  auth?: AuthProfiles[];
 
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()
@@ -196,24 +259,6 @@ export class SwitchCollectionBranchDto {
   currentBranch: string;
 }
 
-export class BasicAuthDto {
-  @IsString()
-  username: string;
-
-  @IsString()
-  password: string;
-}
-
-export class ApiKeyDto {
-  @IsString()
-  authKey: string;
-
-  @IsOptional()
-  authValue: string | unknown;
-
-  @IsString()
-  addTo: AddTo; 
-}
 
 export class authCollection {
   @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })

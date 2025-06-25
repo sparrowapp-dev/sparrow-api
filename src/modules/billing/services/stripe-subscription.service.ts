@@ -344,13 +344,13 @@ export class StripeSubscriptionService {
       const { subscriptionId, metadata } = this.extractInvoiceData(invoice);
 
       if (!subscriptionId) {
-        this.logger.warn("No subscription found in paid invoice");
+        console.warn("No subscription found in paid invoice");
         return;
       }
 
       // Validate metadata
       if (!metadata.planName || !metadata.hubId) {
-        this.logger.warn(
+        console.warn(
           "Required metadata (planName or hubId) not found in invoice",
         );
         return;
@@ -361,7 +361,7 @@ export class StripeSubscriptionService {
         metadata.planName,
       );
       if (!plan) {
-        this.logger.error(`Plan not found with name: ${metadata.planName}`);
+        console.error(`Plan not found with name: ${metadata.planName}`);
         return;
       }
 
@@ -370,13 +370,30 @@ export class StripeSubscriptionService {
         metadata.hubId,
       );
       if (!team) {
-        this.logger.error(`Team not found with ID: ${metadata.hubId}`);
+        console.error(`Team not found with ID: ${metadata.hubId}`);
         return;
       }
+      // trial date
+      const trialEndDateStr = metadata?.trial_end_date;
+      let validLineItem = null;
+      // Check if the trial is ongoing
+      const isTrialOngoing =
+        trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
 
-      const validLineItem = invoice.lines?.data?.find(
-        (item: any) => item.amount > 0,
-      );
+      if (!isTrialOngoing) {
+        validLineItem = invoice.lines?.data?.find(
+          (item: any) => item.amount > 0,
+        );
+      } else {
+        validLineItem = invoice.lines?.data[0];
+      }
+
+      if (!validLineItem?.period) {
+        console.warn(
+          `No valid line item with amount > 0 found in invoice ${invoice.id}`,
+        );
+        return;
+      }
 
       const period = validLineItem?.period;
 
@@ -398,6 +415,7 @@ export class StripeSubscriptionService {
           ? new Date(invoice.status_transitions.paid_at * 1000)
           : new Date(),
         updatedBy: "system-stripe-webhook",
+        in_trial: isTrialOngoing || false,
       };
 
       await this.updateTeamPlanWithBilling(
