@@ -831,4 +831,78 @@ export class StripeSubscriptionService {
       throw error;
     }
   }
+
+  /**
+   * Handle subscription schedule updated event
+   * @param subscriptionSchedule The updated Stripe subscription schedule object
+   */
+  async handleSubscriptionScheduleUpdated(
+    subscriptionSchedule: any,
+  ): Promise<void> {
+    try {
+      // Find metadata in the phases - look for scheduled downgrade information
+      let scheduledDowngradeMetadata = null;
+      let targetPlanName = null;
+      let startDate = null;
+
+      // Check phases for scheduled downgrade metadata
+      if (
+        subscriptionSchedule.phases &&
+        subscriptionSchedule.phases.length > 0
+      ) {
+        for (const phase of subscriptionSchedule.phases) {
+          if (phase.metadata && phase.metadata.scheduled_downgrade === "true") {
+            scheduledDowngradeMetadata = phase.metadata;
+            targetPlanName =
+              phase.metadata.planName || phase.metadata.new_price_id;
+            startDate = phase.start_date
+              ? new Date(phase.start_date * 1000)
+              : null;
+            break;
+          }
+        }
+      }
+
+      if (!scheduledDowngradeMetadata) return;
+
+      const hubId = scheduledDowngradeMetadata.hubId;
+      if (!hubId) return;
+
+      const team = await this.stripeSubscriptionRepo.findTeamById(hubId);
+      if (!team) return;
+
+      const currentBilling = team.billing || {};
+      const scheduledDowngrade = {
+        isScheduledDowngrade: true,
+        startDate: startDate,
+        planName: targetPlanName,
+        scheduleId: subscriptionSchedule.id,
+        originalSubscription: scheduledDowngradeMetadata.original_subscription,
+        downgradeAtPeriodEnd:
+          scheduledDowngradeMetadata.downgrade_at_period_end === "true",
+        userCount: scheduledDowngradeMetadata.userCount,
+        scheduledAt: new Date(),
+        updatedBy: "system-stripe-webhook",
+      };
+
+      const updatedBilling = {
+        ...currentBilling,
+        scheduledDowngrade: scheduledDowngrade,
+        updatedBy: "system-stripe-webhook",
+      };
+
+      await this.stripeSubscriptionRepo.updateTeamPlan(
+        hubId,
+        {
+          id: team.plan.id,
+          name: team.plan.name,
+        },
+        {
+          billing: updatedBilling,
+        },
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
 }

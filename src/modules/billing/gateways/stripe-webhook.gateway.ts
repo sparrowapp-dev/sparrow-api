@@ -24,6 +24,7 @@ export enum PaymentEventType {
   SUBSCRIPTION_CANCELED_PAYMENT_FAILED = "subscription_canceled_payment_failed",
   SUBSCRIPTION_DELETED_PAYMENT_FAILED = "subscription_deleted_payment_failed",
   INVOICE_VOIDED = "invoice_voided",
+  SUBSCRIPTION_SCHEDULE_UPDATED = "subscription_schedule_updated",
 }
 
 @Injectable()

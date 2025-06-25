@@ -270,7 +270,10 @@ export class AdminHubsService {
       throw new NotFoundException("Hub not found");
     }
 
-    const updateResult = await this.teamsRepo.updateTeamFeedback(hubId, feedback);
+    const updateResult = await this.teamsRepo.updateTeamFeedback(
+      hubId,
+      feedback,
+    );
 
     if (updateResult.modifiedCount === 0) {
       throw new Error("Failed to save feedback");
