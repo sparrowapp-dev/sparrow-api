@@ -34,7 +34,7 @@ export class AiAssistantController {
    * @param aiAssistantService - Injected AiAssistantService to handle business logic.
    * * @param llmConversationService - Injected LlmConversationService to handle LLM conversation logic.
    */
-  constructor(private readonly aiAssistantService: AiAssistantService ) {}
+  constructor(private readonly aiAssistantService: AiAssistantService) {}
 
   @ApiOperation({
     summary: "Get a respose for AI assistant",
@@ -78,7 +78,10 @@ export class AiAssistantController {
 
   @Post("generate-prompt")
   @UseGuards(UserLimitGuard)
-  async GeneratePrompt(@Body() payload: ChatBotPayload, @Res() res: FastifyReply) {
+  async GeneratePrompt(
+    @Body() payload: ChatBotPayload,
+    @Res() res: FastifyReply,
+  ) {
     const data = await this.aiAssistantService.promptGeneration(payload);
     const response = new ApiResponseService(
       "Prompt Generated Successfully",

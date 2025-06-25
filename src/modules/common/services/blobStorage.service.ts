@@ -37,8 +37,29 @@ export class BlobStorageService {
       /**
        * Create an instance of BlobServiceClient using the connection string.
        */
+
+      const azureConnectionString = this.configService.get(
+        "azure.connectionString",
+      );
+
+      if (!azureConnectionString) {
+        console.warn(
+          "Azure Storage is disabled: No connection string provided.",
+        );
+        return;
+      }
+
+      const feedbackBlobContainer = this.configService.get(
+        "feedbackBlob.container",
+      );
+
+      if (!feedbackBlobContainer) {
+        console.warn("Feedback Blob is disabled: No container provided.");
+        return;
+      }
+
       this.blobServiceClient = BlobServiceClient.fromConnectionString(
-        AZURE_STORAGE_CONNECTION_STRING,
+        azureConnectionString,
       );
       /**
        * Get a ContainerClient instance for the 'feedbackfiles' container.
