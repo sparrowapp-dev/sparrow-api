@@ -186,36 +186,27 @@ export class CollectionRepository {
     throw new BadRequestException('Auth profile not found');
   }
 
+  const updatedAuth = {
+    ...payload,
+    authId, // preserve authId
+    updatedAt: new Date(),
+    updatedBy: {
+      id: user._id.toString(),
+      name: user.name,
+    },
+  };
+
+  // Build the new array with replacement
   const updatedAuths = existingAuths.map((auth: any) => {
-  if (auth.authId === authId) {
-    const updatedFields = Object.entries(payload).reduce((acc, [key, val]) => {
-      if (val !== undefined) {
-        acc[key] = val;
-      }
-      return acc;
-    }, {} as Record<string, any>);
+    if (auth.authId === authId) return updatedAuth;
 
-    return {
-      ...auth,
-      ...updatedFields,
-      updatedAt: new Date(),
-      updatedBy: {
-        id: user._id.toString(),
-        name: user.name,
-      },
-    };
-  }
+    // If defaultKey is being set in new one, clear it in all others
+    if (payload.defaultKey === true) {
+      return { ...auth, defaultKey: false };
+    }
 
-  if (payload.defaultKey === true) {
-    return {
-      ...auth,
-      defaultKey: false,
-    };
-  }
-
-  return auth;
-});
-
+    return auth;
+  });
 
   const updateDoc: any = {
     $set: {
@@ -228,7 +219,6 @@ export class CollectionRepository {
     },
   };
 
-  // Update selectedAuthType if defaultKey is set to true
   if (payload.defaultKey === true && payload.name) {
     updateDoc.$set.selectedAuthType = payload.name;
   }
@@ -243,6 +233,7 @@ export class CollectionRepository {
 
   return 'Auth profile updated successfully';
 }
+
 
 
 

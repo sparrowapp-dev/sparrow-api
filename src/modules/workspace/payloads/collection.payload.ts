@@ -296,18 +296,8 @@ export class authCollection {
   @ApiProperty({ example: "openai-conve-123" })
   defaultKey?: boolean;
 
-  @IsOptional()
-  @IsString()
-  @ApiProperty({ example: "openai-conve-123" })
-  bearerToken?: string;
-
-  @IsOptional()
   @ValidateNested()
-  @Type(() => BasicAuthDto)
-  basicAuth?: BasicAuthDto;
-
+  @Type(() => AuthContent)
   @IsOptional()
-  @ValidateNested()
-  @Type(() => ApiKeyDto)
-  apiKey?: ApiKeyDto;
+  auth?: AuthContent;
 }
