@@ -58,6 +58,15 @@ export class BlobStorageService {
         return;
       }
 
+      const aiConversationBLobContainer = this.configService.get(
+        "ai.conversationConatiner",
+      );
+
+      if (!aiConversationBLobContainer) {
+        console.warn("AI Conversation Blob is disabled: No container provided.");
+        return;
+      }
+
       this.blobServiceClient = BlobServiceClient.fromConnectionString(
         azureConnectionString,
       );
