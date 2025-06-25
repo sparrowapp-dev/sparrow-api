@@ -308,8 +308,8 @@ importers:
         version: 5.7.2
     optionalDependencies:
       '@sparrowapp-dev/stripe-billing':
-        specifier: ^1.1.0
-        version: 1.1.0(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)
+        specifier: ^1.1.1
+        version: 1.1.1(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)
 
 packages:
 
@@ -1996,8 +1996,8 @@ packages:
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
 
-  '@sparrowapp-dev/stripe-billing@1.1.0':
-    resolution: {integrity: sha512-PV1A1E7OtqM6HiehwiBtFN02luR6JujXewoxHd2bLbbVWXDUP+HVz2iYWVLd8vhrlmuHI0y9v1yJgKqvDlI4uA==, tarball: https://npm.pkg.github.com/download/@sparrowapp-dev/stripe-billing/1.1.0/bbd1a8337a5b41c9612a133e491df328c0b993ae}
+  '@sparrowapp-dev/stripe-billing@1.1.1':
+    resolution: {integrity: sha512-Cka8qrFjhk4yxqrolpo76JqhUz0QzL/mya6sP6l0aYG+Xo9iDNboA3j/k+nJroQ+4Am81CIhNEYKPyzDw19wlQ==, tarball: https://npm.pkg.github.com/download/@sparrowapp-dev/stripe-billing/1.1.1/f55b85c85c8f833e58ec782c2a794c0c7ef0ca37}
     peerDependencies:
       '@nestjs/common': ^10.0.0 || ^11.0.0
       '@nestjs/core': ^10.0.0 || ^11.0.0
@@ -8365,7 +8365,7 @@ snapshots:
 
   '@socket.io/component-emitter@3.1.2': {}
 
-  '@sparrowapp-dev/stripe-billing@1.1.0(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)':
+  '@sparrowapp-dev/stripe-billing@1.1.1(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.15)(@types/node@16.11.56)':
     dependencies:
       '@nestjs/common': 10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6)
       '@nestjs/config': 3.3.0(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.13)(rxjs@7.5.6))(rxjs@7.8.2)

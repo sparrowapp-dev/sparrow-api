@@ -227,6 +227,8 @@ export class StripeController {
         createSubscriptionDto.priceId,
         createSubscriptionDto.paymentMethodId,
         createSubscriptionDto.metadata,
+        createSubscriptionDto.trialPeriodDays,
+        createSubscriptionDto.seats,
       );
 
       return subscription;
@@ -689,12 +691,13 @@ export class StripeController {
           );
 
           // Extract hubId from the subscription schedule metadata
-          const scheduleHubId = this.extractHubIdFromSchedule(event.data.object);
+          const scheduleHubId = this.extractHubIdFromSchedule(
+            event.data.object,
+          );
 
           if (scheduleHubId) {
-            const teamWithScheduleUpdate = await this.stripeSubscriptionRepo.findTeamById(
-              scheduleHubId,
-            );
+            const teamWithScheduleUpdate =
+              await this.stripeSubscriptionRepo.findTeamById(scheduleHubId);
 
             this.stripeWebhookGateway.emitPaymentEvent(
               PaymentEventType.SUBSCRIPTION_SCHEDULE_UPDATED,
@@ -768,7 +771,10 @@ export class StripeController {
    * @returns The hubId string or null if not found
    */
   private extractHubIdFromSchedule(subscriptionSchedule: any): string | null {
-    if (!subscriptionSchedule.phases || subscriptionSchedule.phases.length === 0) {
+    if (
+      !subscriptionSchedule.phases ||
+      subscriptionSchedule.phases.length === 0
+    ) {
       return null;
     }
 
