@@ -325,6 +325,11 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: STRIPE_WEBHOOK
+            - name: AI_CONVERSATION_BLOB_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AI_CONVERSATION_BLOB_CONTAINER      
 
 ---
 apiVersion: v1
