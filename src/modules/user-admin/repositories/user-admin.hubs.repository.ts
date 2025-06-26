@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
+import { PaymentProvider } from "@src/modules/common/enum/billing.enum";
 import { Team } from "@src/modules/common/models/team.model";
 import { Db, ObjectId, WithId } from "mongodb";
 
@@ -135,12 +136,27 @@ export class AdminHubsRepository {
     try {
       const hubObjectId = new ObjectId(hubId);
 
-      await this.db
+      // Get existing team to preserve existing payment providers
+      const existingTeam = await this.db
         .collection(Collections.TEAM)
-        .updateOne(
-          { _id: hubObjectId },
-          { $set: { stripeCustomerId: customerId } },
-        );
+        .findOne({ _id: hubObjectId });
+
+      const existingProviders = existingTeam?.billing?.paymentProviders || [];
+
+      // Create or update Stripe provider in the array
+      const updatedProviders = this.createOrUpdateStripeProvider(
+        existingProviders,
+        customerId,
+      );
+
+      await this.db.collection(Collections.TEAM).updateOne(
+        { _id: hubObjectId },
+        {
+          $set: {
+            "billing.paymentProviders": updatedProviders,
+          },
+        },
+      );
     } catch (error) {
       console.error("Error updating hub Stripe customer ID:", error);
       throw new InternalServerErrorException(
@@ -150,33 +166,73 @@ export class AdminHubsRepository {
   }
 
   /**
+   * Create or update Stripe payment provider in the array format
+   * @param existingProviders Array of existing payment providers
+   * @param customerId The Stripe customer ID
+   * @returns Updated payment providers array
+   */
+  private createOrUpdateStripeProvider(
+    existingProviders: any[] = [],
+    customerId: string,
+  ): any[] {
+    const { v4: uuidv4 } = require("uuid");
+
+    // Create a copy of existing providers
+    const providers = [...existingProviders];
+
+    // Find existing Stripe provider
+    const existingIndex = providers.findIndex(
+      (p) => p.provider === PaymentProvider.STRIPE,
+    );
+
+    // Mark all others as not current if we're adding/updating Stripe
+    providers.forEach((p) => {
+      if (p.provider !== PaymentProvider.STRIPE) {
+        p.currentPaymentMethod = false;
+      }
+    });
+
+    // Create new Stripe provider entry
+    const stripeProvider = {
+      id: uuidv4(),
+      provider: PaymentProvider.STRIPE,
+      currentPaymentMethod: true,
+      customerId: customerId,
+      updatedAt: new Date(),
+    };
+
+    if (existingIndex >= 0) {
+      // Update existing Stripe provider
+      providers[existingIndex] = stripeProvider;
+    } else {
+      // Add new Stripe provider
+      providers.push(stripeProvider);
+    }
+
+    return providers;
+  }
+
+  /**
    * Update team feedback in billing object
    * @param hubId The team/hub ID
    * @param feedback The feedback string
    * @returns The update result
    */
-  async updateTeamFeedback(
-    hubId: string,
-    feedback: string,
-  ): Promise<any> {
+  async updateTeamFeedback(hubId: string, feedback: string): Promise<any> {
     try {
       const hubObjectId = new ObjectId(hubId);
 
-      return await this.db
-        .collection(Collections.TEAM)
-        .updateOne(
-          { _id: hubObjectId },
-          {
-            $set: {
-              "billing.feedback": feedback,
-            },
+      return await this.db.collection(Collections.TEAM).updateOne(
+        { _id: hubObjectId },
+        {
+          $set: {
+            "billing.feedback": feedback,
           },
-        );
+        },
+      );
     } catch (error) {
       console.error("Error updating team feedback:", error);
-      throw new InternalServerErrorException(
-        "Failed to update team feedback",
-      );
+      throw new InternalServerErrorException("Failed to update team feedback");
     }
   }
 }

@@ -47,6 +47,7 @@ import { StripeSubscriptionRepository } from "../repositories/stripe-subscriptio
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
+import { SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -235,38 +236,6 @@ export class StripeController {
     } catch (error) {
       throw new HttpException(
         error.message || "Failed to create subscription",
-        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles("user", "admin")
-  @Get("subscriptions/:id")
-  @ApiOperation({ summary: "Get a subscription by ID" })
-  @ApiParam({
-    name: "id",
-    description: "Stripe subscription ID",
-    example: "sub_12345",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Returns the subscription details",
-    type: SubscriptionResponseDto,
-  })
-  @ApiResponse({ status: 404, description: "Subscription not found" })
-  async getSubscription(
-    @Param("id") subscriptionId: string,
-  ): Promise<SubscriptionResponseDto> {
-    try {
-      this.checkStripeAvailability();
-
-      const subscription =
-        await this.stripeService.getSubscription(subscriptionId);
-      return { subscription };
-    } catch (error) {
-      throw new HttpException(
-        error.message || "Failed to get subscription",
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -547,7 +516,7 @@ export class StripeController {
           );
 
           // Only emit event if there's a status change that matters
-          if (event.data.object.status === "canceled") {
+          if (event.data.object.status === SubscriptionStatus.CANCELED) {
             // Determine the event type based on cancellation reason
             let eventType = PaymentEventType.SUBSCRIPTION_CANCELED;
 
@@ -583,7 +552,8 @@ export class StripeController {
 
           // If deletion was due to payment failure, use a specific event type
           if (
-            event.data.object.cancellation_details?.reason === "payment_failed"
+            event.data.object.cancellation_details?.reason ===
+            SubscriptionStatus.PAYMENT_FAILED
           ) {
             deletedEventType =
               PaymentEventType.SUBSCRIPTION_DELETED_PAYMENT_FAILED;

@@ -1,38 +1,33 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { StripeSubscriptionService } from "./stripe-subscription.service";
 
 /**
- * Service for scheduling stripe subscription-related tasks
+ * Service for scheduling billing-related maintenance tasks
  */
 @Injectable()
 export class StripeSchedulerService {
-  private readonly logger = new Logger(StripeSchedulerService.name);
-
   constructor(
     private readonly stripeSubscriptionService: StripeSubscriptionService,
   ) {}
 
   /**
-   * Runs daily to check for subscriptions that need action at the end of their billing cycle
-   * This handles cases where payment failed mid-cycle (especially upgrades) and the cycle has ended
+   * Runs daily to perform billing maintenance tasks:
+   * 1. Check for subscriptions that need action at the end of their billing cycle
+   * 2. Check for expired trials (both Stripe and manual) and revert to community plan
+   *
+   * This consolidated job handles both Stripe-managed and manually-managed billing scenarios
    */
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async handleEndOfCycleFailedPayments() {
-    this.logger.log(
-      "Running scheduled job to check for subscriptions requiring end-of-cycle actions",
-    );
-
+  @Cron(CronExpression.EVERY_10_SECONDS)
+  async handleBillingMaintenance() {
     try {
+      // Handle failed payments that require action at period end
       await this.stripeSubscriptionService.checkSubscriptionsRequiringEndOfCycleAction();
-      this.logger.log(
-        "Completed scheduled job for end-of-cycle payment failures",
-      );
+      // Handle expired trials (manual flows)
+      await this.stripeSubscriptionService.checkAndRevertExpiredTrials();
     } catch (error) {
-      this.logger.error(
-        `Error executing scheduled job for end-of-cycle payment failures: ${error.message}`,
-        error.stack,
-      );
+      console.error("Error during billing maintenance:", error);
+      throw error;
     }
   }
 }
