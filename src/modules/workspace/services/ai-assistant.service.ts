@@ -21,7 +21,7 @@ import { Thread } from "openai/resources/beta/threads/threads";
 import type { IncomingMessage } from "node:http";
 
 // import { GoogleGenAI } from "@google/genai";
-import Anthropic from "@anthropic-ai/sdk";
+import  { Anthropic , toFile } from '@anthropic-ai/sdk';
 
 // ---- Payload
 import {
@@ -59,6 +59,15 @@ import { UserLimitService } from "./userLimit.service";
 import { LimitCheckResult } from "@src/modules/common/enum/user-limit-enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
+import { MemoryStorageFile } from "@blazity/nest-file-fastify";
+import fs from "fs"
+import * as path from 'path';
+import { tmpdir } from 'os';
+import { v4 as uuidv4 } from 'uuid';
+import { BlobStorageService } from "@src/modules/common/services/blobStorage.service";
+import { ChatCompletionMessageParam } from "openai/resources/chat";
+import { MessageParam } from '@anthropic-ai/sdk/resources/messages';
+
 // import { GoogleGenAI } from "@google/genai";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
@@ -118,6 +127,7 @@ export class AiAssistantService {
     private readonly userService: UserService,
     private readonly teamRepository: TeamRepository,
     private readonly userLimitService: UserLimitService,
+    private readonly blobStorageService: BlobStorageService,
   ) {
     // Retrieve configuration from environment variables
     this.endpoint = this.configService.get("ai.endpoint");
@@ -749,8 +759,8 @@ export class AiAssistantService {
   }
 
   private async createOpenAIClient(
-    client: WebSocket,
     authKey: string,
+    client?: WebSocket,
   ): Promise<OpenAI | null> {
     try {
       const OpenAIclient = new OpenAI({
@@ -772,8 +782,8 @@ export class AiAssistantService {
   }
 
   private async createAnthropicClient(
-    client: WebSocket,
     authKey: string,
+    client?: WebSocket,
   ): Promise<Anthropic | null> {
     try {
       const Anthropiclient = new Anthropic({
@@ -1087,6 +1097,7 @@ export class AiAssistantService {
     temperature: number,
     topP: number,
     maxTokens: number,
+    fileSearch: boolean
   ): Promise<void> {
     // Return early if Anthropic client creation failed
     if (!Anthropicclient) return;
@@ -1099,16 +1110,16 @@ export class AiAssistantService {
     //   { role: "assistant", content: systemPrompt }
     // ];
 
-    type ChatMessage = {
-      role: Roles.user | Roles.assistant;
-      content: string;
-    };
+    // type ChatMessage = {
+    //   role: Roles.user | Roles.assistant;
+    //   content: string;
+    // };
 
-    let messages: ChatMessage[];
+    let messages: MessageParam [];
 
     if (typeof userInput === "string") {
       try {
-        messages = JSON.parse(userInput) as ChatMessage[];
+        messages = JSON.parse(userInput) as MessageParam [];
       } catch (err) {
         if (client.readyState === WebSocket.OPEN) {
           client.send(
@@ -1122,20 +1133,35 @@ export class AiAssistantService {
         return;
       }
     } else {
-      messages = userInput as ChatMessage[];
+      messages = userInput as MessageParam [];
     }
 
     try {
       // Handle streaming response
+      let stream;
+
       if (streamResponse === true) {
-        const stream = await Anthropicclient.messages.create({
-          messages: messages,
-          model: modelVersion,
-          temperature: temperature,
-          top_p: topP,
-          max_tokens: maxTokens > -1 ? maxTokens : 1024,
-          stream: true,
-        });
+        if (fileSearch === true) {
+          stream = await Anthropicclient.beta.messages.create({
+            model: modelVersion,
+            messages: messages,
+            temperature: temperature,
+            top_p: topP,
+            max_tokens: maxTokens > -1 ? maxTokens : 1024,
+            betas: ["files-api-2025-04-14"],
+            stream: true,
+          });
+        }
+        else {
+          stream = await Anthropicclient.messages.create({
+            messages: messages,
+            model: modelVersion,
+            temperature: temperature,
+            top_p: topP,
+            max_tokens: maxTokens > -1 ? maxTokens : 1024,
+            stream: true,
+          });
+        }
 
         // Signal stream start
         if (client.readyState === WebSocket.OPEN) {
@@ -1189,13 +1215,27 @@ export class AiAssistantService {
       }
       // Handle non-streaming response
       else {
-        const response = await Anthropicclient.messages.create({
-          model: modelVersion,
-          messages: messages,
-          temperature: temperature,
-          top_p: topP,
-          max_tokens: maxTokens > -1 ? maxTokens : 1024,
-        });
+        let response;
+        if (fileSearch === true) {
+          response = await Anthropicclient.beta.messages.create({
+            model: modelVersion,
+            messages: messages,
+            temperature: temperature,
+            top_p: topP,
+            max_tokens: maxTokens > -1 ? maxTokens : 1024,
+            betas: ["files-api-2025-04-14"],
+          });
+        }
+        else {
+          response = await Anthropicclient.messages.create({
+            model: modelVersion,
+            messages: messages,
+            temperature: temperature,
+            top_p: topP,
+            max_tokens: maxTokens > -1 ? maxTokens : 1024,
+          });
+        }
+        
 
         const data = response.content
           .map((block) => ("text" in block ? block.text : ""))
@@ -1463,17 +1503,17 @@ export class AiAssistantService {
     // ];
 
     // Message for Contextual Chatbot
-    type ChatMessage = {
-      role: Roles.system | Roles.user | Roles.assistant;
-      content: string;
-    };
+    // type ChatMessage = {
+    //   role: Roles.system | Roles.user | Roles.assistant;
+    //   content: string | Array<{ type: string; [key: string]: any }>;
+    // };
 
-    let messages: ChatMessage[];
+    let messages: ChatCompletionMessageParam[];
 
     if (modelVersion !== OpenAIModelVersion.GPT_o1_Mini) {
       if (typeof userInput === "string") {
         try {
-          messages = JSON.parse(userInput) as ChatMessage[];
+          messages = JSON.parse(userInput) as ChatCompletionMessageParam[];
         } catch (err) {
           if (client.readyState === WebSocket.OPEN) {
             client.send(
@@ -1487,7 +1527,7 @@ export class AiAssistantService {
           return;
         }
       } else {
-        messages = userInput as ChatMessage[];
+        messages = userInput as ChatCompletionMessageParam[];
       }
     }
 
@@ -1798,12 +1838,13 @@ export class AiAssistantService {
             frequencePenalty,
             maxTokens,
             topP,
+            fileSearch
           } = parsedData;
 
           // Only support OpenAI model currently
           if (model === Models.OpenAI) {
             // Create OpenAI client
-            const OpenAIclient = await this.createOpenAIClient(client, authKey);
+            const OpenAIclient = await this.createOpenAIClient(authKey, client);
 
             // Process the LLM request
             await this.openaiLLMService(
@@ -1825,8 +1866,8 @@ export class AiAssistantService {
           if (model === Models.Anthropic) {
             // Create OpenAI client
             const Anthropicclient = await this.createAnthropicClient(
-              client,
               authKey,
+              client,
             );
 
             // Process the LLM request
@@ -1840,6 +1881,7 @@ export class AiAssistantService {
               temperature,
               topP,
               maxTokens,
+              fileSearch
             );
             continue;
           }
@@ -2003,5 +2045,112 @@ export class AiAssistantService {
         "An error occurred while processing the request.",
       );
     }
+  }
+
+
+
+  public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string): Promise<{ fileId: string; fileUrl: string }[]> {
+    if (!docs?.length || !model || !authKey) {
+      throw new BadRequestException('Missing required fields');
+    }
+    
+    if (model === Models.OpenAI) {
+      const OpenAIclient = await this.createOpenAIClient(authKey);
+      const { writeFile, unlink } = fs.promises;
+      
+      const results: { fileId: string; fileUrl: string; }[] = [];
+      
+      for (const doc of docs) {
+
+        // Upload document to azure blob 
+        const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
+
+        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+        try {
+          await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+
+          const file = await OpenAIclient.files.create({
+            file: fs.createReadStream(tempFilePath),
+            purpose: 'assistants',
+          });
+
+          results.push({ fileId: file.id, fileUrl: uploadFile });
+        } catch (err) {
+          console.error(`Upload failed for ${doc.fieldname}:`, err);
+        } finally {
+          unlink(tempFilePath).catch(() =>
+            console.warn(`Failed to delete temp file: ${tempFilePath}`)
+          );
+        }
+      }
+      return results;
+    }
+
+    if (model === Models.Anthropic) {
+
+      const AnthropicClient = await this.createAnthropicClient(authKey);
+      const { writeFile, unlink } = fs.promises;
+
+      const results: { fileId: string; fileUrl: string; }[] = [];
+
+      for (const doc of docs) {
+
+        // Upload document to azure blob 
+        const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
+        console.log(doc)
+
+        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+        try {
+          await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+
+          const file = await AnthropicClient.beta.files.upload({
+            file: await toFile(fs.createReadStream(tempFilePath), undefined, { type: doc.mimetype }),
+            betas: ['files-api-2025-04-14'],
+          });
+
+          results.push({ fileId: file.id, fileUrl: uploadFile });
+        } catch (err) {
+          console.error(`Upload failed for ${doc.fieldname}:`, err);
+        } finally {
+          unlink(tempFilePath).catch(() =>
+            console.warn(`Failed to delete temp file: ${tempFilePath}`)
+          );
+        }
+      }
+      return results;
+    }
+
+    // if (model === Models.Google) {
+
+    //   const GeminiClient = await initializeGenAI(authKey);
+    //   const { writeFile, unlink } = fs.promises;
+
+    //   const results: { fileId: string; fileUrl: string; }[] = [];
+
+    //   for (const doc of docs) {
+
+    //     // Upload document to azure blob 
+    //     const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
+
+    //     const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+    //     try {
+    //       await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+
+    //       const file = await GeminiClient.files.upload({
+    //         file: tempFilePath
+    //       });
+
+    //       results.push({ fileId: file.uri, fileUrl: uploadFile });
+    //     } catch (err) {
+    //       console.error(`Upload failed for ${doc.fieldname}:`, err);
+    //     } finally {
+    //       unlink(tempFilePath).catch(() =>
+    //         console.warn(`Failed to delete temp file: ${tempFilePath}`)
+    //       );
+    //     }
+    //   }
+    //   return results;
+    // }
+    throw new BadRequestException(`Unsupported model: ${model}`);
   }
 }
