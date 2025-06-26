@@ -2,6 +2,7 @@ import { Injectable, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
+import { TeamsPlan } from "@src/modules/common/models/team.model";
 
 /**
  * Repository for managing Stripe subscription data in the database
@@ -19,10 +20,7 @@ export class StripeSubscriptionRepository {
    */
   async updateTeamPlan(
     hubId: string,
-    planData: {
-      id: ObjectId;
-      name: string;
-    },
+    planData: TeamsPlan,
     subscriptionData: {
       billing?: any;
     },
@@ -86,27 +84,27 @@ export class StripeSubscriptionRepository {
    * @param planData The plan data to update (id and name)
    * @returns The update result
    */
-  async updateWorkspacePlans(
-    teamId: string,
-    planData: {
-      id: ObjectId;
-      name: string;
-    },
-  ): Promise<UpdateResult> {
-    try {
-      return await this.db.collection(Collections.WORKSPACE).updateMany(
-        { "team.id": teamId },
-        {
-          $set: {
-            "plan.id": planData.id,
-            "plan.name": planData.name,
-          },
-        },
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
+  // async updateWorkspacePlans(
+  //   teamId: string,
+  //   planData: {
+  //     id: ObjectId;
+  //     name: string;
+  //   },
+  // ): Promise<UpdateResult> {
+  //   try {
+  //     return await this.db.collection(Collections.WORKSPACE).updateMany(
+  //       { "team.id": teamId },
+  //       {
+  //         $set: {
+  //           "plan.id": planData.id,
+  //           "plan.name": planData.name,
+  //         },
+  //       },
+  //     );
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Find teams with failed payment subscriptions that have expired billing cycles
