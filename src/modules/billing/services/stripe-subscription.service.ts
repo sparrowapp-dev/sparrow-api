@@ -12,6 +12,7 @@ import {
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import { v4 as uuidv4 } from "uuid";
+import { TeamsPlan } from "@src/modules/common/models/team.model";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -93,6 +94,8 @@ export class StripeSubscriptionService {
         if (!communityPlan) {
           return;
         }
+         communityPlan.id = communityPlan._id;
+         delete communityPlan._id;
 
         // Get cancellation reason if available
         const cancellationReason =
@@ -112,19 +115,21 @@ export class StripeSubscriptionService {
         // Update team to community plan with canceled billing status
         await this.updateTeamPlanWithBilling(
           metadata.hubId,
-          {
-            id: communityPlan._id,
-            name: communityPlan.name,
-          },
+          communityPlan,
           billingDetails,
         );
 
         // Update associated workspaces
-        await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-          id: communityPlan._id,
-          name: communityPlan.name,
-        });
-      }
+        // const workspaceUpdateResult =
+        //   await this.stripeSubscriptionRepo.updateWorkspacePlans(
+        //     metadata.hubId,
+        //     {
+        //       id: communityPlan._id,
+        //       name: communityPlan.name,
+        //     },
+        //   );
+
+      } 
     } catch (error) {
       throw error;
     }
@@ -245,10 +250,7 @@ export class StripeSubscriptionService {
         // Update only the billing status, but keep the current plan
         await this.updateTeamPlanWithBilling(
           metadata.hubId,
-          {
-            id: team.plan.id,
-            name: team.plan.name,
-          },
+          team.plan,
           billingDetails,
         );
       } else if (isFirstPayment) {
@@ -260,29 +262,30 @@ export class StripeSubscriptionService {
           return;
         }
 
+         communityPlan.id = communityPlan._id;
+         delete communityPlan._id;
+
         await this.updateTeamPlanWithBilling(
           metadata.hubId,
-          {
-            id: communityPlan._id,
-            name: communityPlan.name,
-          },
+          communityPlan,
           billingDetails,
         );
 
         // Also update all workspaces associated with this team to Community plan
+        // const workspaceUpdateResult =
+        //   await this.stripeSubscriptionRepo.updateWorkspacePlans(
+        //     metadata.hubId,
+        //     {
+        //       id: communityPlan._id,
+        //       name: communityPlan.name,
+        //     },
+        //   );
 
-        await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-          id: communityPlan._id,
-          name: communityPlan.name,
-        });
       } else {
         // For other types of payment failures, just update the billing status
         await this.updateTeamPlanWithBilling(
           metadata.hubId,
-          {
-            id: team.plan.id,
-            name: team.plan.name,
-          },
+          team.plan,
           billingDetails,
         );
       }
@@ -321,6 +324,9 @@ export class StripeSubscriptionService {
         console.error(`Plan not found with name: ${metadata.planName}`);
         return;
       }
+
+       plan.id = plan._id;
+       delete plan._id;
 
       // Check if team exists
       const team = await this.stripeSubscriptionRepo.findTeamById(
@@ -395,19 +401,17 @@ export class StripeSubscriptionService {
 
       await this.updateTeamPlanWithBilling(
         metadata.hubId,
-        {
-          id: plan._id,
-          name: plan.name,
-        },
+        plan,
         billingDetails,
       );
 
       // Update all workspaces associated with this team
+      // const workspaceUpdateResult =
+      //   await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
+      //     id: plan._id,
+      //     name: plan.name,
+      //   });
 
-      await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-        id: plan._id,
-        name: plan.name,
-      });
     } catch (error) {
       throw error;
     }
@@ -441,6 +445,10 @@ export class StripeSubscriptionService {
         if (!communityPlan) {
           return;
         }
+
+        communityPlan.id = communityPlan._id;
+        delete communityPlan._id;
+
         const updatedBilling = {
           ...team.billing,
           status: SubscriptionStatus.VOIDED,
@@ -451,19 +459,17 @@ export class StripeSubscriptionService {
 
         await this.stripeSubscriptionRepo.updateTeamPlan(
           metadata.hubId,
-          {
-            id: communityPlan._id,
-            name: communityPlan.name,
-          },
+          communityPlan,
           {
             billing: updatedBilling,
           },
         );
 
-        await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-          id: communityPlan._id,
-          name: communityPlan.name,
-        });
+        // await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
+        //   id: communityPlan._id,
+        //   name: communityPlan.name,
+        // });
+
       }
     } catch (error) {
       throw error;
@@ -505,6 +511,9 @@ export class StripeSubscriptionService {
         return;
       }
 
+       communityPlan.id = communityPlan._id;
+       delete communityPlan._id;
+
       // Get cancellation reason if available
       const cancellationReason =
         subscription.cancellation_details?.reason || "unknown";
@@ -525,19 +534,17 @@ export class StripeSubscriptionService {
       // Update team to community plan with deleted billing status
       await this.updateTeamPlanWithBilling(
         metadata.hubId,
-        {
-          id: communityPlan._id,
-          name: communityPlan.name,
-        },
+        communityPlan,
         billingDetails,
       );
 
       // Update associated workspaces
+      // const workspaceUpdateResult =
+      //   await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
+      //     id: communityPlan._id,
+      //     name: communityPlan.name,
+      //   });
 
-      await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-        id: communityPlan._id,
-        name: communityPlan.name,
-      });
     } catch (error) {
       throw error;
     }
@@ -615,7 +622,7 @@ export class StripeSubscriptionService {
    */
   private async updateTeamPlanWithBilling(
     hubId: string,
-    plan: { id: any; name: string },
+    plan: TeamsPlan,
     billingDetails: any,
   ): Promise<void> {
     const updateResult = await this.stripeSubscriptionRepo.updateTeamPlan(
@@ -648,25 +655,28 @@ export class StripeSubscriptionService {
       throw new NotFoundException(`Plan not found with name: ${planName}`);
     }
 
+    plan.id = plan._id;
+    delete plan._id;
+
+
     // Create billing details object
     const billingDetails = this.extractBillingDetails(subscription);
 
     // Update the team with the new plan
     await this.updateTeamPlanWithBilling(
       hubId,
-      {
-        id: plan._id,
-        name: plan.name,
-      },
+      plan,
       billingDetails,
     );
 
     // Also update all workspaces associated with this team
+    // const workspaceUpdateResult =
+    //   await this.stripeSubscriptionRepo.updateWorkspacePlans(hubId, {
+    //     id: plan._id,
+    //     name: plan.name,
+    //   });
 
-    await this.stripeSubscriptionRepo.updateWorkspacePlans(hubId, {
-      id: plan._id,
-      name: plan.name,
-    });
+
   }
 
   /**
@@ -817,6 +827,9 @@ export class StripeSubscriptionService {
         return;
       }
 
+       communityPlan.id = communityPlan._id;
+       delete communityPlan._id;
+
       // Process each team with expired trial
       for (const team of teamsWithExpiredTrials) {
         try {
@@ -834,21 +847,18 @@ export class StripeSubscriptionService {
           // Update team to community plan
           await this.updateTeamPlanWithBilling(
             team._id.toString(),
-            {
-              id: communityPlan._id,
-              name: communityPlan.name,
-            },
+            communityPlan,
             expiredTrialBillingDetails,
           );
 
           // Update all associated workspaces to community plan
-          await this.stripeSubscriptionRepo.updateWorkspacePlans(
-            team._id.toString(),
-            {
-              id: communityPlan._id,
-              name: communityPlan.name,
-            },
-          );
+          // await this.stripeSubscriptionRepo.updateWorkspacePlans(
+          //   team._id.toString(),
+          //   {
+          //     id: communityPlan._id,
+          //     name: communityPlan.name,
+          //   },
+          // );
         } catch (error) {
           console.error(
             `Failed to revert expired trial for team ${team._id}:`,
@@ -922,10 +932,7 @@ export class StripeSubscriptionService {
 
       await this.stripeSubscriptionRepo.updateTeamPlan(
         hubId,
-        {
-          id: team.plan.id,
-          name: team.plan.name,
-        },
+        team.plan,
         {
           billing: updatedBilling,
         },

@@ -38,8 +38,6 @@ import {
   UpdateTeamDto,
 } from "@src/modules/identity/payloads/team.payload";
 import { TeamService } from "@src/modules/identity/services/team.service";
-import { PlanService } from "@src/modules/identity/services/plan.service";
-import { Plan } from "@src/modules/common/models/plan.model";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @Controller("api/admin")
@@ -49,7 +47,6 @@ export class AdminHubsController {
   constructor(
     private readonly hubsService: AdminHubsService,
     private readonly teamService: TeamService,
-    private readonly planService: PlanService,
   ) {}
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("admin")
@@ -206,7 +203,7 @@ export class AdminHubsController {
   @ApiResponse({ status: 400, description: "Fetch Team Request Failed" })
   async getTeam(@Param("teamId") teamId: string, @Res() res: FastifyReply) {
     const data = await this.teamService.get(teamId);
-    const plan = await this.planService.get(data?.plan?.id?.toString());
+    const plan = data?.plan;
     const responseObject = { ...data, plan: plan };
     const responseData = new ApiResponseService(
       "Success",
