@@ -89,13 +89,15 @@ export class StripeSubscriptionService {
       // Process subscription cancellations
       if (subscription.status === SubscriptionStatus.CANCELED) {
         // Find the community plan for downgrade
-        const communityPlan =
-          await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
+        const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+          PlanName.COMMUNITY,
+        );
         if (!communityPlan) {
           return;
         }
-         communityPlan.id = communityPlan._id;
-         delete communityPlan._id;
+        // Ensure the community plan has an ID for the update
+        communityPlan.id = communityPlan._id;
+        delete communityPlan._id;
 
         // Get cancellation reason if available
         const cancellationReason =
@@ -109,6 +111,7 @@ export class StripeSubscriptionService {
             ? new Date(subscription.canceled_at * 1000)
             : new Date(),
           cancellation_reason: cancellationReason,
+          seats: metadata?.userCount || 1,
           updatedBy: "system-stripe-webhook",
         };
 
@@ -118,18 +121,7 @@ export class StripeSubscriptionService {
           communityPlan,
           billingDetails,
         );
-
-        // Update associated workspaces
-        // const workspaceUpdateResult =
-        //   await this.stripeSubscriptionRepo.updateWorkspacePlans(
-        //     metadata.hubId,
-        //     {
-        //       id: communityPlan._id,
-        //       name: communityPlan.name,
-        //     },
-        //   );
-
-      } 
+      }
     } catch (error) {
       throw error;
     }
@@ -204,6 +196,7 @@ export class StripeSubscriptionService {
         status: SubscriptionStatus.PAYMENT_FAILED,
         collection_method: invoice.collection_method,
         latest_invoice: invoice.id,
+        seats: metadata?.userCount || 1,
         failed_invoice_url: invoice.hosted_invoice_url,
         next_payment_attempt: invoice.next_payment_attempt
           ? new Date(invoice.next_payment_attempt * 1000)
@@ -255,32 +248,21 @@ export class StripeSubscriptionService {
         );
       } else if (isFirstPayment) {
         // For first payment failures (subscription creation), downgrade to Community plan
-        // because the customer has never had access to the paid plan
-        const communityPlan =
-          await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
+        const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+          PlanName.COMMUNITY,
+        );
         if (!communityPlan) {
           return;
         }
 
-         communityPlan.id = communityPlan._id;
-         delete communityPlan._id;
+        communityPlan.id = communityPlan._id;
+        delete communityPlan._id;
 
         await this.updateTeamPlanWithBilling(
           metadata.hubId,
           communityPlan,
           billingDetails,
         );
-
-        // Also update all workspaces associated with this team to Community plan
-        // const workspaceUpdateResult =
-        //   await this.stripeSubscriptionRepo.updateWorkspacePlans(
-        //     metadata.hubId,
-        //     {
-        //       id: communityPlan._id,
-        //       name: communityPlan.name,
-        //     },
-        //   );
-
       } else {
         // For other types of payment failures, just update the billing status
         await this.updateTeamPlanWithBilling(
@@ -325,8 +307,9 @@ export class StripeSubscriptionService {
         return;
       }
 
-       plan.id = plan._id;
-       delete plan._id;
+      // Ensure the plan has an ID for the update
+      plan.id = plan._id;
+      delete plan._id;
 
       // Check if team exists
       const team = await this.stripeSubscriptionRepo.findTeamById(
@@ -371,6 +354,7 @@ export class StripeSubscriptionService {
         status: SubscriptionStatus.ACTIVE,
         collection_method: invoice.collection_method,
         latest_invoice: invoice.id,
+        seats: metadata?.userCount || 1,
         invoice_url: invoice.hosted_invoice_url,
         paid_at: invoice.status_transitions?.paid_at
           ? new Date(invoice.status_transitions.paid_at * 1000)
@@ -404,14 +388,6 @@ export class StripeSubscriptionService {
         plan,
         billingDetails,
       );
-
-      // Update all workspaces associated with this team
-      // const workspaceUpdateResult =
-      //   await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-      //     id: plan._id,
-      //     name: plan.name,
-      //   });
-
     } catch (error) {
       throw error;
     }
@@ -440,12 +416,14 @@ export class StripeSubscriptionService {
 
       // Only update if the team has a billing record and the voided invoice is the latest one
       if (team.billing && team.billing.latest_invoice === invoice.id) {
-        const communityPlan =
-          await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
+        const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+          PlanName.COMMUNITY,
+        );
         if (!communityPlan) {
           return;
         }
 
+        // Ensure the community plan has an ID for the update
         communityPlan.id = communityPlan._id;
         delete communityPlan._id;
 
@@ -457,19 +435,11 @@ export class StripeSubscriptionService {
           updatedBy: "system-stripe-webhook",
         };
 
-        await this.stripeSubscriptionRepo.updateTeamPlan(
+        await this.updateTeamPlanWithBilling(
           metadata.hubId,
           communityPlan,
-          {
-            billing: updatedBilling,
-          },
+          updatedBilling,
         );
-
-        // await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-        //   id: communityPlan._id,
-        //   name: communityPlan.name,
-        // });
-
       }
     } catch (error) {
       throw error;
@@ -505,14 +475,15 @@ export class StripeSubscriptionService {
       }
 
       // Find the community plan for downgrade
-      const communityPlan =
-        await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
+      const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+        PlanName.COMMUNITY,
+      );
       if (!communityPlan) {
         return;
       }
 
-       communityPlan.id = communityPlan._id;
-       delete communityPlan._id;
+      communityPlan.id = communityPlan._id;
+      delete communityPlan._id;
 
       // Get cancellation reason if available
       const cancellationReason =
@@ -527,6 +498,7 @@ export class StripeSubscriptionService {
           ? new Date(subscription.ended_at * 1000)
           : new Date(),
         in_trial: false,
+        seats: metadata?.userCount || 1,
         cancellation_reason: cancellationReason,
         updatedBy: "system-stripe-webhook",
       };
@@ -537,14 +509,6 @@ export class StripeSubscriptionService {
         communityPlan,
         billingDetails,
       );
-
-      // Update associated workspaces
-      // const workspaceUpdateResult =
-      //   await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-      //     id: communityPlan._id,
-      //     name: communityPlan.name,
-      //   });
-
     } catch (error) {
       throw error;
     }
@@ -655,28 +619,15 @@ export class StripeSubscriptionService {
       throw new NotFoundException(`Plan not found with name: ${planName}`);
     }
 
+    // Ensure the plan has an ID for the update
     plan.id = plan._id;
     delete plan._id;
-
 
     // Create billing details object
     const billingDetails = this.extractBillingDetails(subscription);
 
     // Update the team with the new plan
-    await this.updateTeamPlanWithBilling(
-      hubId,
-      plan,
-      billingDetails,
-    );
-
-    // Also update all workspaces associated with this team
-    // const workspaceUpdateResult =
-    //   await this.stripeSubscriptionRepo.updateWorkspacePlans(hubId, {
-    //     id: plan._id,
-    //     name: plan.name,
-    //   });
-
-
+    await this.updateTeamPlanWithBilling(hubId, plan, billingDetails);
   }
 
   /**
@@ -709,6 +660,7 @@ export class StripeSubscriptionService {
       interval: plan.interval,
       interval_count: plan.interval_count,
       status: subscription.status,
+      seats: metadata?.userCount || 1,
       collection_method: subscription.collection_method,
       latest_invoice: subscription.latest_invoice,
       billingType: this.determineBillingType(subscription, metadata),
@@ -820,15 +772,16 @@ export class StripeSubscriptionService {
       }
 
       // Find the community plan for downgrade
-      const communityPlan =
-        await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
+      const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+        PlanName.COMMUNITY,
+      );
       if (!communityPlan) {
         console.error("Community plan not found");
         return;
       }
 
-       communityPlan.id = communityPlan._id;
-       delete communityPlan._id;
+      communityPlan.id = communityPlan._id;
+      delete communityPlan._id;
 
       // Process each team with expired trial
       for (const team of teamsWithExpiredTrials) {
@@ -850,15 +803,6 @@ export class StripeSubscriptionService {
             communityPlan,
             expiredTrialBillingDetails,
           );
-
-          // Update all associated workspaces to community plan
-          // await this.stripeSubscriptionRepo.updateWorkspacePlans(
-          //   team._id.toString(),
-          //   {
-          //     id: communityPlan._id,
-          //     name: communityPlan.name,
-          //   },
-          // );
         } catch (error) {
           console.error(
             `Failed to revert expired trial for team ${team._id}:`,
@@ -929,14 +873,7 @@ export class StripeSubscriptionService {
         scheduledDowngrade: scheduledDowngrade,
         updatedBy: "system-stripe-webhook",
       };
-
-      await this.stripeSubscriptionRepo.updateTeamPlan(
-        hubId,
-        team.plan,
-        {
-          billing: updatedBilling,
-        },
-      );
+      await this.updateTeamPlanWithBilling(hubId, team.plan, updatedBilling);
     } catch (error) {
       throw error;
     }
