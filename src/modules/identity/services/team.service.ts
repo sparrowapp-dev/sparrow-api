@@ -140,9 +140,10 @@ export class TeamService {
     for (let i = 0; i < plans.length; i++) {
       if (plans[i].name === defaultHubPlan) {
         hubPlan = {
+          ...plans[i],
           id: plans[i]._id,
-          name: plans[i].name,
         };
+        delete hubPlan._id;
       }
     }
 
