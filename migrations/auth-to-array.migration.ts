@@ -41,7 +41,7 @@ export class AuthToArrayMigration implements OnModuleInit {
           !Array.isArray(authObject)
         ) {
           // Determine which auth type has actual data
-          let authType = "Unknown";
+          let authType = "";
           const { bearerToken, basicAuth = {}, apiKey = {} } = authObject;
 
           const hasBearer = bearerToken && bearerToken.trim() !== "";
