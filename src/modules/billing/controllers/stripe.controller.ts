@@ -489,6 +489,7 @@ export class StripeController {
         case "customer.subscription.created":
           await this.stripeSubscriptionService.handleSubscriptionCreated(
             event.data.object,
+            event.id,
           );
           // Get the updated team data to send to client
           const teamCreated = await this.stripeSubscriptionRepo.findTeamById(
@@ -508,6 +509,7 @@ export class StripeController {
           // Only handle for specific status changes, like cancellation
           await this.stripeSubscriptionService.handleSubscriptionUpdated(
             event.data.object,
+            event.id,
           );
 
           // Get the updated team data
@@ -540,6 +542,7 @@ export class StripeController {
         case "customer.subscription.deleted":
           await this.stripeSubscriptionService.handleSubscriptionDeleted(
             event.data.object,
+            event.id,
           );
 
           // Get the updated team data
@@ -579,6 +582,7 @@ export class StripeController {
 
           await this.stripeSubscriptionService.handleInvoicePaymentFailed(
             event.data.object,
+            event.id,
           );
 
           // Extract metadata from the invoice to find the related team
@@ -605,6 +609,7 @@ export class StripeController {
         case "invoice.paid":
           await this.stripeSubscriptionService.handleInvoicePaid(
             event.data.object,
+            event.id,
           );
 
           // Extract metadata from the invoice to find the related team
@@ -631,6 +636,7 @@ export class StripeController {
         case "invoice.voided":
           await this.stripeSubscriptionService.handleInvoiceVoided(
             event.data.object,
+            event.id,
           );
 
           // Extract metadata from the invoice to find the related team
@@ -658,6 +664,7 @@ export class StripeController {
         case "subscription_schedule.updated":
           await this.stripeSubscriptionService.handleSubscriptionScheduleUpdated(
             event.data.object,
+            event.id,
           );
 
           // Extract hubId from the subscription schedule metadata

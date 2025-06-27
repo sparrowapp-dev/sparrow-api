@@ -42,8 +42,12 @@ export class StripeSubscriptionService {
   /**
    * Handle subscription creation event
    * @param subscription The Stripe subscription object
+   * @param eventId The Stripe event ID
    */
-  async handleSubscriptionCreated(subscription: any): Promise<void> {
+  async handleSubscriptionCreated(
+    subscription: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract metadata and validate required fields
       const { isValid, metadata } = this.validateMetadata(
@@ -64,6 +68,7 @@ export class StripeSubscriptionService {
         metadata.hubId,
         metadata.planName,
         subscription,
+        eventId,
       );
     } catch (error) {
       throw error;
@@ -73,8 +78,12 @@ export class StripeSubscriptionService {
   /**
    * Handle subscription update event - process cancellations and payment failures
    * @param subscription The updated Stripe subscription object
+   * @param eventId The Stripe event ID
    */
-  async handleSubscriptionUpdated(subscription: any): Promise<void> {
+  async handleSubscriptionUpdated(
+    subscription: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract metadata and validate required fields
       const { isValid, metadata } = this.validateMetadata(
@@ -113,6 +122,7 @@ export class StripeSubscriptionService {
           cancellation_reason: cancellationReason,
           seats: metadata?.userCount || 1,
           updatedBy: "system-stripe-webhook",
+          event_id: eventId,
         };
 
         // Update team to community plan with canceled billing status
@@ -130,8 +140,12 @@ export class StripeSubscriptionService {
   /**
    * Handle invoice payment failed event
    * @param invoice The failed invoice object from Stripe
+   * @param eventId The Stripe event ID
    */
-  async handleInvoicePaymentFailed(invoice: any): Promise<void> {
+  async handleInvoicePaymentFailed(
+    invoice: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract subscription ID and metadata
       const { subscriptionId, metadata } = this.extractInvoiceData(invoice);
@@ -210,6 +224,7 @@ export class StripeSubscriptionService {
           billingReason === "subscription_cycle",
         failed_at: new Date(),
         updatedBy: "system-stripe-webhook",
+        event_id: eventId,
 
         // payment providers
         paymentProviders: this.createOrUpdatePaymentProvider(
@@ -279,8 +294,9 @@ export class StripeSubscriptionService {
   /**
    * Handle invoice paid event (replacing invoice.payment_succeeded)
    * @param invoice The paid invoice object from Stripe
+   * @param eventId The Stripe event ID
    */
-  async handleInvoicePaid(invoice: any): Promise<void> {
+  async handleInvoicePaid(invoice: any, eventId?: string): Promise<void> {
     try {
       // Extract subscription ID and metadata
       const { subscriptionId, metadata } = this.extractInvoiceData(invoice);
@@ -369,6 +385,7 @@ export class StripeSubscriptionService {
         ),
         updatedBy: "system-stripe-webhook",
         in_trial: isTrialOngoing || false,
+        event_id: eventId,
 
         //payment providers
         paymentProviders: this.createOrUpdatePaymentProvider(
@@ -396,8 +413,9 @@ export class StripeSubscriptionService {
   /**
    * Handle invoice voided event
    * @param invoice The voided invoice object from Stripe
+   * @param eventId The Stripe event ID
    */
-  async handleInvoiceVoided(invoice: any): Promise<void> {
+  async handleInvoiceVoided(invoice: any, eventId?: string): Promise<void> {
     try {
       // Extract metadata
       const { metadata } = this.extractInvoiceData(invoice);
@@ -433,6 +451,7 @@ export class StripeSubscriptionService {
           invoice_voided: true,
           voided_at: new Date(),
           updatedBy: "system-stripe-webhook",
+          event_id: eventId,
         };
 
         await this.updateTeamPlanWithBilling(
@@ -449,8 +468,12 @@ export class StripeSubscriptionService {
   /**
    * Handle subscription deletion event
    * @param subscription The deleted Stripe subscription object
+   * @param eventId The Stripe event ID
    */
-  async handleSubscriptionDeleted(subscription: any): Promise<void> {
+  async handleSubscriptionDeleted(
+    subscription: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract metadata and validate required fields
       const { isValid, metadata } = this.validateMetadata(
@@ -501,6 +524,7 @@ export class StripeSubscriptionService {
         seats: metadata?.userCount || 1,
         cancellation_reason: cancellationReason,
         updatedBy: "system-stripe-webhook",
+        event_id: eventId,
       };
 
       // Update team to community plan with deleted billing status
@@ -616,11 +640,13 @@ export class StripeSubscriptionService {
    * @param hubId The team/hub ID
    * @param planName The name of the plan to apply
    * @param subscription The Stripe subscription object for billing details
+   * @param eventId Optional Stripe event ID for tracking
    */
   private async updateTeamAndWorkspacesWithPlan(
     hubId: string,
     planName: string,
     subscription: any,
+    eventId?: string,
   ): Promise<void> {
     // Find the plan by name
     const plan = await this.stripeSubscriptionRepo.findPlanByName(planName);
@@ -633,7 +659,7 @@ export class StripeSubscriptionService {
     delete plan._id;
 
     // Create billing details object
-    const billingDetails = this.extractBillingDetails(subscription);
+    const billingDetails = this.extractBillingDetails(subscription, eventId);
 
     // Update the team with the new plan
     await this.updateTeamPlanWithBilling(hubId, plan, billingDetails);
@@ -642,9 +668,10 @@ export class StripeSubscriptionService {
   /**
    * Extract billing details from a subscription object
    * @param subscription The Stripe subscription object
+   * @param eventId Optional Stripe event ID for tracking
    * @returns Object containing relevant billing details
    */
-  private extractBillingDetails(subscription: any): any {
+  private extractBillingDetails(subscription: any, eventId?: string): any {
     const items = subscription.items?.data?.[0] || {};
     const plan = items.plan || subscription.plan || {};
     const { metadata } = this.extractInvoiceData(subscription) || {};
@@ -674,6 +701,7 @@ export class StripeSubscriptionService {
       latest_invoice: subscription.latest_invoice,
       billingType: this.determineBillingType(subscription, metadata),
       updatedBy: "system-stripe-webhook",
+      event_id: eventId,
 
       // payment providers
       paymentProviders: this.createOrUpdatePaymentProvider(
@@ -827,9 +855,11 @@ export class StripeSubscriptionService {
   /**
    * Handle subscription schedule updated event
    * @param subscriptionSchedule The updated Stripe subscription schedule object
+   * @param eventId The Stripe event ID
    */
   async handleSubscriptionScheduleUpdated(
     subscriptionSchedule: any,
+    eventId?: string,
   ): Promise<void> {
     try {
       // Find metadata in the phases - look for scheduled downgrade information
@@ -881,6 +911,7 @@ export class StripeSubscriptionService {
         ...currentBilling,
         scheduledDowngrade: scheduledDowngrade,
         updatedBy: "system-stripe-webhook",
+        event_id: eventId,
       };
       await this.updateTeamPlanWithBilling(hubId, team.plan, updatedBilling);
     } catch (error) {
