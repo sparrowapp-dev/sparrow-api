@@ -1,4 +1,4 @@
-import { Limits } from "@src/modules/common/models/plan.model";
+import { Limits, Plan } from "@src/modules/common/models/plan.model";
 import {
   IsBoolean,
   IsMongoId,
@@ -29,12 +29,7 @@ export class CreateOrUpdatePlanDto {
   limits: Limits;
 }
 
-export class PlanDto {
+export class PlanDto extends Plan {
   @IsMongoId()
-  @IsNotEmpty()
   id: ObjectId;
-
-  @IsString()
-  @IsNotEmpty()
-  name: string;
 }

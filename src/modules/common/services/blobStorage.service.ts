@@ -16,12 +16,23 @@ import { FeedbackFiles } from "../models/feedback.model";
 export class BlobStorageService {
   private blobServiceClient: BlobServiceClient;
   private containerClient: ContainerClient;
+  private aiContainerClient: ContainerClient;
 
   /**
    * Constructor to initialize BlobStorageService with required dependencies.
    * @param configService - Injected ConfigService to access environment variables.
    */
   constructor(private configService: ConfigService) {
+    const AZURE_STORAGE_CONNECTION_STRING = this.configService.get(
+      "azure.connectionString",
+    );
+    const feedbackBlobContainer = this.configService.get(
+      "feedbackBlob.container",
+    );
+    const aiConversationBLobContainer = this.configService.get(
+      "ai.conversationConatiner"
+    )
+
     try {
       /**
        * Create an instance of BlobServiceClient using the connection string.
@@ -47,6 +58,15 @@ export class BlobStorageService {
         return;
       }
 
+      const aiConversationBLobContainer = this.configService.get(
+        "ai.conversationConatiner",
+      );
+
+      if (!aiConversationBLobContainer) {
+        console.warn("AI Conversation Blob is disabled: No container provided.");
+        return;
+      }
+
       this.blobServiceClient = BlobServiceClient.fromConnectionString(
         azureConnectionString,
       );
@@ -55,6 +75,12 @@ export class BlobStorageService {
        */
       this.containerClient = this.blobServiceClient.getContainerClient(
         feedbackBlobContainer,
+      );
+      /**
+       * Get a ContainerClient instance for the 'AI Conversation Doc' container.
+       */
+      this.aiContainerClient = this.blobServiceClient.getContainerClient(
+        aiConversationBLobContainer,
       );
     } catch (e) {
       console.error(e);
@@ -113,4 +139,70 @@ export class BlobStorageService {
     };
     return blobResponse;
   }
+
+  /**
+   * Uploads a AI Document to Azure Blob Storage.
+   * @param file - file that needs to be uploaded, represented by MemoryStorageFile.
+   * @returns AI Doc object containing metadata about the uploaded file.
+   */
+  async uploadAiDoc(file: MemoryStorageFile): Promise<string> {
+    const fileId = uuidv4();
+    const name = await this.getFileExtension(file.mimetype);
+    const uniqueFileName = `${fileId}-${
+      file.fieldname
+    }.${name}`;
+    if (!this.aiContainerClient) {
+      throw new BadRequestException(
+        "Azure blob container is not connected to backend server.",
+      );
+    }
+    const blockBlobClient =
+      this.aiContainerClient.getBlockBlobClient(uniqueFileName);
+
+    // Set Content-Type and Content-Disposition headers
+    const uploadOptions = {
+      blobHTTPHeaders: {
+        blobContentType: file.mimetype, // Set the MIME type
+        blobContentDisposition: "inline", // Display the image inline in the browser
+      },
+    };
+
+    await blockBlobClient.upload(
+      file.buffer,
+      file.buffer.length,
+      uploadOptions,
+    );
+    
+    const docURL = blockBlobClient.url;
+    return docURL;
+  }
+
+  async deleteAiDocByUrl(fileUrl: string): Promise<string> {
+  if (!this.aiContainerClient) {
+    throw new BadRequestException(
+      'Azure blob container is not connected to backend server.',
+    );
+  }
+
+  try {
+    const url = new URL(fileUrl);
+
+    // Extract the blob name from the URL (everything after the last '/')
+    const blobName = decodeURIComponent(url.pathname.split('/').pop() || '');
+
+    if (!blobName) {
+      throw new BadRequestException('Invalid file URL');
+    }
+
+    const blockBlobClient = this.aiContainerClient.getBlockBlobClient(blobName);
+
+    const result = await blockBlobClient.deleteIfExists();
+
+    return "success"
+
+  } catch (error) {
+    console.error('Error deleting file from Azure Blob Storage:', error.message);
+  }
+}
+
 }

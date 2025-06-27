@@ -11,7 +11,6 @@ import { TeamService } from "@src/modules/identity/services/team.service";
 export class HubInviteGuard implements CanActivate {
   constructor(
     private readonly teamService: TeamService,
-    private readonly planService: PlanService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -30,8 +29,7 @@ export class HubInviteGuard implements CanActivate {
       teamUserEmails.add(email.toLowerCase());
     });
 
-    const teamPlanId = userTeam?.plan.id;
-    const planData = await this.planService.get(teamPlanId.toString());
+    const planData = userTeam?.plan;
     if (teamUserEmails.size > planData?.limits?.usersPerHub?.value + 1) {
       throw new ForbiddenException("Plan limit reached");
     }

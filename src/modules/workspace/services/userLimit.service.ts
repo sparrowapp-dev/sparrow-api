@@ -5,6 +5,8 @@ import { PlanRepository } from "@src/modules/identity/repositories/plan.reposito
 import { parseWhitelistedEmailList } from "@src/modules/common/util/email.parser.util";
 import { ConfigService } from "@nestjs/config";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { TeamService } from "@src/modules/identity/services/team.service";
+import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 
 /**
  * UserLimitService - Handles logic for user request limits and usage logging.
@@ -24,6 +26,7 @@ export class UserLimitService {
     private readonly planRepository: PlanRepository,
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
+    private readonly teamRepository: TeamRepository
     // optional
     // private readonly contextService: ContextService,
   ) {
@@ -39,8 +42,7 @@ export class UserLimitService {
    */
   async checkLimitAndLogRequest(
     userId: string,
-    teamId: string,
-    planId: string,
+    teamId: string
   ): Promise<LimitCheckResult> {
     const whitelistEmails = await this.configService.get(
       "whitelist.userEmails",
@@ -65,7 +67,8 @@ export class UserLimitService {
         return LimitCheckResult.LIMIT_REACHED;
       }
     } else {
-      const plan = await this.planRepository.get(planId);
+      const team = await this.teamRepository.get(teamId);
+      const plan = team.plan;
 
       // fetch limit from the plan details
       const limit = plan?.limits?.aiRequestsPerMonth?.value;

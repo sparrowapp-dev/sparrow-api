@@ -7,6 +7,7 @@ import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository"
 import { AdminMembersRepository } from "../repositories/user-admin.members.repository";
 import { WorkspaceService } from "@src/modules/workspace/services/workspace.service";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { PaymentProvider } from "@src/modules/common/enum/billing.enum";
 import { DecodedUserObject } from "@src/types/fastify";
 
 @Injectable()
@@ -159,7 +160,35 @@ export class AdminMembersService {
         throw new NotFoundException("Hub not found");
       }
 
-      return hub.stripeCustomerId || null;
+      // Check new billing structure with array-based payment providers
+      if (
+        hub.billing?.paymentProviders &&
+        Array.isArray(hub.billing.paymentProviders)
+      ) {
+        // Find the current Stripe payment provider
+        const stripeProvider = hub.billing.paymentProviders.find(
+          (provider: any) =>
+            provider.provider === PaymentProvider.STRIPE &&
+            provider.currentPaymentMethod === true,
+        );
+
+        if (stripeProvider?.customerId) {
+          return stripeProvider.customerId;
+        }
+
+        // If no current provider found, try to find any Stripe provider
+        const anyStripeProvider = hub.billing.paymentProviders.find(
+          (provider: any) =>
+            provider.provider === PaymentProvider.STRIPE && provider.customerId,
+        );
+
+        if (anyStripeProvider?.customerId) {
+          return anyStripeProvider.customerId;
+        }
+      }
+
+      // Fallback to legacy structure for backward compatibility
+      return hub.stripeCustomerId || hub.billing?.stripeCustomerId || null;
     } catch (error) {
       console.error("Error fetching Stripe customer ID:", error);
       throw error;

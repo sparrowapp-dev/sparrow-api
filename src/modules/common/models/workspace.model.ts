@@ -16,7 +16,6 @@ import { CollectionDto } from "./collection.model";
 import { ObjectId } from "mongodb";
 import { EnvironmentDto } from "./environment.model";
 import { TestflowInfoDto } from "./testflow.model";
-import { Plan } from "./team.model";
 
 export enum WorkspaceType {
   PRIVATE = "PRIVATE",
@@ -126,9 +125,6 @@ export class Workspace {
   @ValidateNested({ each: true })
   @IsOptional()
   users?: UserDto[];
-
-  @IsNotEmpty()
-  plan: Plan;
 
   @IsDate()
   @IsOptional()

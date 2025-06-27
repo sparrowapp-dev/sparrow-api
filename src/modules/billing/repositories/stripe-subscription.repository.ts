@@ -1,14 +1,14 @@
-import { Injectable, Inject, Logger } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
+import { SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
+import { TeamsPlan } from "@src/modules/common/models/team.model";
 
 /**
  * Repository for managing Stripe subscription data in the database
  */
 @Injectable()
 export class StripeSubscriptionRepository {
-  private readonly logger = new Logger(StripeSubscriptionRepository.name);
-
   constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
 
   /**
@@ -20,10 +20,7 @@ export class StripeSubscriptionRepository {
    */
   async updateTeamPlan(
     hubId: string,
-    planData: {
-      id: ObjectId;
-      name: string;
-    },
+    planData: TeamsPlan,
     subscriptionData: {
       billing?: any;
     },
@@ -47,10 +44,6 @@ export class StripeSubscriptionRepository {
         .collection(Collections.TEAM)
         .updateOne({ _id: teamId }, updateDoc);
     } catch (error) {
-      this.logger.error(
-        `Error updating team plan: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }
@@ -66,10 +59,6 @@ export class StripeSubscriptionRepository {
         .collection(Collections.PLAN)
         .findOne({ name: planName });
     } catch (error) {
-      this.logger.error(
-        `Error finding plan with name ${planName}: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }
@@ -85,10 +74,6 @@ export class StripeSubscriptionRepository {
         .collection(Collections.TEAM)
         .findOne({ _id: new ObjectId(teamId) });
     } catch (error) {
-      this.logger.error(
-        `Error finding team with ID ${teamId}: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }
@@ -99,71 +84,27 @@ export class StripeSubscriptionRepository {
    * @param planData The plan data to update (id and name)
    * @returns The update result
    */
-  async updateWorkspacePlans(
-    teamId: string,
-    planData: {
-      id: ObjectId;
-      name: string;
-    },
-  ): Promise<UpdateResult> {
-    try {
-      return await this.db.collection(Collections.WORKSPACE).updateMany(
-        { "team.id": teamId },
-        {
-          $set: {
-            "plan.id": planData.id,
-            "plan.name": planData.name,
-          },
-        },
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error updating workspace plans for team ${teamId}: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Get a subscription from Stripe by ID
-   * @param subscriptionId The Stripe subscription ID
-   * @returns The subscription object from Stripe or null if not found
-   */
-  async getSubscription(subscriptionId: string): Promise<any> {
-    try {
-      // First try to find the subscription in our database
-      const team = await this.db.collection(Collections.TEAM).findOne({
-        "billing.subscriptionId": subscriptionId,
-      });
-
-      if (team && team.billing) {
-        return {
-          id: team.billing.subscriptionId,
-          customer: team.billing.stripeCustomerId,
-          status: team.billing.status,
-          current_period_start: team.billing.current_period_start,
-          current_period_end: team.billing.current_period_end,
-          metadata: {
-            hubId: team._id.toString(),
-            planName: team.plan.name,
-          },
-        };
-      }
-
-      // If not found in our database, log a warning
-      this.logger.warn(`Subscription ${subscriptionId} not found in database`);
-
-      // Return a minimal object with the ID to prevent null errors
-      return { id: subscriptionId };
-    } catch (error) {
-      this.logger.error(
-        `Error retrieving subscription ${subscriptionId}: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
+  // async updateWorkspacePlans(
+  //   teamId: string,
+  //   planData: {
+  //     id: ObjectId;
+  //     name: string;
+  //   },
+  // ): Promise<UpdateResult> {
+  //   try {
+  //     return await this.db.collection(Collections.WORKSPACE).updateMany(
+  //       { "team.id": teamId },
+  //       {
+  //         $set: {
+  //           "plan.id": planData.id,
+  //           "plan.name": planData.name,
+  //         },
+  //       },
+  //     );
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Find teams with failed payment subscriptions that have expired billing cycles
@@ -174,22 +115,34 @@ export class StripeSubscriptionRepository {
     currentDate: Date,
   ): Promise<any[]> {
     try {
-      // Find teams with payment_failed status where:
-      // 1. They have the requires_action_at_period_end flag set to true
-      // 2. The current_period_end date has passed
       return await this.db
         .collection(Collections.TEAM)
         .find({
-          "billing.status": "payment_failed",
+          "billing.status": SubscriptionStatus.PAYMENT_FAILED,
           "billing.requires_action_at_period_end": true,
           "billing.current_period_end": { $lt: currentDate },
         })
         .toArray();
     } catch (error) {
-      this.logger.error(
-        `Error finding teams with expired failed subscriptions: ${error.message}`,
-        error.stack,
-      );
+      throw error;
+    }
+  }
+
+  /**
+   * Find teams with expired trials that need to be reverted to community plan
+   * @param currentDate The current date to compare against trial end dates
+   * @returns Array of team documents with expired trials
+   */
+  async findTeamsWithExpiredTrials(currentDate: Date): Promise<any[]> {
+    try {
+      return await this.db
+        .collection(Collections.TEAM)
+        .find({
+          "billing.billingType": "trial",
+          "billing.current_period_end": { $lt: currentDate },
+        })
+        .toArray();
+    } catch (error) {
       throw error;
     }
   }
