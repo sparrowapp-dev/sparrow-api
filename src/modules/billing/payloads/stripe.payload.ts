@@ -6,6 +6,7 @@ import {
   IsObject,
   IsBoolean,
   IsNotEmpty,
+  IsNumber,
 } from "class-validator";
 
 export class CreateCustomerDto {
@@ -101,6 +102,23 @@ export class CreateSubscriptionDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: "Trial period in days (optional)",
+    example: 14,
+  })
+  @IsOptional()
+  @IsNumber()
+  trialPeriodDays?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Number of seats/quantity for the subscription (optional, defaults to 1)",
+    example: 5,
+  })
+  @IsOptional()
+  @IsNumber()
+  seats?: number;
 }
 
 export class SubscriptionResponseDto {

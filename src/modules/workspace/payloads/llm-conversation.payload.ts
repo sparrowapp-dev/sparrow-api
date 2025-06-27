@@ -150,6 +150,22 @@ export class ConversationModel {
   authoredBy?: string;
 
   /**
+   * Author or user who initiated the conversation.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ example: "[file_1, file_2]" })
+  fileId?: [];
+
+  /**
+   * Author or user who initiated the conversation.
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ example: "[blobStorage url]" })
+  fileURL?: [];
+
+  /**
    * Array of message entries in the conversation.
    */
   @IsOptional()

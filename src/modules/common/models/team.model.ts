@@ -18,6 +18,7 @@ import { Type } from "class-transformer";
 import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
+import { Plan } from "./plan.model";
 
 export class logoDto {
   @IsString()
@@ -37,12 +38,9 @@ export class logoDto {
   size?: number;
 }
 
-export class Plan {
+export class TeamsPlan extends Plan {
   @IsMongoId()
   id: ObjectId;
-
-  @IsString()
-  name: string;
 }
 
 export class Team {
@@ -55,7 +53,7 @@ export class Team {
   description?: string;
 
   @IsNotEmpty()
-  plan: Plan;
+  plan: TeamsPlan;
 
   @IsString()
   @IsOptional()

@@ -38,8 +38,6 @@ import {
   UpdateTeamDto,
 } from "@src/modules/identity/payloads/team.payload";
 import { TeamService } from "@src/modules/identity/services/team.service";
-import { PlanService } from "@src/modules/identity/services/plan.service";
-import { Plan } from "@src/modules/common/models/plan.model";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @Controller("api/admin")
@@ -49,7 +47,6 @@ export class AdminHubsController {
   constructor(
     private readonly hubsService: AdminHubsService,
     private readonly teamService: TeamService,
-    private readonly planService: PlanService,
   ) {}
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("admin")
@@ -205,8 +202,8 @@ export class AdminHubsController {
   @ApiResponse({ status: 200, description: "Fetch Team Request Received" })
   @ApiResponse({ status: 400, description: "Fetch Team Request Failed" })
   async getTeam(@Param("teamId") teamId: string, @Res() res: FastifyReply) {
-    let data = await this.teamService.get(teamId);
-    const plan = await this.planService.get(data?.plan?.id?.toString());
+    const data = await this.teamService.get(teamId);
+    const plan = data?.plan;
     const responseObject = { ...data, plan: plan };
     const responseData = new ApiResponseService(
       "Success",
@@ -312,5 +309,49 @@ export class AdminHubsController {
     );
 
     return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @Post("hub-feedback")
+  @ApiOperation({ summary: "Submit billing feedback" })
+  @ApiResponse({ status: 201, description: "Feedback submitted successfully" })
+  async submitHubFeedback(
+    @Body() { hubId, feedback }: { hubId: string; feedback: string },
+    @Res() res: FastifyReply,
+  ) {
+    try {
+      if (!hubId || feedback === undefined) {
+        const responseData = new ApiResponseService(
+          "hubId is required and feedback must be provided",
+          HttpStatusCode.BAD_REQUEST,
+          null,
+        );
+        return res.status(HttpStatusCode.BAD_REQUEST).send(responseData);
+      }
+
+      const result = await this.hubsService.submitHubFeedback(hubId, feedback);
+
+      const responseData = new ApiResponseService(
+        "Feedback submitted successfully",
+        HttpStatusCode.CREATED,
+        result,
+      );
+
+      return res.status(HttpStatusCode.CREATED).send(responseData);
+    } catch (error) {
+      const statusCode =
+        error.message === "Hub not found"
+          ? HttpStatusCode.NOT_FOUND
+          : HttpStatusCode.BAD_REQUEST;
+
+      const responseData = new ApiResponseService(
+        error.message || "Failed to submit feedback",
+        statusCode,
+        null,
+      );
+
+      return res.status(statusCode).send(responseData);
+    }
   }
 }

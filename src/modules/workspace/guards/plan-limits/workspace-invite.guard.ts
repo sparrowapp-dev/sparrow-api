@@ -12,7 +12,6 @@ import { WorkspaceService } from "@src/modules/workspace/services/workspace.serv
 export class WorkspaceInviteGuard implements CanActivate {
   constructor(
     private readonly teamService: TeamService,
-    private readonly planService: PlanService,
     private readonly workspaceService: WorkspaceService,
   ) {}
 
@@ -34,8 +33,8 @@ export class WorkspaceInviteGuard implements CanActivate {
       teamUserEmails.add(email.toLowerCase());
     });
 
-    const teamPlanId = userTeam?.plan.id;
-    const planData = await this.planService.get(teamPlanId.toString());
+    
+    const planData = userTeam?.plan;
     if (teamUserEmails.size > planData?.limits?.usersPerHub?.value + 1) {
       throw new ForbiddenException("Plan limit reached");
     }
