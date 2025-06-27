@@ -24,8 +24,9 @@ export class LlmConversationService {
     id?: string,
   ): Promise<ConversationModel[] | ConversationModel | null> {
     try {
+      const encryptedApiKey = this.encryptionService.encrypt(apiKey);
       const conversations =
-        await this.llmConversationRepository.getConversations(provider, apiKey);
+        await this.llmConversationRepository.getConversations(provider, apiKey, encryptedApiKey);
 
       if (!conversations) {
         return id ? null : [];

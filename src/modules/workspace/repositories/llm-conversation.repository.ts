@@ -27,11 +27,12 @@ export class LlmConversationRepository {
   async getConversations(
     provider: string,
     apiKey: string,
+    encryptedApiKey: string
   ): Promise<any[] | null> {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
     // Encrypt the incoming apiKey
-    const encryptedApiKey = this.encryptionService.encrypt(apiKey);
+    // const encryptedApiKey = this.encryptionService.encrypt(apiKey);
 
     const document = await collection.findOne({
       [providerField]: {
