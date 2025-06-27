@@ -48,6 +48,7 @@ export class LlmConversationRepository {
     const providerEntry = document[providerField].find(
       (entry: { value: string }) => entry.value === encryptedApiKey,
     );
+    providerEntry.value = this.encryptionService.decrypt(providerEntry.value);
 
     const conversations = providerEntry?.conversations;
     await new Promise((resolve) => setTimeout(resolve, 10000));
