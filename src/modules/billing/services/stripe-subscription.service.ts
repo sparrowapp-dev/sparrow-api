@@ -600,6 +600,15 @@ export class StripeSubscriptionService {
     if (updateResult.matchedCount === 0) {
       throw new NotFoundException(`Team not found with ID: ${hubId}`);
     }
+
+    // Create billing history record after successful update
+    if (updateResult.modifiedCount > 0) {
+      await this.stripeSubscriptionRepo.createBillingHistory(
+        hubId,
+        billingDetails,
+        plan,
+      );
+    }
   }
 
   /**
@@ -863,7 +872,7 @@ export class StripeSubscriptionService {
         originalSubscription: scheduledDowngradeMetadata.original_subscription,
         downgradeAtPeriodEnd:
           scheduledDowngradeMetadata.downgrade_at_period_end === "true",
-        userCount: scheduledDowngradeMetadata.userCount,
+        seats: scheduledDowngradeMetadata.userCount,
         scheduledAt: new Date(),
         updatedBy: "system-stripe-webhook",
       };

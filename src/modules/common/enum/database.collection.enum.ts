@@ -15,5 +15,6 @@ export enum Collections {
   USERINVITES = "userinvites",
   AILOGS = "ailogs",
   USERLIMITLOGS = "userlimitlogs",
-  LLMCONVERSATION = "llmconversation"
+  LLMCONVERSATION = "llmconversation",
+  BILLINGHISTORY = "billinghistory"
 }

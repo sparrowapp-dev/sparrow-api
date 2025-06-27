@@ -79,34 +79,6 @@ export class StripeSubscriptionRepository {
   }
 
   /**
-   * Updates all workspaces associated with a team to have the same plan
-   * @param teamId The team/hub ID
-   * @param planData The plan data to update (id and name)
-   * @returns The update result
-   */
-  // async updateWorkspacePlans(
-  //   teamId: string,
-  //   planData: {
-  //     id: ObjectId;
-  //     name: string;
-  //   },
-  // ): Promise<UpdateResult> {
-  //   try {
-  //     return await this.db.collection(Collections.WORKSPACE).updateMany(
-  //       { "team.id": teamId },
-  //       {
-  //         $set: {
-  //           "plan.id": planData.id,
-  //           "plan.name": planData.name,
-  //         },
-  //       },
-  //     );
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // }
-
-  /**
    * Find teams with failed payment subscriptions that have expired billing cycles
    * @param currentDate The current date to compare against billing cycle end dates
    * @returns Array of team documents with expired failed subscriptions
@@ -144,6 +116,45 @@ export class StripeSubscriptionRepository {
         .toArray();
     } catch (error) {
       throw error;
+    }
+  }
+
+  /**
+   * Create a billing history record for a team
+   * @param hubId The team/hub ID
+   * @param billing The complete billing object
+   * @param plan The complete plan object
+   * @returns Promise<void>
+   */
+  async createBillingHistory(
+    hubId: string,
+    billing: any,
+    plan: any,
+  ): Promise<void> {
+    try {
+      const historyEntry = {
+        billing: billing,
+        plan: plan,
+        timestamp: new Date(),
+      };
+
+      await this.db.collection(Collections.BILLINGHISTORY).updateOne(
+        { hubId: hubId },
+        {
+          $push: { history: historyEntry },
+          $set: { updatedAt: new Date() },
+          $setOnInsert: {
+            hubId: hubId,
+            createdAt: new Date(),
+          },
+        },
+        { upsert: true },
+      );
+    } catch (error) {
+      console.error(
+        `Failed to create billing history for team ${hubId}:`,
+        error,
+      );
     }
   }
 }
