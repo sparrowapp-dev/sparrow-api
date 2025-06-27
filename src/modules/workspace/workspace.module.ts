@@ -67,6 +67,7 @@ import { UserLimitRepository } from "./repositories/userLimit.repository";
 import { LlmConversationService } from "./services/llm-conversation.service";
 import { LlmConversationRepository } from "./repositories/llm-conversation.repository";
 import { LlmConversationController } from "./controllers/llm-conversation.controller";
+import { EncryptionService } from "../common/services/encryption.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -117,6 +118,7 @@ import { LlmConversationController } from "./controllers/llm-conversation.contro
     MockServerService,
     UserLimitService,
     UserLimitRepository,
+    EncryptionService
   ],
   exports: [
     CollectionService,
