@@ -69,11 +69,12 @@ export class LlmConversationRepository {
   async insertConversation(
     provider: string,
     apiKey: string,
+    encryptedApiKey: string,
     conversation: ConversationModel
   ): Promise<string> {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
-    const encryptedApiKey = this.encryptionService.encrypt(apiKey);
+    // const encryptedApiKey = this.encryptionService.encrypt(apiKey);
 
     const conversationWithId = {
       ...conversation,
@@ -170,13 +171,14 @@ export class LlmConversationRepository {
   async updateConversationData(
     provider: string,
     apiKey: string,
+    encryptedApiKey: string,
     conversationId: string,
     updateOps: Record<string, any>
   ): Promise<void> {
     try {
       const collection = this.db.collection(Collections.LLMCONVERSATION);
       const providerField = provider.toLowerCase();
-      const encryptedApiKey = this.encryptionService.encrypt(apiKey);
+      // const encryptedApiKey = this.encryptionService.encrypt(apiKey);
 
       if (!updateOps || Object.keys(updateOps).length === 0) return;
 
@@ -203,10 +205,10 @@ export class LlmConversationRepository {
     }
   }
 
-  async deleteConversation(provider: string, apiKey: string, conversationId: string): Promise<void> {
+  async deleteConversation(provider: string, apiKey: string, conversationId: string, encryptedApiKey: string): Promise<void> {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
-    const encryptedApiKey = this.encryptionService.encrypt(apiKey);
+    // const encryptedApiKey = this.encryptionService.encrypt(apiKey);
 
     // Step 1: Find the provider doc
     const providerDoc = await collection.findOne({
