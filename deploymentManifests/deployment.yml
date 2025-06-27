@@ -361,6 +361,12 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: AI_CONVERSATION_BLOB_CONTAINER
+            - name: ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-secret
+                  key: ENCRYPTION_SECRET      
+      
 
 ---
 apiVersion: v1
