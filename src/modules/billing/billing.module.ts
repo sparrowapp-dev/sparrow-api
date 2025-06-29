@@ -3,9 +3,11 @@ import { ConfigModule } from "@nestjs/config";
 import { StripeController } from "./controllers/stripe.controller";
 import { PaymentMethodsController } from "./controllers/payment-methods.controller";
 import { StripeSubscriptionRepository } from "./repositories/stripe-subscription.repository";
+import { BillingAuditRepository } from "./repositories/billing-audit.repository";
 import { StripeSubscriptionService } from "./services/stripe-subscription.service";
 import { StripeWebhookGateway } from "./gateways/stripe-webhook.gateway";
 import { StripeSchedulerService } from "./services/stripe-scheduler.service";
+import { BillingAuditService } from "./services/billing-audit.service";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -29,6 +31,8 @@ export class BillingModule {
 
     const providers: Provider[] = [
       StripeSubscriptionRepository,
+      BillingAuditRepository,
+      BillingAuditService,
       StripeSubscriptionService,
       StripeWebhookGateway,
       StripeSchedulerService,
@@ -37,6 +41,8 @@ export class BillingModule {
     const exports: Provider[] = [
       StripeSubscriptionService,
       StripeSubscriptionRepository,
+      BillingAuditRepository,
+      BillingAuditService,
     ];
 
     // Only add Stripe if the module was successfully imported

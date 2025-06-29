@@ -1,6 +1,6 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
-import { SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
+import { BillingType, SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
 
@@ -110,51 +110,12 @@ export class StripeSubscriptionRepository {
       return await this.db
         .collection(Collections.TEAM)
         .find({
-          "billing.billingType": "trial",
+          "billing.billingType": BillingType.TRIAL,
           "billing.current_period_end": { $lt: currentDate },
         })
         .toArray();
     } catch (error) {
       throw error;
-    }
-  }
-
-  /**
-   * Create a billing history record for a team
-   * @param hubId The team/hub ID
-   * @param billing The complete billing object
-   * @param plan The complete plan object
-   * @returns Promise<void>
-   */
-  async createBillingHistory(
-    hubId: string,
-    billing: any,
-    plan: any,
-  ): Promise<void> {
-    try {
-      const historyEntry = {
-        billing: billing,
-        plan: plan,
-        timestamp: new Date(),
-      };
-
-      await this.db.collection(Collections.BILLINGHISTORY).updateOne(
-        { hubId: hubId },
-        {
-          $push: { history: historyEntry },
-          $set: { updatedAt: new Date() },
-          $setOnInsert: {
-            hubId: hubId,
-            createdAt: new Date(),
-          },
-        },
-        { upsert: true },
-      );
-    } catch (error) {
-      console.error(
-        `Failed to create billing history for team ${hubId}:`,
-        error,
-      );
     }
   }
 }
