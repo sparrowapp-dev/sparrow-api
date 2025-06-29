@@ -8,6 +8,7 @@ import { StripeSubscriptionService } from "./services/stripe-subscription.servic
 import { StripeWebhookGateway } from "./gateways/stripe-webhook.gateway";
 import { StripeSchedulerService } from "./services/stripe-scheduler.service";
 import { BillingAuditService } from "./services/billing-audit.service";
+import { StripeWebhookHelper } from "./helpers/stripe-webhook.helper";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -36,6 +37,7 @@ export class BillingModule {
       StripeSubscriptionService,
       StripeWebhookGateway,
       StripeSchedulerService,
+      StripeWebhookHelper,
     ];
     const controllers = [];
     const exports: Provider[] = [
