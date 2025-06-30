@@ -10,6 +10,7 @@ import { UpdatesController } from "./controllers/updates.controller";
 import { AiAssistantController } from "./controllers/ai-assistant.controller";
 import { ChatbotStatsController } from "./controllers/chatbot-stats.controller";
 import { TestflowController } from "./controllers/testflow.controller";
+import { SalesEmailController } from "./controllers/sales-email.controller";
 
 // ---- Repository
 import { WorkspaceRepository } from "./repositories/workspace.repository";
@@ -22,6 +23,7 @@ import { UpdatesRepository } from "./repositories/updates.repository";
 import { AiAssistantRepository } from "./repositories/ai-assistant.repository";
 import { ChatbotStatsRepository } from "./repositories/chatbot-stats.repositoy";
 import { TestflowRepository } from "./repositories/testflow.repository";
+import { SalesEmailRepository } from "./repositories/sales-email.repository";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -50,6 +52,7 @@ import { AiAssistantService } from "./services/ai-assistant.service";
 import { ChatbotStatsService } from "./services/chatbot-stats.service";
 import { TestflowService } from "./services/testflow.service";
 import { TeamUserService } from "../identity/services/team-user.service";
+import { SalesEmailService } from "./services/sales-email.service";
 
 // ---- Gateway
 import {
@@ -118,7 +121,9 @@ import { EncryptionService } from "../common/services/encryption.service";
     MockServerService,
     UserLimitService,
     UserLimitRepository,
-    EncryptionService
+    EncryptionService,
+    SalesEmailService,
+    SalesEmailRepository,
   ],
   exports: [
     CollectionService,
@@ -139,7 +144,9 @@ import { EncryptionService } from "../common/services/encryption.service";
     TestflowService,
     TestflowRepository,
     UserLimitRepository,
-    UserLimitService
+    UserLimitService,
+    SalesEmailService,
+    SalesEmailRepository,
   ],
   controllers: [
     WorkSpaceController,
@@ -153,6 +160,7 @@ import { EncryptionService } from "../common/services/encryption.service";
     ChatbotStatsController,
     TestflowController,
     MockServerController,
+    SalesEmailController,
   ],
 })
 export class WorkspaceModule {}

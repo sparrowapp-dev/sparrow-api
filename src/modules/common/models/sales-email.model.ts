@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsDateString,
   IsNotEmpty,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
@@ -20,19 +21,21 @@ export class SalesEmail {
   @IsNotEmpty()
   isHubCreated: boolean;
 
-  //   @IsNotEmpty()
-  //   @IsObject()
-  //   limits: {};
+  @IsString()
+  @IsOptional()
+  companyName?: string;
+
+  @IsNumber()
+  @IsOptional()
+  inviteCount?: number;
+
+  @IsString()
+  @IsOptional()
+  customerFirstName?: string;
 
   @IsDateString()
   createdAt: Date;
 
   @IsDateString()
   updatedAt: Date;
-
-  @IsString()
-  createdBy: string;
-
-  @IsString()
-  updatedBy: string;
 }
