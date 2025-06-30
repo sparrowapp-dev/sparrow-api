@@ -364,7 +364,7 @@ spec:
             - name: ENCRYPTION_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: release-api-secret
+                  name: sparrow-api-secret
                   key: ENCRYPTION_SECRET      
       
 
