@@ -33,11 +33,11 @@ export class SalesEmailService {
     sendSalesEmailDto: SendSalesEmail,
   ): Promise<InsertOneResult<SalesEmail>> {
     // Hardcoded admin key for comparison
-    const HARDCODED_ADMIN_KEY = "mySecretAdminKey123";
+    const ADMIN_KEY = this.configService.get("sparrowAdmin.adminKey");
 
     if (
       !sendSalesEmailDto?.adminKey ||
-      sendSalesEmailDto.adminKey !== HARDCODED_ADMIN_KEY
+      sendSalesEmailDto.adminKey !== ADMIN_KEY
     ) {
       throw new BadRequestException("Invalid Admin key");
     }
