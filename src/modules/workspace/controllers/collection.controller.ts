@@ -168,30 +168,6 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Get('auth-profiles/:collectionId')
-  @ApiOperation({
-    summary: 'Get all auth profiles for a collection',
-    description: 'Fetches all auth profiles stored in the given collection.',
-  })
-  @UseGuards(JwtAuthGuard)
-  @ApiResponse({ status: 200, description: 'List of auth profiles returned' })
-  @ApiResponse({ status: 404, description: 'Collection not found' })
-  async getAuthProfiles(
-    @Param('collectionId') collectionId: string,
-    @Res() res: FastifyReply,
-    @Req() req: ExtendedFastifyRequest,
-  ) {
-    const user = req.user;
-    const authProfiles = await this.collectionService.getAuthProfiles(collectionId, user);
-
-    const responseData = new ApiResponseService(
-      'Success',
-      HttpStatusCode.OK,
-      authProfiles,
-    );
-
-    return res.status(responseData.httpStatusCode).send(responseData);
-  }
 
   @Put(":collectionId/workspace/:workspaceId")
   @ApiOperation({
@@ -228,6 +204,51 @@ export class collectionController {
       HttpStatusCode.OK,
       collection,
     );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get('auth-profiles/:collectionId')
+  @ApiOperation({
+    summary: 'Get all auth profiles for a collection',
+    description: 'Fetches all auth profiles stored in the given collection.',
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: 'List of auth profiles returned' })
+  @ApiResponse({ status: 404, description: 'Collection not found' })
+  async getAuthProfiles(
+    @Param('collectionId') collectionId: string,
+    @Res() res: FastifyReply,
+    @Req() req: ExtendedFastifyRequest,
+  ) {
+    const user = req.user;
+    const authProfiles = await this.collectionService.getAuthProfiles(collectionId, user);
+
+    const responseData = new ApiResponseService(
+      'Success',
+      HttpStatusCode.OK,
+      authProfiles,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Put("add-auth-profiles")
+  @ApiOperation({
+    summary: "Add an auth profile",
+    description: "This will add an auth profile ",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Auth profile Added Successfully" })
+  @ApiResponse({ status: 400, description: "Adding operation Failed" })
+  async addAuthProfiles(@Body() updateCollectionDto: Partial<UpdateCollectionDto>, @Res() res: FastifyReply, @Req() request: ExtendedFastifyRequest) {
+    const user = request.user;
+    const message = await this.collectionService.addAuthProfile(updateCollectionDto, user);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      message,
+    );
+
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 

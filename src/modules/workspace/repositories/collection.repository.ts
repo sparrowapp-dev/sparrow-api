@@ -66,58 +66,87 @@ export class CollectionRepository {
         name: user.name,
       },
     };
+    const data = await this.db
+      .collection(Collections.COLLECTION)
+      .updateOne(
+        { _id: collectionId },
+        { $set: { ...updateCollectionDto, ...defaultParams } },
+      );
+    return data;
+  }
 
-    const updateOperations: any = {
-      $set: { ...defaultParams },
+  async addAuth(
+    collectionId: string,
+    authDto: UpdateCollectionDto,
+    user: DecodedUserObject,
+  ): Promise<any> {
+    const collectionObjectId = new ObjectId(collectionId);
+
+    const authInput = authDto.auth?.[0]; // Extract first auth profile
+
+    if (!authInput) {
+      throw new BadRequestException("Auth profile is required.");
+    }
+
+    const collection = await this.db
+      .collection(Collections.COLLECTION)
+      .findOne({ _id: collectionObjectId });
+
+    const existingAuthNames = (collection?.auth || []).map((a: any) => a.name);
+
+    if (authInput.name && existingAuthNames.includes(authInput.name)) {
+      throw new BadRequestException("Please enter a unique name for Auth profile.");
+    }
+
+    const now = new Date();
+
+    const enrichedAuth = {
+      ...authInput,
+      authId: uuidv4(),
+      createdAt: now,
+      updatedAt: now,
+      createdBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
     };
 
-    const authInput = updateCollectionDto.auth?.[0]; // expecting only one
-
-    if (authInput) {
-      const collection = await this.db
-        .collection(Collections.COLLECTION)
-        .findOne({ _id: collectionId });
-
-      const existingAuthNames = (collection?.auth || []).map((a: any) => a.name);
-
-      if (existingAuthNames.includes(authInput.name)) {
-        throw new BadRequestException("Please enter a unique name for Auth profile.");
-      }
-
-      // Assign _id to the new auth profile
-      authInput.authId = uuidv4();
-
-      // If marked as defaultKey, reset all others
-      if (authInput.defaultKey === true) {
-        await this.db.collection(Collections.COLLECTION).updateOne(
-          { _id: collectionId, "auth.defaultKey": true },
-          { $set: { "auth.$[elem].defaultKey": false } },
-          { arrayFilters: [{ "elem.defaultKey": true }] },
-        );
-
-        // Update selectedAuthType
-        // updateOperations.$set.selectedAuthType = authInput.name;
-      }
-
-      // Push the new auth with _id
-      updateOperations.$push = { auth: authInput };
-
-      delete updateCollectionDto.auth;
+    // Handle defaultKey logic: Unset existing default if new one is marked default
+    if (authInput.defaultKey === true) {
+      await this.db.collection(Collections.COLLECTION).updateOne(
+        { _id: collectionObjectId, "auth.defaultKey": true },
+        { $set: { "auth.$[elem].defaultKey": false } },
+        { arrayFilters: [{ "elem.defaultKey": true }] },
+      );
     }
 
-    // Include remaining updates
-    if (Object.keys(updateCollectionDto).length > 0) {
-      updateOperations.$set = {
-        ...updateOperations.$set,
-        ...updateCollectionDto,
-      };
-    }
+    // Push new auth profile
+    await this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: collectionObjectId },
+      {
+        $push: { auth: enrichedAuth },
+        $set: {
+          updatedAt: now,
+          updatedBy: {
+            id: user._id.toString(),
+            name: user.name,
+          },
+        },
+      },
+    );
 
-    const result = await this.db
+    const updatedCollection = await this.db
       .collection(Collections.COLLECTION)
-      .updateOne({ _id: collectionId }, updateOperations);
+      .findOne(
+        { _id: collectionObjectId },
+        { projection: { auth: 1, _id: 0 } } // Return only auth field
+      );
 
-    return result;
+    return updatedCollection?.auth || [];
   }
 
   async deleteAuth(

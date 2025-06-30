@@ -512,6 +512,21 @@ export class CollectionService {
     return data;
   }
 
+  async addAuthProfile(
+    updateCollectionDto: Partial<UpdateCollectionDto>,
+    user: DecodedUserObject,
+  ): Promise<any> {
+
+    const collectionId = updateCollectionDto.collectionId
+
+    const result = await this.collectionRepository.addAuth(
+      collectionId,
+      updateCollectionDto,
+      user,
+    );
+    return result;
+  }
+
   async getAuthProfiles(collectionId: string, user: DecodedUserObject): Promise<any[]> {
     const collectionObjectId = new ObjectId(collectionId);
 
