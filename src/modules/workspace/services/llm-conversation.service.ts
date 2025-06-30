@@ -8,13 +8,11 @@ import {
 
 // Repository
 import { LlmConversationRepository } from "../repositories/llm-conversation.repository";
-import { EncryptionService } from "@src/modules/common/services/encryption.service";
 
 @Injectable()
 export class LlmConversationService {
   constructor(
     private readonly llmConversationRepository: LlmConversationRepository,
-    private readonly encryptionService: EncryptionService
   ) {}
 
   // Function to Fetch Conversation from DB
@@ -24,9 +22,8 @@ export class LlmConversationService {
     id?: string,
   ): Promise<ConversationModel[] | ConversationModel | null> {
     try {
-      const encryptedApiKey = this.encryptionService.encrypt(apiKey);
       const conversations =
-        await this.llmConversationRepository.getConversations(provider, apiKey, encryptedApiKey);
+        await this.llmConversationRepository.getConversations(provider, apiKey);
 
       if (!conversations) {
         return id ? null : [];
@@ -46,11 +43,9 @@ export class LlmConversationService {
   // Function to Create a root structure of Conversation in DB
   async insertConversation(payload: LlmConversation): Promise<string> {
     try {
-      const encryptedApiKey = this.encryptionService.encrypt(payload.apiKey);
       const id = await this.llmConversationRepository.insertConversation(
         payload.provider,
         payload.apiKey,
-        encryptedApiKey,
         payload.data,
       );
       return id;
@@ -92,12 +87,9 @@ export class LlmConversationService {
       // No operations to perform
       if (!updateOps.$set && !updateOps.$push) return;
 
-      const encryptedApiKey = this.encryptionService.encrypt(payload.apiKey);
-
       await this.llmConversationRepository.updateConversationData(
         provider,
         apiKey,
-        encryptedApiKey,
         conversationId,
         updateOps,
       );
@@ -112,12 +104,10 @@ export class LlmConversationService {
     id: string,
   ): Promise<void> {
     try {
-      const encryptedApiKey = this.encryptionService.encrypt(apiKey);
       await this.llmConversationRepository.deleteConversation(
         provider,
         apiKey,
         id,
-        encryptedApiKey
       );
     } catch (error) {
       throw new Error("Unable to delete conversation.");

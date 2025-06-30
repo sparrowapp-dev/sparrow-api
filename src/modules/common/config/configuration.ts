@@ -96,7 +96,6 @@ export default () => ({
     deepseekApiVersion: process.env.DEEPSEEK_API_VERSION,
     deepseekURL: "https://api.deepseek.com",
     conversationLimit: 30,
-    encryptionSecret: process.env.ENCRYPTION_SECRET,
     conversationConatiner: process.env.AI_CONVERSATION_BLOB_CONTAINER
   },
   hubspot: {

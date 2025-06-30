@@ -103,10 +103,9 @@ export class AdminWorkspaceService {
               search,
               sort: sort,
             });
-
           const mappedCollections = collections.map((item: any) => ({
             resourceType: "collections",
-            keyStats: item?.items?.length,
+            keyStats: item?.totalRequests,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdBy,
@@ -130,7 +129,7 @@ export class AdminWorkspaceService {
 
           const mappedTestflows = testflows.map((item) => ({
             resourceType: "testflows",
-            keyStats: item?.nodes?.length,
+            keyStats: item?.nodes?.length - 1,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdByUser?.[0]?.name,
@@ -154,7 +153,7 @@ export class AdminWorkspaceService {
 
           const mappedEnvironments = environments.map((item: any) => ({
             resourceType: "environments",
-            keyStats: item?.variable?.length,
+            keyStats: item?.variable?.length - 1,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdBy,
@@ -210,7 +209,7 @@ export class AdminWorkspaceService {
 
           const mappedCollections = collections.map((item: any) => ({
             resourceType: "collections",
-            keyStats: item?.items?.length,
+            keyStats: item?.totalRequests,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdBy,
@@ -237,7 +236,7 @@ export class AdminWorkspaceService {
 
           const mappedTestflows = testflows.map((item) => ({
             resourceType: "testflows",
-            keyStats: item?.nodes?.length,
+            keyStats: item?.nodes?.length - 1,
             name: item?.name,
             updatedAt: item?.updatedAt,
             updatedBy: item?.updatedByUser?.[0]?.name,
@@ -264,7 +263,7 @@ export class AdminWorkspaceService {
 
           const mappedEnvironments = environments.map((item: any) => ({
             resourceType: "environments",
-            keyStats: item?.variable?.length,
+            keyStats: item?.variable?.length - 1,
             name: item?.name,
             updatedAt: item?.updatedAt,
             createdBy: item?.createdBy,
