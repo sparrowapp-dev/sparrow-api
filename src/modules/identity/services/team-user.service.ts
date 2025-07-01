@@ -359,8 +359,8 @@ export class TeamUserService {
     const role = TeamRole.ADMIN;
     await this.addAdminEmail(
       teamData.name,
-      user.name.split("")[0],
       userDetails.name.split(" ")[0],
+      user.name.split(" ")[0],
       userDetails.email,
       role,
     );
@@ -429,8 +429,8 @@ export class TeamUserService {
     const role = TeamRole.MEMBER;
     await this.demoteTeamAdminEmail(
       teamData.name,
-      userData.name.split("")[0],
       userDetails.name,
+      userData.name.split(" ")[0],
       userDetails.email,
       role,
     );
@@ -808,7 +808,7 @@ export class TeamUserService {
     userName: string,
     senderUserName: string,
     email: string,
-    role?: string,
+    role: string,
   ): Promise<void> {
     const transporter = this.emailService.createTransporter();
     const mailOptions = {
@@ -850,7 +850,7 @@ export class TeamUserService {
     userName: string,
     senderUserName: string,
     email: string,
-    role?: string,
+    role: string,
   ): Promise<void> {
     const transporter = this.emailService.createTransporter();
 
