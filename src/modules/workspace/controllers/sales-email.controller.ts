@@ -4,7 +4,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { Body, Controller, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, Res } from "@nestjs/common";
 import { FastifyReply } from "fastify";
 // ---- Payload
 import { SendSalesEmail } from "../payloads/sales-email.payload";
@@ -27,7 +27,7 @@ import { SalesEmailService } from "../services/sales-email.service";
  */
 @ApiBearerAuth()
 @ApiTags("Sales Email")
-@Controller("api/sales-email")
+@Controller("api")
 export class SalesEmailController {
   constructor(private readonly salesEmailService: SalesEmailService) {}
 
@@ -37,7 +37,7 @@ export class SalesEmailController {
    * @param addFeatureDto - Data transfer object containing the mail details.
    * @param res - Fastify response object.
    */
-  @Post()
+  @Post("sales-email")
   @ApiOperation({
     summary: "Send a sales email",
     description: "Send a sales email to the customer",
@@ -58,6 +58,35 @@ export class SalesEmailController {
     const responseData = new ApiResponseService(
       "Email Sent Successfully",
       HttpStatusCode.CREATED,
+      record,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Fetch the record of the trial sent by email.
+   *
+   * @param trialId - Trial Id of the record.
+   * @param res - Fastify response object.
+   */
+  @Get("get-trial-record/:trialId")
+  @ApiOperation({
+    summary: "Get Trial Record",
+    description: "Get the trial record of the sales email",
+  })
+  @ApiResponse({ status: 201, description: "Record fetched" })
+  @ApiResponse({ status: 400, description: "Failed to fetch record" })
+  async getTrialRecord(
+    @Param("trialId") trialId: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    // Retrieve the added mail record for confirmation
+    const record = await this.salesEmailService.getSalesEmailRecord(trialId);
+    const responseData = new ApiResponseService(
+      "Record Fetched Successfully",
+      HttpStatusCode.OK,
       record,
     );
     return res.status(responseData.httpStatusCode).send(responseData);

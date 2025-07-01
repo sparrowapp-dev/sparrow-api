@@ -106,12 +106,32 @@ export class UserRepository {
    * @param {RegisterPayload} payload user payload
    * @returns {Promise<IUser>} created user data
    */
-  async createUser(payload: RegisterPayload ): Promise<InsertOneResult<User>> {
+  async createUser(payload: RegisterPayload): Promise<InsertOneResult<User>> {
     const createdUser = await this.db
       .collection<User>(Collections.USER)
       .insertOne({
         ...payload,
         isEmailVerified: false,
+        password: createHmac("sha256", payload.password).digest("hex"),
+        teams: [],
+        workspaces: [],
+      });
+    return createdUser;
+  }
+
+  /**
+   * Create a verified user with RegisterPayload fields
+   * @param {RegisterPayload} payload user payload
+   * @returns {Promise<IUser>} created user data
+   */
+  async createVerifiedUser(
+    payload: RegisterPayload,
+  ): Promise<InsertOneResult<User>> {
+    const createdUser = await this.db
+      .collection<User>(Collections.USER)
+      .insertOne({
+        ...payload,
+        isEmailVerified: true,
         password: createHmac("sha256", payload.password).digest("hex"),
         teams: [],
         workspaces: [],

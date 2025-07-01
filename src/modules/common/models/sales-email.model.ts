@@ -29,6 +29,14 @@ export class SalesEmail {
   @IsOptional()
   inviteCount?: number;
 
+  @IsNumber()
+  @IsOptional()
+  trialPeriod?: number;
+
+  @IsString()
+  @IsOptional()
+  trialPlan?: string;
+
   @IsString()
   @IsOptional()
   customerFirstName?: string;
