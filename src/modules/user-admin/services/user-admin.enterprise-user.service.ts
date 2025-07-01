@@ -183,16 +183,10 @@ export class AdminUsersService {
 
   async getDashboardStats(userId: string) {
     try {
-      // Get current date and first day of current month
-      const now = new Date();
-      const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      // Get teams where user is a member or admin
+      const teams = await this.teamsRepo.findTeamsByUserId(userId);
 
-      // Get teams where user is owner or admin
-      const teams = await this.teamsRepo.findTeamsByOwnerOrAdmin(
-        userId.toString(),
-      );
-
-      if (!teams || teams.length === 0) {
+      if (!teams.data.length) {
         return {
           users: {
             total: 0,
@@ -205,12 +199,11 @@ export class AdminUsersService {
         };
       }
 
-      // Count hubs
-      const totalHubs = teams.length;
-      const newHubs = teams.filter(
-        (team) =>
-          team.createdAt && new Date(team.createdAt) >= firstDayThisMonth,
-      ).length;
+      const firstDayThisMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1,
+      );
 
       // Track unique users by their highest role - similar to graph functions
       const userHighestRoleMap = new Map<
@@ -224,7 +217,7 @@ export class AdminUsersService {
       let totalInvites = 0;
       let newInvites = 0;
 
-      teams.forEach((team) => {
+      teams.data.forEach((team) => {
         // Process users
         (team.users || []).forEach((user: any) => {
           const userId = user.id.toString();
@@ -317,8 +310,11 @@ export class AdminUsersService {
           members: memberCount,
         },
         hubs: {
-          total: totalHubs,
-          changeFromLastMonth: newHubs,
+          total: teams.data.length,
+          changeFromLastMonth: teams.data.filter(
+            (team) =>
+              team.createdAt && new Date(team.createdAt) >= firstDayThisMonth,
+          ).length,
         },
         invites: {
           total: totalInvites,
