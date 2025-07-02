@@ -8,7 +8,12 @@ import { StripeSubscriptionService } from "./services/stripe-subscription.servic
 import { StripeWebhookGateway } from "./gateways/stripe-webhook.gateway";
 import { StripeSchedulerService } from "./services/stripe-scheduler.service";
 import { BillingAuditService } from "./services/billing-audit.service";
+import { PaymentEmailService } from "./services/payment-email.service";
+import { PaymentEmailHelper } from "./helpers/payment-email.helper";
 import { StripeWebhookHelper } from "./helpers/stripe-webhook.helper";
+import { StripeCustomerService } from "./services/stripe-customer.service";
+import { EmailService } from "@src/modules/common/services/email.service";
+import { AdminHubsRepository } from "@src/modules/user-admin/repositories/user-admin.hubs.repository";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -38,13 +43,22 @@ export class BillingModule {
       StripeWebhookGateway,
       StripeSchedulerService,
       StripeWebhookHelper,
+      PaymentEmailService,
+      PaymentEmailHelper,
+      StripeCustomerService,
+      EmailService,
+      AdminHubsRepository,
     ];
+
     const controllers = [];
     const exports: Provider[] = [
       StripeSubscriptionService,
       StripeSubscriptionRepository,
       BillingAuditRepository,
       BillingAuditService,
+      PaymentEmailService,
+      PaymentEmailHelper,
+      StripeCustomerService,
     ];
 
     // Only add Stripe if the module was successfully imported

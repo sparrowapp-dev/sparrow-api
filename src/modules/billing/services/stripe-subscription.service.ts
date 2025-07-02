@@ -1,6 +1,7 @@
 import { Injectable, Inject, Optional } from "@nestjs/common";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 import { BillingAuditService } from "./billing-audit.service";
+import { PaymentEmailHelper } from "../helpers/payment-email.helper";
 import { StripeSubscriptionHelpers } from "../helpers/stripe-subscription.helpers";
 import {
   BillingType,
@@ -29,6 +30,7 @@ export class StripeSubscriptionService {
   constructor(
     private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
     private readonly billingAuditService: BillingAuditService,
+    private readonly paymentEmailHelper: PaymentEmailHelper,
     @Optional() @Inject(StripeService) private readonly stripeService: any,
   ) {
     if (!this.stripeService) {
@@ -552,10 +554,19 @@ export class StripeSubscriptionService {
     const newPlan = metadata.planName;
     const previousSeats = team.billing?.seats?.toString() || "1";
     const newSeats = (metadata?.userCount || 1).toString();
+
+    // Calculate previous interval from billing period dates
+    const previousInterval = this.calculateIntervalFromPeriod(
+      team.billing?.current_period_start,
+      team.billing?.current_period_end,
+    );
+
     const previousPeriodStart = team.billing?.current_period_start;
     const previousPeriodEnd = team.billing?.current_period_end;
 
-    const isPlanChange = previousPlan && previousPlan !== newPlan;
+    const isPlanChange =
+      previousPlan &&
+      (previousPlan !== newPlan || previousInterval !== interval);
     const isSeatChange = previousSeats !== newSeats;
     const isSubscriptionRenewal =
       !isPlanChange && !isSeatChange && previousPeriodEnd;
@@ -647,6 +658,11 @@ export class StripeSubscriptionService {
   ): Promise<void> {
     // Log plan change if this is an upgrade/downgrade
     if (isPlanChange || isSeatChange) {
+      // Get team data for email
+      const team = await this.stripeSubscriptionRepo.findTeamById(hubId);
+      const { metadata } =
+        StripeSubscriptionHelpers.extractInvoiceData(invoice);
+
       await this.billingAuditService.recordPlanChange(
         hubId,
         previousPlan || "unknown",
@@ -668,6 +684,22 @@ export class StripeSubscriptionService {
           interval_count: intervalCount,
         },
       );
+
+      // Send plan upgrade email if this is a plan change (not just seat change)
+      if (isPlanChange && team && this.paymentEmailHelper) {
+        try {
+          await this.paymentEmailHelper.sendPlanUpgradedEmail(
+            invoice,
+            team,
+            metadata,
+            previousPlan,
+            newPlan,
+            interval,
+          );
+        } catch (error) {
+          console.error("Error sending plan upgrade email:", error);
+        }
+      }
     }
 
     // Log subscription renewal if this is a regular billing cycle renewal
@@ -936,14 +968,75 @@ export class StripeSubscriptionService {
     eventId?: string,
   ): Promise<void> {
     try {
-      // For now, we'll just log that a schedule was updated
-      // In the future, we might want to process schedule changes
-      console.log(
-        `Subscription schedule updated: ${subscriptionSchedule.id}`,
-        eventId,
-      );
+      // Find metadata in the phases - look for scheduled downgrade information
+      let scheduledDowngradeMetadata = null;
+      let targetPlanName = null;
+      let startDate = null;
+
+      // Check phases for scheduled downgrade metadata
+      if (
+        subscriptionSchedule.phases &&
+        subscriptionSchedule.phases.length > 0
+      ) {
+        for (const phase of subscriptionSchedule.phases) {
+          if (phase.metadata && phase.metadata.scheduled_downgrade === "true") {
+            scheduledDowngradeMetadata = phase.metadata;
+            targetPlanName =
+              phase.metadata.planName || phase.metadata.new_price_id;
+            startDate = phase.start_date
+              ? new Date(phase.start_date * 1000)
+              : null;
+            break;
+          }
+        }
+      }
+
+      if (!scheduledDowngradeMetadata) return;
+
+      const hubId = scheduledDowngradeMetadata.hubId;
+      if (!hubId) return;
+
+      const team = await this.stripeSubscriptionRepo.findTeamById(hubId);
+      if (!team) return;
+
+      const currentBilling = team.billing || {};
+      const scheduledDowngrade = {
+        isScheduledDowngrade: true,
+        startDate: startDate,
+        planName: targetPlanName,
+        scheduleId: subscriptionSchedule.id,
+        originalSubscription: scheduledDowngradeMetadata.original_subscription,
+        downgradeAtPeriodEnd:
+          scheduledDowngradeMetadata.downgrade_at_period_end === "true",
+        userCount: scheduledDowngradeMetadata.userCount,
+        scheduledAt: new Date(),
+        updatedBy: "system-stripe-webhook",
+      };
+
+      const updatedBilling = {
+        ...currentBilling,
+        scheduledDowngrade: scheduledDowngrade,
+        updatedBy: "system-stripe-webhook",
+      };
+
+      await this.stripeSubscriptionRepo.updateTeamPlan(hubId, team.plan, {
+        billing: updatedBilling,
+      });
+
+      // Send plan downgrade email notification
+      if (this.paymentEmailHelper && targetPlanName && team.plan?.name) {
+        try {
+          await this.paymentEmailHelper.sendPlanDowngradedEmail(
+            team,
+            startDate,
+            team.plan.name, // Previous plan
+            targetPlanName, // New plan
+          );
+        } catch (error) {
+          console.error("Error sending plan downgrade email:", error);
+        }
+      }
     } catch (error) {
-      console.error("Error handling subscription schedule update:", error);
       throw error;
     }
   }
@@ -1134,5 +1227,34 @@ export class StripeSubscriptionService {
     metadata: any;
   } {
     return StripeSubscriptionHelpers.extractInvoiceData(invoice);
+  }
+
+  /**
+   * Calculate the billing interval from the current_period_start and current_period_end dates
+   * @param currentPeriodStart The start date of the current period
+   * @param currentPeriodEnd The end date of the current period
+   * @returns The billing interval (e.g., "month", "year")
+   */
+  private calculateIntervalFromPeriod(
+    currentPeriodStart?: Date,
+    currentPeriodEnd?: Date,
+  ): string {
+    if (!currentPeriodStart || !currentPeriodEnd) {
+      return "month";
+    }
+
+    const diffInMilliseconds = Math.abs(
+      currentPeriodEnd.getTime() - currentPeriodStart.getTime(),
+    );
+    const diffInDays = Math.ceil(diffInMilliseconds / (1000 * 60 * 60 * 24));
+
+    // Determine billing interval based on the number of days in the period
+    if (diffInDays >= 335) {
+      return "year";
+    } else if (diffInDays >= 28 && diffInDays <= 31) {
+      return "month";
+    } else {
+      return "month";
+    }
   }
 }

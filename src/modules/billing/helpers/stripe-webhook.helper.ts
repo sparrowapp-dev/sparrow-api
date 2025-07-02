@@ -6,6 +6,7 @@ import {
 } from "../gateways/stripe-webhook.gateway";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 import { SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
+import { PaymentEmailHelper } from "../helpers/payment-email.helper";
 
 @Injectable()
 export class StripeWebhookHelper {
@@ -13,6 +14,7 @@ export class StripeWebhookHelper {
     private readonly stripeSubscriptionService: StripeSubscriptionService,
     private readonly stripeWebhookGateway: StripeWebhookGateway,
     private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
+    private readonly paymentEmailHelper: PaymentEmailHelper,
   ) {}
 
   /**
@@ -43,6 +45,10 @@ export class StripeWebhookHelper {
 
       case "invoice.voided":
         await this.handleInvoiceVoided(event);
+        break;
+
+      case "invoice.upcoming":
+        await this.handleInvoiceUpcoming(event);
         break;
 
       case "subscription_schedule.updated":
@@ -92,6 +98,17 @@ export class StripeWebhookHelper {
       event.data.object.metadata?.hubId,
     );
 
+    // Check for resubscription (subscription reactivated)
+    const isResubscribed = this.detectResubscription(event);
+    if (isResubscribed && teamUpdated) {
+      // Send resubscription email
+      await this.paymentEmailHelper.sendSubscriptionResubscribedEmail(
+        event.data.object,
+        teamUpdated,
+        event.data.object.metadata,
+      );
+    }
+
     // Only emit event if there's a status change that matters
     if (event.data.object.status === SubscriptionStatus.CANCELED) {
       // Determine the event type based on cancellation reason
@@ -112,6 +129,39 @@ export class StripeWebhookHelper {
           event.data.object.cancellation_details?.reason || "unknown",
       });
     }
+
+    // Send subscription canceled email using the helper
+    if (
+      event.data.object.cancel_at_period_end === true &&
+      event.data.previous_attributes?.cancel_at_period_end === false &&
+      event.data.object.cancellation_details?.reason ===
+        "cancellation_requested"
+    ) {
+      await this.paymentEmailHelper.sendSubscriptionCanceledEmail(
+        event.data.object,
+        teamUpdated,
+        event.data.object.metadata,
+      );
+    }
+  }
+
+  /**
+   * Detect if a subscription has been reactivated (resubscribed)
+   * @param event The Stripe webhook event
+   * @returns Boolean indicating if this is a resubscription
+   */
+  private detectResubscription(event: any): boolean {
+    const previousAttributes = event.data.previous_attributes;
+
+    // Check if this is a reactivation by looking at the previous attributes
+    if (previousAttributes) {
+      // Check for reactivatedAt in metadata (custom field)
+      const hasReactivatedMetadata = previousAttributes.metadata?.reactivatedAt;
+
+      return !!hasReactivatedMetadata;
+    }
+
+    return false;
   }
 
   /**
@@ -148,6 +198,41 @@ export class StripeWebhookHelper {
   }
 
   /**
+   * Handle invoice paid webhook event
+   */
+  private async handleInvoicePaid(event: any): Promise<void> {
+    await this.stripeSubscriptionService.handleInvoicePaid(
+      event.data.object,
+      event.id,
+    );
+
+    // Extract metadata from the invoice to find the related team
+    const { metadata: paidMetadata } = this.extractInvoiceMetadata(
+      event.data.object,
+    );
+
+    if (paidMetadata?.hubId) {
+      const teamWithSuccessfulPayment =
+        await this.stripeSubscriptionRepo.findTeamById(paidMetadata.hubId);
+
+      this.stripeWebhookGateway.emitPaymentEvent(
+        PaymentEventType.PAYMENT_SUCCESS,
+        {
+          invoice: event.data.object,
+          team: teamWithSuccessfulPayment,
+        },
+      );
+
+      // Send payment success email using the helper
+      await this.paymentEmailHelper.sendPaymentSuccessEmail(
+        event.data.object,
+        teamWithSuccessfulPayment,
+        paidMetadata,
+      );
+    }
+  }
+
+  /**
    * Handle invoice payment failed webhook event
    */
   private async handleInvoicePaymentFailed(event: any): Promise<void> {
@@ -181,33 +266,12 @@ export class StripeWebhookHelper {
           team: teamWithFailedPayment,
         },
       );
-    }
-  }
 
-  /**
-   * Handle invoice paid webhook event
-   */
-  private async handleInvoicePaid(event: any): Promise<void> {
-    await this.stripeSubscriptionService.handleInvoicePaid(
-      event.data.object,
-      event.id,
-    );
-
-    // Extract metadata from the invoice to find the related team
-    const { metadata: paidMetadata } = this.extractInvoiceMetadata(
-      event.data.object,
-    );
-
-    if (paidMetadata?.hubId) {
-      const teamWithSuccessfulPayment =
-        await this.stripeSubscriptionRepo.findTeamById(paidMetadata.hubId);
-
-      this.stripeWebhookGateway.emitPaymentEvent(
-        PaymentEventType.PAYMENT_SUCCESS,
-        {
-          invoice: event.data.object,
-          team: teamWithSuccessfulPayment,
-        },
+      // Send payment failed email using the helper
+      await this.paymentEmailHelper.sendPaymentFailedEmail(
+        event.data.object,
+        teamWithFailedPayment,
+        failedMetadata,
       );
     }
   }
@@ -238,6 +302,34 @@ export class StripeWebhookHelper {
           team: teamWithVoidedInvoice,
         },
       );
+    }
+  }
+
+  /**
+   * Handle invoice upcoming webhook event
+   */
+  private async handleInvoiceUpcoming(event: any): Promise<void> {
+    // Extract metadata from the invoice to find the related team
+    const { metadata: upcomingMetadata } = this.extractInvoiceMetadata(
+      event.data.object,
+    );
+
+    if (upcomingMetadata?.hubId) {
+      const teamWithUpcomingInvoice =
+        await this.stripeSubscriptionRepo.findTeamById(upcomingMetadata.hubId);
+
+      // Send upcoming payment email notification
+      if (teamWithUpcomingInvoice) {
+        try {
+          await this.paymentEmailHelper.sendUpcomingPaymentEmail(
+            event.data.object,
+            teamWithUpcomingInvoice,
+            upcomingMetadata,
+          );
+        } catch (error) {
+          console.error("Error sending upcoming payment email:", error);
+        }
+      }
     }
   }
 
