@@ -44,4 +44,18 @@ export class SalesEmailRepository {
       .findOne({ _id: new ObjectId(id) });
     return data;
   }
+
+  async updateSalesEmailRecord(
+    id: string,
+    data: Partial<SalesEmail>,
+  ): Promise<WithId<SalesEmail>> {
+    const response = await this.db
+      .collection<SalesEmail>(Collections.SALESEMAIL)
+      .findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: data },
+        { returnDocument: "after" },
+      );
+    return response.value;
+  }
 }

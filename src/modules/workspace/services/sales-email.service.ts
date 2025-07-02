@@ -101,4 +101,18 @@ export class SalesEmailService {
     }
     return data;
   }
+
+  async updateSalesEmailRecord(
+    id: string,
+    updateData: Partial<SalesEmail>,
+  ): Promise<WithId<SalesEmail>> {
+    const data = await this.salesEmailRepository.updateSalesEmailRecord(
+      id,
+      updateData,
+    );
+    if (!data) {
+      throw new BadRequestException("Record not found");
+    }
+    return data;
+  }
 }

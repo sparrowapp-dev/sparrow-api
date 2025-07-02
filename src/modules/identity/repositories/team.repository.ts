@@ -190,4 +190,11 @@ export class TeamRepository {
       .toArray();
     return existingTeams;
   }
+
+  async doesHubUrlExist(hubUrl: string): Promise<boolean> {
+    const team = await this.db
+      .collection<Team>(Collections.TEAM)
+      .findOne({ hubUrl: hubUrl });
+    return !!team;
+  }
 }

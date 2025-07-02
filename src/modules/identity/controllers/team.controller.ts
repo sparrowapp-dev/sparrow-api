@@ -621,4 +621,32 @@ export class TeamController {
 
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post("hub-url-exists")
+  @ApiOperation({
+    summary: "Check if a hubUrl exists",
+    description:
+      "Returns true if the hubUrl exists in any team, false otherwise",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        hubUrl: { type: "string" },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: "Check completed" })
+  async doesHubUrlExist(
+    @Body() body: { hubUrl: string },
+    @Res() res: FastifyReply,
+  ) {
+    const exists = await this.teamService.doesHubUrlExist(body.hubUrl);
+    const responseData = new ApiResponseService(
+      "HubUrl existence check",
+      HttpStatusCode.OK,
+      { isExist: exists },
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }
