@@ -85,7 +85,6 @@ export class AdminUsersService {
           user.id,
           currentUser,
         );
-        console.log(userOrg);
         return {
           id: user.id,
           name: user.name,
