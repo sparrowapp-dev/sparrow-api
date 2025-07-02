@@ -85,7 +85,6 @@ export class AdminUsersService {
           user.id,
           currentUser,
         );
-
         return {
           id: user.id,
           name: user.name,
@@ -93,7 +92,7 @@ export class AdminUsersService {
           teams: userTeams,
           teamsAccess: user.teams.length,
           lastActive: userOrg?.lastActive || "",
-          joinedOrg: userOrg?.emailVerificationCodeTimeStamp,
+          joinedOrg: userOrg?.emailVerificationCodeTimeStamp || "",
         };
       }),
     );

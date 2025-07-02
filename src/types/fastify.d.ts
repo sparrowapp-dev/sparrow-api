@@ -9,6 +9,8 @@ export type DecodedUserObject = {
   role: string;
   teams?: TeamDto[];
   workspaces?: UserWorkspaceDto[];
+  emailVerificationCodeTimeStamp?: Date;
+  lastActive?: Date;
 };
 
 export interface ExtendedFastifyRequest extends FastifyRequest {
