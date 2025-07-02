@@ -73,6 +73,8 @@ export class UserRepository {
       role: "",
       teams: data.teams,
       workspaces: data.workspaces,
+      emailVerificationCodeTimeStamp: data?.emailVerificationCodeTimeStamp,
+      lastActive: data?.lastActive,
     };
     return userObj;
   }
