@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { CreateOrUpdateTeamDto, ResponseTeam, UpdateTeamDto } from "../payloads/team.payload";
+import {
+  CreateOrUpdateTeamDto,
+  ResponseTeam,
+  UpdateTeamDto,
+} from "../payloads/team.payload";
 import { TeamRepository } from "../repositories/team.repository";
 import {
   DeleteResult,
@@ -123,7 +127,10 @@ export class TeamService {
       team = {
         name: teamData.name,
         description: teamData.description ?? "",
-        hubUrl: dynamicUrl,
+        hubUrl:
+          teamData?.hubUrl && teamData.hubUrl.length > 0
+            ? teamData.hubUrl
+            : dynamicUrl,
         linkedinUrl: "",
         xUrl: "",
         githubUrl: "",
@@ -272,6 +279,7 @@ export class TeamService {
         githubUrl: teamData?.githubUrl ?? teamDetails.githubUrl,
         linkedinUrl: teamData?.linkedinUrl ?? teamDetails.linkedinUrl,
         xUrl: teamData?.xUrl ?? teamDetails.xUrl,
+        hubUrl: teamData?.hubUrl ?? teamDetails.hubUrl,
       };
     }
     const data = await this.teamRepository.update(id, team);
@@ -344,7 +352,7 @@ export class TeamService {
       if (isValidInvite) {
         const createdById = specificInvite?.createdBy?.toString();
         let senderData;
-        if(createdById){
+        if (createdById) {
           senderData = await this.userRepository.getUserById(createdById);
         }
         const team: any = {
@@ -463,5 +471,9 @@ export class TeamService {
       const promise = [this.emailService.sendEmail(transporter, mailOptions)];
       Promise.all(promise);
     }
+  }
+
+  async doesHubUrlExist(hubUrl: string): Promise<boolean> {
+    return await this.teamRepository.doesHubUrlExist(hubUrl);
   }
 }
