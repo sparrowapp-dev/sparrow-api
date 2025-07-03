@@ -4,7 +4,16 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { Body, Controller, Get, Param, Post, Req, Res } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { FastifyReply } from "fastify";
 // ---- Payload
 import { SendSalesEmail } from "../payloads/sales-email.payload";
@@ -18,6 +27,7 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 // ---- Guard
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { SalesEmailService } from "../services/sales-email.service";
+import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 
 /**
  * Sales Email Controller
@@ -70,6 +80,7 @@ export class SalesEmailController {
    * @param res - Fastify response object.
    */
   @Get("get-trial-record/:trialId")
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: "Get Trial Record",
     description: "Get the trial record of the sales email",
