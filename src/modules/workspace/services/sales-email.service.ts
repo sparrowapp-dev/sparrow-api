@@ -41,6 +41,13 @@ export class SalesEmailService {
     ) {
       throw new BadRequestException("Invalid Admin key");
     }
+    const existingRecord =
+      await this.salesEmailRepository.getSalesEmailRecordByCustomerEmail(
+        sendSalesEmailDto.customerEmail,
+      );
+    if (existingRecord) {
+      throw new BadRequestException("Sales email already sent for this email");
+    }
 
     const emailRecord: SalesEmail = {
       customerEmail: sendSalesEmailDto.customerEmail,
