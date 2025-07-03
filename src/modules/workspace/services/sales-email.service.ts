@@ -55,29 +55,35 @@ export class SalesEmailService {
       updatedAt: new Date(),
     };
     const transporter = this.emailService.createTransporter();
+    const baseURL = this.configService.get("auth.baseURL");
+    const flow =
+      sendSalesEmailDto?.trialPlan === "STANDARD"
+        ? "trial_standard"
+        : sendSalesEmailDto?.trialPlan;
 
+    const record =
+      await this.salesEmailRepository.addSalesEmailData(emailRecord);
+
+    const trialPeriod = Math.round(sendSalesEmailDto.trialPeriod / 30);
+
+    const startTrialUrl = `${baseURL}/init?flow=${flow}&trialId=${record.insertedId.toString()}&email=${encodeURIComponent(emailRecord.customerEmail)}`;
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: sendSalesEmailDto.customerEmail,
       text: "Promote Member Email",
       template: "salesTrialEmail",
       context: {
-        teamName: sendSalesEmailDto.companyName,
         userName: sendSalesEmailDto.customerFirstName,
-        sparrowEmail: this.configService.get("support.sparrowEmail"),
-        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
-        sparrowWebsiteName: this.configService.get(
-          "support.sparrowWebsiteName",
-        ),
-        senderName: "senderUserName",
+        userEmail: sendSalesEmailDto.customerEmail,
+        inviteCount: sendSalesEmailDto.inviteCount.toString(),
+        startTrialUrl: startTrialUrl,
+        trialPeriod: trialPeriod.toString(),
       },
       subject: `Trial Active email for ${sendSalesEmailDto.companyName}`,
     };
 
     const promise = [this.emailService.sendEmail(transporter, mailOptions)];
     await Promise.all(promise);
-    const record =
-      await this.salesEmailRepository.addSalesEmailData(emailRecord);
     return record;
   }
 
