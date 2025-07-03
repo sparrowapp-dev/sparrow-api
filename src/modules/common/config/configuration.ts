@@ -95,7 +95,8 @@ export default () => ({
     deepseekApiKey: process.env.DEEPSEEK_API_KEY,
     deepseekApiVersion: process.env.DEEPSEEK_API_VERSION,
     deepseekURL: "https://api.deepseek.com",
-    conversationLimit: 30
+    conversationLimit: 30,
+    conversationConatiner: process.env.AI_CONVERSATION_BLOB_CONTAINER,
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,
@@ -122,5 +123,8 @@ export default () => ({
     secretKey: process.env.STRIPE_SECRET_KEY,
     publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  },
+  sparrowAdmin: {
+    adminKey: process.env.SPARROW_ADMIN_KEY,
   },
 });

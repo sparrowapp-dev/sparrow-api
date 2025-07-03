@@ -1,23 +1,23 @@
 import { Injectable } from "@nestjs/common";
 import { UserLimitRepository } from "../repositories/userLimit.repository";
-import {
-  LimitCheckResult,
-} from "@src/modules/common/enum/user-limit-enum";
+import { LimitCheckResult } from "@src/modules/common/enum/user-limit-enum";
 import { PlanRepository } from "@src/modules/identity/repositories/plan.repository";
 import { parseWhitelistedEmailList } from "@src/modules/common/util/email.parser.util";
 import { ConfigService } from "@nestjs/config";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { TeamService } from "@src/modules/identity/services/team.service";
+import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 
 /**
  * UserLimitService - Handles logic for user request limits and usage logging.
-*
-*  Current Mode:
-* - Request limits are tracked monthly using the calendar month (YYYY-MM).
-*
-*  TODO Future Upgrade Plan:
-* - Switch to billing-cycle-based tracking using billing.periodStart and billing.periodEnd
-*   once the billing module is fully implemented.
-*/
+ *
+ *  Current Mode:
+ * - Request limits are tracked monthly using the calendar month (YYYY-MM).
+ *
+ *  TODO Future Upgrade Plan:
+ * - Switch to billing-cycle-based tracking using billing.periodStart and billing.periodEnd
+ *   once the billing module is fully implemented.
+ */
 @Injectable()
 export class UserLimitService {
   private whiteListUserTokenLimit: number;
@@ -25,12 +25,12 @@ export class UserLimitService {
     private readonly userLimitRepository: UserLimitRepository,
     private readonly planRepository: PlanRepository,
     private readonly configService: ConfigService,
-    private readonly userRepository: UserRepository
+    private readonly userRepository: UserRepository,
+    private readonly teamRepository: TeamRepository
     // optional
     // private readonly contextService: ContextService,
   ) {
     this.whiteListUserTokenLimit = 100000;
-
   }
 
   /**
@@ -39,11 +39,10 @@ export class UserLimitService {
    * @param teamId - ID of the team.
    * @param plan - Subscription plan (e.g., 'standard', 'community', 'pro').
    * @returns 'OK' if within limit, or 'LIMIT REACHED'.
-  */
- async checkLimitAndLogRequest(
-   userId: string,
-   teamId: string,
-   planId: string,
+   */
+  async checkLimitAndLogRequest(
+    userId: string,
+    teamId: string
   ): Promise<LimitCheckResult> {
     const whitelistEmails = await this.configService.get(
       "whitelist.userEmails",
@@ -56,8 +55,7 @@ export class UserLimitService {
     const start = new Date(`${currentMonth}-01T00:00:00Z`);
     const end = new Date(new Date(start).setMonth(start.getMonth() + 1));
     const user = await this.userRepository.getUserById(userId);
-    if(parsedWhiteListEmails.includes(user.email)){
-
+    if (parsedWhiteListEmails.includes(user.email)) {
       const usageCount = await this.userLimitRepository.countRequests(
         userId,
         teamId,
@@ -65,16 +63,12 @@ export class UserLimitService {
         end,
       );
       // Check if user exceeded token limit
-      if (
-        (
-          usageCount > this.whiteListUserTokenLimit)
-      ) {
+      if (usageCount > this.whiteListUserTokenLimit) {
         return LimitCheckResult.LIMIT_REACHED;
       }
-
-    }else{
-      
-      const plan = await this.planRepository.get(planId);
+    } else {
+      const team = await this.teamRepository.get(teamId);
+      const plan = team.plan;
 
       // fetch limit from the plan details
       const limit = plan?.limits?.aiRequestsPerMonth?.value;
@@ -92,7 +86,6 @@ export class UserLimitService {
       if (usageCount >= limit) {
         return LimitCheckResult.LIMIT_REACHED;
       }
-
     }
     await this.userLimitRepository.logRequest({
       userId,

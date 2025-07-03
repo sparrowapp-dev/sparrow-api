@@ -6,11 +6,13 @@ import { ConfigService } from "@nestjs/config";
 // Enum
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { LlmConversation , ConversationModel , UserConversationModel } from "../payloads/llm-conversation.payload";
+import { BlobStorageService } from "@src/modules/common/services/blobStorage.service";
 
 @Injectable()
 export class LlmConversationRepository {
 
   private conversationLimit: number;
+  private readonly blobStorageService: BlobStorageService
 
   constructor(
     @Inject("DATABASE_CONNECTION") private db: Db,
@@ -89,11 +91,32 @@ export class LlmConversationRepository {
         // Get existing conversations
         const existingConversations = providerDoc[providerField][apiKeyEntryIndex].conversations || [];
 
-        // Keep only the last 29 to make room for the new one
-        const updatedConversations = [
-          ...existingConversations.slice(-(this.conversationLimit - 1)),
-          conversationWithId,
-        ];
+        let updatedConversations: ConversationModel[] = [];
+        const conversationLimit = this.conversationLimit ?? 30;
+
+        if (existingConversations.length >= conversationLimit) {
+          const removedConversation = existingConversations[0];
+
+          // Delete files in removedConversation.fileURL if present
+          if (Array.isArray(removedConversation.fileURL)) {
+            for (const fileUrl of removedConversation.fileURL) {
+              try {
+                await this.blobStorageService.deleteAiDocByUrl(fileUrl);
+              } catch (err) {
+                console.warn(`Failed to delete file ${fileUrl}:`, err.message);
+              }
+            }
+          }
+
+          // Slice to keep last 29 and make room for new one
+          updatedConversations = [
+            ...existingConversations.slice(-(conversationLimit - 1)),
+            conversationWithId,
+          ];
+        } else {
+          updatedConversations = [...existingConversations, conversationWithId];
+        }
+
 
         const updateQuery = {
           $set: {
@@ -178,6 +201,29 @@ export class LlmConversationRepository {
     const collection = this.db.collection(Collections.LLMCONVERSATION);
     const providerField = provider.toLowerCase();
 
+    // Step 1: Find the provider doc
+    const providerDoc = await collection.findOne({
+      [`${providerField}.value`]: apiKey,
+    });
+
+    // Step 2: Find the conversation to delete
+    const apiKeyEntry = providerDoc[providerField].find((entry: any) => entry.value === apiKey);
+
+    const conversationToDelete = apiKeyEntry.conversations.find(
+      (conv: any) => conv.id === conversationId
+    );
+
+    if (conversationToDelete?.fileURL && Array.isArray(conversationToDelete.fileURL)) {
+      for (const fileUrl of conversationToDelete.fileURL) {
+        try {
+          await this.blobStorageService.deleteAiDocByUrl(fileUrl);
+        } catch (err) {
+          console.warn(`Failed to delete blob file: ${fileUrl}`, err.message);
+        }
+      }
+    }
+
+    // Step 3: Actually delete the conversation
     await collection.updateOne(
       {
         [`${providerField}.value`]: apiKey,

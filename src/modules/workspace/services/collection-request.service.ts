@@ -19,6 +19,8 @@ import {
   FolderDto,
   UpdateCollectionMockRequestResponseDto,
   UpdateCollectionRequestResponseDto,
+  MockResponseRatioDto,
+  UpdateMockResponseRatioDto,
 } from "../payloads/collectionRequest.payload";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -1696,5 +1698,35 @@ export class CollectionRequestService {
       }),
     });
     return collection;
+  }
+
+  /**
+   * Updates mock response ratios for multiple responses within a mock request.
+   * Ensures the user has the necessary permissions before updating.
+   * Produces an update message after modifying the ratios.
+   *
+   * @param updateRatioDto - The data containing mock response ratios to update
+   * @param user - The user performing the update
+   * @returns - The result of the update operation
+   */
+  async updateMockResponseRatios(
+    updateRatioDto: Partial<UpdateMockResponseRatioDto>,
+    user: DecodedUserObject,
+  ): Promise<UpdateResult<Collection>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      updateRatioDto.workspaceId,
+      user._id,
+    );
+    await this.checkPermission(updateRatioDto.workspaceId, user._id);
+
+    const result = await this.collectionReposistory.updateMockResponseRatios(
+      updateRatioDto.collectionId,
+      updateRatioDto.mockRequestId,
+      updateRatioDto.mockResponseRatios,
+      user,
+      updateRatioDto.folderId,
+    );
+
+    return result;
   }
 }

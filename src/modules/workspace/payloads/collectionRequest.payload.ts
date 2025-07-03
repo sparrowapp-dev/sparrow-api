@@ -4,10 +4,13 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from "class-validator";
 import { HTTPMethods } from "fastify";
@@ -793,6 +796,13 @@ export class UpdateCollectionMockRequestResponseDto {
   @IsBoolean()
   @IsOptional()
   isMockResponseActive?: boolean;
+
+  @ApiProperty({ example: 60 })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  responseWeightRatio?: number;
 }
 
 export class FolderPayload {
@@ -870,4 +880,42 @@ export class BranchChangeDto {
   @IsString()
   @IsNotEmpty()
   branchName: string;
+}
+
+export class MockResponseRatioDto {
+  @ApiProperty({ example: "response-id-123" })
+  @IsString()
+  mockResponseId: string;
+
+  @ApiProperty({ example: 60 })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  responseWeightRatio?: number;
+}
+
+export class UpdateMockResponseRatioDto {
+  @ApiProperty({ example: "collection-id-123" })
+  @IsString()
+  collectionId: string;
+
+  @ApiProperty({ example: "workspace-id-123" })
+  @IsString()
+  workspaceId: string;
+
+  @ApiProperty({ example: "folder-id-123", required: false })
+  @IsString()
+  @IsOptional()
+  folderId?: string;
+
+  @ApiProperty({ example: "mock-request-id-123" })
+  @IsString()
+  mockRequestId: string;
+
+  @ApiProperty({ type: [MockResponseRatioDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MockResponseRatioDto)
+  mockResponseRatios: MockResponseRatioDto[];
 }

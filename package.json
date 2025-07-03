@@ -34,7 +34,7 @@
     "start:migration-mock-url": "ts-node -r tsconfig-paths/register src/migrationMockRequestUrl.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.51.0",
+    "@anthropic-ai/sdk": "^0.54.0",
     "@apidevtools/swagger-parser": "^10.1.0",
     "@azure-rest/ai-inference": "1.0.0-beta.6",
     "@azure/core-auth": "1.9.0",
@@ -86,7 +86,7 @@
     "nestjs-pino": "^3.5.0",
     "nodemailer": "^6.9.6",
     "nodemailer-express-handlebars": "^6.1.0",
-    "openai": "^4.52.7",
+    "openai": "^5.5.1",
     "passport": "0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
@@ -112,6 +112,7 @@
     "@types/jest": "^29.5.3",
     "@types/js-yaml": "^4.0.7",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/mime-types": "^3.0.1",
     "@types/node": "16.11.56",
     "@types/passport-jwt": "^3.0.9",
     "@types/supertest": "^2.0.12",
@@ -138,6 +139,6 @@
   },
   "packageManager": "pnpm@10.11.0",
   "optionalDependencies": {
-    "@sparrowapp-dev/stripe-billing": "^1.1.0"
+    "@sparrowapp-dev/stripe-billing": "^1.1.1"
   }
 }

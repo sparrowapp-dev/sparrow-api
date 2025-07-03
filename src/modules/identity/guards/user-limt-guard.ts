@@ -37,13 +37,10 @@ export class UserLimitGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException("User not found in team.");
     }
-
-    const planId = teamData.plan.id?.toString();
-
+    
     const status = await this.userLimitService.checkLimitAndLogRequest(
       user.id,
       teamId,
-      planId,
     );
 
     if (status === LimitCheckResult.LIMIT_REACHED) {
