@@ -1565,7 +1565,7 @@ export class TeamUserService {
    * Sends different email templates for registered and non-registered users.
    */
   async sendBulkInvites(
-    userInvites: { email: string; role: string }[],
+    users: { email: string; role: string }[],
     teamId: string,
     sender: DecodedUserObject,
   ): Promise<void> {
@@ -1575,9 +1575,9 @@ export class TeamUserService {
       throw new NotFoundException("Hub not Found");
     }
 
-    for (const invite of userInvites) {
-      const email = invite.email.trim().toLowerCase();
-      const role = invite.role;
+    for (const user of users) {
+      const email = user.email.trim().toLowerCase();
+      const role = user.role;
 
       // Check if user already exists in the team
       const teamMember = team.users.some((user) => user.email === email);

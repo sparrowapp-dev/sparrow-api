@@ -35,6 +35,7 @@ import {
 import { UserService } from "../services/user.service";
 import { PlanService } from "../services/plan.service";
 import { HubInviteGuard } from "@src/modules/identity/guards/hub-invite.guard";
+import { HubBulkInviteGuard } from "@src/modules/identity/guards/hub-bulk-invite-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 /**
  * Team Controller
@@ -646,6 +647,66 @@ export class TeamController {
       "HubUrl existence check",
       HttpStatusCode.OK,
       { isExist: exists },
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post(":teamId/bulk-invite")
+  @UseGuards(JwtAuthGuard, HubBulkInviteGuard)
+  @ApiOperation({
+    summary: "Send bulk invites to users within a team.",
+    description: "This will send invites to multiple users in your Team.",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        teamId: { type: "string", example: "64a1b2c3d4e5f6a7b8c9d0e1" },
+        users: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              email: { type: "string", example: "user@example.com" },
+              role: { type: "string", example: "member" },
+            },
+            required: ["email", "role"],
+          },
+        },
+      },
+      required: ["teamId", "users"],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Bulk invites have been sent successfully.",
+  })
+  @ApiResponse({ status: 404, description: "Team not Found." })
+  @ApiResponse({
+    status: 401,
+    description: "Only an Admin or Owner can send the invite.",
+  })
+  @ApiResponse({ status: 400, description: "Failed to add users." })
+  async bulkInviteUsers(
+    @Param("teamId") teamId: string,
+    @Body() body: { teamId: string; users: { email: string; role: string }[] },
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const currentUser = request.user;
+    await this.teamUserService.sendBulkInvites(
+      body.users,
+      body.teamId,
+      currentUser,
+    );
+    const team = await this.teamService.get(teamId);
+    const response = {
+      ...team,
+    };
+    const responseData = new ApiResponseService(
+      "Bulk User Invites Sent to Join Team",
+      HttpStatusCode.OK,
+      response,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
