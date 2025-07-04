@@ -8,6 +8,7 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { Injectable } from "@nestjs/common";
+import path from "path";
 
 /**
  * Payment event types that can be sent to the frontend
@@ -29,12 +30,12 @@ export enum PaymentEventType {
 
 @Injectable()
 @WebSocketGateway({
-  namespace: "stripe-events",
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
+  path: process.env.APP_ENV === "PROD" ? "/v2/socket.io" : "/socket.io",
   transports: ["polling"],
   pingTimeout: 60000,
   pingInterval: 25000,

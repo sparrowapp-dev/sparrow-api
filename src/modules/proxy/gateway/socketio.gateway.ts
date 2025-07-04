@@ -13,7 +13,7 @@ export const SOCKET_IO_PORT = 9001;
     origin: "*",
     methods: ["GET", "POST"],
   },
-  path: process.env.APP_ENV === "PROD" ? "/v2/socket.io" : "/socket.io",
+  path: "/socket.io",
   transports: ["websocket"],
 })
 export class SocketIoGateway implements OnGatewayConnection {
