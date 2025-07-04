@@ -27,6 +27,16 @@ export class SendSalesEmail {
   @IsOptional()
   companyName?: string;
 
+  @ApiProperty({ required: true, example: 60 })
+  @IsNumber()
+  @IsNotEmpty()
+  trialPeriod: number;
+
+  @ApiProperty({ required: true, example: "STANDARD" })
+  @IsString()
+  @IsOptional()
+  trialPlan?: string;
+
   @ApiProperty({ required: true, example: "admin-credetianls" })
   @IsString()
   @IsNotEmpty()

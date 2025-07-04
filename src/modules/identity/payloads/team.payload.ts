@@ -140,6 +140,10 @@ export class UpdateTeamDto {
   @IsOptional()
   @IsObject()
   logo?: logoDto;
+
+  @IsString()
+  @IsOptional()
+  hubUrl?: string;
 }
 
 export class ResponseTeam {
