@@ -7,6 +7,7 @@ import { SalesEmailRepository } from "../repositories/sales-email.repository";
 import { SalesEmail } from "@src/modules/common/models/sales-email.model";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
+import { TeamService } from "@src/modules/identity/services/team.service";
 
 /**
  * Sales Email Service
@@ -20,6 +21,7 @@ export class SalesEmailService {
     private readonly salesEmailRepository: SalesEmailRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly teamService: TeamService,
   ) {}
 
   /**
@@ -121,5 +123,55 @@ export class SalesEmailService {
       throw new BadRequestException("Record not found");
     }
     return data;
+  }
+
+  async formatDate(date: Date): Promise<string> {
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  async sendTrialConfirmationEmail(
+    id: string,
+    payload: { userCount: number },
+  ): Promise<void> {
+    const data = await this.salesEmailRepository.getSalesEmailRecordById(id);
+    if (!data) {
+      throw new BadRequestException("Record not found");
+    }
+    const team = await this.teamService.get(data.createdHubId);
+    // Calculate start and end dates
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(startDate.getDate() + (data.trialPeriod || 0));
+
+    const formattedStartDate = await this.formatDate(startDate);
+    const formattedEndDate = await this.formatDate(endDate);
+    const amount = 9.99 * payload.userCount;
+    const user = team.users.find((u) => u.role === "owner");
+
+    const transporter = this.emailService.createTransporter();
+    const baseURL = this.configService.get("admin.baseURL");
+    const hubUrl = `${baseURL}/hubs/workspace/${team._id.toString()}`;
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: user.email,
+      text: "Trial Confirmation Email",
+      template: "salesTrialEmail2",
+      context: {
+        userName: user.name,
+        hubName: team.name,
+        userCount: payload.userCount,
+        trialStart: formattedStartDate,
+        trialEnd: formattedEndDate,
+        amount: `$${amount.toFixed(2)}/month`,
+        hubUrl: hubUrl,
+      },
+      subject: `Trial Confirmation email for ${team.name} Hub`,
+    };
+    const promise = [this.emailService.sendEmail(transporter, mailOptions)];
+    await Promise.all(promise);
   }
 }

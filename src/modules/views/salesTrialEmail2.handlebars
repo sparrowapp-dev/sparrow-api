@@ -73,7 +73,7 @@
                                          Hi {{userName}}, 👋
                                      </p>
                                      <p>
-                                         Welcome aboard! Your Sparrow Standard Trial is now live for the hub “Techdome Hub”, and you’re all set to experience effortless team collaboration with our full feature set. 🙌
+                                         Welcome aboard! Your Sparrow Standard Trial is now live for the hub “{{hubName}}”, and you’re all set to experience effortless team collaboration with our full feature set. 🙌
                                      </p>
                                      <p>
                                          This trial gives you access to all the features of our Standard plan so you can explore, test, and see how Sparrow fits into your workflow, with no limitations.
@@ -90,24 +90,24 @@
                          </tr>
                          <tr>
                              <td style="border-bottom:1px solid #e0e0e0;">Hub Name</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">Techdome Hub</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{hubName}}</td>
                          </tr>
                          <tr>
                              <td style="border-bottom:1px solid #e0e0e0;">Trial Start</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">July 2, 2025</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{trialStart}}</td>
                          </tr>
                          <tr>
                              <td style="border-bottom:1px solid #e0e0e0;">Trial End</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">September 2, 2025</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{trialEnd}}</td>
                          </tr>
                          <tr>
                              <td style="border-bottom:1px solid #e0e0e0;">Amount After Trial</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">$39.96/month</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{amount}}</td>
                          </tr>
                          <tr>
                              <td style="border-bottom:1px solid #e0e0e0;">Team Members</td>
                              <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">
-                                 4
+                                 {{userCount}}
                              </td>
                          </tr>
                      </table>
@@ -129,7 +129,7 @@
                                                      <table cellspacing="0" cellpadding="0" border="0">
                                                          <tr>
                                                              <td style="border-radius: 6px; background-color: #316CF6; padding: 6px 12px; min-height: 36px;">
-                                                                 <a href="{{startTrialUrl}}" class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none;">
+                                                                 <a href="{{hubUrl}}" class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none;">
                                                                      Go to My Hub
                                                                  </a>
                                                              </td>
