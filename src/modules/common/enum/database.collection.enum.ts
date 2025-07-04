@@ -16,6 +16,7 @@ export enum Collections {
   AILOGS = "ailogs",
   USERLIMITLOGS = "userlimitlogs",
   LLMCONVERSATION = "llmconversation",
+  SALESEMAIL = "salesemail",
   BILLING_EVENTS = "billingevents",
   BILLING_TRANSACTIONS = "billingtransactions",
 }

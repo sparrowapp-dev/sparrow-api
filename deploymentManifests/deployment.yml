@@ -340,7 +340,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: sparrow-api-secret
-                  key: DB_NAME   
+                  key: DB_NAME
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -361,6 +361,21 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: AI_CONVERSATION_BLOB_CONTAINER
+            - name: ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: ENCRYPTION_SECRET
+            - name: SPARROW_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SPARROW_ADMIN_KEY
+            - name: ADMIN_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: ADMIN_BASE_URL
 
 ---
 apiVersion: v1

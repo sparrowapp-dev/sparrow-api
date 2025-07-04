@@ -140,6 +140,51 @@ export class UserService {
   }
 
   /**
+   * Create a verified user with RegisterPayload fields
+   * @param {RegisterPayload} payload user payload
+   * @returns {Promise<IUser>} tokens
+   */
+  async createVerifiedUser(payload: RegisterPayload) {
+    payload.email = payload.email.toLowerCase();
+    const userExist = await this.getUserByEmail(payload.email);
+    if (userExist) {
+      throw new BadRequestException(
+        "The account with the provided email currently exists. Please choose another one.",
+      );
+    }
+    const user = await this.userRepository.createVerifiedUser(payload);
+
+    const userData = {
+      _id: user.insertedId,
+      name: payload.name,
+      email: payload.email,
+      role: "",
+    };
+
+    const firstName = await this.getFirstName(payload.name);
+    const teamName = {
+      name: firstName + this.configService.get("app.defaultTeamNameSuffix"),
+      firstTeam: true,
+    };
+    await this.teamService.create(teamName, userData);
+    const tokenPromises = [
+      this.authService.createToken(userData._id),
+      this.authService.createRefreshToken(userData._id),
+    ];
+    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+    const tokenData = {
+      accessToken,
+      refreshToken,
+    };
+    // Disabling the welcome email due to hubspot integration
+    // await this.sendSignUpEmail(firstName, payload.email);
+    // if (!payload?.isUserAlreadyVerified) {
+    //   await this.sendUserVerificationEmail({ email: payload.email });
+    // }
+    return tokenData;
+  }
+
+  /**
    * Edit User data
    * @param {userId} payload
    * @param {UpdateUserDto} payload
