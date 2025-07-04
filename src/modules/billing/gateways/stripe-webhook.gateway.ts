@@ -8,7 +8,6 @@ import {
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { Injectable } from "@nestjs/common";
-import path from "path";
 
 /**
  * Payment event types that can be sent to the frontend
