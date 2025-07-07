@@ -372,9 +372,9 @@ export class TeamService {
         specificInvite && !this.isInviteExpired(specificInvite.expiresAt);
 
       if (isValidInvite) {
-        const createdById = specificInvite.createdBy?.toString();
+        const createdById = specificInvite?.createdBy?.toString();
         let senderData;
-        if (createdById && createdById !== userId) {
+        if (createdById) {
           senderData = await this.userRepository.getUserById(createdById);
         }
 
