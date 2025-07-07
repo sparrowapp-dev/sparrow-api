@@ -53,7 +53,7 @@ export class CollectionRepository {
   }
 
   /**
-   * Fetches a collections from database by UUID
+   * Fetches collections from database by UUID
    * @param {string[]} collectionIds
    * @returns {Promise<Team>} queried team data
    */

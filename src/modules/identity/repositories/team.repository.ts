@@ -88,7 +88,7 @@ export class TeamRepository {
   }
 
    /**
-   * Fetches a team from database by UUID
+   * Fetches teams from database by UUID
    * @param {string[]} teamIds
    * @returns {Promise<Team>} queried team data
    */

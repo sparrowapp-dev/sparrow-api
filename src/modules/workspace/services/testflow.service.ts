@@ -156,12 +156,9 @@ export class TestflowService {
     userId: ObjectId,
   ): Promise<WithId<Testflow>[]> {
     await this.checkPermission(id, userId);
-
     const workspace = await this.workspaceService.get(id);
     const testflowIds = workspace.testflows?.map(t => t.id.toString()) || [];
-
     if (testflowIds.length === 0) return [];
-
     const testflows = await this.testflowRepository.getTestflowsByIds(testflowIds);
     return testflows;
   }
@@ -179,7 +176,6 @@ export class TestflowService {
     const testflowIds = workspace.testflows?.map(t => t.id.toString()) || [];
     if (testflowIds.length === 0) return [];
     const testflows = await this.testflowRepository.getTestflowsByIds(testflowIds);
-
     return testflows;
   }
 
