@@ -727,15 +727,4 @@ export class PaymentEmailHelper {
     // Default fallback message
     return "Payment could not be processed. Please check your payment method or contact your bank.";
   }
-
-  /**
-   * Calculate next payment date based on billing cycle
-   */
-  private calculateNextPaymentDate(invoice: any): Date | null {
-    const lineItem = invoice.lines?.data?.[0];
-    if (lineItem?.period?.end) {
-      return new Date(lineItem.period.end * 1000);
-    }
-    return null;
-  }
 }

@@ -178,6 +178,7 @@ export class PaymentEmailService {
         serviceEndDate: data.cancelAt
           ? this.formatDate(data.cancelAt)
           : "Immediately",
+        managePlanUrl: `${this.configService.get("admin.baseURL")}/billing/billingOverview/${data.hubId}`,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
@@ -294,7 +295,7 @@ export class PaymentEmailService {
           ? this.formatDate(data.billingPeriodStart)
           : this.formatDate(data.billingPeriodStart),
         features: planFeatures,
-        managePlanUrl: `${this.configService.get("app.frontendUrl")}/billing/${data.hubId}`,
+        managePlanUrl: `${this.configService.get("admin.baseURL")}/billing/billingOverview/${data.hubId}`,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
@@ -329,7 +330,7 @@ export class PaymentEmailService {
         cardLast4: data.cardLast4 || "****",
         updatePaymentUrl:
           data.updatePaymentUrl ||
-          `${this.configService.get("app.frontendUrl")}/billing/${data.hubId}`,
+          `${this.configService.get("admin.baseURL")}/billing/billingInformation/${data.hubId}`,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
