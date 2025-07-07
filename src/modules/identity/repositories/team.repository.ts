@@ -87,6 +87,23 @@ export class TeamRepository {
     return team;
   }
 
+   /**
+   * Fetches a team from database by UUID
+   * @param {string[]} teamIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getTeamsByIds(teamIds: string[]): Promise<WithId<Team>[]> {
+    const teams = await this.db.collection<Team>(Collections.TEAM)
+    .find({ _id: { $in: teamIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!teams) {
+      throw new BadRequestException(
+        "The teams with that ids could not be found.",
+      );
+    }
+    return teams;
+  }
+
   /**
    * Fetches a team from database by UUID
    * @param {string} id

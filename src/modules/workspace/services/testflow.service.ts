@@ -158,13 +158,11 @@ export class TestflowService {
     await this.checkPermission(id, userId);
 
     const workspace = await this.workspaceService.get(id);
-    const testflows = [];
-    for (let i = 0; i < workspace.testflows?.length; i++) {
-      const testflow = await this.testflowRepository.get(
-        workspace.testflows[i].id.toString(),
-      );
-      testflows.push(testflow);
-    }
+    const testflowIds = workspace.testflows?.map(t => t.id.toString()) || [];
+
+    if (testflowIds.length === 0) return [];
+
+    const testflows = await this.testflowRepository.getTestflowsByIds(testflowIds);
     return testflows;
   }
 
@@ -173,17 +171,15 @@ export class TestflowService {
    * @param id - Workspace id you want to get their testflows.
    */
   async getAllPublicTestflows(id: string): Promise<WithId<Testflow>[]> {
+
     const workspace = await this.workspaceService.get(id);
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const testflows = [];
-    for (let i = 0; i < workspace.testflows?.length; i++) {
-      const testflow = await this.testflowRepository.get(
-        workspace.testflows[i].id.toString(),
-      );
-      testflows.push(testflow);
-    }
+    const testflowIds = workspace.testflows?.map(t => t.id.toString()) || [];
+    if (testflowIds.length === 0) return [];
+    const testflows = await this.testflowRepository.getTestflowsByIds(testflowIds);
+
     return testflows;
   }
 

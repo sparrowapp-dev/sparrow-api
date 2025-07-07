@@ -407,15 +407,11 @@ export class CollectionService {
     user: DecodedUserObject,
   ): Promise<WithId<Collection>[]> {
     await this.checkPermission(id, user._id);
-
     const workspace = await this.workspaceRepository.get(id);
-    const collections = [];
-    for (let i = 0; i < workspace.collection?.length; i++) {
-      const collection = await this.collectionRepository.get(
-        workspace.collection[i].id.toString(),
-      );
-      collections.push(collection);
-    }
+    const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
+    if (collectionIds.length === 0) return [];
+    // Bulk fetch all collections
+    const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
     return collections;
   }
 
@@ -426,13 +422,9 @@ export class CollectionService {
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const collections = [];
-    for (let i = 0; i < workspace.collection?.length; i++) {
-      const collection = await this.collectionRepository.get(
-        workspace.collection[i].id.toString(),
-      );
-      collections.push(collection);
-    }
+    const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
+    if (collectionIds.length === 0) return [];
+    const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
     return collections;
   }
 
