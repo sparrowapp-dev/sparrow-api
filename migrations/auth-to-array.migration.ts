@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 
 @Injectable()
-export class AuthToArrayMigration implements OnModuleInit {
+export class AuthToAuthProfilesMigration implements OnModuleInit {
   private hasRun = false;
 
   constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
@@ -13,19 +13,19 @@ export class AuthToArrayMigration implements OnModuleInit {
     if (this.hasRun) return;
 
     try {
-      console.log(`\n\x1b[32m[Nest]\x1b[0m \x1b[32mRunning AuthToArrayMigration...`);
+      console.log(`\n\x1b[32m[Nest]\x1b[0m \x1b[32mRunning AuthToAuthProfilesMigration...`);
 
       const collection = this.db.collection(Collections.COLLECTION);
 
       const documents = await collection
         .find({
           auth: { $type: "object" },
-          "auth.0": { $exists: false },
+          "auth.0": { $exists: false },           // Ensure auth is not already an array
         })
         .toArray();
 
       if (documents.length === 0) {
-        console.log("No documents needing auth migration.");
+        console.log("No documents needing authProfiles migration.");
         this.hasRun = true;
         return;
       }
@@ -40,7 +40,7 @@ export class AuthToArrayMigration implements OnModuleInit {
           typeof authObject === "object" &&
           !Array.isArray(authObject)
         ) {
-          // Determine which auth type has actual data
+          // Check if a valid auth type exists
           let authType = "";
           const { bearerToken, basicAuth = {}, apiKey = {} } = authObject;
 
@@ -59,43 +59,49 @@ export class AuthToArrayMigration implements OnModuleInit {
             continue;
           }
 
-          // Preserve full structure (including empty values)
-          const newAuthArray = [
-            {
-              name: "New-Auth-Profile",
-              description: "",
-              authType,
-              auth: {
-                bearerToken: bearerToken || "",
-                basicAuth: {
-                  username: basicAuth.username || "",
-                  password: basicAuth.password || "",
-                },
-                apiKey: {
-                  authKey: apiKey.authKey || "",
-                  authValue: apiKey.authValue || "",
-                  addTo: apiKey.addTo || "Header",
-                },
+          const newAuthProfile = {
+            name: "New-Auth-Profile",
+            description: "",
+            authType,
+            auth: {
+              bearerToken: bearerToken || "",
+              basicAuth: {
+                username: basicAuth.username || "",
+                password: basicAuth.password || "",
               },
-              defaultKey: true,
-              createdAt: now,
-              authId: uuidv4(),
+              apiKey: {
+                authKey: apiKey.authKey || "",
+                authValue: apiKey.authValue || "",
+                addTo: apiKey.addTo || "Header",
+              },
             },
-          ];
+            defaultKey: false,
+            createdAt: now,
+            authId: uuidv4(),
+          };
+
+          // Prepare the update operation
+          const update: any = {};
+
+          if (Array.isArray(doc.authProfiles)) {
+            update.$push = { authProfiles: newAuthProfile };
+          } else {
+            update.$set = { authProfiles: [newAuthProfile] };
+          }
 
           await collection.updateOne(
             { _id: new ObjectId(doc._id) },
-            { $set: { auth: newAuthArray } },
+            update
           );
 
-          console.log(`Migrated document: ${doc._id}`);
+          console.log(`Updated authProfiles for document: ${doc._id}`);
         }
       }
 
-      console.log(`Auth field migration completed. Total updated: ${documents.length}`);
+      console.log(`Migration completed. Total processed: ${documents.length}`);
       this.hasRun = true;
     } catch (error) {
-      console.error("Error during AuthToArrayMigration:", error);
+      console.error("Error during AuthToAuthProfilesMigration:", error);
     }
   }
 }

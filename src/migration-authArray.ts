@@ -3,7 +3,7 @@ import { Module, Provider } from "@nestjs/common";
 import { MongoClient, Db } from "mongodb";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import configuration from "./modules/common/config/configuration";
-import { AuthToArrayMigration } from "migrations/auth-to-array.migration";
+import { AuthToAuthProfilesMigration } from "migrations/auth-to-array.migration";
 
 const databaseProvider: Provider = {
   provide: "DATABASE_CONNECTION",
@@ -28,13 +28,13 @@ const databaseProvider: Provider = {
       load: [configuration],
     }),
   ],
-  providers: [databaseProvider, AuthToArrayMigration],
+  providers: [databaseProvider, AuthToAuthProfilesMigration],
 })
 class MigrationModule {}
 
 async function run() {
   const app = await NestFactory.createApplicationContext(MigrationModule);
-  const migration = app.get(AuthToArrayMigration);
+  const migration = app.get(AuthToAuthProfilesMigration);
   await migration.onModuleInit();
   await app.close();
 }
