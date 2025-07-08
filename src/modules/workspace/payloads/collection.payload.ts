@@ -196,10 +196,22 @@ export class UpdateCollectionDto {
     },
   })
   @IsArray()
+  @Type(() => Auth)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  auth?: Auth;
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      bearerToken: "Bearer xyz",
+    },
+  })
+  @IsArray()
   @Type(() => AuthProfiles)
   @ValidateNested({ each: true })
   @IsOptional()
-  auth?: AuthProfiles[];
+  authProfiles?: AuthProfiles[];
 
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()

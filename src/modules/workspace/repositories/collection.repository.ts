@@ -82,7 +82,7 @@ export class CollectionRepository {
   ): Promise<any> {
     const collectionObjectId = new ObjectId(collectionId);
 
-    const authInput = authDto.auth?.[0]; // Extract first auth profile
+    const authInput = authDto.authProfiles?.[0]; // Extract first auth profile
 
     if (!authInput) {
       throw new BadRequestException("Auth profile is required.");
@@ -92,7 +92,7 @@ export class CollectionRepository {
       .collection(Collections.COLLECTION)
       .findOne({ _id: collectionObjectId });
 
-    const existingAuthNames = (collection?.auth || []).map((a: any) => a.name);
+    const existingAuthNames = (collection?.authProfiles || []).map((a: any) => a.name);
 
     if (authInput.name && existingAuthNames.includes(authInput.name)) {
       throw new BadRequestException("Please enter a unique name for Auth profile.");
@@ -118,8 +118,8 @@ export class CollectionRepository {
     // Handle defaultKey logic: Unset existing default if new one is marked default
     if (authInput.defaultKey === true) {
       await this.db.collection(Collections.COLLECTION).updateOne(
-        { _id: collectionObjectId, "auth.defaultKey": true },
-        { $set: { "auth.$[elem].defaultKey": false } },
+        { _id: collectionObjectId, "authProfiles.defaultKey": true },
+        { $set: { "authProfiles.$[elem].defaultKey": false } },
         { arrayFilters: [{ "elem.defaultKey": true }] },
       );
     }
@@ -128,7 +128,7 @@ export class CollectionRepository {
     await this.db.collection(Collections.COLLECTION).updateOne(
       { _id: collectionObjectId },
       {
-        $push: { auth: enrichedAuth },
+        $push: { authProfiles: enrichedAuth },
         $set: {
           updatedAt: now,
           updatedBy: {
@@ -143,10 +143,10 @@ export class CollectionRepository {
       .collection(Collections.COLLECTION)
       .findOne(
         { _id: collectionObjectId },
-        { projection: { auth: 1, _id: 0 } } // Return only auth field
+        { projection: { authProfiles: 1, _id: 0 } } // Return only authProfiles field
       );
 
-    return updatedCollection?.auth || [];
+    return updatedCollection?.authProfiles || [];
   }
 
   async deleteAuth(
@@ -159,7 +159,7 @@ export class CollectionRepository {
       { _id: new ObjectId(collectionId) },
       {
         $pull: {
-          auth: { authId: authId  },
+          authProfiles: { authId: authId },
         },
         $set: {
           updatedAt: new Date(),
@@ -208,7 +208,7 @@ export class CollectionRepository {
     throw new BadRequestException('Collection not found');
   }
 
-  const existingAuths = collection.auth || [];
+  const existingAuths = collection.authProfiles || [];
 
   const targetIndex = existingAuths.findIndex((auth: any) => auth.authId === authId);
   if (targetIndex === -1) {
@@ -239,7 +239,7 @@ export class CollectionRepository {
 
   const updateDoc: any = {
     $set: {
-      auth: updatedAuths,
+      authProfiles: updatedAuths,
       updatedAt: new Date(),
       updatedBy: {
         id: user._id.toString(),

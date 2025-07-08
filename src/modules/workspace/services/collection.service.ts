@@ -77,7 +77,7 @@ export class CollectionService {
       updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
-      auth: []
+      authProfiles: []
     };
     const collection =
       await this.collectionRepository.addCollection(newCollection);
@@ -516,8 +516,7 @@ export class CollectionService {
     updateCollectionDto: Partial<UpdateCollectionDto>,
     user: DecodedUserObject,
   ): Promise<any> {
-
-    const collectionId = updateCollectionDto.collectionId
+    const collectionId = updateCollectionDto.collectionId;
 
     const result = await this.collectionRepository.addAuth(
       collectionId,
@@ -531,7 +530,7 @@ export class CollectionService {
     const collectionObjectId = new ObjectId(collectionId);
 
     const collection = await this.collectionRepository.findCollectionById(collectionObjectId, user);
-    return collection.auth || [];
+    return collection.authProfiles || [];
   }
 
 

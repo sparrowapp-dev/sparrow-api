@@ -1055,7 +1055,19 @@ export class Collection {
   @Type(() => Auth)
   @ValidateNested({ each: true })
   @IsOptional()
-  auth?: Auth[];
+  auth?: Auth;
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      bearerToken: "Bearer xyz",
+    },
+  })
+  @IsArray()
+  @Type(() => Auth)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  authProfiles?: Auth[];
 
   @ApiProperty()
   @IsString()
