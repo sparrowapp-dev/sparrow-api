@@ -130,6 +130,10 @@ export class User {
   @IsOptional()
   @IsDate()
   lastActive?: Date;
+
+  @IsBoolean()
+  @IsOptional()
+  isUserTrialExhausted?: boolean;
 }
 
 export class UserDto {
