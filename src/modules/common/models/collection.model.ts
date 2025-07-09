@@ -1045,6 +1045,11 @@ export class Collection {
   @IsOptional()
   selectedAuthType?: CollectionAuthModeEnum;
 
+  @ApiProperty({ example: "6544cdea4b3d3b043a96c307" })
+  @IsString()
+  @IsOptional()
+  defaultSelectedAuthProfile?: string;
+
   @ApiProperty({
     type: [Auth],
     example: {

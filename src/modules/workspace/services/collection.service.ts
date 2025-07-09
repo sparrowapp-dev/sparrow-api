@@ -77,6 +77,7 @@ export class CollectionService {
       updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
+      defaultSelectedAuthProfile: "",
       authProfiles: []
     };
     const collection =

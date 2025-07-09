@@ -216,6 +216,7 @@ export class CollectionRepository {
   }
 
   const updatedAuth = {
+    ...existingAuths[targetIndex],
     ...payload,
     authId, // preserve authId
     updatedAt: new Date(),
@@ -249,7 +250,7 @@ export class CollectionRepository {
   };
 
   if (payload.defaultKey === true && payload.name) {
-    updateDoc.$set.selectedAuthType = payload.name;
+    updateDoc.$set.defaultSelectedAuthProfile = authId;
   }
 
   const result = await this.db
@@ -260,7 +261,19 @@ export class CollectionRepository {
     throw new BadRequestException('Auth profile update failed');
   }
 
-  return 'Auth profile updated successfully';
+  const updatedCollection = await this.db
+    .collection(Collections.COLLECTION)
+    .findOne(
+      { _id: collectionObjectId, "authProfiles.authId": authId },
+      {
+        projection: {
+          authProfiles: { $elemMatch: { authId } },
+          _id: 0,
+        },
+      },
+  );
+
+  return updatedCollection?.authProfiles?.[0];
 }
 
 
