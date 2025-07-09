@@ -1157,7 +1157,7 @@ export class TeamUserService {
       teamId: teamId,
       users: [matchedInvite.email],
       role: matchedInvite.role,
-      workspaces: matchedInvite.workspaces,
+      workspaces: matchedInvite?.workspaces ?? [],
       senderEmail: sender?.email,
     });
     // now remove it from invites array
@@ -1570,12 +1570,12 @@ export class TeamUserService {
     sender: DecodedUserObject,
   ): Promise<void> {
     const teamFilter = new ObjectId(teamId);
-    const team = await this.teamRepository.get(teamFilter.toString());
-    if (!team) {
-      throw new NotFoundException("Hub not Found");
-    }
 
     for (const user of users) {
+      const team = await this.teamRepository.get(teamFilter.toString());
+      if (!team) {
+        throw new NotFoundException("Hub not Found");
+      }
       const email = user.email.trim().toLowerCase();
       const role = user.role;
 

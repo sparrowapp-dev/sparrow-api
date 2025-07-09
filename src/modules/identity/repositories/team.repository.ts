@@ -197,4 +197,18 @@ export class TeamRepository {
       .findOne({ hubUrl: hubUrl });
     return !!team;
   }
+
+  /**
+   * Update isHubTrialExhausted and plan object for a team
+   */
+  async updateTrialAndPlan(
+    teamId: string,
+    isHubTrialExhausted: boolean,
+    plan: any,
+  ): Promise<UpdateResult<Team>> {
+    const _id = new ObjectId(teamId);
+    return await this.db
+      .collection<Team>(Collections.TEAM)
+      .updateOne({ _id }, { $set: { isHubTrialExhausted, plan } });
+  }
 }
