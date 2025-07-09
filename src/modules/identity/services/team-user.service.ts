@@ -1666,6 +1666,7 @@ export class TeamUserService {
             inviteId: inviteId,
             teamId: teamId,
             email: email,
+            role: role,
           },
           subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
         };
