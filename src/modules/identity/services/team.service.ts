@@ -483,7 +483,7 @@ export class TeamService {
       throw new BadRequestException("Team not found");
     }
 
-    teamDetails.plan.limits.usersPerHub.value = userCount + 1;
+    teamDetails.plan.limits.usersPerHub.value = userCount;
 
     const updatedTeam = await this.teamRepository.updateTrialAndPlan(
       teamId,
