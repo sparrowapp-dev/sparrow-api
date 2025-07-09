@@ -41,6 +41,8 @@ import { v4 as uuidv4 } from "uuid";
 import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
 import { WorkspaceType } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { EncryptionService } from "@src/modules/common/services/encryption.service";
+
 @Injectable()
 export class CollectionService {
   constructor(
@@ -51,6 +53,7 @@ export class CollectionService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
+    private readonly cryptoService: EncryptionService
   ) {}
 
   async createCollection(
@@ -410,10 +413,20 @@ export class CollectionService {
 
     const workspace = await this.workspaceRepository.get(id);
     const collections = [];
+
     for (let i = 0; i < workspace.collection?.length; i++) {
       const collection = await this.collectionRepository.get(
         workspace.collection[i].id.toString(),
       );
+
+      // 🔽 Decrypt API Key here
+      for (const item of collection.items) {
+        const apiKeyAuth = item?.aiRequest?.auth?.apiKey;
+        if (apiKeyAuth?.authValue) {
+          apiKeyAuth.authValue = this.cryptoService.decrypt(apiKeyAuth.authValue as string);
+        }
+      }
+
       collections.push(collection);
     }
     return collections;
