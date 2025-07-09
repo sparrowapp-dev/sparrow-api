@@ -414,17 +414,40 @@ export class CollectionService {
     const workspace = await this.workspaceRepository.get(id);
     const collections = [];
 
+    // ✅ Only define this once
+    const decryptAuthValuesInItems = (items: any[]) => {
+      const stack = [...items]; // Avoid recursion
+
+      while (stack.length > 0) {
+        const item = stack.pop();
+
+        if (!item) continue;
+
+        if (item.type === 'AI_REQUEST') {
+          const apiKeyAuth = item?.aiRequest?.auth?.apiKey;
+          if (apiKeyAuth && typeof apiKeyAuth.authValue === 'string') {
+            try {
+              apiKeyAuth.authValue = this.cryptoService.decrypt(apiKeyAuth.authValue);
+            } catch (error) {
+              console.warn('Failed to decrypt authValue:', error);
+            }
+          }
+        }
+
+        if (item.type === 'FOLDER' && Array.isArray(item.items)) {
+          stack.push(...item.items);
+        }
+      }
+    };
+
+    // 🔄 Only the minimum loop remains
     for (let i = 0; i < workspace.collection?.length; i++) {
       const collection = await this.collectionRepository.get(
         workspace.collection[i].id.toString(),
       );
 
-      // 🔽 Decrypt API Key here
-      for (const item of collection.items) {
-        const apiKeyAuth = item?.aiRequest?.auth?.apiKey;
-        if (apiKeyAuth?.authValue) {
-          apiKeyAuth.authValue = this.cryptoService.decrypt(apiKeyAuth.authValue as string);
-        }
+      if (Array.isArray(collection.items)) {
+        decryptAuthValuesInItems(collection.items);
       }
 
       collections.push(collection);
