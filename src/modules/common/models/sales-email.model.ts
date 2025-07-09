@@ -23,11 +23,23 @@ export class SalesEmail {
 
   @IsString()
   @IsOptional()
+  createdHubId?: string;
+
+  @IsString()
+  @IsOptional()
   companyName?: string;
 
   @IsNumber()
   @IsOptional()
   inviteCount?: number;
+
+  @IsNumber()
+  @IsOptional()
+  trialPeriod?: number;
+
+  @IsString()
+  @IsOptional()
+  trialPlan?: string;
 
   @IsString()
   @IsOptional()

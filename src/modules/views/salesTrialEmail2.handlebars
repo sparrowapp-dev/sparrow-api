@@ -4,7 +4,8 @@
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Team Invite Registered Email</title>
+      <title>Trial Email</title>
+
 
       <style>
           body {
@@ -54,7 +55,7 @@
                                  <tr>
                                      <td align="center" valign="middle" background="https://sparrowassets.blob.core.windows.net/emailtemplate/Sparrow-email-headerv2.png" bgcolor="#4A90E2" style="background-position: center; background-repeat: no-repeat; background-size: cover;">
                                          <div style="padding: 40px 30px;">
-                                             <h1 style="font-size: 28px; font-weight: 600; color: #ffffff; margin: 0 0 12px 0; line-height: 1.2; font-family: 'Inter', Arial, sans-serif;">You’ve been invited to join {{teamName}} Hub on Sparrow</h1>
+                                             <h1 style="font-size: 28px; font-weight: 600; color: #ffffff; margin: 0 0 12px 0; line-height: 1.2; font-family: 'Inter', Arial, sans-serif;">Your Standard Trial is Live on Sparrow</h1>
                                          </div>
                                      </td>
                                  </tr>
@@ -72,15 +73,45 @@
                                          Hi {{userName}}, 👋
                                      </p>
                                      <p>
-                                        Welcome to Sparrow! You’ve been invited to join the hub <span style="font-weight: 700; word-break: break-all;">“{{teamName}} Hub”</span> as an <span style="font-weight: 700;">“{{role}}”</span>.
+                                         Welcome aboard! Your Sparrow Standard Trial is now live for the hub “{{hubName}}”, and you’re all set to experience effortless team collaboration with our full feature set. 🙌
                                      </p>
                                      <p>
-                                        This trial gives you access to all the features of our Standard plan so you can explore, test, and see how Sparrow fits into your workflow, with no limitations.
+                                         This trial gives you access to all the features of our Standard plan so you can explore, test, and see how Sparrow fits into your workflow, with no limitations.
                                      </p>
                                  </div>
                              </td>
                          </tr>
                      </table>
+                     <table style="margin-bottom: 20px;" class="email-text-style" width="100%" cellpadding="0" cellspacing="0" border="0">
+                         <tr>
+                             <td style="border-bottom:1px solid #b0b8c1" colspan="2">
+                                 <h1 style="margin-top:0; margin-bottom: -6px;">Trial Details</h1>
+                             </td>
+                         </tr>
+                         <tr>
+                             <td style="border-bottom:1px solid #e0e0e0;">Hub Name</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{hubName}}</td>
+                         </tr>
+                         <tr>
+                             <td style="border-bottom:1px solid #e0e0e0;">Trial Start</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{trialStart}}</td>
+                         </tr>
+                         <tr>
+                             <td style="border-bottom:1px solid #e0e0e0;">Trial End</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{trialEnd}}</td>
+                         </tr>
+                         <tr>
+                             <td style="border-bottom:1px solid #e0e0e0;">Amount After Trial</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{amount}}</td>
+                         </tr>
+                         <tr>
+                             <td style="border-bottom:1px solid #e0e0e0;">Team Members</td>
+                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">
+                                 {{userCount}}
+                             </td>
+                         </tr>
+                     </table>
+
                      <!-- What's included in your trial section -->
                      <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
                          <tr>
@@ -93,13 +124,13 @@
                                                  <h2 style="font-size: 22px; font-weight: 600; color: #ffffff; margin: 0 0 4px 0; line-height: 1.3; font-family: 'Inter', Arial, sans-serif;">
                                                      What’s Next?
                                                  </h2>
-                                                 <p style="font-size: 16px; color: #ffffff; margin: 0; line-height: 1.4; font-family: 'Inter', Arial, sans-serif; font-weight: 400; margin-bottom: 14px;">Click below to accept your invite and set up your Sparrow account:</p>
+                                                 <p style="font-size: 16px; color: #ffffff; margin: 0; line-height: 1.4; font-family: 'Inter', Arial, sans-serif; font-weight: 400; margin-bottom: 14px;">Click the button below to navigate to your hub and start exploring:</p>
                                                  <div>
                                                      <table cellspacing="0" cellpadding="0" border="0">
                                                          <tr>
                                                              <td style="border-radius: 6px; background-color: #316CF6; padding: 6px 12px; min-height: 36px;">
-                                                                 <a href="{{authUrl}}/accept-team-invite/{{teamId}}/{{inviteId}}/{{email}}" class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none;">
-                                                                     Accept Invite
+                                                                 <a href="{{hubUrl}}" class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none;">
+                                                                     Go to My Hub
                                                                  </a>
                                                              </td>
                                                          </tr>
@@ -117,12 +148,16 @@
                              <td>
                                  <div class="email-text-style">
                                      <p>
-                                         We’re excited to have you onboard. If you need help or have questions, our team is just a message away, reach out to us at
+                                         You can always invite more team members anytime from your hub dashboard. If you have any questions or need a quick walkthrough, we’re here to help, reach out to us a
                                          <a href="mailto:contactus@sparrowapp.dev" style="color: #316CF6;">contactus@sparrowapp.dev</a>
                                      </p>
 
                                      <p>
-                                         Warm Regards,<br>
+                                         Thanks for trying Sparrow, we can’t wait to see how your team makes the most of it.Happy exploring,The Sparrow Team
+                                     </p>
+
+                                     <p>
+                                         Happy exploring,<br>
                                          The Sparrow Team
                                      </p>
                                  </div>

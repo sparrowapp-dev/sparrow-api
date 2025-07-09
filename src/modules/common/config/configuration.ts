@@ -128,4 +128,7 @@ export default () => ({
   sparrowAdmin: {
     adminKey: process.env.SPARROW_ADMIN_KEY,
   },
+  admin: {
+    baseURL: process.env.ADMIN_BASE_URL,
+  },
 });

@@ -59,6 +59,10 @@ export class Team {
   @IsOptional()
   hubUrl?: string;
 
+  @IsBoolean()
+  @IsOptional()
+  isHubTrialExhausted?: boolean;
+
   @IsString()
   @IsOptional()
   githubUrl?: string;
