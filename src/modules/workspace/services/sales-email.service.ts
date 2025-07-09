@@ -153,7 +153,7 @@ export class SalesEmailService {
     const user = team.users.find((u) => u.role === "owner");
     await this.teamService.updateHubTrialAndPlan(
       team._id.toString(),
-      payload.userCount,
+      data.inviteCount,
     );
 
     const transporter = this.emailService.createTransporter();

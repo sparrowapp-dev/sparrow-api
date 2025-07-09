@@ -1214,7 +1214,8 @@ export class TeamUserService {
       throw new NotFoundException("Invite not found");
     }
     //checking workspaces in the users are matching.
-    const allWorkspaces = matchedInvite?.workspaces?.filter((inviteWs) =>
+    let allWorkspaces = [];
+    allWorkspaces = matchedInvite?.workspaces?.filter((inviteWs) =>
       teamData.workspaces.some(
         (teamWs) => teamWs.id.toString() === inviteWs.id,
       ),
@@ -1228,7 +1229,7 @@ export class TeamUserService {
       teamId: teamId,
       users: [matchedInvite.email],
       role: matchedInvite.role,
-      workspaces: allWorkspaces,
+      workspaces: allWorkspaces ?? [],
       senderEmail: inviteBy?.email,
     });
     // now remove it from invites array
