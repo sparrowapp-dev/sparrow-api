@@ -70,6 +70,9 @@ import { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 
 // import { GoogleGenAI } from "@google/genai";
 
+import pdfParse from 'pdf-parse';
+import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
+
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
   try {
@@ -2044,11 +2047,22 @@ export class AiAssistantService {
     }
   }
 
-
-
-  public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string): Promise<{ fileId: string; fileUrl: string }[]> {
+  public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string, modelVersion: string): Promise<{ fileId: string; fileUrl: string }[]> {
     if (!docs?.length || !model || !authKey) {
       throw new BadRequestException('Missing required fields');
+    }
+
+    async function extractTextFromBuffer(buffer: Buffer, mimetype: string): Promise<string> {
+      if (mimetype === 'application/pdf') {
+        const result = await pdfParse(buffer);
+        return result.text;
+      }
+
+      if (mimetype === 'text/plain') {
+        return buffer.toString('utf8');
+      }
+
+      throw new BadRequestException(`Unsupported file type: ${mimetype}`);
     }
     
     if (model === Models.OpenAI) {
@@ -2056,8 +2070,29 @@ export class AiAssistantService {
       const { writeFile, unlink } = fs.promises;
       
       const results: { fileId: string; fileUrl: string; }[] = [];
+      let totalTokenCount = 0;
+      const acceptedFiles: string[] = [];
       
       for (const doc of docs) {
+
+        // Check the tokens of the File user has uploaded
+        const text = await extractTextFromBuffer(doc.buffer, doc.mimetype);
+        const model = modelVersion as TiktokenModel
+        const enc = encoding_for_model(model);
+        const tokens = enc.encode(text);
+
+        // Token limit exceeded check
+        if (totalTokenCount + tokens.length > 120000) {
+          const acceptedMsg = acceptedFiles.length
+            ? `Try uploading only the first ${acceptedFiles.length} file${acceptedFiles.length > 1 ? 's' : ''}.`
+            : 'Try with a file that contains less content.';
+
+          throw new BadRequestException(
+            `The uploaded content exceeds the model’s token limit of 128k. ${acceptedMsg}`
+          );
+        }
+        totalTokenCount += tokens.length;
+        acceptedFiles.push(doc.fieldname);
 
         // Upload document to azure blob 
         const uploadFile = await this.blobStorageService.uploadAiDoc(doc)

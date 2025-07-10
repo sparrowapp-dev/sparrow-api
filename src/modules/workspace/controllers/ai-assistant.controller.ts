@@ -112,6 +112,9 @@ export class AiAssistantController {
         authKey: {
           type: 'string',
         },
+        modelVersion: {
+          type: 'string',
+        },
       },
     },
   })
@@ -122,9 +125,10 @@ export class AiAssistantController {
     @UploadedFiles() docs: MemoryStorageFile[],
     @Body('model') model: string,
     @Body('authKey') authKey: string,
+    @Body('modelVersion') modelVersion: string,
     @Res() res: FastifyReply,
   ) {
-    const data = await this.aiAssistantService.uploadDocumentWithModel(docs, model, authKey);
+    const data = await this.aiAssistantService.uploadDocumentWithModel(docs, model, authKey, modelVersion);
     const response = new ApiResponseService(
       "Documents Uploaded Successfully",
       HttpStatusCode.CREATED,
