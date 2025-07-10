@@ -132,9 +132,11 @@ export class AdminHubsService {
     userId: string,
     page: number,
     limit: number,
+    plan: string,
     search: string,
     sortOptions: SortOptions,
   ) {
+    console.log(plan);
     try {
       const skip = (page - 1) * limit;
       const teams = await this.teamsRepo.findTeamsByUserId(
@@ -144,6 +146,7 @@ export class AdminHubsService {
         search,
         sortOptions.sortBy,
         sortOptions.sortOrder,
+        plan,
       );
       if (!teams?.data?.length) {
         return {

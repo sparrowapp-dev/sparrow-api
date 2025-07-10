@@ -19,29 +19,32 @@ export class AdminHubsRepository {
     search?: string,
     sortBy: string = "createdAt",
     sortOrder: string = "desc",
+    plan?: string,
   ) {
     const userObjectId = new ObjectId(userId);
 
-    // Build query
-    let queryConditions: any = {
-      $or: [{ "users.id": userObjectId }, { "users.id": userId.toString() }],
-    };
+    // Build dynamic $and query conditions
+    const andConditions: Record<string, any>[] = [
+      {
+        $or: [{ "users.id": userObjectId }, { "users.id": userId.toString() }],
+      },
+    ];
 
+    // Add search filter if provided
     if (search?.trim()) {
-      queryConditions = {
-        $and: [
-          {
-            $or: [
-              { "users.id": userObjectId },
-              { "users.id": userId.toString() },
-            ],
-          },
-          {
-            $or: [{ name: { $regex: search.trim(), $options: "i" } }],
-          },
-        ],
-      };
+      andConditions.push({
+        name: { $regex: search.trim(), $options: "i" },
+      });
     }
+
+    // Add plan.name filter if plan is not "all"
+    if (plan && plan.toLowerCase() !== "all") {
+      andConditions.push({ "plan.name": plan });
+    }
+
+    // Final query
+    const queryConditions =
+      andConditions.length > 1 ? { $and: andConditions } : andConditions[0];
 
     const collation = sortBy === "name" ? { locale: "en", strength: 2 } : null;
 
@@ -50,14 +53,13 @@ export class AdminHubsRepository {
       .find(queryConditions)
       .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 });
 
-    // Apply collation if sorting by name
     if (collation) {
       query.collation(collation);
     }
 
     const totalCount = await collection.countDocuments(queryConditions);
 
-    // Pagination
+    // Paginated fetch
     if (typeof skip === "number" && typeof limit === "number") {
       const data = await query.skip(skip).limit(limit).toArray();
       return {
@@ -72,7 +74,7 @@ export class AdminHubsRepository {
       };
     }
 
-    // No pagination
+    // Fetch all
     const data = await query.toArray();
     return {
       data,
