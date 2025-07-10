@@ -39,6 +39,8 @@ import {
 } from "@src/modules/identity/payloads/team.payload";
 import { TeamService } from "@src/modules/identity/services/team.service";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { CreateOrUpdateAdminHubDto } from "../payloads/hub.payload";
+import { SalesEmailService } from "@src/modules/workspace/services/sales-email.service";
 
 @Controller("api/admin")
 @ApiTags("admin hubs")
@@ -47,6 +49,7 @@ export class AdminHubsController {
   constructor(
     private readonly hubsService: AdminHubsService,
     private readonly teamService: TeamService,
+    private readonly salesEmailService: SalesEmailService,
   ) {}
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("admin")
@@ -169,6 +172,16 @@ export class AdminHubsController {
         description: {
           type: "string",
         },
+        hubUrl: {
+          type: "string",
+        },
+        isTrialHub: {
+          type: "boolean",
+          default: false,
+        },
+        trialId: {
+          type: "string",
+        },
       },
     },
   })
@@ -176,7 +189,7 @@ export class AdminHubsController {
   @ApiResponse({ status: 201, description: "Hub Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Hub Failed" })
   async createHub(
-    @Body() createHubDto: CreateOrUpdateTeamDto,
+    @Body() createHubDto: CreateOrUpdateAdminHubDto,
     @Res() res: FastifyReply,
     @UploadedFile() image: MemoryStorageFile,
     @Req() request: ExtendedFastifyRequest,
@@ -184,6 +197,13 @@ export class AdminHubsController {
     const user = request.user;
     const data = await this.teamService.create(createHubDto, user, image);
     const hub = await this.teamService.get(data.insertedId.toString());
+    if (createHubDto.isTrialHub === "true") {
+      const salesEmailData =
+        await this.salesEmailService.updateSalesEmailRecord(
+          createHubDto.trialId,
+          { isHubCreated: true, createdHubId: hub._id.toString() },
+        );
+    }
 
     const responseData = new ApiResponseService(
       "Hub Created",
@@ -235,6 +255,9 @@ export class AdminHubsController {
           type: "string",
         },
         description: {
+          type: "string",
+        },
+        hubUrl: {
           type: "string",
         },
       },

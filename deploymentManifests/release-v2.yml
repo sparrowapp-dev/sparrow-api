@@ -340,6 +340,11 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: SPARROW_ADMIN_KEY
+            - name: ADMIN_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: ADMIN_BASE_URL
 
 ---
 apiVersion: v1

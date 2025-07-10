@@ -1157,7 +1157,7 @@ export class TeamUserService {
       teamId: teamId,
       users: [matchedInvite.email],
       role: matchedInvite.role,
-      workspaces: matchedInvite.workspaces,
+      workspaces: matchedInvite?.workspaces ?? [],
       senderEmail: sender?.email,
     });
     // now remove it from invites array
@@ -1214,7 +1214,8 @@ export class TeamUserService {
       throw new NotFoundException("Invite not found");
     }
     //checking workspaces in the users are matching.
-    const allWorkspaces = matchedInvite?.workspaces?.filter((inviteWs) =>
+    let allWorkspaces = [];
+    allWorkspaces = matchedInvite?.workspaces?.filter((inviteWs) =>
       teamData.workspaces.some(
         (teamWs) => teamWs.id.toString() === inviteWs.id,
       ),
@@ -1228,7 +1229,7 @@ export class TeamUserService {
       teamId: teamId,
       users: [matchedInvite.email],
       role: matchedInvite.role,
-      workspaces: allWorkspaces,
+      workspaces: allWorkspaces ?? [],
       senderEmail: inviteBy?.email,
     });
     // now remove it from invites array
@@ -1558,5 +1559,120 @@ export class TeamUserService {
     };
 
     await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
+  /**
+   * Send invites to multiple users with their roles.
+   * Sends different email templates for registered and non-registered users.
+   */
+  async sendBulkInvites(
+    users: { email: string; role: string }[],
+    teamId: string,
+    sender: DecodedUserObject,
+  ): Promise<void> {
+    const teamFilter = new ObjectId(teamId);
+
+    for (const user of users) {
+      const team = await this.teamRepository.get(teamFilter.toString());
+      if (!team) {
+        throw new NotFoundException("Hub not Found");
+      }
+      const email = user.email.trim().toLowerCase();
+      const role = user.role;
+
+      // Check if user already exists in the team
+      const teamMember = team.users.some((user) => user.email === email);
+      if (teamMember) continue;
+
+      // Check if user already invited
+      if (team.invites) {
+        const emailAlreadyInvited = team.invites.some(
+          (invite) => invite.email === email,
+        );
+        if (emailAlreadyInvited) continue;
+      }
+
+      // Get user data
+      const userData = await this.userRepository.getUserByEmail(email);
+
+      // Prepare invite object
+      const now = new Date();
+      const inviteId = uuidv4();
+      const expiresAt = new Date(now);
+      expiresAt.setDate(now.getDate() + 7);
+
+      const userInvite = {
+        inviteId,
+        email: email,
+        name: userData?.name || email,
+        role,
+        createdAt: now,
+        updatedAt: now,
+        createdBy: sender._id,
+        updatedBy: sender._id,
+        expiresAt,
+        isAccepted: false,
+      };
+
+      // Add invite to team
+      const updatedInvites = [...(team.invites || []), userInvite];
+      const updatedData: Partial<TeamDto> = {
+        invites: updatedInvites,
+      };
+      await this.addInvite(email, teamId);
+      await this.teamRepository.updateTeamById(teamFilter, updatedData);
+
+      // Send email
+      const transporter = this.emailService.createTransporter();
+      let mailOptions;
+      if (userData) {
+        // Registered user
+        mailOptions = {
+          from: this.configService.get("app.senderEmail"),
+          to: email,
+          text: "Hub Invite Acceptance",
+          template: "teamInviteRegisteredReciever",
+          context: {
+            teamName: team.name,
+            userName: userData?.name || email,
+            sparrowEmail: this.configService.get("support.sparrowEmail"),
+            sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+            sparrowWebsiteName: this.configService.get(
+              "support.sparrowWebsiteName",
+            ),
+            authUrl: this.configService.get("auth.baseURL"),
+            inviteId: inviteId,
+            teamId: teamId,
+            email: email,
+            role: role,
+          },
+          subject: `${sender.name} has invited you to the hub “${team.name}”`,
+        };
+      } else {
+        // Non-registered user
+        mailOptions = {
+          from: this.configService.get("app.senderEmail"),
+          to: email,
+          text: "Hub Invite Acceptance",
+          template: "teamInviteNonRegisteredReciever",
+          context: {
+            teamName: team.name,
+            userName: userData?.name || email,
+            sparrowEmail: this.configService.get("support.sparrowEmail"),
+            sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+            sparrowWebsiteName: this.configService.get(
+              "support.sparrowWebsiteName",
+            ),
+            marketingUrl: this.configService.get("marketing.baseURL"),
+            inviteId: inviteId,
+            teamId: teamId,
+            email: email,
+            role: role,
+          },
+          subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
+        };
+      }
+      await this.emailService.sendEmail(transporter, mailOptions);
+    }
   }
 }

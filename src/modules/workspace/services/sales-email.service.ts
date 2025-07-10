@@ -7,6 +7,7 @@ import { SalesEmailRepository } from "../repositories/sales-email.repository";
 import { SalesEmail } from "@src/modules/common/models/sales-email.model";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
+import { TeamService } from "@src/modules/identity/services/team.service";
 
 /**
  * Sales Email Service
@@ -20,6 +21,7 @@ export class SalesEmailService {
     private readonly salesEmailRepository: SalesEmailRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly teamService: TeamService,
   ) {}
 
   /**
@@ -41,6 +43,13 @@ export class SalesEmailService {
     ) {
       throw new BadRequestException("Invalid Admin key");
     }
+    const existingRecord =
+      await this.salesEmailRepository.getSalesEmailRecordByCustomerEmail(
+        sendSalesEmailDto.customerEmail,
+      );
+    if (existingRecord) {
+      throw new BadRequestException("Sales email already sent for this email");
+    }
 
     const emailRecord: SalesEmail = {
       customerEmail: sendSalesEmailDto.customerEmail,
@@ -55,29 +64,35 @@ export class SalesEmailService {
       updatedAt: new Date(),
     };
     const transporter = this.emailService.createTransporter();
+    const baseURL = this.configService.get("auth.baseURL");
+    const flow =
+      sendSalesEmailDto?.trialPlan === "STANDARD"
+        ? "trial_standard"
+        : sendSalesEmailDto?.trialPlan;
 
+    const record =
+      await this.salesEmailRepository.addSalesEmailData(emailRecord);
+
+    const trialPeriod = Math.round(sendSalesEmailDto.trialPeriod / 30);
+
+    const startTrialUrl = `${baseURL}/init?flow=${flow}&trialId=${record.insertedId.toString()}&email=${encodeURIComponent(emailRecord.customerEmail)}`;
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: sendSalesEmailDto.customerEmail,
       text: "Promote Member Email",
       template: "salesTrialEmail",
       context: {
-        teamName: sendSalesEmailDto.companyName,
         userName: sendSalesEmailDto.customerFirstName,
-        sparrowEmail: this.configService.get("support.sparrowEmail"),
-        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
-        sparrowWebsiteName: this.configService.get(
-          "support.sparrowWebsiteName",
-        ),
-        senderName: "senderUserName",
+        userEmail: sendSalesEmailDto.customerEmail,
+        inviteCount: sendSalesEmailDto.inviteCount.toString(),
+        startTrialUrl: startTrialUrl,
+        trialPeriod: trialPeriod.toString(),
       },
       subject: `Trial Active email for ${sendSalesEmailDto.companyName}`,
     };
 
     const promise = [this.emailService.sendEmail(transporter, mailOptions)];
     await Promise.all(promise);
-    const record =
-      await this.salesEmailRepository.addSalesEmailData(emailRecord);
     return record;
   }
 
@@ -94,5 +109,73 @@ export class SalesEmailService {
       throw new BadRequestException("Record not found");
     }
     return data;
+  }
+
+  async updateSalesEmailRecord(
+    id: string,
+    updateData: Partial<SalesEmail>,
+  ): Promise<WithId<SalesEmail>> {
+    const data = await this.salesEmailRepository.updateSalesEmailRecord(
+      id,
+      updateData,
+    );
+    if (!data) {
+      throw new BadRequestException("Record not found");
+    }
+    return data;
+  }
+
+  async formatDate(date: Date): Promise<string> {
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  async sendTrialConfirmationEmail(
+    id: string,
+    payload: { userCount: number },
+  ): Promise<void> {
+    const data = await this.salesEmailRepository.getSalesEmailRecordById(id);
+    if (!data) {
+      throw new BadRequestException("Record not found");
+    }
+    const team = await this.teamService.get(data.createdHubId);
+    // Calculate start and end dates
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(startDate.getDate() + (data.trialPeriod || 0));
+
+    const formattedStartDate = await this.formatDate(startDate);
+    const formattedEndDate = await this.formatDate(endDate);
+    const amount = 9.99 * payload.userCount;
+    const user = team.users.find((u) => u.role === "owner");
+    await this.teamService.updateHubTrialAndPlan(
+      team._id.toString(),
+      data.inviteCount,
+    );
+
+    const transporter = this.emailService.createTransporter();
+    const baseURL = this.configService.get("admin.baseURL");
+    const hubUrl = `${baseURL}/hubs/workspace/${team._id.toString()}`;
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: user.email,
+      text: "Trial Confirmation Email",
+      template: "salesTrialEmail2",
+      context: {
+        userName: user.name,
+        hubName: team.name,
+        userCount: payload.userCount,
+        trialStart: formattedStartDate,
+        trialEnd: formattedEndDate,
+        amount: `$${amount.toFixed(2)}/month`,
+        hubUrl: hubUrl,
+      },
+      subject: `Trial Confirmation email for ${team.name} Hub`,
+    };
+    const promise = [this.emailService.sendEmail(transporter, mailOptions)];
+    await Promise.all(promise);
   }
 }
