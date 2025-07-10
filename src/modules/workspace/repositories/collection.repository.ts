@@ -124,19 +124,25 @@ export class CollectionRepository {
       );
     }
 
-    // Push new auth profile
-    await this.db.collection(Collections.COLLECTION).updateOne(
-      { _id: collectionObjectId },
-      {
-        $push: { authProfiles: enrichedAuth },
-        $set: {
-          updatedAt: now,
-          updatedBy: {
-            id: user._id.toString(),
-            name: user.name,
-          },
+    const updateDoc: any = {
+      $push: { authProfiles: enrichedAuth },
+      $set: {
+        updatedAt: now,
+        updatedBy: {
+          id: user._id.toString(),
+          name: user.name,
         },
       },
+    };
+
+    // Set defaultSelectedAuthProfile if this new auth is marked default
+    if (authInput.defaultKey === true) {
+      updateDoc.$set.defaultSelectedAuthProfile = enrichedAuth.authId;
+    }
+
+    await this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: collectionObjectId },
+      updateDoc,
     );
 
     const updatedCollection = await this.db
