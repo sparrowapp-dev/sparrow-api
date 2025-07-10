@@ -57,6 +57,7 @@ export class AdminHubsService {
     let totalWorkspaces = 0;
     let privateWorkspaces = 0;
     let publicWorkspaces = 0;
+    const planSegregationCount = { Community: 0, Standard: 0, Professional: 0 };
 
     // First pass: determine each user's highest role globally
     for (const hub of hubs) {
@@ -80,6 +81,12 @@ export class AdminHubsService {
     for (const hub of hubs) {
       totalWorkspaces += hub.workspaces.length;
 
+      const planName = hub?.plan?.name as keyof typeof planSegregationCount;
+
+      if (["Community", "Standard", "Professional"].includes(planName)) {
+        planSegregationCount[planName] =
+          (planSegregationCount[planName] || 0) + 1;
+      }
       for (const workspace of hub.workspaces) {
         try {
           const workspaceInfo = await this.workspaceRepo.findWorkspaceById(
@@ -115,6 +122,7 @@ export class AdminHubsService {
 
     return {
       totalHubs: hubs.length,
+      planSegregationCount,
       workspaces: {
         total: totalWorkspaces,
         private: privateWorkspaces,

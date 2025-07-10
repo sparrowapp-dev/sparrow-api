@@ -23,7 +23,7 @@ export class AdminHubsRepository {
   ) {
     const userObjectId = new ObjectId(userId);
 
-    // Build base condition
+    // Build query
     let queryConditions: Record<string, any> = {
       $or: [{ "users.id": userObjectId }, { "users.id": userId.toString() }],
     };
