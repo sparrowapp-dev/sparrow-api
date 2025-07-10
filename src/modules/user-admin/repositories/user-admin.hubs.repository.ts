@@ -23,28 +23,37 @@ export class AdminHubsRepository {
   ) {
     const userObjectId = new ObjectId(userId);
 
-    // Build dynamic $and query conditions
-    const andConditions: Record<string, any>[] = [
-      {
-        $or: [{ "users.id": userObjectId }, { "users.id": userId.toString() }],
-      },
-    ];
+    // Build base condition
+    let queryConditions: Record<string, any> = {
+      $or: [{ "users.id": userObjectId }, { "users.id": userId.toString() }],
+    };
 
-    // Add search filter if provided
     if (search?.trim()) {
-      andConditions.push({
-        name: { $regex: search.trim(), $options: "i" },
-      });
+      queryConditions = {
+        $and: [
+          {
+            $or: [
+              { "users.id": userObjectId },
+              { "users.id": userId.toString() },
+            ],
+          },
+          {
+            name: { $regex: search.trim(), $options: "i" },
+          },
+        ],
+      };
     }
 
-    // Add plan.name filter if plan is not "all"
+    // Add plan filter if plan !== "all"
     if (plan && plan.toLowerCase() !== "all") {
-      andConditions.push({ "plan.name": plan });
+      if (queryConditions.$and) {
+        queryConditions.$and.push({ "plan.name": plan });
+      } else {
+        queryConditions = {
+          $and: [queryConditions, { "plan.name": plan }],
+        };
+      }
     }
-
-    // Final query
-    const queryConditions =
-      andConditions.length > 1 ? { $and: andConditions } : andConditions[0];
 
     const collation = sortBy === "name" ? { locale: "en", strength: 2 } : null;
 
@@ -59,7 +68,6 @@ export class AdminHubsRepository {
 
     const totalCount = await collection.countDocuments(queryConditions);
 
-    // Paginated fetch
     if (typeof skip === "number" && typeof limit === "number") {
       const data = await query.skip(skip).limit(limit).toArray();
       return {
@@ -74,7 +82,6 @@ export class AdminHubsRepository {
       };
     }
 
-    // Fetch all
     const data = await query.toArray();
     return {
       data,

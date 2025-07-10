@@ -136,7 +136,6 @@ export class AdminHubsService {
     search: string,
     sortOptions: SortOptions,
   ) {
-    console.log(plan);
     try {
       const skip = (page - 1) * limit;
       const teams = await this.teamsRepo.findTeamsByUserId(
