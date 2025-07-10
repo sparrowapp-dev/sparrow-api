@@ -13,7 +13,7 @@ export class UpdateHubBillingMigration implements OnModuleInit {
 
     try {
       console.log(
-        "\x1b[36m[Nest]\x1b[0m \x1b[36mStarting Planing Billing...\x1b[0m",
+        "\x1b[36m[Nest]\x1b[0m \x1b[36mStarting Updating Billing...\x1b[0m",
       );
       // Add pricing details to pricing collection
       // const pricing = {
