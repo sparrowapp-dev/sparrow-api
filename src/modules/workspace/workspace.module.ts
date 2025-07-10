@@ -11,6 +11,7 @@ import { AiAssistantController } from "./controllers/ai-assistant.controller";
 import { ChatbotStatsController } from "./controllers/chatbot-stats.controller";
 import { TestflowController } from "./controllers/testflow.controller";
 import { SalesEmailController } from "./controllers/sales-email.controller";
+import { PricingController } from "./controllers/pricing.controller";
 
 // ---- Repository
 import { WorkspaceRepository } from "./repositories/workspace.repository";
@@ -24,6 +25,7 @@ import { AiAssistantRepository } from "./repositories/ai-assistant.repository";
 import { ChatbotStatsRepository } from "./repositories/chatbot-stats.repositoy";
 import { TestflowRepository } from "./repositories/testflow.repository";
 import { SalesEmailRepository } from "./repositories/sales-email.repository";
+import { PricingRepository } from "./repositories/pricing.repository";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -53,6 +55,7 @@ import { ChatbotStatsService } from "./services/chatbot-stats.service";
 import { TestflowService } from "./services/testflow.service";
 import { TeamUserService } from "../identity/services/team-user.service";
 import { SalesEmailService } from "./services/sales-email.service";
+import { PricingService } from "./services/pricing.repository";
 
 // ---- Gateway
 import {
@@ -122,6 +125,8 @@ import { LlmConversationController } from "./controllers/llm-conversation.contro
     UserLimitRepository,
     SalesEmailService,
     SalesEmailRepository,
+    PricingService,
+    PricingRepository,
   ],
   exports: [
     CollectionService,
@@ -145,6 +150,8 @@ import { LlmConversationController } from "./controllers/llm-conversation.contro
     UserLimitService,
     SalesEmailService,
     SalesEmailRepository,
+    PricingService,
+    PricingRepository,
   ],
   controllers: [
     WorkSpaceController,
@@ -159,6 +166,7 @@ import { LlmConversationController } from "./controllers/llm-conversation.contro
     TestflowController,
     MockServerController,
     SalesEmailController,
+    PricingController,
   ],
 })
 export class WorkspaceModule {}

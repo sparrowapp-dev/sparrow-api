@@ -44,4 +44,33 @@ export class SalesEmailRepository {
       .findOne({ _id: new ObjectId(id) });
     return data;
   }
+
+  async updateSalesEmailRecord(
+    id: string,
+    data: Partial<SalesEmail>,
+  ): Promise<WithId<SalesEmail>> {
+    const response = await this.db
+      .collection<SalesEmail>(Collections.SALESEMAIL)
+      .findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: data },
+        { returnDocument: "after" },
+      );
+    return response.value;
+  }
+
+  /**
+   * Retrieves a record by customer email.
+   *
+   * @param customerEmail - Email of the customer.
+   * @returns The sales email record with the specified customer email.
+   */
+  async getSalesEmailRecordByCustomerEmail(
+    customerEmail: string,
+  ): Promise<WithId<SalesEmail> | null> {
+    const data = await this.db
+      .collection<SalesEmail>(Collections.SALESEMAIL)
+      .findOne({ customerEmail });
+    return data;
+  }
 }

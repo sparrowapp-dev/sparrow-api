@@ -4,7 +4,16 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { Body, Controller, Get, Param, Post, Req, Res } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { FastifyReply } from "fastify";
 // ---- Payload
 import { SendSalesEmail } from "../payloads/sales-email.payload";
@@ -18,6 +27,7 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 // ---- Guard
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { SalesEmailService } from "../services/sales-email.service";
+import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 
 /**
  * Sales Email Controller
@@ -70,6 +80,7 @@ export class SalesEmailController {
    * @param res - Fastify response object.
    */
   @Get("get-trial-record/:trialId")
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: "Get Trial Record",
     description: "Get the trial record of the sales email",
@@ -88,6 +99,29 @@ export class SalesEmailController {
       "Record Fetched Successfully",
       HttpStatusCode.OK,
       record,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post("trial-confirmation-mail/:trailId")
+  @ApiOperation({
+    summary: "Send a confirmation email",
+    description: "Send a confirmation email to the user for trial",
+  })
+  @ApiResponse({ status: 201, description: "Email Sent" })
+  @ApiResponse({ status: 400, description: "Failed to sent email" })
+  async sendCOnfirmationEmail(
+    @Param("trailId") trailId: string,
+    @Body() payload: { userCount: number },
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    // Retrieve the added mail record for confirmation
+    await this.salesEmailService.sendTrialConfirmationEmail(trailId, payload);
+    const responseData = new ApiResponseService(
+      "Email Sent Successfully",
+      HttpStatusCode.CREATED,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
