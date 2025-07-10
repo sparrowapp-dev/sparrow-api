@@ -100,6 +100,10 @@ export enum BillingEventType {
   CONTRACT_AMENDED = "contract_amended",
   BULK_SEAT_ADJUSTMENT = "bulk_seat_adjustment",
   CUSTOM_PRICING_APPLIED = "custom_pricing_applied",
+
+  // Hub lifecycle events
+  HUB_CREATED = "hub_created",
+  HUB_LIMIT_UPDATED = "hub_limit_updated",
 }
 
 /**

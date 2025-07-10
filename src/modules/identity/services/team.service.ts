@@ -27,6 +27,11 @@ import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { PlanRepository } from "../repositories/plan.repository";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { DecodedUserObject } from "@src/types/fastify";
+import { BillingAuditService } from "@src/modules/billing/services/billing-audit.service";
+import {
+  BillingActorType,
+  BillingSource,
+} from "@src/modules/common/enum/billing.enum";
 
 /**
  * Team Service
@@ -41,6 +46,7 @@ export class TeamService {
     private readonly userRepository: UserRepository,
     private readonly planRepository: PlanRepository,
     private readonly emailService: EmailService,
+    private readonly billingAuditService: BillingAuditService,
   ) {}
 
   async isImageSizeValid(size: number) {
@@ -170,6 +176,28 @@ export class TeamService {
       new ObjectId(userData._id),
       updatedUserParams,
     );
+
+    // Record hub creation event for billing audit
+    await this.billingAuditService.recordHubCreated(
+      createdTeam.insertedId.toString(),
+      teamData.name,
+      defaultHubPlan,
+      {
+        actor: {
+          type: BillingActorType.USER,
+          id: user._id.toString(),
+          name: user.name,
+        },
+        source: BillingSource.USER_ACTION,
+        reason: "Hub/Team creation",
+      },
+      {
+        hubUrl: team.hubUrl,
+        description: team.description,
+        planLimits: hubPlan?.limits,
+      },
+    );
+
     if (teamData?.firstTeam) {
       const workspaceObj = {
         name: this.configService.get("app.defaultWorkspaceName"),

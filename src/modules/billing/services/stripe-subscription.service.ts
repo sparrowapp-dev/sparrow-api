@@ -109,6 +109,25 @@ export class StripeSubscriptionService {
 
         // Log plan change if this is different from current plan
         if (previousPlan && previousPlan !== metadata.planName) {
+          // Get plan limits for audit tracking
+          let planLimits:
+            | { previous: Record<string, any>; new: Record<string, any> }
+            | undefined;
+
+          if (currentTeam?.plan?.limits) {
+            // Get the new plan details to access its limits
+            const newPlanDetails =
+              await this.stripeSubscriptionRepo.findPlanByName(
+                metadata.planName,
+              );
+            if (newPlanDetails?.limits) {
+              planLimits = {
+                previous: currentTeam.plan.limits,
+                new: newPlanDetails.limits,
+              };
+            }
+          }
+
           await this.billingAuditService.recordPlanChange(
             metadata.hubId,
             previousPlan,
@@ -122,6 +141,9 @@ export class StripeSubscriptionService {
               externalId: eventId,
               reason: "Plan upgraded via subscription creation",
             },
+            undefined, // no seat change
+            undefined, // no subscription details needed
+            planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
           );
         }
       }
@@ -217,6 +239,18 @@ export class StripeSubscriptionService {
       billingDetails,
     );
 
+    // Get plan limits for audit tracking
+    let planLimits:
+      | { previous: Record<string, any>; new: Record<string, any> }
+      | undefined;
+
+    if (currentTeam?.plan?.limits && communityPlan.limits) {
+      planLimits = {
+        previous: currentTeam.plan.limits,
+        new: communityPlan.limits,
+      };
+    }
+
     // Log plan change event
     await this.billingAuditService.recordPlanChange(
       metadata.hubId,
@@ -228,6 +262,9 @@ export class StripeSubscriptionService {
         externalId: eventId,
         reason: `Subscription canceled - ${cancellationReason}`,
       },
+      undefined, // no seat change
+      undefined, // no subscription details needed
+      planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
     );
   }
 
@@ -437,6 +474,18 @@ export class StripeSubscriptionService {
         billingDetails,
       );
 
+      // Get plan limits for audit tracking
+      let planLimits:
+        | { previous: Record<string, any>; new: Record<string, any> }
+        | undefined;
+
+      if (team?.plan?.limits && communityPlan.limits) {
+        planLimits = {
+          previous: team.plan.limits,
+          new: communityPlan.limits,
+        };
+      }
+
       // Log plan change due to payment failure
       await this.billingAuditService.recordPlanChange(
         hubId,
@@ -451,6 +500,9 @@ export class StripeSubscriptionService {
           externalId: eventId,
           reason: `First payment failed - downgraded to community`,
         },
+        undefined, // no seat change
+        undefined, // no subscription details needed
+        planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
       );
     }
   }
@@ -663,6 +715,25 @@ export class StripeSubscriptionService {
       const { metadata } =
         StripeSubscriptionHelpers.extractInvoiceData(invoice);
 
+      // Get plan limits for audit tracking
+      let planLimits:
+        | { previous: Record<string, any>; new: Record<string, any> }
+        | undefined;
+
+      if (isPlanChange) {
+        // Get the new plan details to access its limits
+        const previousPlanDetails =
+          await this.stripeSubscriptionRepo.findPlanByName(previousPlan);
+        const newPlanDetails =
+          await this.stripeSubscriptionRepo.findPlanByName(newPlan);
+        if (newPlanDetails?.limits && previousPlanDetails?.limits) {
+          planLimits = {
+            previous: previousPlanDetails?.limits,
+            new: newPlanDetails.limits,
+          };
+        }
+      }
+
       await this.billingAuditService.recordPlanChange(
         hubId,
         previousPlan || "unknown",
@@ -683,6 +754,7 @@ export class StripeSubscriptionService {
           interval: interval,
           interval_count: intervalCount,
         },
+        planLimits, // Add the plan limits for automatic HUB_LIMIT_UPDATED tracking
       );
 
       // Send plan upgrade email if this is a plan change (not just seat change)
@@ -1086,6 +1158,18 @@ export class StripeSubscriptionService {
             billingDetails,
           );
 
+          // Get plan limits for audit tracking
+          let planLimits:
+            | { previous: Record<string, any>; new: Record<string, any> }
+            | undefined;
+
+          if (team?.plan?.limits && communityPlan.limits) {
+            planLimits = {
+              previous: team.plan.limits,
+              new: communityPlan.limits,
+            };
+          }
+
           // Log the plan change
           await this.billingAuditService.recordPlanChange(
             team._id.toString(),
@@ -1096,6 +1180,9 @@ export class StripeSubscriptionService {
               source: BillingSource.BILLING_MAINTENANCE,
               reason: "Payment failed subscription expired at period end",
             },
+            undefined, // no seat change
+            undefined, // no subscription details needed
+            planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
           );
 
           console.log(
@@ -1163,6 +1250,18 @@ export class StripeSubscriptionService {
             billingDetails,
           );
 
+          // Get plan limits for audit tracking
+          let planLimits:
+            | { previous: Record<string, any>; new: Record<string, any> }
+            | undefined;
+
+          if (team?.plan?.limits && communityPlan.limits) {
+            planLimits = {
+              previous: team.plan.limits,
+              new: communityPlan.limits,
+            };
+          }
+
           // Log the plan change
           await this.billingAuditService.recordPlanChange(
             team._id.toString(),
@@ -1173,6 +1272,9 @@ export class StripeSubscriptionService {
               source: BillingSource.BILLING_MAINTENANCE,
               reason: "Trial period expired",
             },
+            undefined, // no seat change
+            undefined, // no subscription details needed
+            planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
           );
 
           console.log(

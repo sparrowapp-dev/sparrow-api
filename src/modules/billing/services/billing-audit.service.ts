@@ -12,8 +12,23 @@ import {
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 
 /**
- * Simplified billing audit service for internal logging only
- * No APIs - just structured event logging for audit trails
+ * Billing Audit Service - Enhanced with Hub Lifecycle Tracking
+ *
+ * This service provides comprehensive billing event logging including:
+ *
+ * Hub Lifecycle Events:
+ * - HUB_CREATED: Records when a new hub/team is created (start of billing eligibility)
+ * - HUB_LIMIT_UPDATED: Records when plan limits change for a hub (automatically triggered on plan changes)
+ *
+ * Usage Examples:
+ *
+ * 1. Hub Creation (automatically called in TeamService.create):
+ *    await billingAuditService.recordHubCreated(hubId, hubName, planName, context, hubDetails);
+ *
+ * 2. Plan Changes (existing calls automatically track limit changes):
+ *    await billingAuditService.recordPlanChange(hubId, oldPlan, newPlan, context, seatChange, subscriptionDetails, planLimits);
+ *
+ * Note: All existing recordPlanChange calls will automatically log HUB_LIMIT_UPDATED events when planLimits are provided.
  */
 @Injectable()
 export class BillingAuditService {
@@ -105,6 +120,7 @@ export class BillingAuditService {
     context: BillingEventData["context"],
     seatChange?: { from: string; to: string },
     subscriptionDetails?: any,
+    planLimits?: { previous: Record<string, any>; new: Record<string, any> },
   ): Promise<string> {
     const changes = [
       {
@@ -155,7 +171,7 @@ export class BillingAuditService {
       }
     }
 
-    return await this.recordBillingEvent({
+    const planChangeEventId = await this.recordBillingEvent({
       eventType: BillingEventType.PLAN_CHANGED,
       entityType: BillingEntityType.HUB,
       entityId,
@@ -184,6 +200,35 @@ export class BillingAuditService {
           : undefined,
       },
     });
+
+    // Automatically record hub limit update if limits are provided
+    if (planLimits && planLimits.previous && planLimits.new) {
+      const limitChanges = this.extractPlanLimitChanges(
+        planLimits.previous,
+        planLimits.new,
+      );
+
+      if (limitChanges.length > 0) {
+        await this.recordBillingEvent({
+          eventType: BillingEventType.HUB_LIMIT_UPDATED,
+          entityType: BillingEntityType.HUB,
+          entityId,
+          changes: limitChanges,
+          context: {
+            ...context,
+            reason: `Plan change from ${previousPlan} to ${newPlan}`,
+          },
+          metadata: {
+            planName: newPlan,
+            previousPlan: previousPlan,
+            limitsChanged: limitChanges.map((change) => change.field),
+            triggeredBy: "plan_change",
+          },
+        });
+      }
+    }
+
+    return planChangeEventId;
   }
 
   /**
@@ -394,5 +439,86 @@ export class BillingAuditService {
               : new Date(),
       },
     });
+  }
+
+  /**
+   * Record a hub creation event - start of billing eligibility
+   */
+  async recordHubCreated(
+    entityId: string,
+    hubName: string,
+    initialPlan: string,
+    context: BillingEventData["context"],
+    hubDetails?: {
+      hubUrl?: string;
+      description?: string;
+      planLimits?: Record<string, any>;
+    },
+  ): Promise<string> {
+    const changes = [
+      {
+        field: "hub_name",
+        previousValue: null as any,
+        newValue: hubName,
+      },
+      {
+        field: "initial_plan",
+        previousValue: null as any,
+        newValue: initialPlan,
+      },
+      {
+        field: "billing_eligibility",
+        previousValue: false,
+        newValue: true,
+      },
+    ];
+
+    return await this.recordBillingEvent({
+      eventType: BillingEventType.HUB_CREATED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes,
+      context,
+      metadata: {
+        hubName,
+        initialPlan,
+        hubUrl: hubDetails?.hubUrl,
+        description: hubDetails?.description,
+        createdAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Helper method to extract plan limit differences for audit logging
+   */
+  private extractPlanLimitChanges(
+    previousPlanLimits: Record<string, any> = {},
+    newPlanLimits: Record<string, any> = {},
+  ): Array<{ field: string; previousValue: any; newValue: any }> {
+    const changes: Array<{ field: string; previousValue: any; newValue: any }> =
+      [];
+
+    // Get all unique limit keys from both plans
+    const allLimitKeys = new Set([
+      ...Object.keys(previousPlanLimits),
+      ...Object.keys(newPlanLimits),
+    ]);
+
+    for (const limitKey of allLimitKeys) {
+      const previousLimit = previousPlanLimits[limitKey];
+      const newLimit = newPlanLimits[limitKey];
+
+      // Check if the limit has changed
+      if (JSON.stringify(previousLimit) !== JSON.stringify(newLimit)) {
+        changes.push({
+          field: `limit_${limitKey}`,
+          previousValue: previousLimit || null,
+          newValue: newLimit || null,
+        });
+      }
+    }
+
+    return changes;
   }
 }
