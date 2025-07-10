@@ -62,12 +62,14 @@ export class AdminHubsRepository {
       .find(queryConditions)
       .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 });
 
+    // Apply collation if sorting by name
     if (collation) {
       query.collation(collation);
     }
 
     const totalCount = await collection.countDocuments(queryConditions);
 
+    // Pagination
     if (typeof skip === "number" && typeof limit === "number") {
       const data = await query.skip(skip).limit(limit).toArray();
       return {
