@@ -146,7 +146,7 @@ export class CollectionRepository {
         { projection: { authProfiles: 1, _id: 0 } } // Return only authProfiles field
       );
 
-    return updatedCollection?.authProfiles || [];
+    return enrichedAuth;
   }
 
   async deleteAuth(
