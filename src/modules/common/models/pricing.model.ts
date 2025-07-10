@@ -53,6 +53,10 @@ export class PricingPlan {
 export class Pricing {
   @IsString()
   @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
   currency: string;
 
   @IsArray()
