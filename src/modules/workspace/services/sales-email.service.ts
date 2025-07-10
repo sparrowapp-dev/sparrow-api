@@ -151,6 +151,10 @@ export class SalesEmailService {
     const formattedEndDate = await this.formatDate(endDate);
     const amount = 9.99 * payload.userCount;
     const user = team.users.find((u) => u.role === "owner");
+    await this.teamService.updateHubTrialAndPlan(
+      team._id.toString(),
+      data.inviteCount,
+    );
 
     const transporter = this.emailService.createTransporter();
     const baseURL = this.configService.get("admin.baseURL");
