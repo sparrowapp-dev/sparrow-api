@@ -145,13 +145,6 @@ export class CollectionRepository {
       updateDoc,
     );
 
-    const updatedCollection = await this.db
-      .collection(Collections.COLLECTION)
-      .findOne(
-        { _id: collectionObjectId },
-        { projection: { authProfiles: 1, _id: 0 } } // Return only authProfiles field
-      );
-
     return enrichedAuth;
   }
 
