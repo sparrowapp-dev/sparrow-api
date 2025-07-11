@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 
-import { authCollection, UpdateCollectionDto } from "../payloads/collection.payload";
+import { AuthCollection, UpdateCollectionDto } from "../payloads/collection.payload";
 import {
   Db,
   DeleteResult,
@@ -89,7 +89,10 @@ export class CollectionRepository {
     );
   }
 
-  async addAuth(collectionId: string, updateDoc: any): Promise<any> {
+  async addAuth(
+    collectionId: string, 
+    updateDoc: any
+  ): Promise<any> {
     return this.db.collection(Collections.COLLECTION).updateOne(
       { _id: new ObjectId(collectionId) },
       updateDoc,
@@ -125,27 +128,15 @@ export class CollectionRepository {
     return "Auth profile deleted successfully.";
   }
 
-  async findCollectionById(
-  collectionId: ObjectId,
-  user: DecodedUserObject,
-): Promise<any> {
-  const collection = await this.db.collection(Collections.COLLECTION).findOne({
-    _id: collectionId,
-  });
-  return collection;
-}
 
-
-
-  async updateAuth(collectionId: string, updateDoc: any): Promise<any> {
+  async updateAuth(
+    collectionId: string, 
+    updateDoc: any
+  ): Promise<any> {
     return this.db
       .collection(Collections.COLLECTION)
       .updateOne({ _id: new ObjectId(collectionId) }, updateDoc);
   }
-
-
-
-
 
   async updateBranchArray(
     id: string,

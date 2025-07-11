@@ -283,7 +283,7 @@ export class SwitchCollectionBranchDto {
 }
 
 
-export class authCollection {
+export class AuthCollection {
   @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
   @IsMongoId()
   @IsNotEmpty()
