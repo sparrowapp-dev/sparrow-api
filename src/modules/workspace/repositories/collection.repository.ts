@@ -75,12 +75,6 @@ export class CollectionRepository {
     return data;
   }
 
-  async findOneById(collectionId: string): Promise<any> {
-    return this.db
-      .collection(Collections.COLLECTION)
-      .findOne({ _id: new ObjectId(collectionId) });
-  }
-
   async unsetDefaultAuth(collectionId: string): Promise<any> {
     return this.db.collection(Collections.COLLECTION).updateOne(
       { _id: new ObjectId(collectionId) },

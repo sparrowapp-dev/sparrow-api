@@ -519,7 +519,7 @@ export class CollectionService {
   ): Promise<any> {
     const collectionId = updateCollectionDto.collectionId;
     const authInput = updateCollectionDto.authProfiles?.[0];
-    const collection = await this.collectionRepository.findOneById(collectionId);
+    const collection = await this.collectionRepository.get(collectionId);
     const existingAuthNames = (collection.authProfiles || []).map((a: any) => a.name?.toLowerCase());
 
     const now = new Date();
@@ -569,7 +569,7 @@ export class CollectionService {
     user: DecodedUserObject
   ): Promise<any[]> {
     // const collectionObjectId = new ObjectId(collectionId);
-    const collection = await this.collectionRepository.findOneById(collectionId);
+    const collection = await this.collectionRepository.get(collectionId);
     return collection.authProfiles || [];
   }
 
@@ -584,7 +584,7 @@ export class CollectionService {
       throw new BadRequestException('Invalid collectionId');
     }
 
-    const collection = await this.collectionRepository.findOneById(collectionId);
+    const collection = await this.collectionRepository.get(collectionId);
     if (!collection) {
       throw new BadRequestException('Collection not found');
     }
