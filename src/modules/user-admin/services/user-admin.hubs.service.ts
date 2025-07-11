@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
 import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.repository";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { PlanName } from "@src/modules/common/enum/plan.enum";
 
 interface SortOptions {
   sortBy: string;
@@ -57,7 +58,11 @@ export class AdminHubsService {
     let totalWorkspaces = 0;
     let privateWorkspaces = 0;
     let publicWorkspaces = 0;
-    const planSegregationCount = { Community: 0, Standard: 0, Professional: 0 };
+    const planSegregationCount = {
+      [PlanName.COMMUNITY]: 0,
+      [PlanName.STANDARD]: 0,
+      [PlanName.PROFESSIONAL]: 0,
+    };
 
     // First pass: determine each user's highest role globally
     for (const hub of hubs) {
@@ -81,11 +86,11 @@ export class AdminHubsService {
     for (const hub of hubs) {
       totalWorkspaces += hub.workspaces.length;
 
-      const planName = hub?.plan?.name as keyof typeof planSegregationCount;
-
-      if (["Community", "Standard", "Professional"].includes(planName)) {
-        planSegregationCount[planName] =
-          (planSegregationCount[planName] || 0) + 1;
+      const planName = hub?.plan?.name;
+      //Matching with the plan title nad increasing the respective count
+      if (Object.values(PlanName).includes(planName as PlanName)) {
+        const key = planName as PlanName;
+        planSegregationCount[key] += 1;
       }
       for (const workspace of hub.workspaces) {
         try {
