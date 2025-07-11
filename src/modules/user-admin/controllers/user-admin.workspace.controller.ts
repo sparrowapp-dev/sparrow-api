@@ -10,6 +10,7 @@ import {
   Put,
   Patch,
   Req,
+  Param,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import {
@@ -326,6 +327,41 @@ export class AdminWorkspaceController {
       "Role Changed",
       HttpStatusCode.OK,
       workspace,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post("workspace/:workspaceId/user")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @ApiOperation({ summary: "Add Users in Workspace (Admin)" })
+  @ApiResponse({ status: 201, description: "Users Added Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Add Users" })
+  async addUserWorkspace(
+    @Param("workspaceId") workspaceId: string,
+    @Body() payload: AddWorkspaceUserDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const params = {
+      users: payload.users,
+      workspaceId: workspaceId,
+      role: payload.role,
+    };
+    const response = await this.workspaceService.addUserInWorkspace(
+      params,
+      user,
+    );
+    const workspace = await this.workspaceService.get(workspaceId);
+    const data = {
+      ...workspace,
+      ...response,
+    };
+    const responseData = new ApiResponseService(
+      "User Added",
+      HttpStatusCode.OK,
+      data,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
