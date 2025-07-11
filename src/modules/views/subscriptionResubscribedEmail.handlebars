@@ -1,0 +1,119 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Resubscribed</title>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container-data {
+            margin: auto;
+            max-width: 570px;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-text-style {
+            color: var(--email-text-color, #333);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 21px;
+        }
+
+        .plan-details {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .plan-details h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section style="width: 100%;">
+            <div class="container-data">
+
+                {{> header}}
+
+                <section>
+                    <div style="margin-bottom: 5%">
+                        <h2 class="email-text-style">
+                            Hi {{firstName}},
+                        </h2>
+
+                        <p class="email-text-style">
+                            We're so glad to have you back! You've successfully resubscribed to the <strong>{{planName}}</strong> plan on <strong>{{hubName}}</strong>, and your access is active again.
+                        </p>
+
+                        <div class="plan-details">
+                            <h3>Plan Details</h3>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Plan:</strong> {{planName}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Price:</strong> ${{amountPaid}}/user/{{#if interval}}{{interval}}{{else}}month{{/if}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Effective From:</strong> {{resubscriptionDate}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Next Billing Date:</strong> {{nextBillingDate}}
+                            </p>
+                        </div>
+
+                        <p class="email-text-style">
+                            We're excited to have you with us again — get ready to make the most of everything your plan has to offer!
+                        </p>
+
+                        <p class="email-text-style">
+                            Let us know if you need anything as you settle back in — we're here to help at <a href="mailto:contactus@sparrowapp.dev" style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">contactus@sparrowapp.dev</a>.
+                        </p>
+
+                        <p class="email-text-style">
+                            Warm Regards,<br>
+                            The Sparrow Team<br>
+                        </p>
+                    </div>
+
+                    <hr>
+                </section>
+
+                {{> footer}}
+
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

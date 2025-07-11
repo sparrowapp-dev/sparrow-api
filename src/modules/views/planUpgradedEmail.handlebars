@@ -1,0 +1,150 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Upgraded Successfully</title>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container-data {
+            margin: auto;
+            max-width: 570px;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-text-style {
+            color: var(--email-text-color, #333);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 21px;
+        }
+
+        .plan-details {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .plan-details h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .feature-list {
+            margin: 15px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 5px 0;
+            position: relative;
+            padding-left: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section style="width: 100%;">
+            <div class="container-data">
+
+                {{> header}}
+
+                <section>
+                    <div style="margin-bottom: 5%">
+                        <h2 class="email-text-style">
+                            Hi {{firstName}},
+                        </h2>
+
+                        <p class="email-text-style">
+                            Great news — you've successfully upgraded your <strong>{{hubName}}</strong> to the <strong>{{newPlanName}}</strong> plan.
+                        </p>
+
+                        <p class="email-text-style">
+                            You now have access to even more powerful features like:
+                        </p>
+
+                        <ul class="feature-list">
+                            {{#each features}}
+                            <li class="email-text-style">✅ {{this}}</li>
+                            {{/each}}
+                        </ul>
+
+
+                        <div class="plan-details">
+                            <h3>Plan Details</h3>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Plan:</strong> {{newPlanName}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Price:</strong> ${{price}}/user/{{#if interval}}{{interval}}{{else}}month{{/if}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Effective from:</strong> {{upgradeDate}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Next billing date:</strong> {{nextBillingDate}}
+                            </p>
+                        </div>
+
+                        {{#if receiptUrl}}
+                        <p class="email-text-style">
+                            You can view your receipt <a href="{{receiptUrl}}" style="color: #3670F7; text-decoration: none; border-bottom: 1px solid #3670F7;">here</a>.
+                        </p>
+                        {{/if}}
+
+                        <p class="email-text-style">
+                            If you didn't request this change, please reach out to us through <a href="mailto:{{sparrowEmail}}" style="color: #3670F7; text-decoration: none; border-bottom: 1px solid #3670F7;">{{sparrowEmail}}</a> immediately.
+                        </p>
+
+                        <p class="email-text-style">
+                            Thank you for growing with us.
+                        </p>
+
+                        <p class="email-text-style">
+                            Warm Regards,<br>
+                            The Sparrow Team<br>
+                        </p>
+
+                    </div>
+
+                    <hr>
+
+                </section>
+
+                {{> footer}}
+
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

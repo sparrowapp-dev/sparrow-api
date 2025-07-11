@@ -19,11 +19,12 @@ export class AdminHubsRepository {
     search?: string,
     sortBy: string = "createdAt",
     sortOrder: string = "desc",
+    plan?: string,
   ) {
     const userObjectId = new ObjectId(userId);
 
     // Build query
-    let queryConditions: any = {
+    let queryConditions: Record<string, any> = {
       $or: [{ "users.id": userObjectId }, { "users.id": userId.toString() }],
     };
 
@@ -37,10 +38,21 @@ export class AdminHubsRepository {
             ],
           },
           {
-            $or: [{ name: { $regex: search.trim(), $options: "i" } }],
+            name: { $regex: search.trim(), $options: "i" },
           },
         ],
       };
+    }
+
+    // Add plan filter if plan !== "all"
+    if (plan && plan.toLowerCase() !== "all") {
+      if (queryConditions.$and) {
+        queryConditions.$and.push({ "plan.name": plan });
+      } else {
+        queryConditions = {
+          $and: [queryConditions, { "plan.name": plan }],
+        };
+      }
     }
 
     const collation = sortBy === "name" ? { locale: "en", strength: 2 } : null;
@@ -72,7 +84,6 @@ export class AdminHubsRepository {
       };
     }
 
-    // No pagination
     const data = await query.toArray();
     return {
       data,
