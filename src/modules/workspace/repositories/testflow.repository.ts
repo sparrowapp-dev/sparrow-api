@@ -65,6 +65,23 @@ export class TestflowRepository {
   }
 
   /**
+   * Fetches testflows from database by UUID
+   * @param {string[]} testflowIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getTestflowsByIds(testflowIds: string[]): Promise<WithId<Testflow>[]> {
+    const testflows = await this.db.collection<Testflow>(Collections.TESTFLOW)
+    .find({ _id: { $in: testflowIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!testflows) {
+      throw new BadRequestException(
+        "The testflows with that ids could not be found.",
+      );
+    }
+    return testflows;
+  }
+
+  /**
    * Deletes a Testflow document by its ID.
    *
    * @param {string} id - The MongoDB ObjectId of the Testflow to be deleted.

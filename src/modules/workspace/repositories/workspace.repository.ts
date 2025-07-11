@@ -47,6 +47,23 @@ export class WorkspaceRepository {
     return data;
   }
 
+  /**
+   * Fetches workspaces from database by UUID
+   * @param {string[]} workspaceIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getWorkspacesByIds(workspaceIds: string[]): Promise<WithId<Workspace>[]> {
+    const workspaces = await this.db.collection<Workspace>(Collections.WORKSPACE)
+    .find({ _id: { $in: workspaceIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!workspaces) {
+      throw new BadRequestException(
+        "The workspaces with that ids could not be found.",
+      );
+    }
+    return workspaces;
+  }
+
   async getPublicWorkspace(id: string): Promise<WithId<Workspace>> {
     const _id = new ObjectId(id);
     const data = await this.db
