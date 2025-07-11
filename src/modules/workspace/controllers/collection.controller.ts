@@ -232,7 +232,7 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Put("add-auth-profiles")
+  @Post("auth-profiles")
   @ApiOperation({
     summary: "Add an auth profile",
     description: "This will add an auth profile ",
@@ -252,7 +252,7 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Put("update-auth-profiles")
+  @Put("auth-profiles")
   @ApiOperation({
     summary: "Update an auth profile",
     description: "This will update an auth profile ",
@@ -272,7 +272,7 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Delete("delete-auth-profiles")
+  @Delete("auth-profiles")
   @ApiOperation({
     summary: "Delete an auth profile",
     description: "This will delete an auth profile ",
