@@ -53,6 +53,25 @@ export class CollectionRepository {
     }
     return data;
   }
+
+  /**
+   * Fetches collections from database by UUID
+   * @param {string[]} collectionIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getCollectionsByIds(collectionIds: string[]): Promise<WithId<Collection>[]> {
+    const collections = await this.db.collection<Collection>(Collections.COLLECTION)
+    .find({ _id: { $in: collectionIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!collections) {
+      throw new BadRequestException(
+        "The collections with that ids could not be found.",
+      );
+    }
+    return collections;
+  }
+
+  
   async update(
     id: string,
     updateCollectionDto: Partial<UpdateCollectionDto>,

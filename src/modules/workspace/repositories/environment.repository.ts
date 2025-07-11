@@ -35,6 +35,23 @@ export class EnvironmentRepository {
     return data;
   }
 
+  /**
+   * Fetches environments from database by UUID
+   * @param {string[]} environmentIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getEnvironmentsByIds(environmentIds: string[]): Promise<WithId<Environment>[]> {
+    const environments = await this.db.collection<Environment>(Collections.ENVIRONMENT)
+    .find({ _id: { $in: environmentIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!environments) {
+      throw new BadRequestException(
+        "The environments with that ids could not be found.",
+      );
+    }
+    return environments;
+  }
+
   async delete(id: string): Promise<DeleteResult> {
     const _id = new ObjectId(id);
     const data = await this.db
