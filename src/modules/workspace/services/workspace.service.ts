@@ -98,17 +98,31 @@ export class WorkspaceService {
         "The user with this id does not exist in the system",
       );
     }
-    const workspaces: WithId<Workspace>[] = [];
-    for (const { workspaceId } of user.workspaces) {
-      const workspaceData: WithId<WorkspaceWithNewInviteTag> =
-        await this.get(workspaceId);
-      user.workspaces.forEach((workspace) => {
-        if (workspace.workspaceId.toString() === workspaceData._id.toString()) {
-          workspaceData.isNewInvite = workspace.isNewInvite;
-        }
+
+    const userWorkspaceEntries = user.workspaces || [];
+    const workspaceIdMap = new Map<string, boolean>();
+
+    const workspaceIds = userWorkspaceEntries.map((w) => {
+      const idStr = w.workspaceId.toString();
+      workspaceIdMap.set(idStr, w.isNewInvite ?? false);
+      return idStr;
+    });
+
+    let workspaces: WithId<WorkspaceWithNewInviteTag>[] = [];
+
+    if (workspaceIds.length > 0) {
+      // Bulk fetch all workspaces in one DB call
+      const workspaceDocs = await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
+
+      workspaces = workspaceDocs.map((doc) => {
+        const isNewInvite = workspaceIdMap.get(doc._id.toString()) ?? false;
+        return {
+          ...doc,
+          isNewInvite,
+        };
       });
-      workspaces.push(workspaceData);
     }
+      
     if (!workspaces.length) {
       const teams = await this.teamService.getAllTeams(userId, currentUser);
       for (const team of teams) {
@@ -133,11 +147,9 @@ export class WorkspaceService {
   }
   async getAllTeamWorkSpaces(teamId: string): Promise<Workspace[]> {
     const team = await this.teamRepository.get(teamId);
-    const workspaces: Workspace[] = [];
-    for (const { id } of team.workspaces) {
-      const workspace = await this.get(id.toString());
-      workspaces.push(workspace);
-    }
+    const workspaceIds = team.workspaces?.map(w =>w.id.toString()) || [];
+    if (workspaceIds.length === 0) return [];
+    const workspaces = await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
     return workspaces;
   }
 
