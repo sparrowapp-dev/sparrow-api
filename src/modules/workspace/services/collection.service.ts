@@ -539,7 +539,7 @@ export class CollectionService {
     };
 
     // Unset defaultKey from others if this is the new default
-    if (authInput.defaultKey === true) {
+    if (authInput.defaultKey) {
       await this.collectionRepository.unsetDefaultAuth(collectionId);
     }
 
