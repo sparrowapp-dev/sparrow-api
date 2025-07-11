@@ -1,0 +1,195 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful</title>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container-data {
+            margin: auto;
+            max-width: 570px;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-text-style {
+            color: var(--email-text-color, #333);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 21px;
+        }
+
+        .payment-summary {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e9ecef;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .summary-value {
+            color: #212529;
+        }
+
+        .receipt-button {
+            display: inline-block !important;
+            background-color: #3670F7 !important;
+            color: white !important;
+            padding: 12px 24px !important;
+            text-decoration: none !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            margin: 15px 0 !important;
+            /* Gmail-specific fixes */
+            border: none !important;
+            font-family: "Inter", sans-serif !important;
+            font-size: 14px !important;
+            line-height: 1.4 !important;
+            mso-hide: all !important;
+        }
+
+        /* Additional Gmail desktop fixes */
+        .receipt-button:hover {
+            color: white !important;
+            background-color: #2b5ce6 !important;
+        }
+
+        .receipt-button:visited {
+            color: white !important;
+        }
+
+        .receipt-button:active {
+            color: white !important;
+        }
+
+        /* Outlook specific */
+        .receipt-button[x-apple-data-detectors] {
+            color: white !important;
+            text-decoration: none !important;
+        }
+
+        /* Alternative: Use table-based button for better compatibility */
+        .button-table {
+            border-collapse: separate !important;
+            border-radius: 6px !important;
+            background-color: #3670F7 !important;
+        }
+
+        .button-table td {
+            border-radius: 6px !important;
+            background-color: #3670F7 !important;
+            padding: 12px 24px !important;
+        }
+
+        .button-link {
+            color: white !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            font-family: "Inter", sans-serif !important;
+            font-size: 14px !important;
+            display: block !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section style="width: 100%;">
+            <div class="container-data">
+
+                {{> header}}
+
+                <section>
+                    <div style="margin-bottom: 5%">
+                        <h2 class="email-text-style">
+                            Hi {{firstName}},
+                        </h2>
+
+                        <p class="email-text-style">
+                            We're happy to let you know that we've successfully received your payment for the <strong>{{planName}}</strong> plan on <strong>{{hubName}}</strong>.
+                        </p>
+
+                        <div class="payment-summary">
+                            <h3 style="margin-top: 0; color: #212529; font-size: 16px;">Payment Summary</h3>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Amount Paid:&nbsp;&nbsp;</span>
+                                <span class="summary-value">${{amountPaid}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Date:&nbsp;&nbsp;</span>
+                                <span class="summary-value">{{paymentDate}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Plan:&nbsp;&nbsp;</span>
+                                <span class="summary-value">{{planName}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Billing Period:&nbsp;&nbsp;</span>
+                                <span class="summary-value">{{fromDate}} to {{toDate}}</span>
+                            </div>
+                        </div>
+
+                        <p class="email-text-style">
+                            You're all set for the next billing cycle. A receipt for your payment is available below.
+                        </p>
+
+                        {{#if receiptUrl}}
+                        <a href="{{receiptUrl}}" style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">
+                            View Receipt
+                        </a>
+                        {{/if}}
+
+                        <p class="email-text-style">
+                            We're grateful to have you with us — thank you for being part of the Sparrow community!
+                        </p>
+
+                        <p class="email-text-style">
+                            Warm regards, <br>
+                            The Sparrow Team <br>
+                        </p>
+                    </div>
+
+                    <hr>
+                </section>
+
+                {{> footer}}
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

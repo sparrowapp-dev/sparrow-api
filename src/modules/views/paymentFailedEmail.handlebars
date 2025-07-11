@@ -1,0 +1,136 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Failed</title>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container-data {
+            margin: auto;
+            max-width: 570px;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-text-style {
+            color: var(--email-text-color, #333);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 21px;
+        }
+
+        .payment-summary {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e9ecef;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .summary-value {
+            color: #212529;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section style="width: 100%;">
+            <div class="container-data">
+
+                {{> header}}
+
+                <section>
+                    <div style="margin-bottom: 5%">
+                        <h2 class="email-text-style">
+                            Hi {{firstName}},
+                        </h2>
+
+                        <p class="email-text-style">
+                            Looks like we hit a snag processing your recent payment for the <strong>{{planName}}</strong> plan on <strong>{{hubName}}</strong>.
+                        </p>
+
+                        <div class="payment-summary">
+                            <h3 style="margin-top: 0; color: #212529; font-size: 16px;">Payment Details</h3>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Amount:&nbsp;&nbsp;</span>
+                                <span class="summary-value">${{amountDue}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Attempted on:&nbsp;&nbsp;</span>
+                                <span class="summary-value">{{failureDate}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Reason:&nbsp;&nbsp;</span>
+                                <span class="summary-value">{{failureReason}}</span>
+                            </div>
+                        </div>
+
+                        <p class="email-text-style">
+                            To keep your access uninterrupted, please make the payment{{#if nextRetryDate}} before <strong>{{nextRetryDate}}</strong>{{/if}}. If the payment isn't completed{{#if nextRetryDate}} by <strong>{{nextRetryDate}}</strong>{{/if}}, your access to <strong>{{hubName}}</strong> may be temporarily paused.
+                        </p>
+
+                        <p class="email-text-style">
+                            <a href="{{fixPaymentUrl}}" style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">
+                                Fix Payment Issue
+                            </a>
+                        </p>
+
+                        <p class="email-text-style">
+                            Need help? We're just a message away — <a href="mailto:contactus@sparrowapp.dev" style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">contactus@sparrowapp.dev</a>.
+                        </p>
+
+                        <p class="email-text-style">
+                            Thank you for your attention.
+                        </p>
+
+                        <p class="email-text-style">
+                            Warm regards, <br>
+                            The Sparrow Team <br>
+                        </p>
+                    </div>
+
+                    <hr>
+                </section>
+
+                {{> footer}}
+
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>
