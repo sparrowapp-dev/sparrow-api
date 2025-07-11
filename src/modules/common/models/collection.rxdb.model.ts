@@ -66,12 +66,6 @@ interface FormDataFileEntry {
 }
 
 export class Auth {
-  authId?:string
-  name?: string;
-  description?: string;
-  authType?: CollectionAuthModeEnum;
-  createdAt?: Date;
-  defaultKey?: boolean;
   bearerToken?: string;
   basicAuth?: {
     username: string;
@@ -82,4 +76,13 @@ export class Auth {
     authValue: string | unknown;
     addTo: AddTo;
   };
+}
+
+export class AuthProfiles extends Auth {
+  authId?:string
+  name?: string;
+  description?: string;
+  authType?: CollectionAuthModeEnum;
+  createdAt?: Date;
+  defaultKey?: boolean;
 }

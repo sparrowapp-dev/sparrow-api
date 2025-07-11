@@ -21,6 +21,7 @@ import { SchemaObject } from "./openapi303.model";
 import { ApiProperty } from "@nestjs/swagger";
 import {
   Auth,
+  AuthProfiles,
   KeyValue,
   SparrowRequestBody,
   TransformedRequest,
@@ -1069,10 +1070,10 @@ export class Collection {
     },
   })
   @IsArray()
-  @Type(() => Auth)
+  @Type(() => AuthProfiles)
   @ValidateNested({ each: true })
   @IsOptional()
-  authProfiles?: Auth[];
+  authProfiles?: AuthProfiles[];
 
   @ApiProperty()
   @IsString()

@@ -38,7 +38,7 @@ export class ApiKeyDto {
   authKey: string;
 
   @IsOptional()
-  authValue: string | unknown;
+  authValue?: string | unknown;
 
   @IsString()
   addTo: AddTo; 

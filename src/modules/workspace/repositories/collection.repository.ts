@@ -75,78 +75,27 @@ export class CollectionRepository {
     return data;
   }
 
-  async addAuth(
-    collectionId: string,
-    authDto: UpdateCollectionDto,
-    user: DecodedUserObject,
-  ): Promise<any> {
-    const collectionObjectId = new ObjectId(collectionId);
-
-    const authInput = authDto.authProfiles?.[0]; // Extract first auth profile
-
-    if (!authInput) {
-      throw new BadRequestException("Auth profile is required.");
-    }
-
-    const collection = await this.db
+  async findOneById(collectionId: string): Promise<any> {
+    return this.db
       .collection(Collections.COLLECTION)
-      .findOne({ _id: collectionObjectId });
+      .findOne({ _id: new ObjectId(collectionId) });
+  }
 
-    const existingAuthNames = (collection?.authProfiles || []).map((a: any) => a.name);
+  async unsetDefaultAuth(collectionId: string): Promise<any> {
+    return this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: new ObjectId(collectionId) },
+      { $set: { "authProfiles.$[elem].defaultKey": false } },
+      { arrayFilters: [{ "elem.defaultKey": true }] },
+    );
+  }
 
-    if (authInput.name && existingAuthNames.includes(authInput.name)) {
-      throw new BadRequestException("Please enter a unique name for Auth profile.");
-    }
-
-    const now = new Date();
-
-    const enrichedAuth = {
-      ...authInput,
-      authId: uuidv4(),
-      createdAt: now,
-      updatedAt: now,
-      createdBy: {
-        id: user._id.toString(),
-        name: user.name,
-      },
-      updatedBy: {
-        id: user._id.toString(),
-        name: user.name,
-      },
-    };
-
-    // Handle defaultKey logic: Unset existing default if new one is marked default
-    if (authInput.defaultKey === true) {
-      await this.db.collection(Collections.COLLECTION).updateOne(
-        { _id: collectionObjectId, "authProfiles.defaultKey": true },
-        { $set: { "authProfiles.$[elem].defaultKey": false } },
-        { arrayFilters: [{ "elem.defaultKey": true }] },
-      );
-    }
-
-    const updateDoc: any = {
-      $push: { authProfiles: enrichedAuth },
-      $set: {
-        updatedAt: now,
-        updatedBy: {
-          id: user._id.toString(),
-          name: user.name,
-        },
-      },
-    };
-
-    // Set defaultSelectedAuthProfile if this new auth is marked default
-    if (authInput.defaultKey === true) {
-      updateDoc.$set.defaultSelectedAuthProfile = enrichedAuth.authId;
-    }
-
-    await this.db.collection(Collections.COLLECTION).updateOne(
-      { _id: collectionObjectId },
+  async addAuth(collectionId: string, updateDoc: any): Promise<any> {
+    return this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: new ObjectId(collectionId) },
       updateDoc,
     );
-
-    return enrichedAuth;
   }
+
 
   async deleteAuth(
     collectionId: string,
@@ -187,93 +136,13 @@ export class CollectionRepository {
 }
 
 
-  async updateAuth(
-  collectionId: string,
-  authId: string,
-  user: DecodedUserObject,
-  payload: Partial<authCollection>,
-): Promise<string> {
-  if (!ObjectId.isValid(collectionId)) {
-    throw new BadRequestException('Invalid collectionId');
+
+  async updateAuth(collectionId: string, updateDoc: any): Promise<any> {
+    return this.db
+      .collection(Collections.COLLECTION)
+      .updateOne({ _id: new ObjectId(collectionId) }, updateDoc);
   }
 
-  const collectionObjectId = new ObjectId(collectionId);
-
-  const collection = await this.db
-    .collection(Collections.COLLECTION)
-    .findOne({ _id: collectionObjectId });
-
-  if (!collection) {
-    throw new BadRequestException('Collection not found');
-  }
-
-  const existingAuths = collection.authProfiles || [];
-
-  const targetIndex = existingAuths.findIndex((auth: any) => auth.authId === authId);
-  if (targetIndex === -1) {
-    throw new BadRequestException('Auth profile not found');
-  }
-
-  const updatedAuth = {
-    ...existingAuths[targetIndex],
-    ...payload,
-    authId, // preserve authId
-    updatedAt: new Date(),
-    updatedBy: {
-      id: user._id.toString(),
-      name: user.name,
-    },
-  };
-
-  // Build the new array with replacement
-  const updatedAuths = existingAuths.map((auth: any) => {
-    if (auth.authId === authId) return updatedAuth;
-
-    // If defaultKey is being set in new one, clear it in all others
-    if (payload.defaultKey === true) {
-      return { ...auth, defaultKey: false };
-    }
-
-    return auth;
-  });
-
-  const updateDoc: any = {
-    $set: {
-      authProfiles: updatedAuths,
-      updatedAt: new Date(),
-      updatedBy: {
-        id: user._id.toString(),
-        name: user.name,
-      },
-    },
-  };
-
-  if (payload.defaultKey === true && payload.name) {
-    updateDoc.$set.defaultSelectedAuthProfile = authId;
-  }
-
-  const result = await this.db
-    .collection(Collections.COLLECTION)
-    .updateOne({ _id: collectionObjectId }, updateDoc);
-
-  if (result.modifiedCount === 0) {
-    throw new BadRequestException('Auth profile update failed');
-  }
-
-  const updatedCollection = await this.db
-    .collection(Collections.COLLECTION)
-    .findOne(
-      { _id: collectionObjectId, "authProfiles.authId": authId },
-      {
-        projection: {
-          authProfiles: { $elemMatch: { authId } },
-          _id: 0,
-        },
-      },
-  );
-
-  return updatedCollection?.authProfiles?.[0];
-}
 
 
 
