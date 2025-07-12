@@ -6,6 +6,7 @@ import {
 
 import {
   AuthCollection,
+  AuthProfiles,
   CreateCollectionDto,
   UpdateCollectionDto,
 } from "../payloads/collection.payload";
@@ -508,7 +509,7 @@ export class CollectionService {
   async addAuthProfile(
     updateCollectionDto: Partial<UpdateCollectionDto>,
     user: DecodedUserObject,
-  ): Promise<any> {
+  ): Promise<AuthProfiles> {
     const collectionId = updateCollectionDto.collectionId;
     const authInput = updateCollectionDto.authProfiles?.[0];
     const collection = await this.collectionRepository.get(collectionId);
@@ -559,7 +560,7 @@ export class CollectionService {
   async getAuthProfiles(
     collectionId: string, 
     user: DecodedUserObject
-  ): Promise<any[]> {
+  ): Promise<AuthProfiles[]> {
     // const collectionObjectId = new ObjectId(collectionId);
     const collection = await this.collectionRepository.get(collectionId);
     return collection.authProfiles || [];
@@ -569,7 +570,7 @@ export class CollectionService {
   async updateAuthProfile(
     payload: AuthCollection,
     user: DecodedUserObject,
-  ): Promise<any> {
+  ): Promise<AuthProfiles> {
     const { collectionId, authId, ...authUpdatePayload } = payload;
 
     if (!ObjectId.isValid(collectionId)) {

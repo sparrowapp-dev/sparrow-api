@@ -94,7 +94,7 @@ export class CollectionRepository {
     return data;
   }
 
-  async unsetDefaultAuth(collectionId: string): Promise<any> {
+  async unsetDefaultAuth(collectionId: string): Promise<UpdateResult> {
     return this.db.collection(Collections.COLLECTION).updateOne(
       { _id: new ObjectId(collectionId) },
       { $set: { "authProfiles.$[elem].defaultKey": false } },
@@ -105,7 +105,7 @@ export class CollectionRepository {
   async addAuth(
     collectionId: string, 
     updateDoc: any
-  ): Promise<any> {
+  ): Promise<UpdateResult> {
     return this.db.collection(Collections.COLLECTION).updateOne(
       { _id: new ObjectId(collectionId) },
       updateDoc,
@@ -145,7 +145,7 @@ export class CollectionRepository {
   async updateAuth(
     collectionId: string, 
     updateDoc: any
-  ): Promise<any> {
+  ): Promise<UpdateResult> {
     return this.db
       .collection(Collections.COLLECTION)
       .updateOne({ _id: new ObjectId(collectionId) }, updateDoc);
