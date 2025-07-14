@@ -359,8 +359,8 @@ export class TeamUserService {
     const role = TeamRole.ADMIN;
     await this.addAdminEmail(
       teamData.name,
-      userDetails.name.split(" ")[0],
       user.name.split(" ")[0],
+      currentUser?.name?.split(" ")[0] ?? "",
       userDetails.email,
       role,
     );
@@ -429,8 +429,8 @@ export class TeamUserService {
     const role = TeamRole.MEMBER;
     await this.demoteTeamAdminEmail(
       teamData.name,
-      userDetails.name,
       userData.name.split(" ")[0],
+      currentUser?.name?.split(" ")[0] ?? "",
       userDetails.email,
       role,
     );
