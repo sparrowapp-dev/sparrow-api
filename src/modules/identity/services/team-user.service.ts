@@ -360,6 +360,7 @@ export class TeamUserService {
     await this.addAdminEmail(
       teamData.name,
       userDetails.name.split(" ")[0],
+      user.name.split(" ")[0],
       userDetails.email,
       role,
     );
@@ -429,6 +430,7 @@ export class TeamUserService {
     await this.demoteTeamAdminEmail(
       teamData.name,
       userDetails.name,
+      userData.name.split(" ")[0],
       userDetails.email,
       role,
     );
@@ -806,7 +808,7 @@ export class TeamUserService {
     userName: string,
     senderUserName: string,
     email: string,
-    role?: string,
+    role: string,
   ): Promise<void> {
     const transporter = this.emailService.createTransporter();
     const mailOptions = {
@@ -848,7 +850,7 @@ export class TeamUserService {
     userName: string,
     senderUserName: string,
     email: string,
-    role?: string,
+    role: string,
   ): Promise<void> {
     const transporter = this.emailService.createTransporter();
 
