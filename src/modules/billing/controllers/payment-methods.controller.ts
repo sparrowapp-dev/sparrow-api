@@ -24,6 +24,8 @@ import {
   PaymentMethodDto,
   SetDefaultPaymentMethodDto,
 } from "../payloads/payment-methods.payload";
+import { PaymentEmailHelper } from "../helpers/payment-email.helper";
+import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 
 // Dynamically import Stripe services
 let PaymentMethodsService: any;
@@ -43,6 +45,9 @@ export class PaymentMethodsController {
     @Optional()
     @Inject(PaymentMethodsService)
     private readonly paymentMethodsService: any,
+    @Optional()
+    private readonly paymentEmailHelper?: PaymentEmailHelper,
+    private readonly stripeSubscriptionRepo?: StripeSubscriptionRepository,
   ) {
     this.isServiceAvailable = !!this.paymentMethodsService;
 
@@ -214,6 +219,7 @@ export class PaymentMethodsController {
   async updateBillingDetails(
     @Param("id") paymentMethodId: string,
     @Body() updateBillingDetailsDto: UpdateBillingDetailsDto,
+    @Body("hubId") hubId?: string,
   ): Promise<PaymentMethodResponseDto> {
     try {
       this.checkServiceAvailability();
@@ -230,6 +236,23 @@ export class PaymentMethodsController {
           paymentMethodId,
           billingDetails,
         );
+
+      // Send payment info updated email notification if hubId and hubName are provided
+      if (this.paymentEmailHelper && hubId) {
+        const team = await this.stripeSubscriptionRepo.findTeamById(hubId);
+        try {
+          await this.paymentEmailHelper.sendPaymentInfoUpdatedEmail(
+            paymentMethod,
+            hubId,
+            team?.name,
+          );
+        } catch (emailError) {
+          console.error(
+            "Error sending payment info updated email:",
+            emailError,
+          );
+        }
+      }
 
       return { paymentMethod };
     } catch (error) {

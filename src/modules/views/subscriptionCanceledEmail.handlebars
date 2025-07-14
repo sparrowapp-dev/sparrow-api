@@ -1,0 +1,102 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Canceled</title>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container-data {
+            margin: auto;
+            max-width: 570px;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-text-style {
+            color: var(--email-text-color, #333);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 21px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section style="width: 100%;">
+            <div class="container-data">
+
+                {{> header}}
+
+                <section>
+                    <div style="margin-bottom: 5%">
+                        <h2 class="email-text-style">
+                            Hi {{firstName}},
+                        </h2>
+
+                        <p class="email-text-style">
+                            We've processed your cancellation for the <strong>{{planName}}</strong> plan on <strong>{{hubName}}</strong>.
+                        </p>
+
+                        <p class="email-text-style">
+                            Your access to the plan's features will remain active until the end of your current billing period, which ends on <strong>{{serviceEndDate}}</strong>.
+                        </p>
+
+                        <p class="email-text-style">
+                            We're sorry to see you go and would love to welcome you back. If there's anything we can do to improve your experience, please don't hesitate to let us know.
+                        </p>
+
+                        <p class="email-text-style">
+                            👉 <a href="{{managePlanUrl}}"
+                                style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">
+                                Manage Plans
+                            </a>
+                        </p>
+
+                        <p class="email-text-style">
+                            👉 <a href="mailto:{{sparrowEmail}}"
+                                style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">
+                                Contact Support
+                            </a>
+                        </p>
+
+                        <p class="email-text-style">
+                            Thank you for being part of the Sparrow community. We hope to see you again soon!
+                        </p>
+
+                        <p class="email-text-style">
+                            Warm Regards,<br>
+                            The Sparrow Team<br>
+                        </p>
+                    </div>
+
+                    <hr>
+                </section>
+
+                {{> footer}}
+
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

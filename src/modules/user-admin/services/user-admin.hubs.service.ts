@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
 import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.repository";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
+import { PlanName } from "@src/modules/common/enum/plan.enum";
 
 interface SortOptions {
   sortBy: string;
@@ -57,6 +58,11 @@ export class AdminHubsService {
     let totalWorkspaces = 0;
     let privateWorkspaces = 0;
     let publicWorkspaces = 0;
+    const planSegregationCount = {
+      [PlanName.COMMUNITY]: 0,
+      [PlanName.STANDARD]: 0,
+      [PlanName.PROFESSIONAL]: 0,
+    };
 
     // First pass: determine each user's highest role globally
     for (const hub of hubs) {
@@ -80,6 +86,12 @@ export class AdminHubsService {
     for (const hub of hubs) {
       totalWorkspaces += hub.workspaces.length;
 
+      const planName = hub?.plan?.name;
+      //Matching with the plan title nad increasing the respective count
+      if (Object.values(PlanName).includes(planName as PlanName)) {
+        const key = planName as PlanName;
+        planSegregationCount[key] += 1;
+      }
       for (const workspace of hub.workspaces) {
         try {
           const workspaceInfo = await this.workspaceRepo.findWorkspaceById(
@@ -115,6 +127,7 @@ export class AdminHubsService {
 
     return {
       totalHubs: hubs.length,
+      planSegregationCount,
       workspaces: {
         total: totalWorkspaces,
         private: privateWorkspaces,
@@ -132,6 +145,7 @@ export class AdminHubsService {
     userId: string,
     page: number,
     limit: number,
+    plan: string,
     search: string,
     sortOptions: SortOptions,
   ) {
@@ -144,6 +158,7 @@ export class AdminHubsService {
         search,
         sortOptions.sortBy,
         sortOptions.sortOrder,
+        plan,
       );
       if (!teams?.data?.length) {
         return {

@@ -153,13 +153,11 @@ export class EnvironmentService {
     await this.checkPermission(id, userId);
 
     const workspace = await this.workspaceReposistory.get(id);
-    const environments = [];
-    for (let i = 0; i < workspace.environments?.length; i++) {
-      const environment = await this.environmentRepository.get(
-        workspace.environments[i].id.toString(),
-      );
-      environments.push(environment);
-    }
+    const environmentIds = workspace.environments?.map(e => e.id.toString()) || [];
+
+    if (environmentIds.length === 0) return [];
+
+    const environments = await this.environmentRepository.getEnvironmentsByIds(environmentIds);
     return environments;
   }
 
@@ -169,16 +167,13 @@ export class EnvironmentService {
    */
   async getAllPublicEnvironments(id: string): Promise<WithId<Environment>[]> {
     const workspace = await this.workspaceReposistory.get(id);
+
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const environments = [];
-    for (let i = 0; i < workspace.environments?.length; i++) {
-      const environment = await this.environmentRepository.get(
-        workspace.environments[i].id.toString(),
-      );
-      environments.push(environment);
-    }
+    const environmentIds = workspace.environments?.map(e => e.id.toString()) || [];
+    if (environmentIds.length === 0) return [];
+    const environments = await this.environmentRepository.getEnvironmentsByIds(environmentIds);
     return environments;
   }
 

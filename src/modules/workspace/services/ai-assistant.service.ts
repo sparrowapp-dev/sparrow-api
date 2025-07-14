@@ -2108,7 +2108,10 @@ export class AiAssistantService {
 
           results.push({ fileId: file.id, fileUrl: uploadFile });
         } catch (err) {
-          console.error(`Upload failed for ${doc.fieldname}:`, err);
+          const statusCode = err?.status || err?.response?.status || err?.code;
+          if (statusCode === 401 || err?.code === 'invalid_api_key') {
+            throw new BadRequestException(err?.error?.message);
+          }
         } finally {
           unlink(tempFilePath).catch(() =>
             console.warn(`Failed to delete temp file: ${tempFilePath}`)
@@ -2118,39 +2121,39 @@ export class AiAssistantService {
       return results;
     }
 
-    if (model === Models.Anthropic) {
+    // if (model === Models.Anthropic) {
 
-      const AnthropicClient = await this.createAnthropicClient(authKey);
-      const { writeFile, unlink } = fs.promises;
+    //   const AnthropicClient = await this.createAnthropicClient(authKey);
+    //   const { writeFile, unlink } = fs.promises;
 
-      const results: { fileId: string; fileUrl: string; }[] = [];
+    //   const results: { fileId: string; fileUrl: string; }[] = [];
 
-      for (const doc of docs) {
+    //   for (const doc of docs) {
 
-        // Upload document to azure blob 
-        const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
-        console.log(doc)
+    //     // Upload document to azure blob 
+    //     const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
+    //     console.log(doc)
 
-        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
-        try {
-          await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+    //     const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+    //     try {
+    //       await writeFile(tempFilePath, new Uint8Array(doc.buffer));
 
-          const file = await AnthropicClient.beta.files.upload({
-            file: await toFile(fs.createReadStream(tempFilePath), undefined, { type: doc.mimetype }),
-            betas: ['files-api-2025-04-14'],
-          });
+    //       const file = await AnthropicClient.beta.files.upload({
+    //         file: await toFile(fs.createReadStream(tempFilePath), undefined, { type: doc.mimetype }),
+    //         betas: ['files-api-2025-04-14'],
+    //       });
 
-          results.push({ fileId: file.id, fileUrl: uploadFile });
-        } catch (err) {
-          console.error(`Upload failed for ${doc.fieldname}:`, err);
-        } finally {
-          unlink(tempFilePath).catch(() =>
-            console.warn(`Failed to delete temp file: ${tempFilePath}`)
-          );
-        }
-      }
-      return results;
-    }
+    //       results.push({ fileId: file.id, fileUrl: uploadFile });
+    //     } catch (err) {
+    //       console.error(`Upload failed for ${doc.fieldname}:`, err);
+    //     } finally {
+    //       unlink(tempFilePath).catch(() =>
+    //         console.warn(`Failed to delete temp file: ${tempFilePath}`)
+    //       );
+    //     }
+    //   }
+    //   return results;
+    // }
 
     // if (model === Models.Google) {
 

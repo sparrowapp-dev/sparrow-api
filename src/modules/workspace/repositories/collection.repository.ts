@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 
-import { UpdateCollectionDto } from "../payloads/collection.payload";
+import { AuthCollection, UpdateCollectionDto } from "../payloads/collection.payload";
 import {
   Db,
   DeleteResult,
@@ -31,6 +31,8 @@ import {
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { Workspace } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { v4 as uuidv4 } from "uuid";
+
 @Injectable()
 export class CollectionRepository {
   constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
@@ -51,6 +53,25 @@ export class CollectionRepository {
     }
     return data;
   }
+
+  /**
+   * Fetches collections from database by UUID
+   * @param {string[]} collectionIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getCollectionsByIds(collectionIds: string[]): Promise<WithId<Collection>[]> {
+    const collections = await this.db.collection<Collection>(Collections.COLLECTION)
+    .find({ _id: { $in: collectionIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!collections) {
+      throw new BadRequestException(
+        "The collections with that ids could not be found.",
+      );
+    }
+    return collections;
+  }
+
+  
   async update(
     id: string,
     updateCollectionDto: Partial<UpdateCollectionDto>,
@@ -71,6 +92,63 @@ export class CollectionRepository {
         { $set: { ...updateCollectionDto, ...defaultParams } },
       );
     return data;
+  }
+
+  async unsetDefaultAuth(collectionId: string): Promise<UpdateResult> {
+    return this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: new ObjectId(collectionId) },
+      { $set: { "authProfiles.$[elem].defaultKey": false } },
+      { arrayFilters: [{ "elem.defaultKey": true }] },
+    );
+  }
+
+  async addAuth(
+    collectionId: string, 
+    updateDoc: any
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: new ObjectId(collectionId) },
+      updateDoc,
+    );
+  }
+
+
+  async deleteAuth(
+    collectionId: string,
+    workspaceId: string,
+    authId: string,
+    user: DecodedUserObject,
+  ): Promise<string> {
+    const result = await this.db.collection(Collections.COLLECTION).updateOne(
+      { _id: new ObjectId(collectionId) },
+      {
+        $pull: {
+          authProfiles: { authId: authId },
+        },
+        $set: {
+          updatedAt: new Date(),
+          updatedBy: {
+            id: user._id.toString(),
+            name: user.name,
+          },
+        },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      throw new BadRequestException("Auth profile not found or already deleted.");
+    }
+    return "Auth profile deleted successfully.";
+  }
+
+
+  async updateAuth(
+    collectionId: string, 
+    updateDoc: any
+  ): Promise<UpdateResult> {
+    return this.db
+      .collection(Collections.COLLECTION)
+      .updateOne({ _id: new ObjectId(collectionId) }, updateDoc);
   }
 
   async updateBranchArray(

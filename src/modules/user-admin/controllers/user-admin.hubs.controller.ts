@@ -108,6 +108,7 @@ export class AdminHubsController {
     @Query("page") page: string = "1",
     @Query("limit") limit: string = "10",
     @Query("search") search: string = "",
+    @Query("plan") plan: string = "All",
     @Query("sortBy") sortBy: "createdAt" | "updatedAt" | "name" = "createdAt",
     @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
     @Res() res: FastifyReply,
@@ -135,6 +136,7 @@ export class AdminHubsController {
       userId,
       parsedPage || 1,
       parsedLimit || 10,
+      plan,
       search,
       {
         sortBy: validatedSortBy,

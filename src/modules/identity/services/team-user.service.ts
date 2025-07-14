@@ -1005,6 +1005,7 @@ export class TeamUserService {
           marketingUrl: this.configService.get("marketing.baseURL"),
           inviteId: inviteId,
           teamId: teamId,
+          role: role,
           email: email,
         },
         subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
@@ -1428,6 +1429,7 @@ export class TeamUserService {
           inviteId: newInviteId,
           teamId: teamId,
           email: inviteEmail,
+          role: invitedRole,
         },
         subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
       };
