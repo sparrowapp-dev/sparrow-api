@@ -4,6 +4,7 @@ import {
   ItemTypeEnum,
   SourceTypeEnum,
   PostmanBodyModeEnum,
+  CollectionAuthModeEnum,
 } from "./collection.model";
 
 export enum AddTo {
@@ -75,4 +76,13 @@ export class Auth {
     authValue: string | unknown;
     addTo: AddTo;
   };
+}
+
+export class AuthProfiles extends Auth {
+  authId?:string
+  name?: string;
+  description?: string;
+  authType?: CollectionAuthModeEnum;
+  createdAt?: Date;
+  defaultKey?: boolean;
 }

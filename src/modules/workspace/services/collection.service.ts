@@ -5,6 +5,8 @@ import {
 } from "@nestjs/common";
 
 import {
+  AuthCollection,
+  AuthProfiles,
   CreateCollectionDto,
   UpdateCollectionDto,
 } from "../payloads/collection.payload";
@@ -76,6 +78,8 @@ export class CollectionService {
       updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
+      defaultSelectedAuthProfile: "",
+      authProfiles: []
     };
     const collection =
       await this.collectionRepository.addCollection(newCollection);
@@ -499,6 +503,152 @@ export class CollectionService {
         }),
       });
     }
+    return data;
+  }
+
+  async addAuthProfile(
+    updateCollectionDto: Partial<UpdateCollectionDto>,
+    user: DecodedUserObject,
+  ): Promise<AuthProfiles> {
+    const collectionId = updateCollectionDto.collectionId;
+    const authInput = updateCollectionDto.authProfiles?.[0];
+    const collection = await this.collectionRepository.get(collectionId);
+    const existingAuthNames = (collection.authProfiles || []).map((a: any) => a.name?.toLowerCase());
+
+    const now = new Date();
+    const enrichedAuth = {
+      ...authInput,
+      authId: uuidv4(),
+      createdAt: now,
+      updatedAt: now,
+      createdBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+    };
+
+    // Unset defaultKey from others if this is the new default
+    if (authInput.defaultKey) {
+      await this.collectionRepository.unsetDefaultAuth(collectionId);
+    }
+
+    // Build update doc
+    const updateDoc: any = {
+      $push: { authProfiles: enrichedAuth },
+      $set: {
+        updatedAt: now,
+        updatedBy: {
+          id: user._id.toString(),
+          name: user.name,
+        },
+      },
+    };
+
+    if (authInput.defaultKey === true) {
+      updateDoc.$set.defaultSelectedAuthProfile = enrichedAuth.authId;
+    }
+
+    await this.collectionRepository.addAuth(collectionId, updateDoc);
+    return enrichedAuth;
+  }
+
+
+  async getAuthProfiles(
+    collectionId: string, 
+    user: DecodedUserObject
+  ): Promise<AuthProfiles[]> {
+    // const collectionObjectId = new ObjectId(collectionId);
+    const collection = await this.collectionRepository.get(collectionId);
+    return collection.authProfiles || [];
+  }
+
+
+  async updateAuthProfile(
+    payload: AuthCollection,
+    user: DecodedUserObject,
+  ): Promise<AuthProfiles> {
+    const { collectionId, authId, ...authUpdatePayload } = payload;
+
+    if (!ObjectId.isValid(collectionId)) {
+      throw new BadRequestException('Invalid collectionId');
+    }
+
+    const collection = await this.collectionRepository.get(collectionId);
+    if (!collection) {
+      throw new BadRequestException('Collection not found');
+    }
+
+    const existingAuths = collection.authProfiles || [];
+    const targetIndex = existingAuths.findIndex((auth: any) => auth.authId === authId);
+
+    if (targetIndex === -1) {
+      throw new BadRequestException('Auth profile not found');
+    }
+
+    const now = new Date();
+
+    const updatedAuth = {
+      ...existingAuths[targetIndex],
+      ...authUpdatePayload,
+      authId,
+      updatedAt: now,
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+    };
+
+    const updatedAuths = existingAuths.map((auth: any) => {
+      if (auth.authId === authId) return updatedAuth;
+
+      // Clear defaultKey in others if this one is being set as default
+      if (authUpdatePayload.defaultKey === true) {
+        return { ...auth, defaultKey: false };
+      }
+
+      return auth;
+    });
+
+    const updateDoc: any = {
+      $set: {
+        authProfiles: updatedAuths,
+        updatedAt: now,
+        updatedBy: {
+          id: user._id.toString(),
+          name: user.name,
+        },
+      },
+    };
+
+    if (authUpdatePayload.defaultKey === true) {
+      updateDoc.$set.defaultSelectedAuthProfile = authId;
+    }
+
+    const result = await this.collectionRepository.updateAuth(collectionId, updateDoc);
+    if (result.modifiedCount === 0) {
+      throw new BadRequestException('Auth profile update failed');
+    }
+
+    return updatedAuth;
+  }
+
+
+
+  async deleteAuthProfile(
+    payload: AuthCollection,
+    user: DecodedUserObject,
+  ): Promise<string> {
+      const {collectionId , workspaceId, authId} = payload
+    const data = await this.collectionRepository.deleteAuth(
+      collectionId,
+      workspaceId,
+      authId,
+      user,
+    );
     return data;
   }
 
