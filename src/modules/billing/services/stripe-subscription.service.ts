@@ -291,9 +291,6 @@ export class StripeSubscriptionService {
       // Check if subscription is already in a terminal state
       if (team.billing && team.billing.status) {
         if (StripeSubscriptionHelpers.isTerminalStatus(team.billing.status)) {
-          console.log(
-            `Subscription already in terminal state: ${team.billing.status}`,
-          );
           return;
         }
       }
@@ -1196,10 +1193,6 @@ export class StripeSubscriptionService {
             undefined, // no subscription details needed
             planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
           );
-
-          console.log(
-            `Downgraded team ${team._id} to community plan due to expired payment failure`,
-          );
         } catch (error) {
           console.error(
             `Error processing expired subscription for team ${team._id}:`,
@@ -1287,10 +1280,6 @@ export class StripeSubscriptionService {
             undefined, // no seat change
             undefined, // no subscription details needed
             planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
-          );
-
-          console.log(
-            `Reverted team ${team._id} to community plan due to expired trial`,
           );
         } catch (error) {
           console.error(
@@ -1420,15 +1409,6 @@ export class StripeSubscriptionService {
           // Skip users who are already team members or have pending invites
           skippedUsersCount++;
           continue;
-        }
-
-        // Check if user exists in the system
-        const existingUser =
-          await userRepository.getUserByEmail(sanitizedEmail);
-
-        if (existingUser) {
-          // Existing user in system but not in team - needs invite but no new license
-          existingUsersCount++;
         } else {
           // Completely new user - needs both invite and license
           newUsersCount++;
@@ -1614,10 +1594,6 @@ export class StripeSubscriptionService {
         await this.stripeSubscriptionRepo.updateTeamById(team._id.toString(), {
           licenses: licenseData,
         });
-
-        console.log(
-          `Successfully updated subscription ${subscriptionId} to ${newTotalSeats} seats`,
-        );
 
         return {
           success: true,
