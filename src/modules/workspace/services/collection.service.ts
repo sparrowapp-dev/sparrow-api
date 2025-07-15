@@ -42,7 +42,7 @@ import { PostmanParserService } from "@src/modules/common/services/postman.parse
 import { v4 as uuidv4 } from "uuid";
 import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
 import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
-import { WorkspaceType } from "@src/modules/common/models/workspace.model";
+import { Workspace, WorkspaceType } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
 @Injectable()
 export class CollectionService {
@@ -87,8 +87,7 @@ export class CollectionService {
     const currentWorkspaceObject = new ObjectId(
       createCollectionDto.workspaceId,
     );
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceRepository.updateWorkspaceById(
@@ -499,8 +498,7 @@ export class CollectionService {
       user,
     );
     const currentWorkspaceObject = new ObjectId(workspaceId);
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceRepository.updateWorkspaceById(
@@ -711,8 +709,7 @@ export class CollectionService {
     const collection = await this.getCollection(id);
     const data = await this.collectionRepository.delete(id);
     const currentWorkspaceObject = new ObjectId(workspaceId);
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceRepository.updateWorkspaceById(
