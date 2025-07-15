@@ -1489,7 +1489,7 @@ export class StripeSubscriptionService {
         return {
           success: false,
           message:
-            "User invites are temporarily blocked due to a scheduled plan downgrade. Please contact support or upgrade your plan.",
+            "Invite blocked due to your scheduled downgrade.",
         };
       }
 
@@ -1498,7 +1498,7 @@ export class StripeSubscriptionService {
         return {
           success: false,
           message:
-            "Cannot invite users: Please resolve the failed payment before adding new seats. Check your billing settings.",
+            "Invite failed. Please resolve your payment issue to send invites.",
         };
       }
 
@@ -1507,7 +1507,7 @@ export class StripeSubscriptionService {
         return {
           success: false,
           message:
-            "Cannot invite users: Payment action required. Please complete the pending payment authorization.",
+            "Invite failed. Please complete payment authentication to send invites.",
         };
       }
 
