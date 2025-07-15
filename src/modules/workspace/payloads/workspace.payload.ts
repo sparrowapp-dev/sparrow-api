@@ -126,9 +126,17 @@ export class WorkspaceDtoForIdDocument {
   @IsOptional()
   createdAt?: Date;
 
+  @IsDateString()
+  @IsOptional()
+  updatedAt?: Date;
+
   @IsMongoId()
   @IsOptional()
   createdBy?: string;
+
+  @IsMongoId()
+  @IsOptional()
+  updatedBy?: string;
 }
 
 export class workspaceUsersResponseDto {
