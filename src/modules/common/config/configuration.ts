@@ -8,12 +8,12 @@ export default () => ({
     jwtSecretKey: process.env.JWT_SECRET_KEY,
     jwtExpirationTime: parseInt(process.env.JWT_EXPIRATION_TIME) || 1800,
     defaultWorkspaceName: "My Workspace",
+    defaultHubPlan: "Community",
     userBlacklistPrefix: "BL_",
     defaultTeamNameSuffix: "'s Hub",
     imageSizeLimit: 2097152, // value in byte
     deletedAPILimitInDays: 7,
     timeToDaysDivisor: 86400000,
-    kafkaHitTimeInterval: 3000,
     refreshTokenSecretKey: process.env.REFRESH_TOKEN_SECRET_KEY,
     emailValidationCodeExpirationTime: parseInt(
       process.env.EMAIL_VALIDATION_CODE_EXPIRY_TIME,
@@ -32,6 +32,7 @@ export default () => ({
   },
   db: {
     url: process.env.DB_URL,
+    name: process.env.DB_NAME,
   },
   oauth: {
     google: {
@@ -42,9 +43,6 @@ export default () => ({
       redirectUrl: process.env.LOGIN_REDIRECT_URL,
       accessType: process.env.GOOGLE_ACCESS_TYPE,
     },
-  },
-  kafka: {
-    broker: process.env.KAFKA_BROKER,
   },
   updater: {
     updateAvailable: process.env.APP_UPDATE_AVAILABLE,
@@ -93,6 +91,12 @@ export default () => ({
     maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS),
     monthlyTokenLimit: parseInt(process.env.AZURE_OPENAI_MONTHLY_TOKEN_LIMIT),
     assistantId: process.env.AZURE_OPENAI_ASSISTANT_ID,
+    deepseekEndpoint: process.env.DEEPSEEK_ENDPOINT,
+    deepseekApiKey: process.env.DEEPSEEK_API_KEY,
+    deepseekApiVersion: process.env.DEEPSEEK_API_VERSION,
+    deepseekURL: "https://api.deepseek.com",
+    conversationLimit: 30,
+    conversationConatiner: process.env.AI_CONVERSATION_BLOB_CONTAINER,
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,
@@ -103,5 +107,27 @@ export default () => ({
   docs: {
     beehiivApiKey: process.env.BEEHIIV_API_KEY,
     beehiivPublicationId: process.env.BEEHIIV_PUBLICATION_ID,
+  },
+  testing: {
+    whitelistEmail: process.env.WHITELIST_EMAIL_LIST,
+  },
+  whitelist: {
+    userEmails: process.env.WHITELIST_USER_EMAILS,
+  },
+  sentry: {
+    dsn: process.env.SENTRY_DSN_KEY,
+    environment: process.env.SENTRY_APP_ENVIRONMENT,
+  },
+
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  },
+  sparrowAdmin: {
+    adminKey: process.env.SPARROW_ADMIN_KEY,
+  },
+  admin: {
+    baseURL: process.env.ADMIN_BASE_URL,
   },
 });

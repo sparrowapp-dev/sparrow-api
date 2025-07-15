@@ -11,7 +11,7 @@ import {
   UpdateResult,
   WithId,
 } from "mongodb";
-import { ContextService } from "@src/modules/common/services/context.service";
+
 import {
   CreateEnvironmentDto,
   UpdateEnvironmentDto,
@@ -24,12 +24,17 @@ import {
 import { EnvironmentRepository } from "../repositories/environment.repository";
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
-import { Workspace } from "@src/modules/common/models/workspace.model";
+import {
+  Workspace,
+  WorkspaceType,
+} from "@src/modules/common/models/workspace.model";
 import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
+import { DecodedUserObject } from "@src/types/fastify";
+import { User } from "@src/modules/common/models/user.model";
 
 /**
  * Environment Service
@@ -40,7 +45,6 @@ export class EnvironmentService {
   constructor(
     private readonly environmentRepository: EnvironmentRepository,
     private readonly workspaceReposistory: WorkspaceRepository,
-    private readonly contextService: ContextService,
     private readonly producerService: ProducerService,
   ) {}
 
@@ -52,13 +56,13 @@ export class EnvironmentService {
   async createEnvironment(
     createEnvironmentDto: CreateEnvironmentDto,
     type: EnvironmentType,
+    user: DecodedUserObject | WithId<User>,
   ): Promise<InsertOneResult> {
     try {
-      const user = this.contextService.get("user");
-
       if (type === EnvironmentType.LOCAL) {
         const workspace = await this.isWorkspaceAdminorEditor(
           createEnvironmentDto.workspaceId,
+          user._id,
         );
         const updateMessage = `New environment "${createEnvironmentDto.name}" is added under "${workspace.name}" workspace`;
         await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -66,6 +70,7 @@ export class EnvironmentService {
             message: updateMessage,
             type: UpdatesType.ENVIRONMENT,
             workspaceId: createEnvironmentDto.workspaceId,
+            user,
           }),
         });
       }
@@ -129,8 +134,12 @@ export class EnvironmentService {
   async deleteEnvironment(
     id: string,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<DeleteResult> {
-    const workspace = await this.isWorkspaceAdminorEditor(workspaceId);
+    const workspace = await this.isWorkspaceAdminorEditor(
+      workspaceId,
+      user._id,
+    );
     const environment = await this.environmentRepository.get(id);
     const data = await this.environmentRepository.delete(id);
     const updateMessage = `"${environment.name}" environment is deleted from "${workspace.name}" workspace`;
@@ -146,6 +155,7 @@ export class EnvironmentService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.ENVIRONMENT,
         workspaceId: workspaceId,
       }),
@@ -157,18 +167,38 @@ export class EnvironmentService {
    * Fetches all the environment corresponding to a workspace.
    * @param id - Workspace id you want to get their environments.
    */
-  async getAllEnvironments(id: string): Promise<WithId<Environment>[]> {
-    const user = this.contextService.get("user");
-    await this.checkPermission(id, user._id);
+  async getAllEnvironments(
+    id: string,
+    userId: ObjectId,
+  ): Promise<WithId<Environment>[]> {
+    await this.checkPermission(id, userId);
 
     const workspace = await this.workspaceReposistory.get(id);
-    const environments = [];
-    for (let i = 0; i < workspace.environments?.length; i++) {
-      const environment = await this.environmentRepository.get(
-        workspace.environments[i].id.toString(),
-      );
-      environments.push(environment);
+    const environmentIds =
+      workspace.environments?.map((e) => e.id.toString()) || [];
+
+    if (environmentIds.length === 0) return [];
+
+    const environments =
+      await this.environmentRepository.getEnvironmentsByIds(environmentIds);
+    return environments;
+  }
+
+  /**
+   * Fetches all the environment corresponding to a public workspace.
+   * @param id - Workspace id you want to get their environments.
+   */
+  async getAllPublicEnvironments(id: string): Promise<WithId<Environment>[]> {
+    const workspace = await this.workspaceReposistory.get(id);
+
+    if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
+      throw new BadRequestException("Workspace is not public.");
     }
+    const environmentIds =
+      workspace.environments?.map((e) => e.id.toString()) || [];
+    if (environmentIds.length === 0) return [];
+    const environments =
+      await this.environmentRepository.getEnvironmentsByIds(environmentIds);
     return environments;
   }
 
@@ -182,12 +212,17 @@ export class EnvironmentService {
     environmentId: string,
     updateEnvironmentDto: Partial<UpdateEnvironmentDto>,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<UpdateResult> {
-    const workspace = await this.isWorkspaceAdminorEditor(workspaceId);
+    const workspace = await this.isWorkspaceAdminorEditor(
+      workspaceId,
+      user._id,
+    );
     const environment = await this.environmentRepository.get(environmentId);
     const data = await this.environmentRepository.update(
       environmentId,
       updateEnvironmentDto,
+      user.name,
     );
     if (
       updateEnvironmentDto?.name &&
@@ -199,6 +234,7 @@ export class EnvironmentService {
           message: updateMessage,
           type: UpdatesType.ENVIRONMENT,
           workspaceId: workspaceId,
+          user,
         }),
       });
     }
@@ -222,9 +258,9 @@ export class EnvironmentService {
   async getIndividualEnvironment(
     workspaceId: string,
     environmentId: string,
+    userId: ObjectId,
   ): Promise<WithId<Environment>> {
-    const user = this.contextService.get("user");
-    await this.checkPermission(workspaceId, user._id);
+    await this.checkPermission(workspaceId, userId);
     const environment = await this.getEnvironment(environmentId);
     return environment;
   }
@@ -233,9 +269,11 @@ export class EnvironmentService {
    * Checks if user is admin or editor of workspace.
    * @param id - Workspace id.
    */
-  async isWorkspaceAdminorEditor(id: string): Promise<Workspace> {
+  async isWorkspaceAdminorEditor(
+    id: string,
+    userId: ObjectId,
+  ): Promise<Workspace> {
     const workspaceData = await this.workspaceReposistory.get(id);
-    const userId = this.contextService.get("user")._id;
     if (workspaceData) {
       for (const item of workspaceData.users) {
         if (

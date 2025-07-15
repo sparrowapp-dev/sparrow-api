@@ -1,96 +1,144 @@
 {{!< layoutName}} <!DOCTYPE html>
     <html lang="en">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Leave Team</title>
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Team Invite Non Registered Email</title>
 
+      <style>
+          body {
+              font-family: "Inter", sans-serif;
+              box-sizing: border-box;
+              padding: 0;
+              margin: 0;
+              transition: background-color 0.3s, color 0.3s;
+          }
 
-        <style>
-            body {
-                font-family: "Inter", sans-serif;
-                box-sizing: border-box;
-                padding: 0;
-                margin: 0;
-                transition: background-color 0.3s, color 0.3s;
-            }
+          .container {
+              display: flex;
+              justify-content: center;
+              width: 100%;
+              height: 100%;
 
-            .container {
-                display: flex;
-                justify-content: center;
-                width: 100%;
-                height: 100%;
+          }
 
-            }
+          .container-data {
+              margin: auto;
+              max-width: 570px;
+              padding: 20px;
+              transition: background-color 0.3s, color 0.3s;
+          }
 
-            .container-data {
-                margin: auto;
-                max-width: 570px;
-                padding: 20px;
-                transition: background-color 0.3s, color 0.3s;
-            }
-
-            .email-text-style {
-                color: var(--email-text-color, #333);
-                font-family: "Inter", sans-serif;
-                font-size: 14px;
-                font-style: normal;
-                font-weight: 400;
-                line-height: 21px;
-            }
-        </style>
-    </head>
+          .email-text-style {
+              color: var(--email-text-color, #333);
+              font-family: "Inter", sans-serif;
+              font-size: 16px;
+              font-style: normal;
+              font-weight: 400;
+              line-height: 21px;
+          }
+      </style>
+  </head>
 
     <body>
+     <div class="container">
+         <section style="width: 100%;">
+             <div class="container-data">
 
-        <div class="container">
-            <section style="width: 100%;">
-                <div class="container-data">
+                 {{> headerV2}}
+                 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
+                     <tr>
+                         <td align="center" valign="top">
+                             <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                                 <tr>
+                                     <td align="center" valign="middle" background="https://sparrowassets.blob.core.windows.net/emailtemplate/Sparrow-email-headerv2.png" bgcolor="#4A90E2" style="background-position: center; background-repeat: no-repeat; background-size: cover;">
+                                         <div style="padding: 40px 30px;">
+                                             <h1 style="font-size: 28px; font-weight: 600; color: #ffffff; margin: 0 0 12px 0; line-height: 1.2; font-family: 'Inter', Arial, sans-serif;">You’ve been invited to join {{teamName}} Hub on Sparrow</h1>
+                                         </div>
+                                     </td>
+                                 </tr>
+                             </table>
+                         </td>
+                     </tr>
+                 </table>
+                 <section>
+                     <!-- Welcome Box -->
+                     <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 30px;">
+                         <tr>
+                             <td>
+                                 <div class="email-text-style">
+                                     <p>
+                                         Hi {{userName}}, 👋
+                                     </p>
+                                     <p>
+                                        Welcome to Sparrow! You’ve been invited to join the hub <span style="font-weight: 700; word-break: break-all;">“{{teamName}} Hub”</span>on Sparrow as an <span style="font-weight: 700;">“{{role}}”</span>.
+                                     </p>
+                                     <p>
+                                        Sparrow brings your team together, helping you collaborate, manage work, and get things done with ease.
+                                     </p>
+                                 </div>
+                             </td>
+                         </tr>
+                     </table>
+                     <!-- What's included in your trial section -->
+                     <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
+                         <tr>
+                             <td align="center" valign="middle">
+                                 <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                                     <tr>
+                                         <td align="left" valign="middle" background="https://sparrowassets.blob.core.windows.net/emailtemplate/Sparrow-email-middlev2.png" bgcolor="#3B4B6B" style="background-position: center; background-repeat: no-repeat; background-size: cover; border-radius: 8px;">
+                                             <div style="padding: 20px 12px;">
+                                                 <!-- Section Title -->
+                                                 <h2 style="font-size: 22px; font-weight: 600; color: #ffffff; margin: 0 0 4px 0; line-height: 1.3; font-family: 'Inter', Arial, sans-serif;">
+                                                     What’s Next?
+                                                 </h2>
+                                                 <p style="font-size: 16px; color: #ffffff; margin: 0; line-height: 1.4; font-family: 'Inter', Arial, sans-serif; font-weight: 400; margin-bottom: 14px;">To accept the invite and get started, you’ll first need to create your Sparrow account.</p>
+                                                 <div>
+                                                     <table cellspacing="0" cellpadding="0" border="0">
+                                                         <tr>
+                                                             <td style="border-radius: 6px; background-color: #316CF6; padding: 6px 12px; min-height: 36px;">
+                                                                 <a href="{{sparrowWebsite}}" class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none;">
+                                                                    Create Account
+                                                             </td>
+                                                         </tr>
+                                                     </table>
+                                                 </div>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                 </table>
+                             </td>
+                         </tr>
+                     </table>
+                     <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 30px;">
+                         <tr>
+                             <td>
+                                 <div class="email-text-style">
+                                     <p>
+                                         Once you're in, you’ll have full access to your hub and all the tools you need to work with your team. If you need help or have questions, our team is just a message away, reach out to us a
+                                         <a href="mailto:contactus@sparrowapp.dev" style="color: #316CF6;">contactus@sparrowapp.dev</a>
+                                     </p>
 
-                    {{> header}}
-
-                    <section>
-
-                        <div style="margin-bottom: 5%">
-                            <h2 class="email-text-style">
-                                Hi {{userName}},
-                            </h2>
-
-                            <p class="email-text-style">
-                                You've been invited to join {{teamName}}, a cutting-edge API testing platform designed to<br/> simplify your development workflow and boost team collaboration
-                            </p>
-
-                            <p class="email-text-style">With powerful tools for REST API testing, seamless collection management, and<br/> intuitive workspace control, Sparrow makes API management faster, smarter, and<br/> more collaborative.
-                            </p>
-
-                            <p class="email-text-style">Get Started Now</p>
-
-                            <a href="{{marketingUrl}}"
-                                style="display: inline-block; background-color: #3670F7; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                                Launch Sparrow
-                            </a>
-
-                            <p class="email-text-style">
-                                Let’s build better software, together.<br/>Team Sparrow<br>
-                                <a href="{{sparrowWebsite}}"
-                                    style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7 ;">
-                                    {{sparrowWebsiteName}}</a>
-                            </p>
-
-                        </div>
-
-                        <hr>
-
-                    </section>
+                                     <p>
+                                         Warm Regards,<br>
+                                         The Sparrow Team
+                                     </p>
+                                 </div>
+                             </td>
+                         </tr>
+                     </table>
 
 
-                    {{> footer}}
+                 </section>
 
 
-                </div>
-            </section>
-        </div>
-    </body>
+                 {{> footerV2}}
 
-    </html>
+
+             </div>
+         </section>
+     </div>
+  </body>
+
+</html>

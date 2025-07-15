@@ -96,6 +96,12 @@ export class AddTeamUserDto {
   workspaces?: SelectedWorkspaces[];
 }
 
+export class AddTeamUserWithSenderDto extends AddTeamUserDto {
+  @IsString()
+  @IsOptional()
+  senderEmail?: string;
+}
+
 export class TeamInviteMailDto {
   @IsArray()
   @IsNotEmpty()

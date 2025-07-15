@@ -4,10 +4,13 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from "class-validator";
 import { HTTPMethods } from "fastify";
@@ -17,10 +20,13 @@ import {
   BodyModeEnum,
   Events,
   ItemTypeEnum,
+  MockRequestMetaData,
+  MockRequestResponseMetaData,
   RequestMetaData,
   RequestResponseMetaData,
   ResponseBodyModeEnum,
   SourceTypeEnum,
+  AiRequestMetaData,
 } from "@src/modules/common/models/collection.model";
 import {
   Auth,
@@ -371,6 +377,21 @@ export class CollectionRequestItem {
   @IsOptional()
   @Type(() => CollectionGraphQLMetaData)
   graphql?: CollectionGraphQLMetaData;
+
+  @ApiProperty({ type: MockRequestMetaData })
+  @IsOptional()
+  @Type(() => MockRequestMetaData)
+  mockRequest?: MockRequestMetaData;
+
+  @ApiProperty({ type: MockRequestResponseMetaData })
+  @IsOptional()
+  @Type(() => MockRequestResponseMetaData)
+  mockRequestResponse?: MockRequestResponseMetaData;
+
+  @ApiProperty({ type: AiRequestMetaData })
+  @IsOptional()
+  @Type(() => AiRequestMetaData)
+  aiRequest?: AiRequestMetaData;
 }
 
 export class CollectionRequest {
@@ -561,6 +582,42 @@ export class CollectionGraphQLDto {
 }
 
 /**
+ * Data Transfer Object representing a AI Request in a collection.
+ */
+export class CollectionAiRequestDto {
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  collectionId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsOptional()
+  folderId?: string;
+
+  @ApiProperty({ enum: ["SPEC", "USER"] })
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  @IsString()
+  source?: SourceTypeEnum;
+
+  @ApiProperty()
+  @Type(() => CollectionRequestItem)
+  @ValidateNested({ each: true })
+  items?: CollectionRequestItem;
+
+  @ApiProperty({ example: "main" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
+}
+
+/**
  * Data Transfer Object representing a Request Response in a collection.
  */
 export class CollectionRequestResponseDto {
@@ -583,6 +640,47 @@ export class CollectionRequestResponseDto {
   @IsString()
   @IsNotEmpty()
   requestId: string;
+
+  @ApiProperty({ enum: ["SPEC", "USER"] })
+  @IsEnum(SourceTypeEnum)
+  @IsOptional()
+  @IsString()
+  source?: SourceTypeEnum;
+
+  @ApiProperty()
+  @Type(() => CollectionRequestItem)
+  @ValidateNested({ each: true })
+  items?: CollectionRequestItem;
+
+  @ApiProperty({ example: "main" })
+  @IsString()
+  @IsOptional()
+  currentBranch?: string;
+}
+
+/**
+ * Data Transfer Object representing a mock Response in a collection.
+ */
+export class CollectionMockRequestResponseDto {
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  collectionId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsOptional()
+  folderId?: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  mockRequestId: string;
 
   @ApiProperty({ enum: ["SPEC", "USER"] })
   @IsEnum(SourceTypeEnum)
@@ -653,6 +751,58 @@ export class UpdateCollectionRequestResponseDto {
   @IsString()
   @IsOptional()
   selectedResponseBodyType?: ResponseBodyModeEnum;
+}
+
+/**
+ * Data Transfer Object representing a update mock Response in a collection.
+ */
+export class UpdateCollectionMockRequestResponseDto {
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  collectionId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsOptional()
+  folderId?: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  mockRequestId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsOptional()
+  mockResponseId?: string;
+
+  @ApiProperty({ example: "response name" })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiProperty({ example: "response description" })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isMockResponseActive?: boolean;
+
+  @ApiProperty({ example: 60 })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  responseWeightRatio?: number;
 }
 
 export class FolderPayload {
@@ -730,4 +880,42 @@ export class BranchChangeDto {
   @IsString()
   @IsNotEmpty()
   branchName: string;
+}
+
+export class MockResponseRatioDto {
+  @ApiProperty({ example: "response-id-123" })
+  @IsString()
+  mockResponseId: string;
+
+  @ApiProperty({ example: 60 })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  responseWeightRatio?: number;
+}
+
+export class UpdateMockResponseRatioDto {
+  @ApiProperty({ example: "collection-id-123" })
+  @IsString()
+  collectionId: string;
+
+  @ApiProperty({ example: "workspace-id-123" })
+  @IsString()
+  workspaceId: string;
+
+  @ApiProperty({ example: "folder-id-123", required: false })
+  @IsString()
+  @IsOptional()
+  folderId?: string;
+
+  @ApiProperty({ example: "mock-request-id-123" })
+  @IsString()
+  mockRequestId: string;
+
+  @ApiProperty({ type: [MockResponseRatioDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MockResponseRatioDto)
+  mockResponseRatios: MockResponseRatioDto[];
 }

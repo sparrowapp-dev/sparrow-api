@@ -1,0 +1,146 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Downgraded</title>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container-data {
+            margin: auto;
+            max-width: 570px;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-text-style {
+            color: var(--email-text-color, #333);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 21px;
+        }
+
+        .plan-details {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .plan-details h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .feature-list {
+            margin: 15px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 5px 0;
+            position: relative;
+            padding-left: 0px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section style="width: 100%;">
+            <div class="container-data">
+
+                {{> header}}
+
+                <section>
+                    <div style="margin-bottom: 5%">
+                        <h2 class="email-text-style">
+                            Hi {{firstName}},
+                        </h2>
+
+                        <p class="email-text-style">
+                            Your subscription for <strong>{{hubName}}</strong> has been changed from the <strong>{{previousPlanName}}</strong> to the <strong>{{newPlanName}}</strong>. This update will take effect at the end of your current billing cycle.
+                        </p>
+
+                        <p class="email-text-style">
+                            You'll still enjoy access to the following features:
+                        </p>
+
+                        <ul class="feature-list">
+                            {{#each features}}
+                            <li class="email-text-style">✅ {{this}}</li>
+                            {{/each}}
+                        </ul>
+
+                        <div class="plan-details">
+                            <h3>Plan Details</h3>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Previous Plan:</strong> {{previousPlanName}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>New Plan:</strong> {{newPlanName}}
+                            </p>
+                            
+                            <p class="email-text-style" style="margin: 5px 0;">
+                                <strong>Effective From:</strong> {{effectiveDate}}
+                            </p>
+                        </div>
+
+                        <p class="email-text-style">
+                            If you ever change your mind, you can upgrade your plan at any time post the current billing cycle — we'll be here when you're ready.
+                        </p>
+
+                        <p class="email-text-style">
+                            <a href="{{managePlanUrl}}" style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">
+                                Manage Plan
+                            </a>
+                        </p>
+
+                        <p class="email-text-style">
+                            Thank you for being with us,
+                        </p>
+
+                        <p class="email-text-style">
+                            Warm Regards,<br>
+                            The Sparrow Team <br>
+                        </p>
+
+                    </div>
+
+                    <hr>
+
+                </section>
+
+                {{> footer}}
+
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

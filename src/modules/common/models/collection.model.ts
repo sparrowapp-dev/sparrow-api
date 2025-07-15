@@ -5,11 +5,14 @@ import {
   IsDate,
   IsDateString,
   IsEnum,
+  IsInt,
   IsMongoId,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from "class-validator";
 import { HTTPMethods } from "fastify";
@@ -18,6 +21,7 @@ import { SchemaObject } from "./openapi303.model";
 import { ApiProperty } from "@nestjs/swagger";
 import {
   Auth,
+  AuthProfiles,
   KeyValue,
   SparrowRequestBody,
   TransformedRequest,
@@ -29,6 +33,9 @@ export enum ItemTypeEnum {
   SOCKETIO = "SOCKETIO",
   GRAPHQL = "GRAPHQL",
   REQUEST_RESPONSE = "REQUEST_RESPONSE",
+  MOCK_REQUEST = "MOCK_REQUEST",
+  MOCK_REQUEST_RESPONSE = "MOCK_REQUEST_RESPONSE",
+  AI_REQUEST = "AI_REQUEST",
 }
 
 export enum BodyModeEnum {
@@ -69,6 +76,11 @@ export enum CollectionAuthModeEnum {
   "API Key" = "API Key",
   "Bearer Token" = "Bearer Token",
   "Basic Auth" = "Basic Auth",
+}
+
+export enum CollectionTypeEnum {
+  MOCK = "MOCK",
+  STANDARD = "STANDARD",
 }
 
 export enum AuthModeEnum {
@@ -398,7 +410,7 @@ export class RequestResponseMetaData {
   @ApiProperty({ example: "200 OK" })
   @IsString()
   @IsOptional()
-  responseStatusCode?: string;
+  responseStatus?: string;
 
   @ApiProperty({
     enum: [
@@ -413,6 +425,197 @@ export class RequestResponseMetaData {
   @IsString()
   @IsOptional()
   selectedResponseBodyType?: ResponseBodyModeEnum;
+}
+
+export class MockRequestResponseMetaData {
+  @ApiProperty({ example: false })
+  @IsBoolean()
+  @IsOptional()
+  isMockResponseActive?: boolean;
+
+  @ApiProperty({ example: 60 })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  responseWeightRatio?: number;
+
+  @ApiProperty({ example: "body" })
+  @IsString()
+  @IsOptional()
+  responseBody?: string;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  responseHeaders?: KeyValue[];
+
+  @ApiProperty({ example: "200 OK" })
+  @IsString()
+  @IsOptional()
+  responseStatus?: string;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ ResponseBodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedResponseBodyType?: ResponseBodyModeEnum;
+}
+
+export class MockRequestMetaData {
+  @ApiProperty({ example: "put" })
+  @IsNotEmpty()
+  method: HTTPMethods;
+
+  @ApiProperty({ example: "/pet" })
+  @IsString()
+  @IsNotEmpty()
+  url: string;
+
+  @ApiProperty({ type: [SparrowRequestBody] })
+  @Type(() => SparrowRequestBody)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  body?: SparrowRequestBody;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ BodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedRequestBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    example: {
+      name: "search",
+      description: "The search term to filter results",
+      required: false,
+      schema: {},
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  queryParams?: KeyValue[];
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "userID",
+      description: "The unique identifier of the user",
+      required: true,
+      schema: {},
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  pathParams?: KeyValue[];
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  headers?: KeyValue[];
+
+  @ApiProperty({ example: "body" })
+  @IsString()
+  @IsOptional()
+  responseBody?: string;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  responseHeaders?: KeyValue[];
+
+  @ApiProperty({ example: "200 OK" })
+  @IsString()
+  @IsOptional()
+  responseStatus?: string;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ ResponseBodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedResponseBodyType?: ResponseBodyModeEnum;
+}
+
+export class AiRequestMetaData {
+  @ApiProperty({ example: "openai" })
+  @IsNotEmpty()
+  aiModelProvider: "openai" | "anthropic" | "deepseek" | "gemini";
+
+  @ApiProperty({ example: "gpt-4o" })
+  @IsString()
+  @IsNotEmpty()
+  aiModelVariant: string; //ToDo: Add proper types (for type safety) for possible model versions
+
+  @ApiProperty({ example: "Answer the user queries." })
+  @IsString()
+  @IsNotEmpty()
+  systemPrompt: string;
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      bearerToken: "Bearer xyz",
+    },
+  })
+  @IsArray()
+  @Type(() => Auth)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  auth?: Auth;
 }
 
 /**
@@ -633,6 +836,16 @@ export class CollectionItem {
   @Type(() => RequestResponseMetaData)
   requestResponse?: RequestResponseMetaData;
 
+  @ApiProperty({ type: MockRequestMetaData })
+  @IsOptional()
+  @Type(() => MockRequestMetaData)
+  mockRequest?: MockRequestMetaData;
+
+  @ApiProperty({ type: MockRequestResponseMetaData })
+  @IsOptional()
+  @Type(() => MockRequestResponseMetaData)
+  mockRequestResponse?: MockRequestResponseMetaData;
+
   @ApiProperty({ type: WebSocketMetaData })
   @IsOptional()
   @Type(() => WebSocketMetaData)
@@ -647,6 +860,11 @@ export class CollectionItem {
   @IsOptional()
   @Type(() => GraphQLMetaData)
   graphql?: GraphQLMetaData;
+
+  @ApiProperty({ type: AiRequestMetaData })
+  @IsOptional()
+  @Type(() => AiRequestMetaData)
+  aiRequest?: AiRequestMetaData;
 
   @IsOptional()
   @IsBoolean()
@@ -687,6 +905,110 @@ export class UpdaterDetails {
   id?: string;
 }
 
+export class MockRequestHistory {
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @ApiProperty({ description: "Timestamp when the request was made" })
+  @IsDate()
+  timestamp: Date;
+
+  @ApiProperty({ description: "Name of the mock request" })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: "Endpoint of the mock request" })
+  @IsString()
+  url: string;
+
+  @ApiProperty({ example: "put" })
+  @IsNotEmpty()
+  method: HTTPMethods;
+
+  @ApiProperty({ example: "200 OK" })
+  @IsString()
+  @IsOptional()
+  responseStatus?: string;
+
+  @ApiProperty({
+    description: "Duration of request processing in milliseconds",
+  })
+  @IsNumber()
+  duration: number;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      key: "key",
+      value: "value",
+      checked: true,
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  requestHeaders?: KeyValue[];
+
+  @ApiProperty({ type: [SparrowRequestBody] })
+  @Type(() => SparrowRequestBody)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  requestBody?: SparrowRequestBody;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ BodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedRequestBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ BodyModeEnum })
+  @IsString()
+  @IsOptional()
+  selectedResponseBodyType?: BodyModeEnum;
+
+  @ApiProperty({
+    type: [KeyValue],
+    example: {
+      name: "Authorization",
+      description: "Bearer token for authentication",
+    },
+  })
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  responseHeaders?: KeyValue[];
+
+  @ApiProperty({ example: "body" })
+  @IsString()
+  @IsOptional()
+  responseBody?: string;
+}
+
 export class Collection {
   @ApiProperty()
   @IsString()
@@ -699,12 +1021,35 @@ export class Collection {
   description?: string;
 
   @ApiProperty({
+    enum: CollectionTypeEnum,
+  })
+  @IsEnum({ CollectionTypeEnum })
+  @IsString()
+  @IsOptional()
+  collectionType?: CollectionTypeEnum;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  mockCollectionUrl?: string;
+
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  isMockCollectionRunning?: boolean;
+
+  @ApiProperty({
     enum: CollectionAuthModeEnum,
   })
   @IsEnum({ CollectionAuthModeEnum })
   @IsString()
   @IsOptional()
   selectedAuthType?: CollectionAuthModeEnum;
+
+  @ApiProperty({ example: "6544cdea4b3d3b043a96c307" })
+  @IsString()
+  @IsOptional()
+  defaultSelectedAuthProfile?: string;
 
   @ApiProperty({
     type: [Auth],
@@ -717,6 +1062,18 @@ export class Collection {
   @ValidateNested({ each: true })
   @IsOptional()
   auth?: Auth;
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      bearerToken: "Bearer xyz",
+    },
+  })
+  @IsArray()
+  @Type(() => AuthProfiles)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  authProfiles?: AuthProfiles[];
 
   @ApiProperty()
   @IsString()
@@ -737,6 +1094,11 @@ export class Collection {
   @IsString()
   @IsOptional()
   uuid?: string;
+
+  @ApiProperty({ type: [MockRequestHistory] })
+  @IsArray()
+  @IsOptional()
+  mockRequestHistory?: MockRequestHistory[];
 
   @ApiProperty({ type: [CollectionItem] })
   @IsArray()
@@ -776,6 +1138,10 @@ export class Collection {
   @IsOptional()
   @Type(() => UpdaterDetails)
   updatedBy?: UpdaterDetails;
+
+  @IsOptional()
+  @IsDateString()
+  syncedAt?: Date;
 }
 
 export class CollectionDto {

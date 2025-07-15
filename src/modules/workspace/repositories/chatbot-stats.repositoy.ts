@@ -11,7 +11,6 @@ import { ChatBotStats } from "@src/modules/common/models/chatbot-stats.model";
 import { UpdateChatbotDto } from "../payloads/chatbot-stats.payload";
 
 // ---- Services
-import { ContextService } from "@src/modules/common/services/context.service";
 
 /**
  * ChatbotStatsRepository
@@ -23,12 +22,8 @@ export class ChatbotStatsRepository {
   /**
    * Constructor for ChatbotStatsRepository.
    * @param db The MongoDB database connection injected by the NestJS dependency injection system.
-   * @param contextService The service for accessing context-related information like the current user.
    */
-  constructor(
-    @Inject("DATABASE_CONNECTION") private db: Db,
-    private readonly contextService: ContextService,
-  ) {}
+  constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
 
   /**
    * Add a new statistics entry in the chatbot stats collection.
@@ -65,11 +60,11 @@ export class ChatbotStatsRepository {
   async updateStats(
     id: ObjectId,
     payload: UpdateChatbotDto,
-    userId: string = null,
+    userId?: string,
   ): Promise<UpdateResult> {
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")?._id ?? userId,
+      updatedBy: userId,
     };
     const data = await this.db
       .collection(Collections.CHATBOTSTATS)

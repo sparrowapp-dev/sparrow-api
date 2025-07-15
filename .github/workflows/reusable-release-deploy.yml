@@ -1,0 +1,58 @@
+name: Reusable Release Deploy
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+        description: 'API version (v0, v1, v2, etc)'
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+      KUBE_CONFIG:
+        required: true
+      RELEASE_NAMESPACE:
+        required: true
+      SPARROW_GITHUB_TOKEN:
+        required: true  
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }} 
+          password: ${{ secrets.DOCKERHUB_TOKEN }} 
+
+      - run: |
+          docker build . -t sparrowapi/sparrow-api:${{ github.run_number }} --build-arg GITHUB_TOKEN=${{ secrets.SPARROW_GITHUB_TOKEN }}
+          docker push sparrowapi/sparrow-api:${{ github.run_number }}   
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      
+      - uses: richardrigutins/replace-in-files@v1
+        with:
+          files: "./deploymentManifests/release-${{ inputs.version }}.yml"
+          search-text: '_BUILD__ID_'
+          replacement-text: '${{ github.run_number }}'
+
+      - uses: azure/setup-kubectl@v2.0
+
+      - uses: Azure/k8s-set-context@v2
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - uses: Azure/k8s-deploy@v4
+        with:
+          action: deploy
+          namespace: ${{ secrets.RELEASE_NAMESPACE }}
+          manifests: |
+            ./deploymentManifests/release-${{ inputs.version }}.yml

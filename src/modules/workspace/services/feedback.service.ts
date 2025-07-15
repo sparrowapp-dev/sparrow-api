@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { InsertOneResult } from "mongodb";
+import { InsertOneResult, ObjectId } from "mongodb";
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
 
 // ---- Repository
@@ -10,7 +10,6 @@ import { AddFeedbackDto } from "../payloads/feedback.payload";
 
 // ---- Service
 import { BlobStorageService } from "@src/modules/common/services/blobStorage.service";
-import { ContextService } from "@src/modules/common/services/context.service";
 
 // ---- Model
 import {
@@ -31,12 +30,11 @@ export class FeedbackService {
    * Constructor for Feedback Service.
    * @param feedbackRepository Repository handling database operations for feedback.
    * @param blobStorageService Service handling blob storage operations.
-   * @param contextService Info about User.
+   * @param  Info about User.
    */
   constructor(
     private readonly feedbackRepository: FeedbackRepository,
     private readonly blobStorageService: BlobStorageService,
-    private readonly contextService: ContextService,
   ) {}
 
   /**
@@ -84,6 +82,7 @@ export class FeedbackService {
   async addFeedback(
     feedback: AddFeedbackDto,
     files: MemoryStorageFile[],
+    userId: ObjectId,
   ): Promise<InsertOneResult<Feedback>> {
     // Validate the uploaded files
     await this.isFeedbackFilesValid(files);
@@ -97,7 +96,7 @@ export class FeedbackService {
     const uploadFeedbackParams = {
       ...feedback,
       files: uploadResults,
-      createdBy: this.contextService.get("user")._id,
+      createdBy: userId.toString(),
       createdAt: new Date(),
     };
 

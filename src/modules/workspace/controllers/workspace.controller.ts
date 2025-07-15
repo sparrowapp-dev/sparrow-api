@@ -4,8 +4,10 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -21,6 +23,7 @@ import { WorkspaceService } from "../services/workspace.service";
 import {
   CreateWorkspaceDto,
   UpdateWorkspaceDto,
+  UpdateWorkspaceTypeDto,
 } from "../payloads/workspace.payload";
 import {
   AddUsersWithRolesInWorkspaceDto,
@@ -43,6 +46,9 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ObjectId } from "mongodb";
 import { FastifyRequest } from "fastify/types/request";
 import { BodyModeEnum } from "@src/modules/common/models/collection.model";
+import { WorkspaceInviteGuard } from "@src/modules/workspace/guards/plan-limits/workspace-invite.guard";
+import { CreateWorkspaceGuard } from "../guards/plan-limits/create-workspace-guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Workspace Controller
@@ -50,7 +56,6 @@ import { BodyModeEnum } from "@src/modules/common/models/collection.model";
 @ApiBearerAuth()
 @ApiTags("workspace")
 @Controller("api/workspace")
-@UseGuards(JwtAuthGuard)
 export class WorkSpaceController {
   constructor(
     private readonly workspaceService: WorkspaceService,
@@ -63,13 +68,16 @@ export class WorkSpaceController {
     summary: "Create a new User Workspace",
     description: "This will create a new Workspace for User",
   })
+  @UseGuards(JwtAuthGuard, CreateWorkspaceGuard)
   @ApiResponse({ status: 201, description: "Workspace Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Workspace Failed" })
   async createWorkspace(
     @Body() createWorkspaceDto: CreateWorkspaceDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.create(createWorkspaceDto);
+    const user = request.user;
+    const data = await this.workspaceService.create(createWorkspaceDto, user);
 
     const workspace = await this.workspaceService.get(
       data.insertedId.toString(),
@@ -87,6 +95,7 @@ export class WorkSpaceController {
     summary: "Retrieve a Workspace",
     description: "This will retrieve a workspace",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Fetch Workspace Request Received" })
   @ApiResponse({ status: 400, description: "Fetch Workspace Request Failed" })
   async getWorkspace(
@@ -107,6 +116,7 @@ export class WorkSpaceController {
     summary: "Retreive all User's Workspaces",
     description: "This will retrieve all workspaces of a user",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 200,
     description: "All Workspace Of User Received Successfully",
@@ -118,8 +128,13 @@ export class WorkSpaceController {
   async getAllWorkspaces(
     @Param("userId") userId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.getAllWorkSpaces(userId);
+    const currentUser = request.user;
+    const data = await this.workspaceService.getAllWorkSpaces(
+      userId,
+      currentUser,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -133,6 +148,7 @@ export class WorkSpaceController {
     summary: "Retreive all workspace users",
     description: "This will retrieve all the User's of a single Workspace",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 200,
     description: "All Users of a workspace fetched Successfully",
@@ -159,6 +175,7 @@ export class WorkSpaceController {
     summary: "Retreive Team's all Workspaces",
     description: "This will retrieve Team's all Workspaces",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 200,
     description: "All Workspaces Of a Team Received Successfully",
@@ -185,14 +202,17 @@ export class WorkSpaceController {
     summary: "Update a Workspace",
     description: "This will update User's Workspace",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Workspace Updated Successfully" })
   @ApiResponse({ status: 400, description: "Update Workspace Failed" })
   async updateWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Body() updateWorkspaceDto: Partial<UpdateWorkspaceDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    await this.workspaceService.update(workspaceId, updateWorkspaceDto);
+    const user = request.user;
+    await this.workspaceService.update(workspaceId, updateWorkspaceDto, user);
 
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
@@ -208,13 +228,16 @@ export class WorkSpaceController {
     summary: "Delete a Workspace",
     description: "This will delete a User's Workspace",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Workspace Deleted Successfully" })
   @ApiResponse({ status: 400, description: "Delete Workspace Failed" })
   async deleteWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.delete(workspaceId);
+    const user = request.user;
+    const data = await this.workspaceService.delete(workspaceId, user._id);
     const responseData = new ApiResponseService(
       "Workspace Deleted",
       HttpStatusCode.OK,
@@ -228,19 +251,25 @@ export class WorkSpaceController {
     summary: "Add Users in Workspace",
     description: "You can add multiple users to your Workspace",
   })
+  @UseGuards(JwtAuthGuard, WorkspaceInviteGuard)
   @ApiResponse({ status: 201, description: "Users Added Successfully" })
   @ApiResponse({ status: 400, description: "Failed to Add Users" })
   async addUserWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Body() payload: AddWorkspaceUserDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const params = {
       users: payload.users,
       workspaceId: workspaceId,
       role: payload.role,
     };
-    const response = await this.workspaceService.addUserInWorkspace(params);
+    const response = await this.workspaceService.addUserInWorkspace(
+      params,
+      user,
+    );
     const workspace = await this.workspaceService.get(workspaceId);
     const data = {
       ...workspace,
@@ -270,17 +299,21 @@ export class WorkSpaceController {
     summary: "Add Users with roles in Workspace",
     description: "You can add multiple users with multiple to your Workspace",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201, description: "Users Added Successfully" })
   @ApiResponse({ status: 400, description: "Failed to Add Users" })
   async addUsersWithRolesInWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Body() payload: AddUsersWithRolesInWorkspaceDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     // Call the workspace service to add users with roles in the workspace
     const response = await this.workspaceService.addUsersWithRolesInWorkspace(
       payload,
       workspaceId,
+      user,
     );
     const workspace = await this.workspaceService.get(workspaceId);
     const data = {
@@ -301,6 +334,7 @@ export class WorkSpaceController {
     description:
       "You can change role of user in your Workspace from editor to viewer or vice-versa",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201, description: "User Role Change Successfully" })
   @ApiResponse({ status: 400, description: "Failed to Change Role" })
   async changeUserRoleInWorkspace(
@@ -308,13 +342,15 @@ export class WorkSpaceController {
     @Param("userId") userId: string,
     @Body() data: UserWorkspaceRoleDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const params = {
       userId: userId,
       workspaceId: workspaceId,
       role: data.role,
     };
-    await this.workspaceService.changeUserRole(params);
+    await this.workspaceService.changeUserRole(params, currentUser);
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
       "Role Changed",
@@ -329,18 +365,21 @@ export class WorkSpaceController {
     summary: "Remove A User From Workspace",
     description: "You can remove a another user from your Workspace",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201, description: "Removed User Successfully" })
   @ApiResponse({ status: 400, description: "Failed to remove user" })
   async removerUserWorkspace(
     @Param("workspaceId") workspaceId: string,
     @Param("userId") userId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const params = {
       userId: userId,
       workspaceId: workspaceId,
     };
-    await this.workspaceService.removeUserFromWorkspace(params);
+    await this.workspaceService.removeUserFromWorkspace(params, currentUser);
     const workspace = await this.workspaceService.get(workspaceId);
     const responseData = new ApiResponseService(
       "User Removed",
@@ -355,6 +394,7 @@ export class WorkSpaceController {
     summary: "Import a Collection From A File",
     description: "You can import a collection from a json or ymal file",
   })
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor("file"))
   @ApiResponse({ status: 201, description: "Collection Import Successfull" })
   @ApiResponse({ status: 400, description: "Failed to Import  Collection" })
@@ -363,6 +403,7 @@ export class WorkSpaceController {
     @Res() res: FastifyReply,
     @UploadedFile()
     file: MemoryStorageFile,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     const dataBuffer = file.buffer;
     const dataString = dataBuffer.toString("utf8");
@@ -370,12 +411,17 @@ export class WorkSpaceController {
       file.mimetype === BodyModeEnum["application/json"]
         ? JSON.parse(dataString)
         : yml.load(dataString);
-    const collectionObj = await this.parserService.parse(dataObj);
+    const user = request.user;
+    const collectionObj = await this.parserService.parse(dataObj, user);
 
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj.collection._id),
-      name: collectionObj.collection.name,
-    });
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: new ObjectId(collectionObj.collection._id),
+        name: collectionObj.collection.name,
+      },
+      user._id,
+    );
     const collection = await this.collectionService.getCollection(
       collectionObj.collection._id.toString(),
     );
@@ -392,12 +438,14 @@ export class WorkSpaceController {
     summary: "Import a Collection from a url",
     description: "You can import a collection from url",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201, description: "Collection Import Successfull" })
   @ApiResponse({ status: 400, description: "Failed to Import  Collection" })
   async importCollections(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
     @Body() importCollectionDto: ImportCollectionDto,
+    @Req() request: ExtendedFastifyRequest,
   ) {
     const activeSync = importCollectionDto.activeSync ?? false;
     const data = importCollectionDto.urlData.data;
@@ -405,9 +453,10 @@ export class WorkSpaceController {
     const dataObj = responseType.includes(BodyModeEnum["application/json"])
       ? data
       : yml.load(data);
-
+    const user = request.user;
     const collectionObj = await this.parserService.parse(
       dataObj,
+      user,
       activeSync,
       workspaceId,
       importCollectionDto.url,
@@ -416,11 +465,15 @@ export class WorkSpaceController {
       importCollectionDto?.localRepositoryPath,
     );
     if (!collectionObj.existingCollection) {
-      await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-        id: new ObjectId(collectionObj.collection._id),
-        name: collectionObj.collection.name,
-        activeSync: collectionObj.collection.activeSync,
-      });
+      await this.workspaceService.addCollectionInWorkSpace(
+        workspaceId,
+        {
+          id: new ObjectId(collectionObj.collection._id),
+          name: collectionObj.collection.name,
+          activeSync: collectionObj.collection.activeSync,
+        },
+        user._id,
+      );
     }
     const responseData = new ApiResponseService(
       "Collection Imported",
@@ -435,6 +488,7 @@ export class WorkSpaceController {
     summary: "Import a Collection From A JsonObj",
     description: "You can import a collection from jsonObj",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({
     status: 201,
     description: "Collection json Import Successfull",
@@ -445,17 +499,23 @@ export class WorkSpaceController {
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
     @Body() jsonObj: string,
+    @Req() req: ExtendedFastifyRequest,
   ) {
     const responseType = request.headers["content-type"];
     const dataObj =
       responseType === BodyModeEnum["application/json"]
         ? jsonObj
         : (yml.load(jsonObj) as string);
-    const collectionObj = await this.parserService.parse(dataObj);
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionObj.collection._id),
-      name: collectionObj.collection.name,
-    });
+    const user = req.user;
+    const collectionObj = await this.parserService.parse(dataObj, user);
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: new ObjectId(collectionObj.collection._id),
+        name: collectionObj.collection.name,
+      },
+      user._id,
+    );
 
     const collection = await this.collectionService.getCollection(
       collectionObj.collection._id.toString(),
@@ -474,20 +534,164 @@ export class WorkSpaceController {
     description:
       "This will disable new invite tag of workspace and return information about workspace",
   })
+  @UseGuards(JwtAuthGuard)
   async disableWorkspaceNewInvite(
     @Param("userId") userId: string,
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const currentUser = request.user;
     const data = await this.workspaceService.disableWorkspaceNewInvite(
       userId,
       workspaceId,
+      currentUser,
     );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
       data,
     );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get("public/:workspaceId")
+  @ApiOperation({
+    summary: "Retrieve a Public Workspace",
+    description: "This will retrieve a public workspace",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Fetch Public Workspace Request Received",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Fetch Public Workspace Request Failed",
+  })
+  async getPublicWorkspace(
+    @Param("workspaceId") workspaceId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.workspaceService.getPublicWorkspace(workspaceId);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Retrieves a paginated list of public workspaces.
+   * @route GET /api/workspace/public-list?page=1
+   * @param page - The page number (query param, default 1)
+   * @returns Paginated list of public workspaces
+   */
+  @Get("public-list")
+  @ApiOperation({
+    summary: "Get paginated list of public workspaces",
+    description: "Returns a paginated list of public workspaces (20 per page)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Paginated public workspaces fetched successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to fetch public workspaces",
+  })
+  async getPaginatedPublicWorkspaces(
+    @Query("page") page: string = "1",
+    @Res() res: FastifyReply,
+  ) {
+    const pageSize = 9;
+    const { workspaces, total } =
+      await this.workspaceService.getPaginatedPublicWorkspaces(page, pageSize);
+    const responseData = new ApiResponseService("Success", HttpStatusCode.OK, {
+      workspaces,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    });
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Patch(":workspaceId")
+  @ApiOperation({
+    summary: "Update a Workspace Type",
+    description: "This will update Workspace's Type",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Workspace Type Updated Successfully",
+  })
+  @ApiResponse({ status: 400, description: "Update Workspace Type Failed" })
+  async updateWorkspaceType(
+    @Param("workspaceId") workspaceId: string,
+    @Body() payload: UpdateWorkspaceTypeDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    await this.workspaceService.updateWorkspaceType(
+      workspaceId,
+      payload.workspaceType,
+      user._id,
+    );
+    const workspace = await this.workspaceService.get(workspaceId);
+    const responseData = new ApiResponseService(
+      "Workspace Type Updated",
+      HttpStatusCode.OK,
+      workspace,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Searches public workspaces by name, team name, and description.
+   * @route GET /api/workspace/public/search?name=searchTerm&page=1
+   * @param name - The search query parameter
+   * @param page - The page number (query param, default 1)
+   * @returns Paginated list of public workspaces matching the search term
+   */
+  @Get("public-search")
+  @ApiOperation({
+    summary: "Search public workspaces by name, team name, and description",
+    description:
+      "Returns a paginated list of public workspaces that match the search term in name, team name, or description",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Public workspaces search completed successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Invalid search parameters",
+  })
+  async searchPublicWorkspaces(
+    @Query("name") searchTerm: string,
+    @Query("page") page: string = "1",
+    @Res() res: FastifyReply,
+  ) {
+    const pageSize = 9;
+    const { workspaces, total } =
+      await this.workspaceService.searchPublicWorkspacesByName(
+        searchTerm,
+        page,
+        pageSize,
+      );
+
+    const responseData = new ApiResponseService("Success", HttpStatusCode.OK, {
+      workspaces,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+      searchTerm,
+    });
+
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

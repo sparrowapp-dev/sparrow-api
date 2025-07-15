@@ -1,0 +1,137 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Payment Reminder</title>
+
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container-data {
+            margin: auto;
+            max-width: 570px;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .email-text-style {
+            color: var(--email-text-color, #333);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 21px;
+        }
+
+        .payment-summary {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e9ecef;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .summary-value {
+            color: #212529;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section style="width: 100%;">
+            <div class="container-data">
+
+                {{> header}}
+
+                <section>
+                    <div style="margin-bottom: 5%">
+                        <h2 class="email-text-style">
+                            Hi {{firstName}},
+                        </h2>
+
+                        <p class="email-text-style">
+                            Hope you're loving your experience with Sparrow so far! We wanted to give you a quick heads-up — your upcoming payment for the <strong>{{planName}}</strong> plan on the <strong>{{hubName}}</strong> hub is scheduled for <strong>{{billingDate}}</strong>.
+                        </p>
+
+                        <div class="payment-summary">
+                            <h3 style="margin-top: 0; color: #212529; font-size: 16px;">Summary</h3>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Plan:&nbsp;&nbsp;</span>
+                                <span class="summary-value">{{planName}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Billing Amount:&nbsp;&nbsp;</span>
+                                <span class="summary-value">${{billingAmount}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Billing Date:&nbsp;&nbsp;</span>
+                                <span class="summary-value">{{billingDate}}</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Default Payment Method:&nbsp;&nbsp;</span>
+                                <span class="summary-value">Card ending in {{cardLast4}}</span>
+                            </div>
+                        </div>
+
+                        <p class="email-text-style">
+                            If everything looks good, there's nothing you need to do. But if you need to make changes, you can update your payment method below.
+                        </p>
+
+                        <p class="email-text-style">
+                            <a href="{{updatePaymentUrl}}" style="font-weight: 400; text-decoration: none; color: #3670F7; border-bottom: 2px solid #3670F7;">Update Payment Method</a>
+                        </p>
+
+                        <p class="email-text-style">
+                            We're here if you need anything — and as always, thank you for being a part of the Sparrow community.
+                        </p>
+
+                        <p class="email-text-style">
+                            Warm Regards,<br>
+                            The Sparrow Team<br>
+                        </p>
+
+                    </div>
+
+                    <hr>
+
+                </section>
+
+                {{> footer}}
+
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

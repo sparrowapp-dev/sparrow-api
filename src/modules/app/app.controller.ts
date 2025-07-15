@@ -26,6 +26,7 @@ import { curlDto } from "./payloads/curl.payload";
 import { PostmanParserService } from "../common/services/postman.parser.service";
 import { subscribePayload } from "./payloads/subscribe.payload";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 /**
  * App Controller
  */
@@ -78,8 +79,16 @@ export class AppController {
       },
     },
   })
-  async parseCurl(@Body() req: curlDto, @Res() res: FastifyReply) {
-    const parsedRequestData = await this.appService.parseCurl(req.curl);
+  async parseCurl(
+    @Body() req: curlDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const parsedRequestData = await this.appService.parseCurl(
+      req.curl,
+      user?.name ?? "anonymous",
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -152,7 +161,11 @@ export class AppController {
    * @returns {Promise<FastifyReply>} The result of the validation (valid or invalid).
    * @throws {HttpStatus.BAD_REQUEST} If both OAPI and Postman formats are invalid.
    */
-  async validateFile(@Req() request: FastifyRequest, @Res() res: FastifyReply) {
+  async validateFile(
+    @Req() request: FastifyRequest,
+    @Res() res: FastifyReply,
+    @Req() req: ExtendedFastifyRequest,
+  ) {
     try {
       // Attempt to validate the OAPI specification in the request
       await this.parserService.validateOapi(request);
@@ -165,7 +178,8 @@ export class AppController {
       // If OAPI validation fails, attempt to validate the Postman collection
       try {
         const body = request.body;
-        await this.postmanParserSerivce.parsePostmanCollection(body);
+        const user = req.user;
+        await this.postmanParserSerivce.parsePostmanCollection(body, user);
         return res.status(HttpStatus.OK).send({
           valid: true,
           msg: "Provided Postman Collection is valid.",
@@ -185,7 +199,7 @@ export class AppController {
   @Get("health")
   @ApiOperation({
     summary: "Health Check",
-    description: "Checks the health of Kafka and MongoDB connections.",
+    description: "Checks the health of MongoDB connections.",
   })
   @ApiResponse({
     status: 200,
@@ -196,14 +210,12 @@ export class AppController {
     description: "Health check failed.",
   })
   async healthCheck(@Res() res: FastifyReply) {
-    const isKafkaConnected = await this.appService.checkKafkaConnection();
     const isMongoConnected = await this.appService.checkMongoConnection();
 
-    if (isKafkaConnected && isMongoConnected) {
+    if (isMongoConnected) {
       return res.status(HttpStatus.OK).send({
         statusCode: HttpStatus.OK,
         status: "healthy",
-        kafka: "connected",
         mongo: "connected",
       });
     }
@@ -211,7 +223,6 @@ export class AppController {
     return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       status: "unhealthy",
-      kafka: isKafkaConnected ? "connected" : "disconnected",
       mongo: isMongoConnected ? "connected" : "disconnected",
     });
   }
@@ -253,8 +264,13 @@ export class AppController {
   async importJsonCollection(
     @Res() res: FastifyReply,
     @Body() jsonObj: string,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const collectionObj = await this.parserService.parseOAPICollection(jsonObj);
+    const user = request.user;
+    const collectionObj = await this.parserService.parseOAPICollection(
+      jsonObj,
+      user,
+    );
 
     const responseData = new ApiResponseService(
       "Collection Parsed",

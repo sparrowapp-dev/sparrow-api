@@ -18,8 +18,8 @@ import { EnvironmentDto } from "./environment.model";
 import { TestflowInfoDto } from "./testflow.model";
 
 export enum WorkspaceType {
-  PERSONAL = "PERSONAL",
-  TEAM = "TEAM",
+  PRIVATE = "PRIVATE",
+  PUBLIC = "PUBLIC",
 }
 
 export class UserDto {
@@ -90,6 +90,11 @@ export class Workspace {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsEnum(WorkspaceType)
+  workspaceType?: WorkspaceType;
 
   @IsArray()
   @Type(() => CollectionDto)

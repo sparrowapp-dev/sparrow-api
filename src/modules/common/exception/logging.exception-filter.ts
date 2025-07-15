@@ -9,6 +9,7 @@ import {
 import { FastifyReply } from "fastify";
 import { PinoLogger } from "nestjs-pino";
 import { InsightsService } from "../services/insights.service";
+import * as Sentry from "@sentry/nestjs";
 @Catch()
 export class LoggingExceptionsFilter implements ExceptionFilter {
   constructor(
@@ -51,6 +52,7 @@ export class LoggingExceptionsFilter implements ExceptionFilter {
         error: exception.name,
       });
     } else {
+      Sentry.captureException(exception);
       throw new BadRequestException(exception);
     }
   }

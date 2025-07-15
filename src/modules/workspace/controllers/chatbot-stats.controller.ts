@@ -1,5 +1,5 @@
 // ---- NestJS Native imports
-import { Body, Controller, Post, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Post, Req, Res, UseGuards } from "@nestjs/common";
 
 // ---- Fastify
 import { FastifyReply } from "fastify";
@@ -24,6 +24,7 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 
 // ---- Payload
 import { ChatbotFeedbackDto } from "../payloads/chatbot-stats.payload";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * ChatbotStatsController handles API endpoints related to chatbot statistics and feedback.
@@ -60,8 +61,13 @@ export class ChatbotStatsController {
   async updateFeedback(
     @Body() payload: ChatbotFeedbackDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.chatbotStatsService.updateFeedback(payload);
+    const user = request.user;
+    const data = await this.chatbotStatsService.updateFeedback(
+      payload,
+      user._id,
+    );
     const response = new ApiResponseService(
       "AI Feedack updates",
       HttpStatusCode.OK,

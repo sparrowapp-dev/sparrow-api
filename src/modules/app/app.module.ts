@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { AppController } from "@app/app.controller";
 import { AppService } from "@app/app.service";
 import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
 import { AccessControlModule } from "nest-access-control";
 import { roles } from "@app/app.roles";
 import { EnvironmentVariables } from "@common/config/env.validation";
@@ -22,9 +23,14 @@ import {
 } from "@willsoto/nestjs-prometheus";
 import { CustomMetricsMiddleware } from "./middleware/metrics.middleware";
 import { AppRepository } from "./app.repository";
+import { SentryModule } from "@sentry/nestjs/setup";
+import { UserAdminModule } from "../user-admin/user-admin.module";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
+    ScheduleModule.forRoot(),
     PrometheusModule.register({
       path: "/metrics",
       defaultMetrics: {
@@ -56,6 +62,8 @@ import { AppRepository } from "./app.repository";
     ConfigModule,
     IdentityModule,
     WorkspaceModule,
+    UserAdminModule,
+    BillingModule.register(),
     CommonModule,
     ProxyModule,
   ],

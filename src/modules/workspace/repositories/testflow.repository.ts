@@ -15,7 +15,6 @@ import {
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 
 // ---- Services
-import { ContextService } from "@src/modules/common/services/context.service";
 
 // ---- Payload & model
 import { Testflow } from "@src/modules/common/models/testflow.model";
@@ -27,12 +26,8 @@ export class TestflowRepository {
    * Creates an instance of the TestflowRepository.
    *
    * @param {Db} db - MongoDB database connection.
-   * @param {ContextService} contextService - Service for managing the request context, such as the current user.
    */
-  constructor(
-    @Inject("DATABASE_CONNECTION") private db: Db,
-    private readonly contextService: ContextService,
-  ) {}
+  constructor(@Inject("DATABASE_CONNECTION") private db: Db) {}
 
   /**
    * Inserts a new Testflow into the MongoDB collection.
@@ -70,6 +65,23 @@ export class TestflowRepository {
   }
 
   /**
+   * Fetches testflows from database by UUID
+   * @param {string[]} testflowIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getTestflowsByIds(testflowIds: string[]): Promise<WithId<Testflow>[]> {
+    const testflows = await this.db.collection<Testflow>(Collections.TESTFLOW)
+    .find({ _id: { $in: testflowIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!testflows) {
+      throw new BadRequestException(
+        "The testflows with that ids could not be found.",
+      );
+    }
+    return testflows;
+  }
+
+  /**
    * Deletes a Testflow document by its ID.
    *
    * @param {string} id - The MongoDB ObjectId of the Testflow to be deleted.
@@ -98,11 +110,12 @@ export class TestflowRepository {
   async update(
     id: string,
     updateTestflowDto: Partial<UpdateTestflowDto>,
+    userId: ObjectId,
   ): Promise<UpdateResult> {
     const testflowId = new ObjectId(id);
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id.toString(),
+      updatedBy: userId.toString(),
     };
     const data = await this.db
       .collection(Collections.TESTFLOW)

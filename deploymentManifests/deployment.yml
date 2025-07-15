@@ -161,11 +161,6 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: GOOGLE_CLIENT_SECRET
-            - name: KAFKA_BROKER
-              valueFrom:
-                secretKeyRef:
-                  name: sparrow-api-secret
-                  key: KAFKA_BROKER
             - name: REFRESH_TOKEN_MAX_LIMIT
               valueFrom:
                 secretKeyRef:
@@ -306,9 +301,81 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: MARKETING_BASE_URL
-
-      imagePullSecrets:
-        - name: acr-secret
+            - name: WHITELIST_EMAIL_LIST
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: WHITELIST_EMAIL_LIST
+            - name: WHITELIST_USER_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: WHITELIST_USER_EMAILS
+            - name: SENTRY_DSN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SENTRY_DSN_KEY
+            - name: SENTRY_APP_ENVIRONMENT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SENTRY_APP_ENVIRONMENT
+            - name: DEEPSEEK_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DEEPSEEK_ENDPOINT
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DEEPSEEK_API_KEY
+            - name: DEEPSEEK_API_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DEEPSEEK_API_VERSION
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DB_NAME
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_SECRET_KEY
+            - name: STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_PUBLISHABLE_KEY
+            - name: STRIPE_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STRIPE_WEBHOOK
+            - name: AI_CONVERSATION_BLOB_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: AI_CONVERSATION_BLOB_CONTAINER
+            - name: ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: ENCRYPTION_SECRET
+            - name: SPARROW_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SPARROW_ADMIN_KEY
+            - name: ADMIN_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: ADMIN_BASE_URL
 
 ---
 apiVersion: v1

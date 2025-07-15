@@ -16,11 +16,8 @@ import {
   AddTo,
   TransformedRequest,
 } from "../common/models/collection.rxdb.model";
-import { ContextService } from "../common/services/context.service";
-import { Kafka } from "kafkajs";
 import axios from "axios";
 import { AppRepository } from "./app.repository";
-import { KafkajsProducer } from "../common/services/kafka/kafkajs.producer";
 
 /**
  * Application Service
@@ -28,14 +25,13 @@ import { KafkajsProducer } from "../common/services/kafka/kafkajs.producer";
 @Injectable()
 export class AppService {
   private curlconverterPromise: any = null;
-  private kafka: Kafka;
   /**
    * Constructor
    * @param {ConfigService} config configuration service
    */
   constructor(
     private config: ConfigService,
-    private contextService: ContextService,
+
     private readonly appRepository: AppRepository,
   ) {}
 
@@ -86,6 +82,10 @@ export class AppService {
             signature: this.config.get("updater.macIntel.appSignature"),
             url: this.config.get("updater.macIntel.appUrl"),
           },
+          "linux-x86_64": {
+            signature: "",
+            url: "https://dev.sparrowapp.dev/", // URL is not required for deb, so providing dev url.
+          },
         },
       };
       return {
@@ -127,7 +127,7 @@ export class AppService {
     return params;
   };
 
-  async parseCurl(req: string): Promise<TransformedRequest> {
+  async parseCurl(req: string, username: string): Promise<TransformedRequest> {
     try {
       const curlconverter = await this.importCurlConverter();
       const { toJsonString } = curlconverter;
@@ -138,11 +138,6 @@ export class AppService {
       }
       const stringifiedCurl = toJsonString(updatedCurl);
       const parsedCurl = JSON.parse(stringifiedCurl);
-
-      // Fallback: Manually extracting query params, in case "curlConverter" isn't able to process query params
-      if (!parsedCurl.queries || parsedCurl.url.includes("?")) {
-        parsedCurl.queries = this.extractQueryParamsFromUrl(parsedCurl.url);
-      }
 
       // Match all -F flags with their key-value pairs
       const formDataMatches = curl.match(/-F\s+'([^=]+)=@([^;]+)/g);
@@ -166,7 +161,7 @@ export class AppService {
       if (formDataItems.length > 0) {
         parsedCurl.files = formDataItems;
       }
-      return this.transformRequest(parsedCurl);
+      return this.transformRequest(parsedCurl, username);
     } catch (error) {
       console.error("Error parsing :", error);
       throw new BadRequestException("Invalid Curl");
@@ -177,8 +172,10 @@ export class AppService {
     url = url.replace(/^(https?:\/\/\s*)+(https?:\/\/)/, "$2");
     return url;
   }
-  async transformRequest(requestObject: any): Promise<TransformedRequest> {
-    const user = await this.contextService.get("user");
+  async transformRequest(
+    requestObject: any,
+    username: string,
+  ): Promise<TransformedRequest> {
     const keyValueDefaultObj = {
       key: "",
       value: "",
@@ -200,7 +197,7 @@ export class AppService {
     ) {
       method = "INVALID";
     }
-    const url = await this.handleFormatUrl(requestObject.url);
+    const url = await this.handleFormatUrl(requestObject.raw_url);
     const transformedObject: TransformedRequest = {
       name: url || "",
       description: "",
@@ -234,17 +231,22 @@ export class AppService {
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
       },
-      createdBy: user?.name,
-      updatedBy: user?.name,
+      createdBy: username,
+      updatedBy: username,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    // Handle URL with query parameters
-    if (requestObject.queries) {
-      const queryParams = [];
-      for (const [key, value] of Object.entries(requestObject.queries)) {
+    // Extract the query parameter from the URL
+    const queryString = url.split("?")[1];
+    const queryParams = [];
+    if (queryString) {
+      const pairs = queryString.split("&");
+      for (const pair of pairs) {
+        const [key, rawValue] = pair.split("=");
+        const value = rawValue || "";
         queryParams.push({ key, value, checked: true });
+
         if (
           key.toLowerCase() === "api-key" ||
           key.toLowerCase() === "x-api-key"
@@ -258,16 +260,18 @@ export class AppService {
             AuthModeEnum["API Key"];
         }
       }
-      transformedObject.request.url = url;
+      queryParams.push({ key: "", value: "", checked: false });
+
       transformedObject.request.queryParams = queryParams;
+      transformedObject.request.url = url;
     }
     let isFormData = false;
 
     // Handle request body based on Content-Type
     if (requestObject?.data || requestObject?.files) {
       const contentType =
-        requestObject.headers["content-type"] ||
-        requestObject.headers["Content-Type"] ||
+        requestObject?.headers?.["content-type"] ||
+        requestObject?.headers?.["Content-Type"] ||
         "";
       if (contentType.startsWith("multipart/form-data")) {
         isFormData = true;
@@ -428,7 +432,7 @@ export class AppService {
       }
       // If files is an object with key-value pairs
       else {
-        for (const [key, filename] of Object.entries(requestObject.files)) {
+        for (const key of Object.keys(requestObject.files)) {
           transformedObject.request.body.formdata.text.push({
             key,
             value: "",
@@ -441,7 +445,9 @@ export class AppService {
     // Handle headers and populate auth details
     if (requestObject.headers) {
       for (const [key, value] of Object.entries(requestObject.headers)) {
-        if (!(isFormData && key === "Content-Type")) {
+        if (
+          !(isFormData && (key === "Content-Type" || key === "content-type"))
+        ) {
           transformedObject.request.headers.push({ key, value, checked: true });
         }
 
@@ -509,22 +515,6 @@ export class AppService {
     }
 
     return transformedObject;
-  }
-
-  /**
-   * Checks the connection to the Kafka broker.
-   *
-   * This method attempts to create an admin client and connect to the Kafka broker.
-   * If the connection is successful, the client is disconnected and the method returns `true`.
-   * If the connection fails, the error is logged, and the method returns `false`.
-   *
-   * @returns {Promise<boolean>} - A promise that resolves to `true` if the connection is successful, or `false` if it fails.
-   */
-  async checkKafkaConnection(): Promise<boolean> {
-    const kafkaBroker = [this.config.get("kafka.broker")];
-    const producer = new KafkajsProducer("health-check", kafkaBroker);
-    const isKafkaConnected = await producer.isKafkaConnected();
-    return isKafkaConnected;
   }
 
   /**

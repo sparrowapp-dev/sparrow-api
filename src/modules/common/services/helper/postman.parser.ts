@@ -263,7 +263,7 @@ function convertRequestBody(body: any): SparrowRequestBody {
     case "formdata":
       requestBody.formdata = {
         text: filterAndMap(body.formdata, "text"), // Map form data for text fields
-        file: filterAndMap(body.formdata, "file"), // Map form data for file fields
+        file: [], // Map form data for file fields
       };
       break;
 
@@ -287,14 +287,22 @@ function convertRequestBody(body: any): SparrowRequestBody {
  * @returns Filtered and mapped key-value pairs or file data.
  */
 function filterAndMap(data: any[], type: string): any[] {
-  return (data || [])
-    .filter((item) => item.type === type)
+  const result = (data || [])
+    // .filter((item) => item.type === type)
     .map((item) => ({
       key: item.key || "",
-      value: type === "file" ? item.src || "" : item.value || "",
+      value: type === "file" ? "" : item.value || "",
       checked: false,
-      base: item.base || "",
     }));
+
+  // Push empty key-value pair at the end
+  result.push({
+    key: "",
+    value: "",
+    checked: false,
+  });
+
+  return result;
 }
 
 /**
@@ -304,11 +312,20 @@ function filterAndMap(data: any[], type: string): any[] {
  * @returns Mapped key-value pairs.
  */
 function mapKeyValuePairs(data: any[]): KeyValue[] {
-  return (data || []).map((item) => ({
+  const result = (data || []).map((item) => ({
     key: item.key || "",
     value: item.value || "",
     checked: false,
   }));
+
+  // Push an empty key-value pair
+  result.push({
+    key: "",
+    value: "",
+    checked: false,
+  });
+
+  return result;
 }
 
 /**
@@ -320,11 +337,13 @@ function mapKeyValuePairs(data: any[]): KeyValue[] {
 function convertParams(params: any[]): KeyValue[] {
   if (!params || !params.length)
     return [{ key: "", value: "", checked: false }];
-  const convertedParams = params.map((param) => ({
-    key: param.key || param.name || "",
-    value: param.value || "",
-    checked: false,
-  }));
+  const convertedParams = (params || [])
+    .filter((param) => (param.key || param.name) !== "" && param.value !== "")
+    .map((param) => ({
+      key: param.key || param.name || "",
+      value: param.value || "",
+      checked: false,
+    }));
   // Pushed extra empty key values.
   convertedParams.push({
     key: "",

@@ -144,11 +144,6 @@ spec:
                 secretKeyRef:
                   name: release-api-v0-secret
                   key: GOOGLE_CLIENT_SECRET
-            - name: KAFKA_BROKER
-              valueFrom:
-                secretKeyRef:
-                  name: release-api-v0-secret
-                  key: KAFKA_BROKER
             - name: REFRESH_TOKEN_MAX_LIMIT
               valueFrom:
                 secretKeyRef:

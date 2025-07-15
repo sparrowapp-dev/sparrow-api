@@ -38,6 +38,7 @@ import { RefreshTokenRequest } from "./auth.controller";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { VerificationPayload } from "../payloads/verification.payload";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 /**
  * User Controller
  */
@@ -68,14 +69,40 @@ export class UserController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  @Post("verified")
+  @ApiOperation({
+    summary: "Create a Verified User",
+    description: "Register and Create a new User",
+  })
+  @ApiResponse({ status: 201, description: "Registration Completed" })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async registerVerifiedUser(
+    @Body() payload: RegisterPayload,
+    @Res() res: FastifyReply,
+  ) {
+    const data = await this.userService.createVerifiedUser(payload);
+    const responseData = new ApiResponseService(
+      "User Created",
+      HttpStatusCode.CREATED,
+      data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Get(":userId")
   @ApiOperation({
     summary: "Retrieve  User",
     description: "This will return  information about a specific user",
   })
   @UseGuards(JwtAuthGuard)
-  async getUser(@Param("userId") id: string, @Res() res: FastifyReply) {
-    const data = await this.userService.getUserById(id);
+  async getUser(
+    @Param("userId") id: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const currentUser = request.user;
+    const data = await this.userService.getUserById(id, currentUser);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -114,8 +141,14 @@ export class UserController {
     @Param("userId") id: string,
     @Body() updateUserDto: Partial<UpdateUserDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const user = await this.userService.updateUser(id, updateUserDto);
+    const currentUser = request.user;
+    const user = await this.userService.updateUser(
+      id,
+      updateUserDto,
+      currentUser,
+    );
     const responseData = new ApiResponseService(
       "User Updated",
       HttpStatusCode.OK,

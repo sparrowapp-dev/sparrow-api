@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from "uuid";
-import { WithId } from "mongodb";
 
 // ---- Models
 import {
@@ -15,7 +14,6 @@ import {
   PathItemObject,
 } from "../../models/openapi20.model";
 import { AddTo, TransformedRequest } from "../../models/collection.rxdb.model";
-import { User } from "../../models/user.model";
 
 // ---- Tranformers
 import {
@@ -32,7 +30,7 @@ import {
  */
 export function createCollectionItems(
   openApiDocument: OpenAPI20,
-  user: WithId<User>,
+  username: string,
 ) {
   const collectionItems: TransformedRequest[] = [];
   // Check if definitions are present in the OpenAPI document
@@ -45,7 +43,7 @@ export function createCollectionItems(
         pathName,
         pathObject,
         openApiDocument.securityDefinitions,
-        user,
+        username,
       );
       // Create a collection item for each request object
       for (const requestObject of requests) {
@@ -59,8 +57,8 @@ export function createCollectionItems(
           source: SourceTypeEnum.SPEC,
           request: requestObject.request,
           isDeleted: false,
-          createdBy: user.name,
-          updatedBy: user.name,
+          createdBy: username,
+          updatedBy: username,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -122,7 +120,7 @@ function transformPath(
   pathName: string,
   pathObject: PathItemObject,
   security: any,
-  user: WithId<User>,
+  username: string,
 ) {
   const transformedObjectArray: TransformedRequest[] = [];
   for (const [methodType, pathItemObjectType] of Object.entries(pathObject)) {
@@ -164,8 +162,8 @@ function transformPath(
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
       },
-      createdBy: user.name,
-      updatedBy: user.name,
+      createdBy: username,
+      updatedBy: username,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -7,13 +7,12 @@ import {
   UpdateResult,
   WithId,
 } from "mongodb";
-import { Workspace } from "../../common/models/workspace.model";
+import { Workspace, WorkspaceType } from "../../common/models/workspace.model";
 import { Collections } from "../../common/enum/database.collection.enum";
 import {
   UpdateWorkspaceDto,
   WorkspaceDtoForIdDocument,
 } from "../payloads/workspace.payload";
-import { ContextService } from "../../common/services/context.service";
 import { CollectionDto } from "@src/modules/common/models/collection.model";
 import { EnvironmentDto } from "@src/modules/common/models/environment.model";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
@@ -35,7 +34,6 @@ export class WorkspaceRepository {
   constructor(
     @Inject("DATABASE_CONNECTION")
     private db: Db,
-    private contextService: ContextService,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -47,6 +45,35 @@ export class WorkspaceRepository {
       throw new BadRequestException("Not Found");
     }
     return data;
+  }
+
+  /**
+   * Fetches workspaces from database by UUID
+   * @param {string[]} workspaceIds
+   * @returns {Promise<Team>} queried team data
+   */
+  async getWorkspacesByIds(workspaceIds: string[]): Promise<WithId<Workspace>[]> {
+    const workspaces = await this.db.collection<Workspace>(Collections.WORKSPACE)
+    .find({ _id: { $in: workspaceIds.map(id => new ObjectId(id)) } })
+    .toArray();
+    if (!workspaces) {
+      throw new BadRequestException(
+        "The workspaces with that ids could not be found.",
+      );
+    }
+    return workspaces;
+  }
+
+  async getPublicWorkspace(id: string): Promise<WithId<Workspace>> {
+    const _id = new ObjectId(id);
+    const data = await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .findOne({ _id });
+
+    return {
+      ...data,
+      users: [],
+    };
   }
 
   async addWorkspace(params: Workspace): Promise<InsertOneResult<Document>> {
@@ -94,11 +121,11 @@ export class WorkspaceRepository {
    * @param {Partial<Workspace>} updates
    * @returns {Promise<UpdateWriteOpResult>} result of the update operation
    */
-  update(id: string, updates: UpdateWorkspaceDto) {
+  update(id: string, updates: UpdateWorkspaceDto, userId: ObjectId) {
     const _id = new ObjectId(id);
     const defaultParams = {
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: userId.toString(),
     };
     return this.db
       .collection(Collections.WORKSPACE)
@@ -269,5 +296,80 @@ export class WorkspaceRepository {
         { $set: { "testflows.$.name": name } },
       );
     return response;
+  }
+
+  async updateWorkspaceTypeById(
+    id: ObjectId,
+    workspaceType: WorkspaceType,
+  ): Promise<WithId<Workspace>> {
+    const response = await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .findOneAndUpdate(
+        { _id: id },
+        {
+          $set: { workspaceType: workspaceType },
+        },
+        { returnDocument: "after" }, // ensures you get the updated doc
+      );
+
+    return response.value;
+  }
+
+  /**
+   * Retrieves a paginated list of public workspaces.
+   * @param page - The page number (1-based).
+   * @param pageSize - The number of items per page.
+   * @returns A list of public workspaces and total count.
+   */
+  async getPaginatedPublicWorkspaces(
+    page: number,
+    pageSize: number,
+  ): Promise<{ workspaces: WithId<Workspace>[]; total: number }> {
+    const skip = (page - 1) * pageSize;
+    const collection = this.db.collection<Workspace>(Collections.WORKSPACE);
+    const [workspaces, total] = await Promise.all([
+      collection
+        .find({ workspaceType: WorkspaceType.PUBLIC })
+        .skip(skip)
+        .limit(pageSize)
+        .sort({ createdAt: -1 })
+        .toArray(),
+      collection.countDocuments({ workspaceType: WorkspaceType.PUBLIC }),
+    ]);
+    return { workspaces, total };
+  }
+
+  /**
+   * Searches public workspaces by name, team name, and description.
+   * @param searchTerm - The search term to match against workspace names, team names, and descriptions.
+   * @param page - The page number for pagination.
+   * @param pageSize - The number of results per page.
+   * @returns An object containing the list of workspaces and total count.
+   */
+  async searchPublicWorkspacesByName(
+    searchTerm: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ workspaces: WithId<Workspace>[]; total: number }> {
+    const collection = this.db.collection<Workspace>(Collections.WORKSPACE);
+    const searchQuery = {
+      workspaceType: WorkspaceType.PUBLIC,
+      $or: [
+        { name: { $regex: searchTerm, $options: "i" } },
+        { "team.name": { $regex: searchTerm, $options: "i" } },
+        { description: { $regex: searchTerm, $options: "i" } },
+      ],
+    };
+
+    const skip = (page - 1) * pageSize;
+    const total = await collection.countDocuments(searchQuery);
+    const workspaces = await collection
+      .find(searchQuery)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize)
+      .toArray();
+
+    return { workspaces, total };
   }
 }

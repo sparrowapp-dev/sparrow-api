@@ -7,4 +7,5 @@ export enum TOPIC {
   UPDATES_ADDED_TOPIC = "updates_added_topic",
   AI_RESPONSE_GENERATED_TOPIC = "ai_response_generated_topic",
   TEAM_DETAILS_UPDATED_TOPIC = "team_details_updated_topic",
+  AI_ACTIVITY_LOG_TOPIC = "ai_activity_log_topic",
 }

@@ -1,6 +1,12 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 
 import {
+  AuthCollection,
+  AuthProfiles,
   CreateCollectionDto,
   UpdateCollectionDto,
 } from "../payloads/collection.payload";
@@ -20,9 +26,10 @@ import {
   CollectionAuthModeEnum,
   CollectionBranch,
   CollectionItem,
+  CollectionTypeEnum,
   ItemTypeEnum,
+  ResponseBodyModeEnum,
 } from "@src/modules/common/models/collection.model";
-import { ContextService } from "@src/modules/common/services/context.service";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
 import { Branch } from "@src/modules/common/models/branch.model";
@@ -30,18 +37,19 @@ import { UpdateBranchDto } from "../payloads/branch.payload";
 import { ConfigService } from "@nestjs/config";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
-import { ProducerService } from "@src/modules/common/services/kafka/producer.service";
+import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { PostmanParserService } from "@src/modules/common/services/postman.parser.service";
 import { v4 as uuidv4 } from "uuid";
 import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
 import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
+import { WorkspaceType } from "@src/modules/common/models/workspace.model";
+import { DecodedUserObject } from "@src/types/fastify";
 @Injectable()
 export class CollectionService {
   constructor(
     private readonly collectionRepository: CollectionRepository,
     private readonly workspaceRepository: WorkspaceRepository,
     private readonly branchRepository: BranchRepository,
-    private readonly contextService: ContextService,
     private readonly workspaceService: WorkspaceService,
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
@@ -50,22 +58,29 @@ export class CollectionService {
 
   async createCollection(
     createCollectionDto: Partial<CreateCollectionDto>,
+    user: DecodedUserObject,
   ): Promise<InsertOneResult> {
     const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
       createCollectionDto.workspaceId,
+      user._id,
     );
-    const user = await this.contextService.get("user");
     await this.checkPermission(createCollectionDto.workspaceId, user._id);
 
     const newCollection: Collection = {
       name: createCollectionDto.name,
+      collectionType:
+        createCollectionDto?.collectionType === CollectionTypeEnum.MOCK
+          ? CollectionTypeEnum.MOCK
+          : CollectionTypeEnum.STANDARD,
       totalRequests: 0,
       createdBy: user.name,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
       items: [],
-      updatedBy: user.name,
+      updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
+      defaultSelectedAuthProfile: "",
+      authProfiles: [],
     };
     const collection =
       await this.collectionRepository.addCollection(newCollection);
@@ -85,11 +100,38 @@ export class CollectionService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.COLLECTION,
         workspaceId: createCollectionDto.workspaceId,
       }),
     });
     return collection;
+  }
+
+  async updateMockCollectionUrl(id: string): Promise<UpdateResult<Collection>> {
+    const baseUrl = this.configService.get("app.url");
+    const mockUrl = `${baseUrl}/api/mock/${id}`;
+    const data = await this.collectionRepository.updateCollection(id, {
+      mockCollectionUrl: mockUrl,
+      isMockCollectionRunning: false,
+    });
+    return data;
+  }
+
+  async updateMockCollectionRunningStatus(
+    workspaceId: string,
+    collectionId: string,
+    status: boolean,
+    user: DecodedUserObject,
+  ): Promise<UpdateResult<Collection>> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
+    const data = await this.collectionRepository.updateCollection(
+      collectionId,
+      {
+        isMockCollectionRunning: status,
+      },
+    );
+    return data;
   }
 
   async createSampleData(user: any): Promise<CollectionItem[]> {
@@ -355,15 +397,16 @@ export class CollectionService {
     return sampleRequests;
   }
 
-  async createDefaultCollection(): Promise<InsertOneResult> {
-    const user = await this.contextService.get("user");
+  async createDefaultCollection(
+    user: DecodedUserObject,
+  ): Promise<InsertOneResult> {
     const newCollection: Collection = {
       name: "Sample Collection",
       totalRequests: 4,
       createdBy: user.name,
       selectedAuthType: CollectionAuthModeEnum["No Auth"],
       items: await this.createSampleData(user),
-      updatedBy: user.name,
+      updatedBy: { name: user.name, id: user._id.toString() },
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -376,18 +419,33 @@ export class CollectionService {
     return await this.collectionRepository.get(id);
   }
 
-  async getAllCollections(id: string): Promise<WithId<Collection>[]> {
-    const user = await this.contextService.get("user");
+  async getAllCollections(
+    id: string,
+    user: DecodedUserObject,
+  ): Promise<WithId<Collection>[]> {
     await this.checkPermission(id, user._id);
-
     const workspace = await this.workspaceRepository.get(id);
-    const collections = [];
-    for (let i = 0; i < workspace.collection?.length; i++) {
-      const collection = await this.collectionRepository.get(
-        workspace.collection[i].id.toString(),
-      );
-      collections.push(collection);
+    const collectionIds =
+      workspace.collection?.map((c) => c.id.toString()) || [];
+    if (collectionIds.length === 0) return [];
+    // Bulk fetch all collections
+    const collections =
+      await this.collectionRepository.getCollectionsByIds(collectionIds);
+    return collections;
+  }
+
+  async getAllPublicWorkspaceCollections(
+    id: string,
+  ): Promise<WithId<Collection>[]> {
+    const workspace = await this.workspaceRepository.get(id);
+    if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
+      throw new BadRequestException("Workspace is not public.");
     }
+    const collectionIds =
+      workspace.collection?.map((c) => c.id.toString()) || [];
+    if (collectionIds.length === 0) return [];
+    const collections =
+      await this.collectionRepository.getCollectionsByIds(collectionIds);
     return collections;
   }
 
@@ -427,15 +485,18 @@ export class CollectionService {
     collectionId: string,
     updateCollectionDto: Partial<UpdateCollectionDto>,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<UpdateResult> {
-    const workspace =
-      await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
-    const user = await this.contextService.get("user");
+    const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+      user._id,
+    );
     await this.checkPermission(workspaceId, user._id);
     const collection = await this.collectionRepository.get(collectionId);
     const data = await this.collectionRepository.update(
       collectionId,
       updateCollectionDto,
+      user,
     );
     const currentWorkspaceObject = new ObjectId(workspaceId);
     const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
@@ -451,6 +512,7 @@ export class CollectionService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.COLLECTION,
           workspaceId: workspaceId,
         }),
@@ -461,6 +523,7 @@ export class CollectionService {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
           message: updateMessage,
+          user,
           type: UpdatesType.COLLECTION,
           workspaceId: workspaceId,
         }),
@@ -469,18 +532,168 @@ export class CollectionService {
     return data;
   }
 
+  async addAuthProfile(
+    updateCollectionDto: Partial<UpdateCollectionDto>,
+    user: DecodedUserObject,
+  ): Promise<AuthProfiles> {
+    const collectionId = updateCollectionDto.collectionId;
+    const authInput = updateCollectionDto.authProfiles?.[0];
+    const collection = await this.collectionRepository.get(collectionId);
+    const existingAuthNames = (collection.authProfiles || []).map((a: any) =>
+      a.name?.toLowerCase(),
+    );
+
+    const now = new Date();
+    const enrichedAuth = {
+      ...authInput,
+      authId: uuidv4(),
+      createdAt: now,
+      updatedAt: now,
+      createdBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+    };
+
+    // Unset defaultKey from others if this is the new default
+    if (authInput.defaultKey) {
+      await this.collectionRepository.unsetDefaultAuth(collectionId);
+    }
+
+    // Build update doc
+    const updateDoc: any = {
+      $push: { authProfiles: enrichedAuth },
+      $set: {
+        updatedAt: now,
+        updatedBy: {
+          id: user._id.toString(),
+          name: user.name,
+        },
+      },
+    };
+
+    if (authInput.defaultKey === true) {
+      updateDoc.$set.defaultSelectedAuthProfile = enrichedAuth.authId;
+    }
+
+    await this.collectionRepository.addAuth(collectionId, updateDoc);
+    return enrichedAuth;
+  }
+
+  async getAuthProfiles(
+    collectionId: string,
+    user: DecodedUserObject,
+  ): Promise<AuthProfiles[]> {
+    // const collectionObjectId = new ObjectId(collectionId);
+    const collection = await this.collectionRepository.get(collectionId);
+    return collection.authProfiles || [];
+  }
+
+  async updateAuthProfile(
+    payload: AuthCollection,
+    user: DecodedUserObject,
+  ): Promise<AuthProfiles> {
+    const { collectionId, authId, ...authUpdatePayload } = payload;
+
+    if (!ObjectId.isValid(collectionId)) {
+      throw new BadRequestException("Invalid collectionId");
+    }
+
+    const collection = await this.collectionRepository.get(collectionId);
+    if (!collection) {
+      throw new BadRequestException("Collection not found");
+    }
+
+    const existingAuths = collection.authProfiles || [];
+    const targetIndex = existingAuths.findIndex(
+      (auth: any) => auth.authId === authId,
+    );
+
+    if (targetIndex === -1) {
+      throw new BadRequestException("Auth profile not found");
+    }
+
+    const now = new Date();
+
+    const updatedAuth = {
+      ...existingAuths[targetIndex],
+      ...authUpdatePayload,
+      authId,
+      updatedAt: now,
+      updatedBy: {
+        id: user._id.toString(),
+        name: user.name,
+      },
+    };
+
+    const updatedAuths = existingAuths.map((auth: any) => {
+      if (auth.authId === authId) return updatedAuth;
+
+      // Clear defaultKey in others if this one is being set as default
+      if (authUpdatePayload.defaultKey === true) {
+        return { ...auth, defaultKey: false };
+      }
+
+      return auth;
+    });
+
+    const updateDoc: any = {
+      $set: {
+        authProfiles: updatedAuths,
+        updatedAt: now,
+        updatedBy: {
+          id: user._id.toString(),
+          name: user.name,
+        },
+      },
+    };
+
+    if (authUpdatePayload.defaultKey === true) {
+      updateDoc.$set.defaultSelectedAuthProfile = authId;
+    }
+
+    const result = await this.collectionRepository.updateAuth(
+      collectionId,
+      updateDoc,
+    );
+    if (result.modifiedCount === 0) {
+      throw new BadRequestException("Auth profile update failed");
+    }
+
+    return updatedAuth;
+  }
+
+  async deleteAuthProfile(
+    payload: AuthCollection,
+    user: DecodedUserObject,
+  ): Promise<string> {
+    const { collectionId, workspaceId, authId } = payload;
+    const data = await this.collectionRepository.deleteAuth(
+      collectionId,
+      workspaceId,
+      authId,
+      user,
+    );
+    return data;
+  }
+
   async updateBranchArray(
     collectionId: string,
     branch: CollectionBranch,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<UpdateResult> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
-    const user = await this.contextService.get("user");
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
     await this.checkPermission(workspaceId, user._id);
     await this.collectionRepository.get(collectionId);
     const data = await this.collectionRepository.updateBranchArray(
       collectionId,
       branch,
+      user,
     );
     return data;
   }
@@ -488,10 +701,12 @@ export class CollectionService {
   async deleteCollection(
     id: string,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<DeleteResult> {
-    const workspace =
-      await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
-    const user = await this.contextService.get("user");
+    const workspace = await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+      user._id,
+    );
     await this.checkPermission(workspaceId, user._id);
     const collection = await this.getCollection(id);
     const data = await this.collectionRepository.delete(id);
@@ -508,6 +723,7 @@ export class CollectionService {
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
+        user,
         type: UpdatesType.COLLECTION,
         workspaceId: workspaceId,
       }),
@@ -527,6 +743,7 @@ export class CollectionService {
   async getBranchData(
     collectionId: string,
     branchName: string,
+    userId: ObjectId,
   ): Promise<WithId<Branch> | void> {
     const branch = await this.branchRepository.getBranchByCollection(
       collectionId,
@@ -565,7 +782,7 @@ export class CollectionService {
     const updatedBranch: UpdateBranchDto = {
       items: branch.items,
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: userId.toString(),
     };
     await this.branchRepository.updateBranchById(
       branch._id.toJSON(),
@@ -586,17 +803,259 @@ export class CollectionService {
   async importPostmanCollection(
     jsonObj: string,
     workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<WithId<Collection>> {
     const updatedCollection =
-      await this.postmanParserService.parsePostmanCollection(jsonObj);
+      await this.postmanParserService.parsePostmanCollection(jsonObj, user);
     const newCollection = await this.importCollection(updatedCollection);
     const collectionDetails = await this.getCollection(
       newCollection.insertedId.toString(),
     );
-    await this.workspaceService.addCollectionInWorkSpace(workspaceId, {
-      id: new ObjectId(collectionDetails._id),
-      name: collectionDetails.name,
-    });
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: new ObjectId(collectionDetails._id),
+        name: collectionDetails.name,
+      },
+      user._id,
+    );
     return collectionDetails;
+  }
+
+  async createMockCollectionFromExisting(
+    collectionId: string,
+    workspaceId: string,
+    user: DecodedUserObject,
+  ): Promise<InsertOneResult> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
+
+    const originalCollection =
+      await this.collectionRepository.get(collectionId);
+
+    if (!originalCollection) {
+      throw new BadRequestException("Collection not found");
+    }
+
+    const mockItems = this.processItemsForMockCollection(
+      originalCollection.items,
+    );
+
+    const newMockCollection: Collection = {
+      name: originalCollection.name,
+      collectionType: CollectionTypeEnum.MOCK,
+      totalRequests: this.countValidRequests(mockItems),
+      createdBy: originalCollection.createdBy,
+      selectedAuthType: CollectionAuthModeEnum["No Auth"],
+      items: mockItems,
+      updatedBy: { name: originalCollection.createdBy },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isMockCollectionRunning: false,
+      activeSync: false,
+    };
+
+    const mockCollection =
+      await this.collectionRepository.addCollection(newMockCollection);
+
+    await this.updateMockCollectionUrl(mockCollection.insertedId.toString());
+
+    const insertedCollection = await this.collectionRepository.get(
+      mockCollection.insertedId.toString(),
+    );
+
+    if (insertedCollection && insertedCollection.mockCollectionUrl) {
+      insertedCollection.items = this.replaceMockRequestUrls(
+        insertedCollection.items,
+        insertedCollection.mockCollectionUrl,
+      );
+
+      await this.collectionRepository.updateCollection(
+        insertedCollection._id.toString(),
+        { items: insertedCollection.items },
+      );
+    }
+
+    await this.workspaceService.addCollectionInWorkSpace(
+      workspaceId,
+      {
+        id: insertedCollection._id,
+        name: newMockCollection.name,
+      },
+      user._id,
+    );
+
+    return mockCollection;
+  }
+
+  private processItemsForMockCollection(
+    items: CollectionItem[],
+  ): CollectionItem[] {
+    const processedItems: CollectionItem[] = [];
+
+    for (const item of items) {
+      if (item.type === ItemTypeEnum.REQUEST) {
+        const mockRequest = this.convertRequestToMockRequest(item);
+        if (mockRequest) {
+          processedItems.push(mockRequest);
+        }
+      } else if (item.type === ItemTypeEnum.FOLDER) {
+        const mockFolder = this.processFolderForMockCollection(item);
+        if (mockFolder && mockFolder.items && mockFolder.items.length > 0) {
+          processedItems.push(mockFolder);
+        }
+      }
+    }
+
+    return processedItems;
+  }
+
+  private processFolderForMockCollection(
+    folder: CollectionItem,
+  ): CollectionItem | null {
+    if (!folder.items || folder.items.length === 0) {
+      return null;
+    }
+
+    const mockRequests: CollectionItem[] = [];
+
+    for (const item of folder.items) {
+      if (item.type === ItemTypeEnum.REQUEST) {
+        const mockRequest = this.convertRequestToMockRequest(item);
+        if (mockRequest) {
+          mockRequests.push(mockRequest);
+        }
+      }
+    }
+
+    if (mockRequests.length === 0) {
+      return null;
+    }
+
+    return {
+      ...folder,
+      id: uuidv4(),
+      type: ItemTypeEnum.FOLDER,
+      items: mockRequests,
+    };
+  }
+
+  private convertRequestToMockRequest(
+    request: CollectionItem,
+  ): CollectionItem | null {
+    if (!request.request) {
+      return null;
+    }
+
+    const selectedResponse = this.getMostRecentResponse(request.items || []);
+
+    if (!selectedResponse) {
+      return {
+        ...request,
+        id: uuidv4(),
+        type: ItemTypeEnum.MOCK_REQUEST,
+        request: null as null,
+        items: [] as CollectionItem[],
+        mockRequest: {
+          ...request.request,
+          responseHeaders: [{ key: "", value: "", checked: false }],
+          responseBody: "",
+          responseStatus: "",
+          selectedResponseBodyType: ResponseBodyModeEnum["none"],
+        },
+      };
+    }
+
+    const mockRequest = {
+      ...request,
+      id: uuidv4(),
+      type: ItemTypeEnum.MOCK_REQUEST,
+      request: null as null,
+      items: [] as CollectionItem[],
+      mockRequest: {
+        ...request.request,
+        responseHeaders:
+          selectedResponse.requestResponse?.responseHeaders || [],
+        responseBody: selectedResponse.requestResponse?.responseBody || "",
+        responseStatus:
+          selectedResponse.requestResponse?.responseStatus?.split(" ")[0] || "",
+        selectedResponseBodyType:
+          selectedResponse.requestResponse?.selectedResponseBodyType ||
+          ResponseBodyModeEnum["none"],
+      },
+    };
+
+    return mockRequest;
+  }
+
+  private getMostRecentResponse(
+    items: CollectionItem[],
+  ): CollectionItem | null {
+    if (!items || items.length === 0) {
+      return null;
+    }
+
+    return items[0];
+  }
+
+  private countValidRequests(items: CollectionItem[]): number {
+    let count = 0;
+
+    for (const item of items) {
+      if (item.type === ItemTypeEnum.MOCK_REQUEST) {
+        count++;
+      } else if (item.type === ItemTypeEnum.FOLDER && item.items) {
+        count += this.countValidRequests(item.items);
+      }
+    }
+
+    return count;
+  }
+
+  private replaceMockRequestUrls(
+    items: CollectionItem[],
+    mockCollectionUrl: string,
+  ): CollectionItem[] {
+    return items.map((item) => {
+      if (item.type === ItemTypeEnum.MOCK_REQUEST && item.mockRequest) {
+        const originalUrl = item.mockRequest.url;
+        let newUrl = originalUrl;
+
+        if (originalUrl) {
+          if (originalUrl.startsWith("{{")) {
+            const pathMatch = originalUrl.match(/}}(.*)$/);
+            newUrl = pathMatch?.[1] || "";
+          } else {
+            try {
+              const urlObj = new URL(originalUrl);
+              const pathAndQuery =
+                urlObj.pathname + urlObj.search + urlObj.hash;
+              newUrl = pathAndQuery;
+            } catch (error) {
+              const pathMatch = originalUrl.match(/^https?:\/\/[^\/]+(.*)$/);
+              if (pathMatch) {
+                newUrl = pathMatch[1];
+              } else {
+                newUrl = "";
+              }
+            }
+          }
+        }
+
+        return {
+          ...item,
+          mockRequest: {
+            ...item.mockRequest,
+            url: newUrl,
+          },
+        };
+      } else if (item.type === ItemTypeEnum.FOLDER && item.items) {
+        return {
+          ...item,
+          items: this.replaceMockRequestUrls(item.items, mockCollectionUrl),
+        };
+      }
+
+      return item;
+    });
   }
 }

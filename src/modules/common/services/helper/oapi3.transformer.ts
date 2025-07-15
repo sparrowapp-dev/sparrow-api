@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from "uuid";
-import { WithId } from "mongodb";
 
 // ---- Models
 import {
@@ -16,7 +15,6 @@ import {
   Schema3RefObject,
 } from "../../models/openapi303.model";
 import { AddTo, TransformedRequest } from "../../models/collection.rxdb.model";
-import { User } from "../../models/user.model";
 
 /**
  * Creates collection items from the provided OpenAPI document and user.
@@ -26,7 +24,7 @@ import { User } from "../../models/user.model";
  */
 export function createCollectionItems(
   openApiDocument: OpenAPI303,
-  user: WithId<User>,
+  username: string,
 ) {
   const collectionItems: TransformedRequest[] = [];
 
@@ -37,7 +35,7 @@ export function createCollectionItems(
       pathName,
       pathObject,
       openApiDocument.components.securitySchemes,
-      user,
+      username,
     );
     for (const requestObject of requests) {
       // Create a new collection item for each request
@@ -51,8 +49,8 @@ export function createCollectionItems(
         source: SourceTypeEnum.SPEC,
         request: requestObject.request,
         isDeleted: false,
-        createdBy: user.name,
-        updatedBy: user.name,
+        createdBy: username,
+        updatedBy: username,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -111,7 +109,7 @@ function transformPathV3(
   pathName: string,
   pathObject: PathItemObject,
   security: any,
-  user: WithId<User>,
+  username: string,
 ) {
   const transformedObjectArray: TransformedRequest[] = [];
   for (const [methodType, pathItemObjectType] of Object.entries(pathObject)) {
@@ -154,8 +152,8 @@ function transformPathV3(
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
       },
-      createdBy: user.name,
-      updatedBy: user.name,
+      createdBy: username,
+      updatedBy: username,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

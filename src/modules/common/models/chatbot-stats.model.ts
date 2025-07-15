@@ -67,6 +67,36 @@ export class TokenStats {
 }
 
 /**
+ * TokenUsageModel class is used to store the monthly token usage of user.
+ */
+export class TokenUsageModel {
+  /**
+   * The year and month for which the token usage is recorded.
+   * Format: YYYY-MM (e.g., 2024-09).
+   */
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  yearMonth?: string;
+
+  /**
+   * The total number of GPT tokens used during the specified year and month.
+  */
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  'gpt'?: number;
+
+  /**
+   * The total number of Deep Seek tokens used during the specified year and month.
+  */
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  'deepseek'?: number;
+}
+
+/**
  * ChatBotStats class is used to store statistics and feedback related to chatbot interactions.
  */
 export class ChatBotStats {
@@ -97,6 +127,16 @@ export class ChatBotStats {
   @Type(() => TokenStats)
   @IsOptional()
   tokenStats?: TokenStats;
+
+  /**
+   * An object holding the AI model used for the interaction.
+   * This field is optional.
+   */
+  @ApiProperty({ type: TokenUsageModel })
+  @Type(() => TokenUsageModel)
+  @IsOptional()
+  aiModel?: TokenUsageModel;
+
 
   /**
    * An array of feedback entries provided by users on chatbot messages.

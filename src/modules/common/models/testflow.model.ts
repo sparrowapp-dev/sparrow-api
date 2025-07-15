@@ -178,10 +178,6 @@ export class NodeData {
   @IsOptional()
   @Type(() => RequestMetaData)
   requestData?: RequestMetaData;
-
-  @IsOptional()
-  @IsBoolean()
-  isDeleted?: boolean = false;
 }
 
 /**

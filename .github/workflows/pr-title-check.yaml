@@ -1,4 +1,4 @@
-name: "📋 Semantic Pull Requests"
+name: "PR Validation"
 
 on:
   pull_request_target:
@@ -6,17 +6,19 @@ on:
       - opened
       - edited
       - synchronize
+      - reopened
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  main:
-    name: Validate Pull Request title
+  validate:
+    name: Validate Pull Request
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
+      - name: Validate PR Title
+        uses: amannn/action-semantic-pull-request@v5
         env:
           GITHUB_TOKEN: ${{ secrets.PR_GITHUB_TOKEN }}
         with:
@@ -33,3 +35,24 @@ jobs:
             revert
             l10n
             taxonomy
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject must start with a lowercase letter.
+          validateSingleCommit: true
+          validateSingleCommitMatchesPrTitle: true
+
+      - name: Validate PR Size
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const MAX_FILES = 50;
+            const files = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            if (files.data.length > MAX_FILES) {
+              core.setFailed(`PR contains ${files.data.length} files. Maximum allowed is ${MAX_FILES}.`);
+            }

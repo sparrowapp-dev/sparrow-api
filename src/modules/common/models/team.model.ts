@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsDate,
   IsDateString,
   IsEmail,
   IsMongoId,
@@ -17,6 +18,7 @@ import { Type } from "class-transformer";
 import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
+import { Plan } from "./plan.model";
 
 export class logoDto {
   @IsString()
@@ -36,6 +38,11 @@ export class logoDto {
   size?: number;
 }
 
+export class TeamsPlan extends Plan {
+  @IsMongoId()
+  id: ObjectId;
+}
+
 export class Team {
   @IsString()
   @IsNotEmpty()
@@ -45,9 +52,28 @@ export class Team {
   @IsOptional()
   description?: string;
 
+  @IsNotEmpty()
+  plan: TeamsPlan;
+
   @IsString()
   @IsOptional()
   hubUrl?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isHubTrialExhausted?: boolean;
+
+  @IsString()
+  @IsOptional()
+  githubUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  xUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  linkedinUrl?: string;
 
   @IsOptional()
   @IsObject()
@@ -113,6 +139,10 @@ export class TeamDto {
   @IsBoolean()
   @IsOptional()
   isNewInvite?: boolean;
+
+  @IsOptional()
+  @IsDate()
+  joinedAt?: Date;
 }
 
 export class Invite {

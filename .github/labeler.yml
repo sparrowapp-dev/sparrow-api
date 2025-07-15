@@ -1,0 +1,27 @@
+# Add 'backend' label to any changes in src directory
+backend:
+- src/modules/**/*
+- src/services/**/*
+
+documentation:
+- docs/**/*
+- README.md
+- '**/*.md'
+
+dependencies:
+- package.json
+- pnpm-lock.yaml
+- yarn.lock
+
+github-actions:
+- .github/**/*
+
+tests:
+- '**/*.test.ts'
+- '**/*.spec.ts'
+- tests/**/*
+
+configuration:
+- '*.config.js'
+- '*.config.ts'
+- .env.example

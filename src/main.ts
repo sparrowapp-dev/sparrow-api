@@ -49,7 +49,13 @@ const { PORT } = process.env;
   // Create the NestJS application with Fastify adapter
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger: true, bodyLimit: 50 * 1024 * 1024 }), // Set logger and body limit
+    new FastifyAdapter({
+      logger: true,
+      bodyLimit: 50 * 1024 * 1024,
+    }),
+    {
+      rawBody: true,
+    },
   );
 
   // Use the custom WebSocket adapter to handle both WS and SocketIo
@@ -79,6 +85,16 @@ const { PORT } = process.env;
 
   // Get the underlying FastifyInstance for additional customizations
   const fastifyInstance: FastifyInstance = app.getHttpAdapter().getInstance();
+
+  // Add default parser for everything — just pass raw buffer and skip parsing
+  fastifyInstance.addContentTypeParser(
+    "*",
+    { parseAs: "buffer" },
+    (req, body, done) => {
+      // Do not parse; just pass raw Buffer
+      done(null, body);
+    },
+  );
 
   // Extend Fastify reply with custom methods
   fastifyInstance

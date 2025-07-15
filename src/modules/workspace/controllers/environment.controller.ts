@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -26,11 +27,11 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { EnvironmentType } from "@src/modules/common/models/environment.model";
 import { WorkspaceService } from "../services/workspace.service";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 @ApiBearerAuth()
 @ApiTags("environment")
 @Controller("api/workspace")
-@UseGuards(JwtAuthGuard)
 export class EnvironmentController {
   constructor(
     private readonly workspaceService: WorkspaceService,
@@ -43,25 +44,33 @@ export class EnvironmentController {
     description:
       "This will create a environment and add this environment in user's workspace",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201, description: "Environment Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Environment Failed" })
   async createCollection(
     @Body() createEnvironmentDto: CreateEnvironmentDto,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const workspaceId = createEnvironmentDto.workspaceId;
     const data = await this.environmentService.createEnvironment(
       createEnvironmentDto,
       EnvironmentType.LOCAL,
+      user,
     );
     const environment = await this.environmentService.getEnvironment(
       data.insertedId.toString(),
     );
-    await this.workspaceService.addEnvironmentInWorkSpace(workspaceId, {
-      id: environment._id,
-      name: environment.name,
-      type: environment.type,
-    });
+    await this.workspaceService.addEnvironmentInWorkSpace(
+      workspaceId,
+      {
+        id: environment._id,
+        name: environment.name,
+        type: environment.type,
+      },
+      user._id,
+    );
     const responseData = new ApiResponseService(
       "Environment Created",
       HttpStatusCode.CREATED,
@@ -75,21 +84,26 @@ export class EnvironmentController {
     summary: "Delete a Environment",
     description: "This will delete a environment",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201, description: "Removed Environment Successfully" })
   @ApiResponse({ status: 400, description: "Failed to remove Environment" })
   async deleteEnvironment(
     @Param("workspaceId") workspaceId: string,
     @Param("environmentId") environmentId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const environment = await this.environmentService.deleteEnvironment(
       environmentId,
       workspaceId,
+      user,
     );
 
     await this.workspaceService.deleteEnvironmentInWorkSpace(
       workspaceId.toString(),
       environmentId,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Environment Removed",
@@ -108,13 +122,42 @@ export class EnvironmentController {
     status: 200,
     description: "Fetch Environment Request Received",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 400, description: "Fetch Environment Request Failed" })
   async getEnvironment(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const environment = await this.environmentService.getAllEnvironments(
+      workspaceId,
+      user._id,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      environment,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get("public/:workspaceId/environment")
+  @ApiOperation({
+    summary: "Get All Public Environments",
+    description: "This will get all environments of a public workspace",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Fetch Environment Request Received",
+  })
+  @ApiResponse({ status: 400, description: "Fetch Environment Request Failed" })
+  async getPublicEnvironments(
+    @Param("workspaceId") workspaceId: string,
+    @Res() res: FastifyReply,
   ) {
     const environment =
-      await this.environmentService.getAllEnvironments(workspaceId);
+      await this.environmentService.getAllPublicEnvironments(workspaceId);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -128,6 +171,7 @@ export class EnvironmentController {
     summary: "Update An Environment",
     description: "This will update an environment",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Environment Updated Successfully" })
   @ApiResponse({ status: 400, description: "Update Environment Failed" })
   async updateEnvironment(
@@ -135,11 +179,14 @@ export class EnvironmentController {
     @Param("environmentId") environmentId: string,
     @Body() updateEnvironmentDto: Partial<UpdateEnvironmentDto>,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     await this.environmentService.updateEnvironment(
       environmentId,
       updateEnvironmentDto,
       workspaceId,
+      user,
     );
 
     const environment =
@@ -148,6 +195,7 @@ export class EnvironmentController {
       workspaceId,
       environmentId,
       updateEnvironmentDto.name,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -166,15 +214,19 @@ export class EnvironmentController {
     status: 200,
     description: "Fetch Environment Request Received",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 400, description: "Fetch Environment Request Failed" })
   async getIndividualEnvironment(
     @Param("workspaceId") workspaceId: string,
     @Param("environmentId") environmentId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
+    const user = request.user;
     const environment = await this.environmentService.getIndividualEnvironment(
       workspaceId,
       environmentId,
+      user._id,
     );
     const responseData = new ApiResponseService(
       "Success",

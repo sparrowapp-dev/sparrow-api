@@ -8,7 +8,6 @@ import { CollectionItem } from "@src/modules/common/models/collection.model";
 
 // ---- Service
 import { WorkspaceService } from "./workspace.service";
-import { ContextService } from "@src/modules/common/services/context.service";
 
 // ---- Repository
 import { BranchRepository } from "../repositories/branch.repository";
@@ -23,12 +22,10 @@ import { BranchRepository } from "../repositories/branch.repository";
 export class BranchService {
   /**
    * Constructor for BranchService.
-   * @param contextService - Service to get context-related data like the current user.
    * @param branchRepository - Repository to interact with the branch data store.
    * @param workspaceService - Service to handle workspace-specific validations and operations.
    */
   constructor(
-    private readonly contextService: ContextService,
     private readonly branchRepository: BranchRepository,
     private readonly workspaceService: WorkspaceService,
   ) {}
@@ -40,14 +37,14 @@ export class BranchService {
    */
   async createBranch(
     createBranchDto: createBranchDto,
+    userId: ObjectId,
   ): Promise<InsertOneResult<Branch>> {
-    const user = this.contextService.get("user");
     const newBranch: Branch = {
       name: createBranchDto.name,
       items: createBranchDto.items,
       collectionId: new ObjectId(createBranchDto.collectionId),
-      createdBy: user._id,
-      updatedBy: user._id,
+      createdBy: userId.toString(),
+      updatedBy: userId.toString(),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -67,12 +64,13 @@ export class BranchService {
     workspaceId: string,
     branchId: string,
     items: CollectionItem[],
+    userId: ObjectId,
   ): Promise<void> {
-    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId);
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, userId);
     const updatedParams = {
       items: items,
       updatedAt: new Date(),
-      updatedBy: this.contextService.get("user")._id,
+      updatedBy: userId.toString(),
     };
     await this.branchRepository.updateBranchById(branchId, updatedParams);
   }
