@@ -34,13 +34,9 @@ import {
   CreateSubscriptionDto,
   SubscriptionResponseDto,
   UpdateSubscriptionDto,
-  WebhookEventDto,
   CancelSubscriptionDto,
   ReactivateSubscriptionDto,
 } from "../payloads/stripe.payload";
-import { StripeSubscriptionService } from "../services/stripe-subscription.service";
-import { StripeWebhookGateway } from "../gateways/stripe-webhook.gateway";
-import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 import { StripeWebhookHelper } from "../helpers/stripe-webhook.helper";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -62,9 +58,6 @@ export class StripeController {
 
   constructor(
     @Optional() @Inject(StripeService) private readonly stripeService: any,
-    private readonly stripeSubscriptionService: StripeSubscriptionService,
-    private readonly stripeWebhookGateway: StripeWebhookGateway,
-    private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
     private readonly stripeWebhookHelper: StripeWebhookHelper,
   ) {
     this.isStripeAvailable = !!this.stripeService;
@@ -304,6 +297,8 @@ export class StripeController {
         updateSubscriptionDto.paymentMethodId,
         updateSubscriptionDto.prorationBehavior,
         updateSubscriptionDto.atPeriodEnd,
+        updateSubscriptionDto.seats,
+        updateSubscriptionDto.paymentBehavior
       );
 
       return subscription;

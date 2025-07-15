@@ -31,6 +31,7 @@ export enum SubscriptionStatus {
   UNPAID = "unpaid",
   PENDING = "pending",
   PAYMENT_FAILED = "payment_failed",
+  ACTION_REQUIRED = "action_required",
   DELETED = "deleted",
   VOIDED = "voided",
 }
@@ -51,6 +52,7 @@ export enum BillingActorType {
  */
 export enum BillingSource {
   STRIPE_WEBHOOK = "stripe-webhook",
+  STRIPE_API = "stripe-api",
   BILLING_MAINTENANCE = "billing-maintenance",
   ADMIN_PANEL = "admin-panel",
   API_CALL = "api-call",
