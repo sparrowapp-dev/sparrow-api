@@ -94,6 +94,9 @@ export class PaymentEmailService {
    * Send payment success email
    */
   private async sendPaymentSuccessEmail(data: PaymentEmailData): Promise<void> {
+    if (!data.amount || data.amount === 0) {
+      return;
+    }
     const transporter = this.emailService.createTransporter();
 
     const mailOptions = {
@@ -237,6 +240,11 @@ export class PaymentEmailService {
    * Send plan upgraded email
    */
   private async sendPlanUpgradedEmail(data: PaymentEmailData): Promise<void> {
+    // Do not send upgrade email if amount is 0 or undefined
+    if (!data.amount || data.amount === 0) {
+      return;
+    }
+
     const transporter = this.emailService.createTransporter();
 
     // Get plan-specific features

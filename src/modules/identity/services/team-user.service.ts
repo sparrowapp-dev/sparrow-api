@@ -21,6 +21,7 @@ import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { TeamService } from "./team.service";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "@src/modules/common/services/email.service";
+import { StripeSubscriptionService } from "@src/modules/billing/services/stripe-subscription.service";
 import { TeamDto } from "../payloads/team.payload";
 import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
@@ -33,12 +34,12 @@ export class TeamUserService {
   constructor(
     private readonly teamRepository: TeamRepository,
     private readonly userInvitesRepository: UserInvitesRepository,
-
     private readonly userRepository: UserRepository,
     private readonly producerService: ProducerService,
     private readonly teamService: TeamService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly stripeSubscriptionService: StripeSubscriptionService,
   ) {}
 
   async HasPermissionToRemove(
@@ -1091,6 +1092,25 @@ export class TeamUserService {
       new ObjectId(payload.teamId),
       sender._id,
     );
+
+    // Get team data for license checking
+    const team = await this.teamRepository.findTeamByTeamId(
+      new ObjectId(payload.teamId),
+    );
+
+    // License-based seat management: Check available licenses and purchase additional seats if needed
+    // The method will internally categorize users and handle license allocation appropriately
+    const licenseCheckResult =
+      await this.stripeSubscriptionService.checkAndManageLicenses(
+        team,
+        payload.users,
+        this.userRepository,
+      );
+
+    if (!licenseCheckResult.success) {
+      throw new BadRequestException(licenseCheckResult.message);
+    }
+
     for (const userEmail of payload.users) {
       // Trim spaces and convert the email to lowercase
       const sanitizedEmail = userEmail.trim().toLowerCase();
