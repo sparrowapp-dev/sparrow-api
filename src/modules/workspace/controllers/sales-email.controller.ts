@@ -125,4 +125,31 @@ export class SalesEmailController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post("user-trial-confirmation-mail/:hubId")
+  @ApiOperation({
+    summary: "Send a confirmation email",
+    description: "Send a confirmation email to the user for trial",
+  })
+  @ApiResponse({ status: 201, description: "Email Sent" })
+  @ApiResponse({ status: 400, description: "Failed to sent email" })
+  async sendUserConfirmationEmail(
+    @Param("hubId") hubId: string,
+    @Body() payload: { trailFlow: string; trialFrequency: string },
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    // Retrieve the added mail record for confirmation
+    await this.salesEmailService.sendUserTrialConfirmationEmail(
+      hubId,
+      payload.trailFlow,
+      payload.trialFrequency,
+    );
+    const responseData = new ApiResponseService(
+      "Email Sent Successfully",
+      HttpStatusCode.CREATED,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }

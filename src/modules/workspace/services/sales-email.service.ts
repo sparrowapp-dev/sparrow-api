@@ -8,6 +8,7 @@ import { SalesEmail } from "@src/modules/common/models/sales-email.model";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "@src/modules/identity/services/team.service";
+import { PricingService } from "./pricing.repository";
 
 /**
  * Sales Email Service
@@ -22,6 +23,7 @@ export class SalesEmailService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly teamService: TeamService,
+    private readonly pricingService: PricingService,
   ) {}
 
   /**
@@ -172,6 +174,68 @@ export class SalesEmailService {
         trialEnd: formattedEndDate,
         amount: `$${amount.toFixed(2)}/month`,
         hubUrl: hubUrl,
+        trailFlow: "Standard",
+      },
+      subject: `Trial Confirmation email for ${team.name} Hub`,
+    };
+    const promise = [this.emailService.sendEmail(transporter, mailOptions)];
+    await Promise.all(promise);
+  }
+
+  async sendUserTrialConfirmationEmail(
+    hubId: string,
+    trialFlow: string,
+    trialFrequency: string,
+  ): Promise<void> {
+    const team: any = await this.teamService.get(hubId);
+    const pricingDetails = await this.pricingService.getpricingDetails();
+    // Calculate start and end dates
+    const startDate = team?.billing?.current_period_start || new Date();
+    const endDate = team?.billing?.current_period_end;
+    if (!endDate) {
+      endDate.setDate(startDate.getDate() + 14);
+    }
+
+    const formattedStartDate = await this.formatDate(startDate);
+    const formattedEndDate = await this.formatDate(endDate);
+    const plan = pricingDetails.plans.find(
+      (p) => p.tier.toLowerCase() === trialFlow.toLowerCase(),
+    );
+
+    let price = 0;
+    if (plan) {
+      const billingOption = plan.billing.find(
+        (b) => b.interval.toLowerCase() === trialFrequency.toLowerCase(),
+      );
+      if (billingOption) {
+        price = billingOption.price * team.users.length;
+      }
+    }
+    const invitedUserCount = team?.invites ? team.invites.length : 0;
+    const amount = price * (team.users.length + invitedUserCount);
+    const user = team.users.find((u: any) => u.role === "owner");
+    await this.teamService.updateHubTrialAndPlan(team._id.toString());
+
+    const capitalizedFlow = trialFlow
+      ? trialFlow.charAt(0).toUpperCase() + trialFlow.slice(1)
+      : "";
+    const transporter = this.emailService.createTransporter();
+    const baseURL = this.configService.get("admin.baseURL");
+    const hubUrl = `${baseURL}/hubs/workspace/${team._id.toString()}`;
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: user.email,
+      text: "Trial Confirmation Email",
+      template: "salesTrialEmail2",
+      context: {
+        userName: user.name,
+        hubName: team.name,
+        userCount: team.users.length + invitedUserCount,
+        trialStart: formattedStartDate,
+        trialEnd: formattedEndDate,
+        amount: `$${amount.toFixed(2)}/${trialFrequency.toLowerCase() === "monthly" ? "month" : "year"}`,
+        hubUrl: hubUrl,
+        trialFlow: capitalizedFlow,
       },
       subject: `Trial Confirmation email for ${team.name} Hub`,
     };
