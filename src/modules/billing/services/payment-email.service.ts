@@ -223,7 +223,6 @@ export class PaymentEmailService {
           ? this.formatDate(data.billingPeriodEnd)
           : "N/A",
         interval: data.interval || "month",
-        receiptUrl: data.receiptUrl,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
