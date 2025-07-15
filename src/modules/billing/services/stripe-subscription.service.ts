@@ -1488,8 +1488,7 @@ export class StripeSubscriptionService {
       if (team.billing?.scheduledDowngrade) {
         return {
           success: false,
-          message:
-            "Invite blocked due to your scheduled downgrade.",
+          message: "Invite blocked due to your scheduled downgrade.",
         };
       }
 
@@ -1598,7 +1597,8 @@ export class StripeSubscriptionService {
 
           return {
             success: false,
-            message: `Seat update requires payment authorization. Please complete the 3D Secure authentication to finalize ${additionalSeatsNeeded} additional seats.`,
+            message:
+              "Invite failed. Please complete payment authentication to send invites.",
           };
         }
 
