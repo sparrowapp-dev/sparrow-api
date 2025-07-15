@@ -90,8 +90,7 @@ export class TestflowService {
       testflowData.insertedId.toString(),
     );
     const currentWorkspaceObject = new ObjectId(createTestflowDto.workspaceId);
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceReposistory.updateWorkspaceById(
@@ -147,8 +146,7 @@ export class TestflowService {
     );
     const updateMessage = `"${testflow.name}" testflow is deleted from "${workspace.name}" workspace`;
     const currentWorkspaceObject = new ObjectId(workspaceId);
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceReposistory.updateWorkspaceById(
@@ -239,8 +237,7 @@ export class TestflowService {
       });
     }
     const currentWorkspaceObject = new ObjectId(workspaceId);
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceReposistory.updateWorkspaceById(

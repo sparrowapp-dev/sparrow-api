@@ -89,8 +89,7 @@ export class EnvironmentService {
       const currentWorkspaceObject = new ObjectId(
         createEnvironmentDto.workspaceId,
       );
-      const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-        id: currentWorkspaceObject.toString(),
+      const updateWorkspaceData: Partial<Workspace> = {
         updatedAt: new Date(),
       };
       await this.workspaceReposistory.updateWorkspaceById(
@@ -144,8 +143,7 @@ export class EnvironmentService {
     const data = await this.environmentRepository.delete(id);
     const updateMessage = `"${environment.name}" environment is deleted from "${workspace.name}" workspace`;
     const currentWorkspaceObject = new ObjectId(workspaceId);
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceReposistory.updateWorkspaceById(
@@ -239,8 +237,7 @@ export class EnvironmentService {
       });
     }
     const currentWorkspaceObject = new ObjectId(workspaceId);
-    const updateWorkspaceData: Partial<WorkspaceDtoForIdDocument> = {
-      id: currentWorkspaceObject.toString(),
+    const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
     };
     await this.workspaceReposistory.updateWorkspaceById(
