@@ -568,6 +568,7 @@ export class TeamUserService {
       teamDetails.name,
       prevOwnerDetails.name.split(" ")[0],
       prevOwnerDetails.email,
+      newOwnerDetails.name.split(" ")[0],
     );
 
     //New owner Email
@@ -736,6 +737,7 @@ export class TeamUserService {
     teamName: string,
     OwnerName: string,
     email: string,
+    senderName: string,
   ): Promise<void> {
     const transporter = this.emailService.createTransporter();
 
@@ -747,6 +749,7 @@ export class TeamUserService {
       context: {
         ownerName: OwnerName,
         teamName: teamName,
+        senderName: senderName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
