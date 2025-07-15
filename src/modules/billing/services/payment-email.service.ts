@@ -335,9 +335,7 @@ export class PaymentEmailService {
         billingAmount: this.formatAmount(data.amount, data.currency),
         billingDate: this.formatDate(data.nextPaymentDate),
         cardLast4: data.cardLast4 || "****",
-        updatePaymentUrl:
-          data.updatePaymentUrl ||
-          `${this.configService.get("admin.baseURL")}/billing/billingInformation/${data.hubId}`,
+        updatePaymentUrl: `${this.configService.get("admin.baseURL")}/billing/billingInformation/${data.hubId}`,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(

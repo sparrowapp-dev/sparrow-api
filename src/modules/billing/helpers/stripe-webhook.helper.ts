@@ -152,13 +152,28 @@ export class StripeWebhookHelper {
    */
   private detectResubscription(event: any): boolean {
     const previousAttributes = event.data.previous_attributes;
+    const subscription = event.data.object;
 
-    // Check if this is a reactivation by looking at the previous attributes
+    // Step 1: Existing logic — look for metadata change in previous attributes
     if (previousAttributes) {
-      // Check for reactivatedAt in metadata (custom field)
       const hasReactivatedMetadata = previousAttributes.metadata?.reactivatedAt;
+      if (hasReactivatedMetadata) return true;
+    }
 
-      return !!hasReactivatedMetadata;
+    // Step 2: Fallback — check current `reactivatedAt` timestamp and time window
+    // this is done to ensure we catch initial reactivation which stripe webhook may not always send with previous attribute metadata
+    const reactivatedAt =
+      subscription?.metadata?.reactivatedAt;
+
+    if (reactivatedAt) {
+      const reactivatedTime = new Date(reactivatedAt).getTime();
+      const now = Date.now();
+      const fiveSecondsInMs = 5000;
+
+      // Return true only if reactivatedAt is within the last 5 seconds
+      if (now - reactivatedTime <= fiveSecondsInMs) {
+        return true;
+      }
     }
 
     return false;
