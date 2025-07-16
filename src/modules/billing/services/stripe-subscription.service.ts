@@ -338,9 +338,6 @@ export class StripeSubscriptionService {
       billing_reason: billingReason,
       current_period_start: periodDates.currentPeriodStart,
       current_period_end: periodDates.currentPeriodEnd,
-      requires_action_at_period_end:
-        billingReason === "subscription_update" ||
-        billingReason === "subscription_cycle",
       failed_at: new Date(),
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
@@ -1128,7 +1125,7 @@ export class StripeSubscriptionService {
    */
   async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
     try {
-      const currentDate = new Date();
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); //3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
           currentDate,
@@ -1136,6 +1133,28 @@ export class StripeSubscriptionService {
 
       for (const team of teams) {
         try {
+          // Cancel Stripe subscription manually before downgrading
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
+
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
           // Find the community plan for downgrade
           const communityPlan =
             await this.stripeSubscriptionRepo.findPlanByName(
@@ -1152,11 +1171,11 @@ export class StripeSubscriptionService {
 
           // Update billing details for expired subscription
           const billingDetails = {
-            ...team.billing,
+            paymentProviders: team.billing?.paymentProviders || [],
             status: SubscriptionStatus.CANCELED,
+            billingType: BillingType.EXPIRED_SUBSCRIPTION,
             canceled_at: new Date(),
             cancellation_reason: "payment_failed_period_expired",
-            requires_action_at_period_end: false,
             updatedBy: "system-maintenance-job",
           };
 
@@ -1215,7 +1234,7 @@ export class StripeSubscriptionService {
    */
   async checkAndRevertExpiredTrials(): Promise<void> {
     try {
-      const currentDate = new Date();
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); //3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredTrials(
           currentDate,
@@ -1223,6 +1242,28 @@ export class StripeSubscriptionService {
 
       for (const team of teams) {
         try {
+          // Cancel Stripe subscription manually before downgrading for expired trials
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
+
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for expired trial team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
           // Find the community plan for downgrade
           const communityPlan =
             await this.stripeSubscriptionRepo.findPlanByName(
@@ -1239,7 +1280,7 @@ export class StripeSubscriptionService {
 
           // Update billing details for expired trial
           const billingDetails = {
-            ...team.billing,
+            paymentProviders: team.billing?.paymentProviders || [],
             status: SubscriptionStatus.CANCELED,
             billingType: BillingType.EXPIRED_TRIAL,
             canceled_at: new Date(),

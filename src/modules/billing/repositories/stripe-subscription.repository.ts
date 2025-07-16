@@ -110,8 +110,8 @@ export class StripeSubscriptionRepository {
         .collection(Collections.TEAM)
         .find({
           "billing.status": SubscriptionStatus.PAYMENT_FAILED,
-          "billing.requires_action_at_period_end": true,
           "billing.current_period_end": { $lt: currentDate },
+
         })
         .toArray();
     } catch (error) {
