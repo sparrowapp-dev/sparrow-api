@@ -414,7 +414,6 @@ export class TeamService {
           plan: teamData.plan,
           workspaces: [],
           description: senderData?.name || "No creator found",
-          isNewInvite: true
         } as any);
       }
     }
