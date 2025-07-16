@@ -1584,10 +1584,11 @@ export class StripeSubscriptionService {
             newSeats: newTotalSeats.toString(),
           },
           undefined, // default_payment_method (optional)
-          undefined, // prorationBehavior (optional)
+          "always_invoice", // prorationBehavior (optional)
           false, // atPeriodEnd (optional)
           newTotalSeats, // seats
           "allow_incomplete", // payment_behavior
+          "unchanged", // billing cycle_anchor
         );
 
         // Handle 3DS authentication required
