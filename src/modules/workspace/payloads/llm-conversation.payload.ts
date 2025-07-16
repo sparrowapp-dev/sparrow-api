@@ -92,6 +92,16 @@ export class UserConversationModel {
   time?: number;
 }
 
+export class VariableItem {
+
+  @IsString()
+  @ApiProperty({ example: "api_name" })
+  key: string;
+
+  @ApiProperty({ example: "getuserdata" })
+  value: any;
+}
+
 export class ConversationModel {
   /**
    * Unique identifier for this conversation.
@@ -164,6 +174,23 @@ export class ConversationModel {
   @IsOptional()
   @ApiProperty({ example: "[blobStorage url]" })
   fileURL?: [];
+
+  /**
+   * Variables used in the Conversation. It should be in dict format for storing multiple
+   */
+  @IsOptional()
+  @Type(() => VariableItem)
+  @ApiProperty({
+    isArray: true,
+    type: VariableItem,
+    example: [
+      { key: "api_name", value: "getuserdata" },
+      { key: "user_id", value: "user_123" },
+      { key: "language", value: "en" }
+    ]
+  })
+  variables?: VariableItem[];
+  
 
   /**
    * Array of message entries in the conversation.
