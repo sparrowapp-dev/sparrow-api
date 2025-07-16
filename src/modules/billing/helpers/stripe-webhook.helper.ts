@@ -162,8 +162,7 @@ export class StripeWebhookHelper {
 
     // Step 2: Fallback — check current `reactivatedAt` timestamp and time window
     // this is done to ensure we catch initial reactivation which stripe webhook may not always send with previous attribute metadata
-    const reactivatedAt =
-      subscription?.metadata?.reactivatedAt;
+    const reactivatedAt = subscription?.metadata?.reactivatedAt;
 
     if (reactivatedAt) {
       const reactivatedTime = new Date(reactivatedAt).getTime();
