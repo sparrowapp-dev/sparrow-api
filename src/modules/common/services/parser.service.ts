@@ -114,6 +114,7 @@ export class ParserService {
           name: user.name,
         },
         syncedAt: openApiDocument?.isActiveSyncEnabled ? new Date() : null,
+        authProfiles:[]
       };
     }
 
