@@ -146,6 +146,9 @@ export class PaymentEmailService {
         planName: data.planName,
         amountDue: this.formatAmount(data.amount, data.currency),
         failureDate: this.formatDate(data.paymentDate),
+        nextRetryDate: this.formatDate(data.paymentDate, {
+          grace_period: true,
+        }),
         failureReason: data.failureReason || "Payment could not be processed",
         fixPaymentUrl: data.receiptUrl,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
@@ -441,10 +444,18 @@ export class PaymentEmailService {
   }
 
   /**
-   * Format date for display
+   * Format date for display, with optional grace period (+3 days)
    */
-  private formatDate(date: Date | number): string {
-    const d = typeof date === "number" ? new Date(date * 1000) : date;
+  private formatDate(
+    date: Date | number,
+    options?: { grace_period?: boolean },
+  ): string {
+    let d = typeof date === "number" ? new Date(date * 1000) : new Date(date);
+
+    if (options?.grace_period) {
+      d.setDate(d.getDate() + 3);
+    }
+
     return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
