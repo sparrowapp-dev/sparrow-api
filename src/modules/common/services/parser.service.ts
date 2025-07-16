@@ -114,7 +114,7 @@ export class ParserService {
           name: user.name,
         },
         syncedAt: openApiDocument?.isActiveSyncEnabled ? new Date() : null,
-        authProfiles:[]
+        authProfiles: []
       };
     }
 
@@ -215,6 +215,7 @@ export class ParserService {
         id: user._id.toString(),
         name: user.name,
       },
+      authProfiles: []
     };
     const insertedCollection =
       await this.collectionService.importCollection(collection);
