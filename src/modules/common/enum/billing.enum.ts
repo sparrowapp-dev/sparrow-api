@@ -16,6 +16,7 @@ export enum BillingType {
   PAID = "paid",
   DISCOUNTED = "discounted",
   INTERNAL = "internal",
+  EXPIRED_SUBSCRIPTION = "expired_subscription",
 }
 
 /**
