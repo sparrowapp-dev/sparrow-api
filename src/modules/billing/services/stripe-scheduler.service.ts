@@ -18,7 +18,7 @@ export class StripeSchedulerService {
    *
    * This consolidated job handles both Stripe-managed and manually-managed billing scenarios
    */
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleBillingMaintenance() {
     try {
       // Handle failed payments that require action at period end
