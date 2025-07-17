@@ -1125,7 +1125,7 @@ export class StripeSubscriptionService {
    */
   async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
     try {
-      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); //3 days ago
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 600 * 100); //3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
           currentDate,
@@ -1185,6 +1185,18 @@ export class StripeSubscriptionService {
             communityPlan,
             billingDetails,
           );
+
+          // Send plan downgrade email notification
+          if (this.paymentEmailHelper && team.plan?.name) {
+            try {
+              await this.paymentEmailHelper.sendDowngradedToCommunityEmail(
+                team,
+                team.plan.name, // Previous plan
+              );
+            } catch (error) {
+              console.error("Error sending downgraded to community email:", error);
+            }
+          }
 
           // Get plan limits for audit tracking
           let planLimits:
@@ -1296,6 +1308,18 @@ export class StripeSubscriptionService {
             billingDetails,
           );
 
+          // Send plan downgrade email notification
+          if (this.paymentEmailHelper && team.plan?.name) {
+            try {
+              await this.paymentEmailHelper.sendDowngradedToCommunityEmail(
+                team,
+                team.plan.name, // Previous plan
+              );
+            } catch (error) {
+              console.error("Error sending downgraded to community email:", error);
+            }
+          }
+
           // Get plan limits for audit tracking
           let planLimits:
             | { previous: Record<string, any>; new: Record<string, any> }
@@ -1331,6 +1355,51 @@ export class StripeSubscriptionService {
       }
     } catch (error) {
       console.error("Error checking and reverting expired trials:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send subscription expired emails immediately when subscriptions/trials expire
+   * This method should be called by a scheduled job/cron - runs daily
+   */
+  async sendSubscriptionExpiredEmails(): Promise<void> {
+    try {
+      const currentDate = new Date();
+
+      // Find teams with expired failed subscriptions and trials (current day)
+      const expiredTeams =
+        await this.stripeSubscriptionRepo.findTeamsWithExpiredBilling(
+          currentDate,
+        );
+
+      for (const team of expiredTeams) {
+        try {
+          // Check if email was already sent
+          if (team.billing?.subscription_expired_email_sent) {
+            continue;
+          }
+
+          // Send subscription expired email
+          await this.paymentEmailHelper.sendSubscriptionExpiredEmail(team);
+
+          // Mark email as sent in billing object
+          await this.stripeSubscriptionRepo.updateTeamById(
+            team._id.toString(),
+            {
+              "billing.subscription_expired_email_sent": new Date(),
+            },
+          );
+        } catch (error) {
+          console.error(
+            `Error sending subscription expired email for team ${team._id}:`,
+            error,
+          );
+          // Continue with other teams even if one fails
+        }
+      }
+    } catch (error) {
+      console.error("Error sending subscription expired emails:", error);
       throw error;
     }
   }
