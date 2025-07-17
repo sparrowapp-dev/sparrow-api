@@ -639,4 +639,17 @@ export class UserService {
   async updateLastActive(userId: string) {
     await this.userRepository.updateLastActiveQuietly(userId);
   }
+
+  /**
+   * Returns the isUserTrialExhausted property for the given user email.
+   * @param email - user's email
+   * @returns boolean
+   */
+  async getUserTrialExhaustedStatus(email: string): Promise<boolean> {
+    const user = await this.getUserByEmail(email.toLowerCase());
+    if (!user) {
+      throw new BadRequestException("User does not exist");
+    }
+    return user.isUserTrialExhausted ?? false;
+  }
 }
