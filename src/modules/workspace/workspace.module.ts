@@ -126,12 +126,9 @@ import { EncryptionService } from "../common/services/encryption.service";
     UserLimitRepository,
     SalesEmailService,
     SalesEmailRepository,
-<<<<<<< HEAD
-    EncryptionService
-=======
+    EncryptionService,
     PricingService,
     PricingRepository,
->>>>>>> 406e26c40bc131ae72cd0c24f15ac353f4777e34
   ],
   exports: [
     CollectionService,
