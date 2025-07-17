@@ -19,7 +19,7 @@ export class StripeSchedulerService {
    *
    * This consolidated job handles both Stripe-managed and manually-managed billing scenarios
    */
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleBillingMaintenance() {
     try {
       // Send subscription expired emails for newly expired subscriptions/trials (immediate)

@@ -39,7 +39,6 @@ export interface PaymentEmailData {
   updatePaymentUrl?: string;
   nameOnCard?: string;
   updatedDate?: string;
-  // New fields for action required email
   totalSeats?: number;
   usedSeats?: number;
   availableSeats?: number;
