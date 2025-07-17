@@ -44,6 +44,8 @@ import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
 import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
 import { Workspace, WorkspaceType } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { EncryptionService } from "@src/modules/common/services/encryption.service";
+
 @Injectable()
 export class CollectionService {
   constructor(
@@ -54,6 +56,7 @@ export class CollectionService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
+    private readonly cryptoService: EncryptionService
   ) {}
 
   async createCollection(
@@ -424,13 +427,54 @@ export class CollectionService {
   ): Promise<WithId<Collection>[]> {
     await this.checkPermission(id, user._id);
     const workspace = await this.workspaceRepository.get(id);
-    const collectionIds =
-      workspace.collection?.map((c) => c.id.toString()) || [];
+
+  
+    // ✅ Only define this once
+    const decryptAuthValuesInItems = (items: any[]) => {
+      const stack = [...items]; // Avoid recursion
+
+      while (stack.length > 0) {
+        const item = stack.pop();
+
+        if (!item) continue;
+
+        if (item.type === 'AI_REQUEST') {
+          const apiKeyAuth = item?.aiRequest?.auth?.apiKey;
+          if (apiKeyAuth && typeof apiKeyAuth.authValue === 'string') {
+            try {
+              apiKeyAuth.authValue = this.cryptoService.decrypt(apiKeyAuth.authValue);
+            } catch (error) {
+              console.warn('Failed to decrypt authValue:', error);
+            }
+          }
+        }
+
+        if (item.type === 'FOLDER' && Array.isArray(item.items)) {
+          stack.push(...item.items);
+        }
+      }
+    };
+
+    const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
     if (collectionIds.length === 0) return [];
     // Bulk fetch all collections
-    const collections =
-      await this.collectionRepository.getCollectionsByIds(collectionIds);
-    return collections;
+    const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
+
+    const decryptedCollections = [];
+    // 🔄 Only the minimum loop remains
+    for (let i = 0; i < collections?.length; i++) {
+      // const collection = await this.collectionRepository.get(
+      //   workspace.collection[i].id.toString(),
+      // );
+
+      if (Array.isArray(collections[i].items)) {
+        decryptAuthValuesInItems(collections[i].items);
+      }
+
+      decryptedCollections.push(collections[i]);
+    }
+  
+    return decryptedCollections;
   }
 
   async getAllPublicWorkspaceCollections(
