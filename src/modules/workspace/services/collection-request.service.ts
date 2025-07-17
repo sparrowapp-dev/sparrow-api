@@ -37,6 +37,7 @@ import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
+import { EncryptionService } from "@src/modules/common/services/encryption.service";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -45,6 +46,7 @@ export class CollectionRequestService {
     private readonly workspaceService: WorkspaceService,
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
+    private readonly encryptionService: EncryptionService
   ) {}
 
   async addFolder(
@@ -1400,7 +1402,22 @@ export class CollectionRequestService {
     };
     let updateMessage = ``;
     if (aiRequest.items.type === ItemTypeEnum.AI_REQUEST) {
-      aiRequestObj.aiRequest = aiRequest.items.aiRequest;
+      // Encrypt only apiKey.authValue
+      const encryptedAuthValue = this.encryptionService.encrypt(
+        aiRequest.items.aiRequest.auth.apiKey.authValue as string,
+      );
+
+      aiRequestObj.aiRequest = {
+        ...aiRequest.items.aiRequest,
+        auth: {
+          ...aiRequest.items.aiRequest.auth,
+          apiKey: {
+            ...aiRequest.items.aiRequest.auth.apiKey,
+            authValue: encryptedAuthValue,
+          },
+        },
+      };
+
       await this.collectionReposistory.addAiRequest(
         aiRequest.collectionId,
         aiRequestObj,
@@ -1415,15 +1432,44 @@ export class CollectionRequestService {
           workspaceId: aiRequest.workspaceId,
         }),
       });
-      return aiRequestObj;
+
+      // Decrypt before returning
+      return {
+        ...aiRequestObj,
+        aiRequest: {
+          ...aiRequestObj.aiRequest,
+          auth: {
+            ...aiRequestObj.aiRequest.auth,
+            apiKey: {
+              ...aiRequestObj.aiRequest.auth.apiKey,
+              authValue: this.encryptionService.decrypt(
+                aiRequestObj.aiRequest.auth.apiKey.authValue as string,
+              ),
+            },
+          },
+        },
+      };
     } else {
+      // Encrypt only apiKey.authValue
+      const encryptedAuthValue = this.encryptionService.encrypt(
+        aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
+      );
       aiRequestObj.items = [
         {
           id: uuidv4(),
           name: aiRequest.items.items.name,
           type: aiRequest.items.items.type,
           description: aiRequest.items.items.description,
-          aiRequest: { ...aiRequest.items.items.aiRequest },
+          aiRequest: {
+            ...aiRequest.items.items.aiRequest,
+            auth: {
+              ...aiRequest.items.items.aiRequest.auth,
+              apiKey: {
+                ...aiRequest.items.items.aiRequest.auth.apiKey,
+                authValue: encryptedAuthValue,
+              },
+            },
+          },
           source: SourceTypeEnum.USER,
           createdBy: user?.name,
           updatedBy: user?.name,
@@ -1446,7 +1492,25 @@ export class CollectionRequestService {
           workspaceId: aiRequest.workspaceId,
         }),
       });
-      return aiRequestObj.items[0];
+
+      // Decrypt before returning
+      const decryptedItem = {
+        ...aiRequestObj.items[0],
+        aiRequest: {
+          ...aiRequestObj.items[0].aiRequest,
+          auth: {
+            ...aiRequestObj.items[0].aiRequest.auth,
+            apiKey: {
+              ...aiRequestObj.items[0].aiRequest.auth.apiKey,
+              authValue: this.encryptionService.decrypt(
+                aiRequestObj.items[0].aiRequest.auth.apiKey.authValue as string,
+              ),
+            },
+          },
+        },
+      };
+
+      return decryptedItem;
     }
   }
 
@@ -1468,12 +1532,20 @@ export class CollectionRequestService {
       user._id,
     );
     await this.checkPermission(aiRequest.workspaceId, user._id);
+    // Encrypt apiKey.authValue before updating
+    aiRequest.items.aiRequest.auth.apiKey.authValue = this.encryptionService.encrypt(String(aiRequest.items.aiRequest.auth.apiKey.authValue),);
     const collection = await this.collectionReposistory.updateAiRequest(
       aiRequest.collectionId,
       aiRequestId,
       aiRequest,
       user,
     );
+    // Decrypt apiKey.authValue before returning
+    if (collection?.aiRequest?.auth?.apiKey?.authValue) {
+      collection.aiRequest.auth.apiKey.authValue = this.encryptionService.decrypt(
+        String(collection.aiRequest.auth.apiKey.authValue),
+      );
+    }
     const collectionData = await this.collectionReposistory.getCollection(
       aiRequest.collectionId,
     );
