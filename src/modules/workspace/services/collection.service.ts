@@ -427,9 +427,8 @@ export class CollectionService {
   ): Promise<WithId<Collection>[]> {
     await this.checkPermission(id, user._id);
     const workspace = await this.workspaceRepository.get(id);
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const collections = [];
+
+    let collections = [];
 
     // ✅ Only define this once
     const decryptAuthValuesInItems = (items: any[]) => {
@@ -469,20 +468,11 @@ export class CollectionService {
 
       collections.push(collection);
     }
-=======
     const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
     if (collectionIds.length === 0) return [];
     // Bulk fetch all collections
-    const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
->>>>>>> 3707a9a08fe524b179227aa8658ff908c71f70ad
-=======
-    const collectionIds =
-      workspace.collection?.map((c) => c.id.toString()) || [];
-    if (collectionIds.length === 0) return [];
-    // Bulk fetch all collections
-    const collections =
-      await this.collectionRepository.getCollectionsByIds(collectionIds);
->>>>>>> 44c2e524c2f376e63bd746f73190b945913b9b7f
+    collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
+  
     return collections;
   }
 
