@@ -21,6 +21,7 @@ import { HubSpotService } from "./services/hubspot.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
 import { BillingModule } from "../billing/billing.module";
 import { BillingAuditService } from "../billing/services/billing-audit.service";
+import { StripeSubscriptionService } from "../billing/services/stripe-subscription.service";
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { BillingAuditService } from "../billing/services/billing-audit.service";
     TeamRepository,
     PlanRepository,
     BillingAuditService,
+    StripeSubscriptionService,
     {
       provide: GoogleStrategy,
       useFactory: (configService: ConfigService) => {
@@ -85,6 +87,7 @@ import { BillingAuditService } from "../billing/services/billing-audit.service";
     PlanRepository,
     UserInvitesRepository,
     HubSpotService,
+    StripeSubscriptionService,
   ],
   controllers: [AuthController, UserController, TeamController, PlanController],
 })

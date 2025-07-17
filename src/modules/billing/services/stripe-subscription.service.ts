@@ -21,7 +21,6 @@ try {
 } catch (error) {
   console.warn("Stripe service not available");
 }
-
 /**
  * Service for handling Stripe subscription operations
  */
@@ -31,14 +30,8 @@ export class StripeSubscriptionService {
     private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
     private readonly billingAuditService: BillingAuditService,
     private readonly paymentEmailHelper: PaymentEmailHelper,
-    @Optional() @Inject(StripeService) private readonly stripeService: any,
-  ) {
-    if (!this.stripeService) {
-      console.warn(
-        "Stripe service not available, some features will be limited",
-      );
-    }
-  }
+    @Optional() @Inject(StripeService) private readonly stripeService?: any,
+  ) {}
 
   /**
    * Handle subscription creation event
@@ -298,9 +291,6 @@ export class StripeSubscriptionService {
       // Check if subscription is already in a terminal state
       if (team.billing && team.billing.status) {
         if (StripeSubscriptionHelpers.isTerminalStatus(team.billing.status)) {
-          console.log(
-            `Subscription already in terminal state: ${team.billing.status}`,
-          );
           return;
         }
       }
@@ -348,9 +338,6 @@ export class StripeSubscriptionService {
       billing_reason: billingReason,
       current_period_start: periodDates.currentPeriodStart,
       current_period_end: periodDates.currentPeriodEnd,
-      requires_action_at_period_end:
-        billingReason === "subscription_update" ||
-        billingReason === "subscription_cycle",
       failed_at: new Date(),
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
@@ -376,7 +363,7 @@ export class StripeSubscriptionService {
       );
     } else if (isFirstPayment) {
       // Downgrade to Community plan for first payment failures
-      await this.downgradeToCommuityPlan(
+      await this.downgradeToCommunityPlan(
         metadata.hubId,
         team,
         billingDetails,
@@ -455,7 +442,7 @@ export class StripeSubscriptionService {
    * @param billingDetails The billing details
    * @param eventId The event ID
    */
-  private async downgradeToCommuityPlan(
+  private async downgradeToCommunityPlan(
     hubId: string,
     team: any,
     billingDetails: any,
@@ -663,6 +650,25 @@ export class StripeSubscriptionService {
     };
 
     await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
+
+    // Create or update basic license object for successful payments
+    const currentActiveUsers = team.users?.length || 0;
+    const currentPendingInvites =
+      team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
+    const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
+    const currentSeats = metadata?.userCount || 1;
+
+    const licenseData = {
+      totalSeats: Number(currentSeats),
+      usedSeats: Number(totalCurrentUsage),
+      availableSeats: Number(currentSeats) - Number(totalCurrentUsage),
+      lastUpdated: new Date(),
+    };
+
+    // Update team with license data
+    await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
+      licenses: licenseData,
+    });
 
     // Log appropriate events based on payment type
     await this.logPaymentEvents(
@@ -1119,7 +1125,7 @@ export class StripeSubscriptionService {
    */
   async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
     try {
-      const currentDate = new Date();
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); //3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
           currentDate,
@@ -1127,6 +1133,28 @@ export class StripeSubscriptionService {
 
       for (const team of teams) {
         try {
+          // Cancel Stripe subscription manually before downgrading
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
+
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
           // Find the community plan for downgrade
           const communityPlan =
             await this.stripeSubscriptionRepo.findPlanByName(
@@ -1143,11 +1171,11 @@ export class StripeSubscriptionService {
 
           // Update billing details for expired subscription
           const billingDetails = {
-            ...team.billing,
+            paymentProviders: team.billing?.paymentProviders || [],
             status: SubscriptionStatus.CANCELED,
+            billingType: BillingType.EXPIRED_SUBSCRIPTION,
             canceled_at: new Date(),
             cancellation_reason: "payment_failed_period_expired",
-            requires_action_at_period_end: false,
             updatedBy: "system-maintenance-job",
           };
 
@@ -1184,10 +1212,6 @@ export class StripeSubscriptionService {
             undefined, // no subscription details needed
             planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
           );
-
-          console.log(
-            `Downgraded team ${team._id} to community plan due to expired payment failure`,
-          );
         } catch (error) {
           console.error(
             `Error processing expired subscription for team ${team._id}:`,
@@ -1210,7 +1234,7 @@ export class StripeSubscriptionService {
    */
   async checkAndRevertExpiredTrials(): Promise<void> {
     try {
-      const currentDate = new Date();
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); //3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredTrials(
           currentDate,
@@ -1218,6 +1242,28 @@ export class StripeSubscriptionService {
 
       for (const team of teams) {
         try {
+          // Cancel Stripe subscription manually before downgrading for expired trials
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
+
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for expired trial team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
           // Find the community plan for downgrade
           const communityPlan =
             await this.stripeSubscriptionRepo.findPlanByName(
@@ -1234,7 +1280,7 @@ export class StripeSubscriptionService {
 
           // Update billing details for expired trial
           const billingDetails = {
-            ...team.billing,
+            paymentProviders: team.billing?.paymentProviders || [],
             status: SubscriptionStatus.CANCELED,
             billingType: BillingType.EXPIRED_TRIAL,
             canceled_at: new Date(),
@@ -1275,10 +1321,6 @@ export class StripeSubscriptionService {
             undefined, // no seat change
             undefined, // no subscription details needed
             planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
-          );
-
-          console.log(
-            `Reverted team ${team._id} to community plan due to expired trial`,
           );
         } catch (error) {
           console.error(
@@ -1357,6 +1399,264 @@ export class StripeSubscriptionService {
       return "month";
     } else {
       return "month";
+    }
+  }
+
+  /**
+   * Check available licenses and manage seat purchasing via Stripe
+   * @param team The team data including billing information
+   * @param userEmails Array of email addresses to be invited
+   * @param userRepository User repository instance for checking existing users
+   * @returns Result indicating success/failure and message
+   */
+  async checkAndManageLicenses(
+    team: any,
+    userEmails: string[],
+    userRepository: any,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Skip license checking for community plan or if no billing info
+      if (
+        team.plan?.name === PlanName.COMMUNITY &&
+        team?.billing?.status !== SubscriptionStatus.PAYMENT_FAILED
+      ) {
+        return { success: true, message: "No license checking required" };
+      }
+
+      if (!userRepository) {
+        console.warn("UserRepository not provided to checkAndManageLicenses");
+        return {
+          success: false,
+          message: "User repository is required for license checking",
+        };
+      }
+
+      // Categorize users into existing/already invited and truly new users
+      let existingUsersCount = 0; // Users who already exist in the system OR are already invited
+      let newUsersCount = 0; // Truly new users who need licenses
+      let skippedUsersCount = 0; // Users already in team or with pending invites
+
+      for (const userEmail of userEmails) {
+        const sanitizedEmail = userEmail.trim().toLowerCase();
+
+        // Check if user is already a team member
+        const isTeamMember = team.users?.some(
+          (user: any) => user.email === sanitizedEmail,
+        );
+
+        // Check if user already has a pending invite
+        const hasPendingInvite = team.invites?.some(
+          (invite: any) => invite.email === sanitizedEmail,
+        );
+
+        if (isTeamMember || hasPendingInvite) {
+          // Skip users who are already team members or have pending invites
+          skippedUsersCount++;
+          continue;
+        } else {
+          // Completely new user - needs both invite and license
+          newUsersCount++;
+        }
+      }
+
+      // If all users are already members or have pending invites
+      if (
+        newUsersCount === 0 &&
+        existingUsersCount === 0 &&
+        skippedUsersCount > 0
+      ) {
+        return {
+          success: true,
+          message: `All ${skippedUsersCount} users are already team members or have pending invites`,
+        };
+      }
+
+      // For existing users only, skip license check as they don't consume new seats
+      if (existingUsersCount > 0 && newUsersCount === 0) {
+        return {
+          success: true,
+          message: `Inviting ${existingUsersCount} existing users - no additional licenses needed`,
+        };
+      }
+
+      // Calculate current usage and available licenses
+      const currentActiveUsers = team.users?.length || 0;
+      const currentPendingInvites =
+        team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
+      const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
+
+      // Get available licenses from license object or fallback to billing seats
+      const availableLicenses =
+        team.licenses?.totalSeats || team.billing.seats || 1;
+      const unusedLicenses = Math.max(0, availableLicenses - totalCurrentUsage);
+
+      // Only check licenses for new users (not existing users)
+      const usersRequiringLicenses = newUsersCount;
+
+      // If we have enough unused licenses, proceed
+      if (unusedLicenses >= usersRequiringLicenses) {
+        let message = `Using ${usersRequiringLicenses} of ${unusedLicenses} available licenses`;
+        if (existingUsersCount > 0) {
+          message += ` (${existingUsersCount} existing users don't require additional licenses)`;
+        }
+        if (skippedUsersCount > 0) {
+          message += ` (${skippedUsersCount} users already in team/invited)`;
+        }
+        return {
+          success: true,
+          message: message,
+        };
+      }
+
+      // Check if scheduled downgrade is active - block invites during downgrade
+      if (team.billing?.scheduledDowngrade) {
+        return {
+          success: false,
+          message: "Invite blocked due to your scheduled downgrade.",
+        };
+      }
+
+      // Check for payment failed status - block new purchases until resolved
+      if (team.billing.status === SubscriptionStatus.PAYMENT_FAILED) {
+        return {
+          success: false,
+          message:
+            "Invite failed. Please resolve your payment issue to send invites.",
+        };
+      }
+
+      // Check for action required status - block new purchases until 3DS is completed
+      if (team.billing.status === SubscriptionStatus.ACTION_REQUIRED) {
+        return {
+          success: false,
+          message:
+            "Invite failed. Please complete payment authentication to send invites.",
+        };
+      }
+
+      // Calculate additional seats needed (only for new users)
+      const additionalSeatsNeeded = usersRequiringLicenses - unusedLicenses;
+      const newTotalSeats =
+        Number(availableLicenses) + Number(additionalSeatsNeeded);
+
+      // Check if Stripe service is available for purchasing additional seats
+      if (!this.stripeService) {
+        return {
+          success: false,
+          message:
+            "Cannot purchase additional seats: Stripe service not available",
+        };
+      }
+
+      // Check if team has active subscription
+      if (
+        !team.billing.latest_invoice ||
+        team.billing.status !== SubscriptionStatus.ACTIVE
+      ) {
+        return {
+          success: false,
+          message:
+            "Cannot purchase additional seats: No active subscription found",
+        };
+      }
+
+      // Purchase additional seats via Stripe updateSubscription
+      const subscriptionId = team.billing.paymentProviders?.find(
+        (provider: any) => provider.provider === PaymentProvider.STRIPE,
+      )?.subscriptionId;
+
+      if (!subscriptionId) {
+        return {
+          success: false,
+          message:
+            "Cannot purchase additional seats: No Stripe subscription ID found",
+        };
+      }
+
+      try {
+        // Update subscription with new seat count using allow_incomplete payment behavior
+        const data = await this.stripeService.updateSubscription(
+          subscriptionId,
+          undefined, // no new price_id (we are updating seats)
+          {
+            hubId: team._id.toString(),
+            userCount: newTotalSeats.toString(),
+            planName: team.plan?.name,
+            licenseUpdate: "true",
+            previousSeats: availableLicenses.toString(),
+            newSeats: newTotalSeats.toString(),
+          },
+          undefined, // default_payment_method (optional)
+          "always_invoice", // prorationBehavior (optional)
+          false, // atPeriodEnd (optional)
+          newTotalSeats, // seats
+          "allow_incomplete", // payment_behavior
+          "unchanged", // billing cycle_anchor
+        );
+
+        // Handle 3DS authentication required
+        if (data.requiresAction) {
+          let invoice = null;
+          const latest_invoice = data?.subscription?.latest_invoice;
+
+          // get latest invoice details
+          const invoices =
+            await this.stripeService.getInvoiceById(latest_invoice);
+
+          if (invoices?.hosted_invoice_url) {
+            invoice = invoices.hosted_invoice_url;
+          }
+
+          const billingDetails = {
+            ...team.billing,
+            status: SubscriptionStatus.ACTION_REQUIRED,
+            failed_invoice_url: invoice,
+          };
+
+          // Update team billing status to indicate action required
+          await this.updateTeamPlanWithBilling(
+            team._id.toString(),
+            team.plan,
+            billingDetails,
+          );
+
+          return {
+            success: false,
+            message:
+              "Invite failed. Please complete payment authentication to send invites.",
+          };
+        }
+
+        // Payment succeeded - update licenses
+        const licenseData = {
+          totalSeats: Number(newTotalSeats),
+          usedSeats: Number(totalCurrentUsage),
+          availableSeats: Number(newTotalSeats) - Number(totalCurrentUsage),
+          lastUpdated: new Date(),
+        };
+
+        // Update team with new license data
+        await this.stripeSubscriptionRepo.updateTeamById(team._id.toString(), {
+          licenses: licenseData,
+        });
+
+        return {
+          success: true,
+          message: `Successfully purchased ${additionalSeatsNeeded} additional seats. Total: ${newTotalSeats} seats`,
+        };
+      } catch (stripeError) {
+        console.error("Error updating Stripe subscription:", stripeError);
+        return {
+          success: false,
+          message: `Failed to purchase additional seats: ${stripeError.message || "Stripe API error"}`,
+        };
+      }
+    } catch (error) {
+      console.error("Error in license checking:", error);
+      return {
+        success: false,
+        message: `License checking failed: ${error.message}`,
+      };
     }
   }
 }

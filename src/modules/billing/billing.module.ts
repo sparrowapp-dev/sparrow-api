@@ -60,6 +60,7 @@ export class BillingModule {
       PaymentEmailHelper,
       StripeCustomerService,
       BillingAuditService,
+      ...(StripeModule ? [StripeModule] : []),
     ];
 
     // Only add Stripe if the module was successfully imported

@@ -1,6 +1,9 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
-import { BillingType, SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
+import {
+  BillingType,
+  SubscriptionStatus,
+} from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
 
@@ -49,6 +52,22 @@ export class StripeSubscriptionRepository {
   }
 
   /**
+   * Update team with arbitrary data
+   * @param teamId The team ID
+   * @param updateData The data to update
+   * @returns The update result
+   */
+  async updateTeamById(teamId: string, updateData: any): Promise<UpdateResult> {
+    try {
+      return await this.db
+        .collection(Collections.TEAM)
+        .updateOne({ _id: new ObjectId(teamId) }, { $set: updateData });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Find a plan by name
    * @param planName The name of the plan to find
    * @returns The plan document or null if not found
@@ -91,8 +110,8 @@ export class StripeSubscriptionRepository {
         .collection(Collections.TEAM)
         .find({
           "billing.status": SubscriptionStatus.PAYMENT_FAILED,
-          "billing.requires_action_at_period_end": true,
           "billing.current_period_end": { $lt: currentDate },
+
         })
         .toArray();
     } catch (error) {

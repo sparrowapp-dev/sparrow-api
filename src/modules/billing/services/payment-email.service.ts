@@ -94,6 +94,9 @@ export class PaymentEmailService {
    * Send payment success email
    */
   private async sendPaymentSuccessEmail(data: PaymentEmailData): Promise<void> {
+    if (!data.amount || data.amount === 0) {
+      return;
+    }
     const transporter = this.emailService.createTransporter();
 
     const mailOptions = {
@@ -143,6 +146,9 @@ export class PaymentEmailService {
         planName: data.planName,
         amountDue: this.formatAmount(data.amount, data.currency),
         failureDate: this.formatDate(data.paymentDate),
+        nextRetryDate: this.formatDate(data.paymentDate, {
+          grace_period: true,
+        }),
         failureReason: data.failureReason || "Payment could not be processed",
         fixPaymentUrl: data.receiptUrl,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
@@ -220,7 +226,6 @@ export class PaymentEmailService {
           ? this.formatDate(data.billingPeriodEnd)
           : "N/A",
         interval: data.interval || "month",
-        receiptUrl: data.receiptUrl,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
@@ -237,6 +242,11 @@ export class PaymentEmailService {
    * Send plan upgraded email
    */
   private async sendPlanUpgradedEmail(data: PaymentEmailData): Promise<void> {
+    // Do not send upgrade email if amount is 0 or undefined
+    if (!data.amount || data.amount === 0) {
+      return;
+    }
+
     const transporter = this.emailService.createTransporter();
 
     // Get plan-specific features
@@ -328,9 +338,7 @@ export class PaymentEmailService {
         billingAmount: this.formatAmount(data.amount, data.currency),
         billingDate: this.formatDate(data.nextPaymentDate),
         cardLast4: data.cardLast4 || "****",
-        updatePaymentUrl:
-          data.updatePaymentUrl ||
-          `${this.configService.get("admin.baseURL")}/billing/billingInformation/${data.hubId}`,
+        updatePaymentUrl: `${this.configService.get("admin.baseURL")}/billing/billingInformation/${data.hubId}`,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
@@ -436,10 +444,18 @@ export class PaymentEmailService {
   }
 
   /**
-   * Format date for display
+   * Format date for display, with optional grace period (+3 days)
    */
-  private formatDate(date: Date | number): string {
-    const d = typeof date === "number" ? new Date(date * 1000) : date;
+  private formatDate(
+    date: Date | number,
+    options?: { grace_period?: boolean },
+  ): string {
+    let d = typeof date === "number" ? new Date(date * 1000) : new Date(date);
+
+    if (options?.grace_period) {
+      d.setDate(d.getDate() + 3);
+    }
+
     return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",

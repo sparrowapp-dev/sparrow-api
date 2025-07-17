@@ -414,7 +414,6 @@ export class TeamService {
           plan: teamData.plan,
           workspaces: [],
           description: senderData?.name || "No creator found",
-          isNewInvite: true
         } as any);
       }
     }
@@ -528,13 +527,15 @@ export class TeamService {
     return await this.teamRepository.doesHubUrlExist(hubUrl);
   }
 
-  async updateHubTrialAndPlan(teamId: string, userCount: number) {
+  async updateHubTrialAndPlan(teamId: string, userCount?: number) {
     const teamDetails = await this.teamRepository.get(teamId);
     if (!teamDetails) {
       throw new BadRequestException("Team not found");
     }
 
-    teamDetails.plan.limits.usersPerHub.value = userCount;
+    if (userCount) {
+      teamDetails.plan.limits.usersPerHub.value = userCount;
+    }
 
     const updatedTeam = await this.teamRepository.updateTrialAndPlan(
       teamId,
