@@ -1416,7 +1416,10 @@ export class StripeSubscriptionService {
   ): Promise<{ success: boolean; message: string }> {
     try {
       // Skip license checking for community plan or if no billing info
-      if (!team.billing || team.plan?.name === "Community") {
+      if (
+        team.plan?.name === PlanName.COMMUNITY &&
+        team?.billing?.status !== SubscriptionStatus.PAYMENT_FAILED
+      ) {
         return { success: true, message: "No license checking required" };
       }
 
