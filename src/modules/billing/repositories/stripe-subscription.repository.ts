@@ -7,6 +7,7 @@ import {
 import { Db, ObjectId, UpdateResult } from "mongodb";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
+import { BillingDto } from "@src/modules/common/models/billing.model";
 
 /**
  * Repository for managing Stripe subscription data in the database
@@ -26,7 +27,7 @@ export class StripeSubscriptionRepository {
     hubId: string,
     planData: TeamsPlan,
     subscriptionData: {
-      billing?: any;
+      billing?: BillingDto;
     },
   ): Promise<UpdateResult> {
     try {

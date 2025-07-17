@@ -12,6 +12,8 @@ import {
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
+import { ScheduledDowngradeDto } from "@src/modules/common/models/billing.model";
+import { LicensesDto } from "@src/modules/common/models/licenses.model";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -640,7 +642,7 @@ export class StripeSubscriptionService {
     const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
     const currentSeats = metadata?.userCount || 1;
 
-    const licenseData = {
+    const licenseData: LicensesDto = {
       totalSeats: Number(currentSeats),
       usedSeats: Number(totalCurrentUsage),
       availableSeats: Number(currentSeats) - Number(totalCurrentUsage),
@@ -1058,7 +1060,7 @@ export class StripeSubscriptionService {
       if (!team) return;
 
       const currentBilling = team.billing || {};
-      const scheduledDowngrade = {
+      const scheduledDowngrade: ScheduledDowngradeDto = {
         isScheduledDowngrade: true,
         startDate: startDate,
         planName: targetPlanName,
@@ -1683,7 +1685,7 @@ export class StripeSubscriptionService {
         }
 
         // Payment succeeded - update licenses
-        const licenseData = {
+        const licenseData: LicensesDto = {
           totalSeats: Number(newTotalSeats),
           usedSeats: Number(totalCurrentUsage),
           availableSeats: Number(newTotalSeats) - Number(totalCurrentUsage),
