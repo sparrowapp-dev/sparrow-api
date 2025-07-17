@@ -59,16 +59,11 @@ export class PaymentEmailHelper {
       if (!emailData) return;
 
       // Add failure-specific data
-      const retryDate = invoice.next_payment_attempt
-        ? new Date(invoice.next_payment_attempt * 1000)
-        : null;
-
       const failedEmailData: PaymentEmailData = {
         ...emailData,
         amount: invoice.amount_due || 0,
         paymentDate: new Date(),
         failureReason: this.getPaymentFailureReason(invoice),
-        retryDate: retryDate,
         receiptUrl: invoice.hosted_invoice_url,
       };
 
