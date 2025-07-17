@@ -1402,21 +1402,7 @@ export class CollectionRequestService {
     };
     let updateMessage = ``;
     if (aiRequest.items.type === ItemTypeEnum.AI_REQUEST) {
-      // Encrypt only apiKey.authValue
-      const encryptedAuthValue = this.encryptionService.encrypt(
-        aiRequest.items.aiRequest.auth.apiKey.authValue as string,
-      );
-
-      aiRequestObj.aiRequest = {
-        ...aiRequest.items.aiRequest,
-        auth: {
-          ...aiRequest.items.aiRequest.auth,
-          apiKey: {
-            ...aiRequest.items.aiRequest.auth.apiKey,
-            authValue: encryptedAuthValue,
-          },
-        },
-      };
+      aiRequestObj.aiRequest = aiRequest.items.aiRequest;
 
       await this.collectionReposistory.addAiRequest(
         aiRequest.collectionId,
@@ -1433,43 +1419,16 @@ export class CollectionRequestService {
         }),
       });
 
-      // Decrypt before returning
-      return {
-        ...aiRequestObj,
-        aiRequest: {
-          ...aiRequestObj.aiRequest,
-          auth: {
-            ...aiRequestObj.aiRequest.auth,
-            apiKey: {
-              ...aiRequestObj.aiRequest.auth.apiKey,
-              authValue: this.encryptionService.decrypt(
-                aiRequestObj.aiRequest.auth.apiKey.authValue as string,
-              ),
-            },
-          },
-        },
-      };
+      return aiRequestObj;
+
     } else {
-      // Encrypt only apiKey.authValue
-      const encryptedAuthValue = this.encryptionService.encrypt(
-        aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
-      );
       aiRequestObj.items = [
         {
           id: uuidv4(),
           name: aiRequest.items.items.name,
           type: aiRequest.items.items.type,
           description: aiRequest.items.items.description,
-          aiRequest: {
-            ...aiRequest.items.items.aiRequest,
-            auth: {
-              ...aiRequest.items.items.aiRequest.auth,
-              apiKey: {
-                ...aiRequest.items.items.aiRequest.auth.apiKey,
-                authValue: encryptedAuthValue,
-              },
-            },
-          },
+          aiRequest: { ...aiRequest.items.items.aiRequest },
           source: SourceTypeEnum.USER,
           createdBy: user?.name,
           updatedBy: user?.name,
@@ -1493,24 +1452,7 @@ export class CollectionRequestService {
         }),
       });
 
-      // Decrypt before returning
-      const decryptedItem = {
-        ...aiRequestObj.items[0],
-        aiRequest: {
-          ...aiRequestObj.items[0].aiRequest,
-          auth: {
-            ...aiRequestObj.items[0].aiRequest.auth,
-            apiKey: {
-              ...aiRequestObj.items[0].aiRequest.auth.apiKey,
-              authValue: this.encryptionService.decrypt(
-                aiRequestObj.items[0].aiRequest.auth.apiKey.authValue as string,
-              ),
-            },
-          },
-        },
-      };
-
-      return decryptedItem;
+      return aiRequestObj.items[0];
     }
   }
 
