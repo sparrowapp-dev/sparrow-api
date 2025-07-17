@@ -5,6 +5,7 @@ import {
   PaymentEmailData,
 } from "../services/payment-email.service";
 import { StripeCustomerService } from "../services/stripe-customer.service";
+import { PlanName } from "@src/modules/common/enum/plan.enum";
 
 // Dynamically import payment methods service
 let PaymentMethodsService: any;
@@ -233,6 +234,50 @@ export class PaymentEmailHelper {
       );
     } catch (error) {
       console.error("Error sending payment info updated email:", error);
+    }
+  }
+
+  /**
+   * Send subscription expired email with duplicate prevention
+   */
+  async sendSubscriptionExpiredEmail(team: any): Promise<void> {
+    try {
+      if (team.billing?.subscription_expired_email_sent) {
+        return;
+      }
+
+      const emailData = await this.buildSubscriptionExpiredEmailData(team);
+      if (!emailData) return;
+
+      await this.paymentEmailService.sendPaymentEmail(
+        PaymentEmailType.SUBSCRIPTION_EXPIRED,
+        emailData,
+      );
+    } catch (error) {
+      console.error("Error sending subscription expired email:", error);
+    }
+  }
+
+  /**
+   * Send downgraded to community email
+   */
+  async sendDowngradedToCommunityEmail(
+    team: any,
+    previousPlan: string,
+  ): Promise<void> {
+    try {
+      const emailData = await this.buildDowngradedToCommunityEmailData(
+        team,
+        previousPlan,
+      );
+      if (!emailData) return;
+
+      await this.paymentEmailService.sendPaymentEmail(
+        PaymentEmailType.DOWNGRADED_TO_COMMUNITY,
+        emailData,
+      );
+    } catch (error) {
+      console.error("Error sending downgraded to community email:", error);
     }
   }
 
@@ -556,6 +601,10 @@ export class PaymentEmailHelper {
       nextPaymentDate: nextPaymentDate,
       cardLast4: cardLast4,
       updatePaymentUrl: `${process.env.FRONTEND_URL || "https://app.sparrowapp.dev"}/billing/${metadata.hubId}`,
+      // Include seat data for action required email logic
+      totalSeats: team.licenses?.totalSeats || 0,
+      usedSeats: team.licenses?.usedSeats || 0,
+      availableSeats: team.licenses?.availableSeats || 0,
     };
   }
 
@@ -721,5 +770,71 @@ export class PaymentEmailHelper {
 
     // Default fallback message
     return "Payment could not be processed. Please check your payment method or contact your bank.";
+  }
+
+  /**
+   * Build email data for subscription expired email
+   */
+  private async buildSubscriptionExpiredEmailData(
+    team: any,
+  ): Promise<PaymentEmailData | null> {
+    if (!team?._id) {
+      console.warn("Missing required team data for subscription expired email");
+      return null;
+    }
+
+    // Get customer email from default payment method
+    const customerEmail = await this.getCustomerEmailFromPaymentMethod(
+      team._id.toString(),
+    );
+
+    if (!customerEmail) {
+      console.warn(
+        "Could not retrieve customer email for subscription expired notification",
+      );
+      return null;
+    }
+
+    return {
+      hubId: team._id.toString(),
+      hubName: team.name,
+      ownerEmail: customerEmail.email,
+      ownerName: customerEmail.name || "User",
+      planName: team.plan?.name || "Unknown Plan",
+    };
+  }
+
+  /**
+   * Build email data for downgraded to community email
+   */
+  private async buildDowngradedToCommunityEmailData(
+    team: any,
+    previousPlan: string,
+  ): Promise<PaymentEmailData | null> {
+    if (!team?._id) {
+      console.warn("Missing required team data for downgraded to community email");
+      return null;
+    }
+
+    // Get customer email from default payment method
+    const customerEmail = await this.getCustomerEmailFromPaymentMethod(
+      team._id.toString(),
+    );
+
+    if (!customerEmail) {
+      console.warn(
+        "Could not retrieve customer email for downgraded to community notification",
+      );
+      return null;
+    }
+
+    return {
+      hubId: team._id.toString(),
+      hubName: team.name,
+      ownerEmail: customerEmail.email,
+      ownerName: customerEmail.name || "User",
+      planName: PlanName.COMMUNITY,
+      previousPlanName: previousPlan,
+    };
   }
 }
