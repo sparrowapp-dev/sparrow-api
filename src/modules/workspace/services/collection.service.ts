@@ -428,8 +428,7 @@ export class CollectionService {
     await this.checkPermission(id, user._id);
     const workspace = await this.workspaceRepository.get(id);
 
-    let collections = [];
-
+  
     // ✅ Only define this once
     const decryptAuthValuesInItems = (items: any[]) => {
       const stack = [...items]; // Avoid recursion
@@ -456,24 +455,26 @@ export class CollectionService {
       }
     };
 
-    // 🔄 Only the minimum loop remains
-    for (let i = 0; i < workspace.collection?.length; i++) {
-      const collection = await this.collectionRepository.get(
-        workspace.collection[i].id.toString(),
-      );
-
-      if (Array.isArray(collection.items)) {
-        decryptAuthValuesInItems(collection.items);
-      }
-
-      collections.push(collection);
-    }
     const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
     if (collectionIds.length === 0) return [];
     // Bulk fetch all collections
-    collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
+    const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
+
+    const decryptedCollections = [];
+    // 🔄 Only the minimum loop remains
+    for (let i = 0; i < collections?.length; i++) {
+      // const collection = await this.collectionRepository.get(
+      //   workspace.collection[i].id.toString(),
+      // );
+
+      if (Array.isArray(collections[i].items)) {
+        decryptAuthValuesInItems(collections[i].items);
+      }
+
+      decryptedCollections.push(collections[i]);
+    }
   
-    return collections;
+    return decryptedCollections;
   }
 
   async getAllPublicWorkspaceCollections(
