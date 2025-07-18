@@ -181,6 +181,7 @@ export class BillingDto {
 
 class BillingChangeDto {
   @IsString()
+  @IsOptional()
   field: string;
 
   @IsOptional()
@@ -192,6 +193,7 @@ class BillingChangeDto {
 
 class BillingActorDto {
   @IsEnum(BillingActorType)
+  @IsOptional()
   type: BillingActorType;
 
   @IsOptional()
@@ -206,6 +208,7 @@ class BillingActorDto {
 class BillingContextDto {
   @ValidateNested()
   @Type(() => BillingActorDto)
+  @IsOptional()
   actor: BillingActorDto;
 
   @IsOptional()
@@ -213,6 +216,7 @@ class BillingContextDto {
   reason?: string;
 
   @IsEnum(BillingSource)
+  @IsOptional()
   source: BillingSource;
 
   @IsOptional()
@@ -226,32 +230,40 @@ class BillingContextDto {
 
 class BillingFinancialImpactDto {
   @IsNumber()
+  @IsOptional()
   amount: number;
 
   @IsString()
+  @IsOptional()
   currency: string;
 
   @IsEnum(BillingTransactionType)
+  @IsOptional()
   transactionType: BillingTransactionType;
 }
 
 export class BillingEventDto {
   @IsEnum(BillingEventType)
+  @IsOptional()
   eventType: BillingEventType;
 
   @IsEnum(BillingEntityType)
+  @IsOptional()
   entityType: BillingEntityType;
 
   @IsString()
+  @IsOptional()
   entityId: string;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BillingChangeDto)
+  @IsOptional()
   changes: BillingChangeDto[];
 
   @ValidateNested()
   @Type(() => BillingContextDto)
+  @IsOptional()
   context: BillingContextDto;
 
   @IsOptional()
@@ -265,29 +277,37 @@ export class BillingEventDto {
 
   @IsDate()
   @Type(() => Date)
+  @IsOptional()
   timestamp: Date;
 
   @IsNumber()
+  @IsOptional()
   version: number;
 }
 
 export class BillingTransactionDto {
   @IsEnum(BillingEntityType)
+  @IsOptional()
   entityType: BillingEntityType;
 
   @IsString()
+  @IsOptional()
   entityId: string;
 
   @IsEnum(BillingTransactionType)
+  @IsOptional()
   transactionType: BillingTransactionType;
 
   @IsNumber()
+  @IsOptional()
   amount: number;
 
   @IsString()
+  @IsOptional()
   currency: string;
 
   @IsString()
+  @IsOptional()
   description: string;
 
   @IsOptional()
@@ -308,6 +328,7 @@ export class BillingTransactionDto {
 
   @IsDate()
   @Type(() => Date)
+  @IsOptional()
   timestamp: Date;
 
   @IsOptional()
