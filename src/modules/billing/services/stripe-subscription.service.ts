@@ -12,6 +12,8 @@ import {
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
+import { ScheduledDowngradeDto } from "@src/modules/common/models/billing.model";
+import { LicensesDto } from "@src/modules/common/models/licenses.model";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -288,13 +290,6 @@ export class StripeSubscriptionService {
         return;
       }
 
-      // Check if subscription is already in a terminal state
-      if (team.billing && team.billing.status) {
-        if (StripeSubscriptionHelpers.isTerminalStatus(team.billing.status)) {
-          return;
-        }
-      }
-
       await this.processPaymentFailure(invoice, team, metadata, eventId);
     } catch (error) {
       throw error;
@@ -327,18 +322,12 @@ export class StripeSubscriptionService {
     // Create billing details object with failed payment status
     const billingDetails = {
       status: SubscriptionStatus.PAYMENT_FAILED,
-      collection_method: invoice.collection_method,
       latest_invoice: invoice.id,
       seats: metadata?.userCount || 1,
-      failed_invoice_url: invoice.hosted_invoice_url,
-      next_payment_attempt: invoice.next_payment_attempt
-        ? new Date(invoice.next_payment_attempt * 1000)
-        : null,
-      attempt_count: invoice.attempt_count,
+      invoice_url: invoice.hosted_invoice_url,
       billing_reason: billingReason,
       current_period_start: periodDates.currentPeriodStart,
       current_period_end: periodDates.currentPeriodEnd,
-      failed_at: new Date(),
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
       paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
@@ -393,7 +382,6 @@ export class StripeSubscriptionService {
       {
         invoiceId: invoice.id,
         subscriptionId,
-        attemptCount: invoice.attempt_count,
         billingReason,
       },
     );
@@ -619,13 +607,9 @@ export class StripeSubscriptionService {
       amount_billed: amount,
       currency: invoice.currency,
       status: SubscriptionStatus.ACTIVE,
-      collection_method: invoice.collection_method,
       latest_invoice: invoice.id,
       seats: metadata?.userCount || 1,
       invoice_url: invoice.hosted_invoice_url,
-      paid_at: invoice.status_transitions?.paid_at
-        ? new Date(invoice.status_transitions.paid_at * 1000)
-        : new Date(),
       billingType: StripeSubscriptionHelpers.determineBillingType(
         {
           status: SubscriptionStatus.ACTIVE,
@@ -658,7 +642,7 @@ export class StripeSubscriptionService {
     const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
     const currentSeats = metadata?.userCount || 1;
 
-    const licenseData = {
+    const licenseData: LicensesDto = {
       totalSeats: Number(currentSeats),
       usedSeats: Number(totalCurrentUsage),
       availableSeats: Number(currentSeats) - Number(totalCurrentUsage),
@@ -867,8 +851,6 @@ export class StripeSubscriptionService {
         const updatedBilling = {
           ...team.billing,
           status: SubscriptionStatus.VOIDED,
-          invoice_voided: true,
-          voided_at: new Date(),
           updatedBy: BillingSource.STRIPE_WEBHOOK,
           event_id: eventId,
         };
@@ -1078,7 +1060,7 @@ export class StripeSubscriptionService {
       if (!team) return;
 
       const currentBilling = team.billing || {};
-      const scheduledDowngrade = {
+      const scheduledDowngrade: ScheduledDowngradeDto = {
         isScheduledDowngrade: true,
         startDate: startDate,
         planName: targetPlanName,
@@ -1194,7 +1176,10 @@ export class StripeSubscriptionService {
                 team.plan.name, // Previous plan
               );
             } catch (error) {
-              console.error("Error sending downgraded to community email:", error);
+              console.error(
+                "Error sending downgraded to community email:",
+                error,
+              );
             }
           }
 
@@ -1316,7 +1301,10 @@ export class StripeSubscriptionService {
                 team.plan.name, // Previous plan
               );
             } catch (error) {
-              console.error("Error sending downgraded to community email:", error);
+              console.error(
+                "Error sending downgraded to community email:",
+                error,
+              );
             }
           }
 
@@ -1679,7 +1667,7 @@ export class StripeSubscriptionService {
           const billingDetails = {
             ...team.billing,
             status: SubscriptionStatus.ACTION_REQUIRED,
-            failed_invoice_url: invoice,
+            invoice_url: invoice,
           };
 
           // Update team billing status to indicate action required
@@ -1697,7 +1685,7 @@ export class StripeSubscriptionService {
         }
 
         // Payment succeeded - update licenses
-        const licenseData = {
+        const licenseData: LicensesDto = {
           totalSeats: Number(newTotalSeats),
           usedSeats: Number(totalCurrentUsage),
           availableSeats: Number(newTotalSeats) - Number(totalCurrentUsage),

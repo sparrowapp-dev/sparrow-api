@@ -106,7 +106,6 @@ export class StripeSubscriptionHelpers {
       interval_count: plan.interval_count,
       status: subscription.status,
       seats: metadata?.userCount || 1,
-      collection_method: subscription.collection_method,
       latest_invoice: subscription.latest_invoice,
       billingType: StripeSubscriptionHelpers.determineBillingType(
         subscription,
@@ -233,19 +232,6 @@ export class StripeSubscriptionHelpers {
         interval: "month",
       };
     }
-  }
-
-  /**
-   * Check if a subscription status is terminal (cancelled or deleted)
-   * @param status The subscription status
-   * @returns Boolean indicating if the status is terminal
-   */
-  static isTerminalStatus(status: string): boolean {
-    return [
-      SubscriptionStatus.CANCELED,
-      SubscriptionStatus.DELETED,
-      SubscriptionStatus.INCOMPLETE_EXPIRED,
-    ].includes(status as SubscriptionStatus);
   }
 
   /**

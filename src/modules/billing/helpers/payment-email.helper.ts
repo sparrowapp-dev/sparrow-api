@@ -749,13 +749,8 @@ export class PaymentEmailHelper {
     // which we don't have direct access to in the invoice webhook
 
     const billingReason = invoice.billing_reason;
-    const attemptCount = invoice.attempt_count || 0;
 
     // Provide contextual failure messages based on invoice data
-    if (attemptCount > 1) {
-      return "Payment could not be processed after multiple attempts. Please check your payment method and try again.";
-    }
-
     if (billingReason === "subscription_create") {
       return "Initial payment setup failed. Please verify your payment method details.";
     }
@@ -812,7 +807,9 @@ export class PaymentEmailHelper {
     previousPlan: string,
   ): Promise<PaymentEmailData | null> {
     if (!team?._id) {
-      console.warn("Missing required team data for downgraded to community email");
+      console.warn(
+        "Missing required team data for downgraded to community email",
+      );
       return null;
     }
 
