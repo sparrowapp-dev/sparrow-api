@@ -787,7 +787,7 @@ export class TeamUserService {
     teamName: string,
     OwnerName: string,
     email: string,
-    senderName: string,
+    recieverName: string,
   ): Promise<void> {
     const transporter = this.emailService.createTransporter();
 
@@ -799,7 +799,7 @@ export class TeamUserService {
       context: {
         ownerName: OwnerName,
         teamName: teamName,
-        senderName: senderName,
+        recieverName: recieverName,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(

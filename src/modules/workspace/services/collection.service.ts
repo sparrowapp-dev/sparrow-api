@@ -41,8 +41,11 @@ import { ProducerService } from "@src/modules/common/services/event-producer.ser
 import { PostmanParserService } from "@src/modules/common/services/postman.parser.service";
 import { v4 as uuidv4 } from "uuid";
 import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
-import { WorkspaceType } from "@src/modules/common/models/workspace.model";
+import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
+import { Workspace, WorkspaceType } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { EncryptionService } from "@src/modules/common/services/encryption.service";
+
 @Injectable()
 export class CollectionService {
   constructor(
@@ -53,6 +56,7 @@ export class CollectionService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
+    private readonly cryptoService: EncryptionService
   ) {}
 
   async createCollection(
@@ -79,10 +83,21 @@ export class CollectionService {
       createdAt: new Date(),
       updatedAt: new Date(),
       defaultSelectedAuthProfile: "",
-      authProfiles: []
+      authProfiles: [],
     };
     const collection =
       await this.collectionRepository.addCollection(newCollection);
+    const currentWorkspaceObject = new ObjectId(
+      createCollectionDto.workspaceId,
+    );
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
+
     const updateMessage = `New Collection "${createCollectionDto.name}" is added in "${workspace.name}" workspace`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
@@ -412,11 +427,54 @@ export class CollectionService {
   ): Promise<WithId<Collection>[]> {
     await this.checkPermission(id, user._id);
     const workspace = await this.workspaceRepository.get(id);
+
+  
+    // ✅ Only define this once
+    const decryptAuthValuesInItems = (items: any[]) => {
+      const stack = [...items]; // Avoid recursion
+
+      while (stack.length > 0) {
+        const item = stack.pop();
+
+        if (!item) continue;
+
+        if (item.type === 'AI_REQUEST') {
+          const apiKeyAuth = item?.aiRequest?.auth?.apiKey;
+          if (apiKeyAuth && typeof apiKeyAuth.authValue === 'string') {
+            try {
+              apiKeyAuth.authValue = this.cryptoService.decrypt(apiKeyAuth.authValue);
+            } catch (error) {
+              console.warn('Failed to decrypt authValue:', error);
+            }
+          }
+        }
+
+        if (item.type === 'FOLDER' && Array.isArray(item.items)) {
+          stack.push(...item.items);
+        }
+      }
+    };
+
     const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
     if (collectionIds.length === 0) return [];
     // Bulk fetch all collections
     const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
-    return collections;
+
+    const decryptedCollections = [];
+    // 🔄 Only the minimum loop remains
+    for (let i = 0; i < collections?.length; i++) {
+      // const collection = await this.collectionRepository.get(
+      //   workspace.collection[i].id.toString(),
+      // );
+
+      if (Array.isArray(collections[i].items)) {
+        decryptAuthValuesInItems(collections[i].items);
+      }
+
+      decryptedCollections.push(collections[i]);
+    }
+  
+    return decryptedCollections;
   }
 
   async getAllPublicWorkspaceCollections(
@@ -426,9 +484,11 @@ export class CollectionService {
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
+    const collectionIds =
+      workspace.collection?.map((c) => c.id.toString()) || [];
     if (collectionIds.length === 0) return [];
-    const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
+    const collections =
+      await this.collectionRepository.getCollectionsByIds(collectionIds);
     return collections;
   }
 
@@ -481,6 +541,14 @@ export class CollectionService {
       updateCollectionDto,
       user,
     );
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     if (updateCollectionDto?.name) {
       const updateMessage = `"${collection.name}" collection is renamed to "${updateCollectionDto.name}" in "${workspace.name}" workspace`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -513,7 +581,9 @@ export class CollectionService {
     const collectionId = updateCollectionDto.collectionId;
     const authInput = updateCollectionDto.authProfiles?.[0];
     const collection = await this.collectionRepository.get(collectionId);
-    const existingAuthNames = (collection.authProfiles || []).map((a: any) => a.name?.toLowerCase());
+    const existingAuthNames = (collection.authProfiles || []).map((a: any) =>
+      a.name?.toLowerCase(),
+    );
 
     const now = new Date();
     const enrichedAuth = {
@@ -556,16 +626,14 @@ export class CollectionService {
     return enrichedAuth;
   }
 
-
   async getAuthProfiles(
-    collectionId: string, 
-    user: DecodedUserObject
+    collectionId: string,
+    user: DecodedUserObject,
   ): Promise<AuthProfiles[]> {
     // const collectionObjectId = new ObjectId(collectionId);
     const collection = await this.collectionRepository.get(collectionId);
     return collection.authProfiles || [];
   }
-
 
   async updateAuthProfile(
     payload: AuthCollection,
@@ -574,19 +642,21 @@ export class CollectionService {
     const { collectionId, authId, ...authUpdatePayload } = payload;
 
     if (!ObjectId.isValid(collectionId)) {
-      throw new BadRequestException('Invalid collectionId');
+      throw new BadRequestException("Invalid collectionId");
     }
 
     const collection = await this.collectionRepository.get(collectionId);
     if (!collection) {
-      throw new BadRequestException('Collection not found');
+      throw new BadRequestException("Collection not found");
     }
 
     const existingAuths = collection.authProfiles || [];
-    const targetIndex = existingAuths.findIndex((auth: any) => auth.authId === authId);
+    const targetIndex = existingAuths.findIndex(
+      (auth: any) => auth.authId === authId,
+    );
 
     if (targetIndex === -1) {
-      throw new BadRequestException('Auth profile not found');
+      throw new BadRequestException("Auth profile not found");
     }
 
     const now = new Date();
@@ -628,21 +698,22 @@ export class CollectionService {
       updateDoc.$set.defaultSelectedAuthProfile = authId;
     }
 
-    const result = await this.collectionRepository.updateAuth(collectionId, updateDoc);
+    const result = await this.collectionRepository.updateAuth(
+      collectionId,
+      updateDoc,
+    );
     if (result.modifiedCount === 0) {
-      throw new BadRequestException('Auth profile update failed');
+      throw new BadRequestException("Auth profile update failed");
     }
 
     return updatedAuth;
   }
 
-
-
   async deleteAuthProfile(
     payload: AuthCollection,
     user: DecodedUserObject,
   ): Promise<string> {
-      const {collectionId , workspaceId, authId} = payload
+    const { collectionId, workspaceId, authId } = payload;
     const data = await this.collectionRepository.deleteAuth(
       collectionId,
       workspaceId,
@@ -681,6 +752,14 @@ export class CollectionService {
     await this.checkPermission(workspaceId, user._id);
     const collection = await this.getCollection(id);
     const data = await this.collectionRepository.delete(id);
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     const updateMessage = `"${collection.name}" collection is deleted from "${workspace.name}" workspace`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({

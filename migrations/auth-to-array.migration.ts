@@ -19,8 +19,11 @@ export class AuthToAuthProfilesMigration implements OnModuleInit {
 
       const documents = await collection
         .find({
-          auth: { $type: "object" },
-          "auth.0": { $exists: false },           // Ensure auth is not already an array
+          $or: [
+            { auth: { $type: "object" }, "auth.0": { $exists: false } }, // Valid auth object (not array)
+            { auth: { $exists: false } }, // No auth field
+            { auth: null }, // Null auth
+          ],
         })
         .toArray();
 
@@ -35,67 +38,80 @@ export class AuthToAuthProfilesMigration implements OnModuleInit {
       for (const doc of documents) {
         const authObject = doc.auth;
 
-        if (
-          authObject &&
-          typeof authObject === "object" &&
-          !Array.isArray(authObject)
-        ) {
-          // Check if a valid auth type exists
-          let authType = "";
-          const { bearerToken, basicAuth = {}, apiKey = {} } = authObject;
-
-          const hasBearer = bearerToken && bearerToken.trim() !== "";
-          const hasBasic = basicAuth.username?.trim() || basicAuth.password?.trim();
-          const hasApiKey = apiKey.authKey?.trim() || apiKey.authValue?.trim();
-
-          if (hasBearer) {
-            authType = "Bearer Token";
-          } else if (hasBasic) {
-            authType = "Basic Auth";
-          } else if (hasApiKey) {
-            authType = "API Key";
-          } else {
-            console.warn(`Skipping ${doc._id}: no valid auth data.`);
-            continue;
-          }
-
-          const newAuthProfile = {
-            name: "New-Auth-Profile",
-            description: "",
-            authType,
-            auth: {
-              bearerToken: bearerToken || "",
-              basicAuth: {
-                username: basicAuth.username || "",
-                password: basicAuth.password || "",
-              },
-              apiKey: {
-                authKey: apiKey.authKey || "",
-                authValue: apiKey.authValue || "",
-                addTo: apiKey.addTo || "Header",
-              },
-            },
-            defaultKey: false,
-            createdAt: now,
-            authId: uuidv4(),
-          };
-
-          // Prepare the update operation
+        // Case 1: auth is missing or invalid
+        if (!authObject || typeof authObject !== "object" || Array.isArray(authObject)) {
           const update: any = {};
 
-          if (Array.isArray(doc.authProfiles)) {
-            update.$push = { authProfiles: newAuthProfile };
+          if (!Array.isArray(doc.authProfiles)) {
+            update.$set = { authProfiles: [] };
+
+            await collection.updateOne(
+              { _id: new ObjectId(doc._id) },
+              update
+            );
+
+            console.log(`Set empty authProfiles for document: ${doc._id}`);
           } else {
-            update.$set = { authProfiles: [newAuthProfile] };
+            console.log(`authProfiles already exists for document: ${doc._id}`);
           }
 
-          await collection.updateOne(
-            { _id: new ObjectId(doc._id) },
-            update
-          );
-
-          console.log(`Updated authProfiles for document: ${doc._id}`);
+          continue;
         }
+
+        // Case 2: auth is a valid object, migrate to authProfiles
+        let authType = "";
+        const { bearerToken, basicAuth = {}, apiKey = {} } = authObject;
+
+        const hasBearer = bearerToken && bearerToken.trim() !== "";
+        const hasBasic = basicAuth.username?.trim() || basicAuth.password?.trim();
+        const hasApiKey = apiKey.authKey?.trim() || apiKey.authValue?.trim();
+
+        if (hasBearer) {
+          authType = "Bearer Token";
+        } else if (hasBasic) {
+          authType = "Basic Auth";
+        } else if (hasApiKey) {
+          authType = "API Key";
+        } else {
+          console.warn(`Skipping ${doc._id}: no valid auth data.`);
+          continue;
+        }
+
+        const newAuthProfile = {
+          name: "New-Auth-Profile",
+          description: "",
+          authType,
+          auth: {
+            bearerToken: bearerToken || "",
+            basicAuth: {
+              username: basicAuth.username || "",
+              password: basicAuth.password || "",
+            },
+            apiKey: {
+              authKey: apiKey.authKey || "",
+              authValue: apiKey.authValue || "",
+              addTo: apiKey.addTo || "Header",
+            },
+          },
+          defaultKey: false,
+          createdAt: now,
+          authId: uuidv4(),
+        };
+
+        const update: any = {};
+
+        if (Array.isArray(doc.authProfiles)) {
+          update.$push = { authProfiles: newAuthProfile };
+        } else {
+          update.$set = { authProfiles: [newAuthProfile] };
+        }
+
+        await collection.updateOne(
+          { _id: new ObjectId(doc._id) },
+          update
+        );
+
+        console.log(`Updated authProfiles for document: ${doc._id}`);
       }
 
       console.log(`Migration completed. Total processed: ${documents.length}`);

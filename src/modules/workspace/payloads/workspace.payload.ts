@@ -129,6 +129,7 @@ export class WorkspaceDtoForIdDocument {
   @IsMongoId()
   @IsOptional()
   createdBy?: string;
+
 }
 
 export class workspaceUsersResponseDto {

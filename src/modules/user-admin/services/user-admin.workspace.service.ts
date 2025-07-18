@@ -103,15 +103,26 @@ export class AdminWorkspaceService {
               search,
               sort: sort,
             });
-          const mappedCollections = collections.map((item: any) => ({
-            resourceType: "collections",
-            keyStats: item?.totalRequests,
-            name: item?.name,
-            updatedAt: item?.updatedAt,
-            createdBy: item?.createdBy,
-            updatedBy: item?.updatedBy,
-            id: item?.id,
-          }));
+          const mappedCollections = collections.map((item: any) => {
+            let count = 0;
+            for (let i = 0; i < item.items.length; i++) {
+              if (item.items[i]?.items) {
+                count += item.items[i].items?.length;
+              } else {
+                count += 1;
+              }
+            }
+
+            return {
+              resourceType: "collections",
+              keyStats: count,
+              name: item?.name,
+              updatedAt: item?.updatedAt,
+              createdBy: item?.createdBy,
+              updatedBy: item?.updatedBy,
+              id: item?.id,
+            };
+          });
 
           allResources.push(...mappedCollections);
         }
