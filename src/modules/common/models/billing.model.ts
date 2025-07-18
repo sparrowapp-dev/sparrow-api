@@ -182,19 +182,19 @@ export class BillingDto {
 class BillingChangeDto {
   @IsString()
   @IsOptional()
-  field: string;
+  field?: string;
 
   @IsOptional()
-  previousValue: any;
+  previousValue?: any;
 
   @IsOptional()
-  newValue: any;
+  newValue?: any;
 }
 
 class BillingActorDto {
   @IsEnum(BillingActorType)
   @IsOptional()
-  type: BillingActorType;
+  type?: BillingActorType;
 
   @IsOptional()
   @IsString()
@@ -209,7 +209,7 @@ class BillingContextDto {
   @ValidateNested()
   @Type(() => BillingActorDto)
   @IsOptional()
-  actor: BillingActorDto;
+  actor?: BillingActorDto;
 
   @IsOptional()
   @IsString()
@@ -217,7 +217,7 @@ class BillingContextDto {
 
   @IsEnum(BillingSource)
   @IsOptional()
-  source: BillingSource;
+  source?: BillingSource;
 
   @IsOptional()
   @IsString()
@@ -231,40 +231,40 @@ class BillingContextDto {
 class BillingFinancialImpactDto {
   @IsNumber()
   @IsOptional()
-  amount: number;
+  amount?: number;
 
   @IsString()
   @IsOptional()
-  currency: string;
+  currency?: string;
 
   @IsEnum(BillingTransactionType)
   @IsOptional()
-  transactionType: BillingTransactionType;
+  transactionType?: BillingTransactionType;
 }
 
 export class BillingEventDto {
   @IsEnum(BillingEventType)
   @IsOptional()
-  eventType: BillingEventType;
+  eventType?: BillingEventType;
 
   @IsEnum(BillingEntityType)
   @IsOptional()
-  entityType: BillingEntityType;
+  entityType?: BillingEntityType;
 
   @IsString()
   @IsOptional()
-  entityId: string;
+  entityId?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BillingChangeDto)
   @IsOptional()
-  changes: BillingChangeDto[];
+  changes?: BillingChangeDto[];
 
   @ValidateNested()
   @Type(() => BillingContextDto)
   @IsOptional()
-  context: BillingContextDto;
+  context?: BillingContextDto;
 
   @IsOptional()
   @ValidateNested()
@@ -278,37 +278,37 @@ export class BillingEventDto {
   @IsDate()
   @Type(() => Date)
   @IsOptional()
-  timestamp: Date;
+  timestamp?: Date;
 
   @IsNumber()
   @IsOptional()
-  version: number;
+  version?: number;
 }
 
 export class BillingTransactionDto {
   @IsEnum(BillingEntityType)
   @IsOptional()
-  entityType: BillingEntityType;
+  entityType?: BillingEntityType;
 
   @IsString()
   @IsOptional()
-  entityId: string;
+  entityId?: string;
 
   @IsEnum(BillingTransactionType)
   @IsOptional()
-  transactionType: BillingTransactionType;
+  transactionType?: BillingTransactionType;
 
   @IsNumber()
   @IsOptional()
-  amount: number;
+  amount?: number;
 
   @IsString()
   @IsOptional()
-  currency: string;
+  currency?: string;
 
   @IsString()
   @IsOptional()
-  description: string;
+  description?: string;
 
   @IsOptional()
   @IsString()
@@ -329,7 +329,7 @@ export class BillingTransactionDto {
   @IsDate()
   @Type(() => Date)
   @IsOptional()
-  timestamp: Date;
+  timestamp?: Date;
 
   @IsOptional()
   @IsString()
