@@ -92,6 +92,56 @@ export class UserConversationModel {
   time?: number;
 }
 
+export class ConfigurationModel {
+  /**
+   * Whether to stream the response (true or false)
+   */
+  @IsBoolean()
+  @IsOptional()
+  @ApiProperty({ example: true, description: 'Enable streaming response' })
+  streamResponse?: boolean;
+
+  /**
+   * Return response in JSON format
+   */
+  @IsBoolean()
+  @IsOptional()
+  @ApiProperty({ example: true, description: 'Enable JSON response format' })
+  jsonResponse?: boolean;
+
+  /**
+   * Sampling temperature, higher values like 0.9 make output more random
+   */
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ example: 0.5, description: 'Sampling temperature for generation randomness' })
+  temperature?: number;
+
+  /**
+   * Penalize new tokens based on their presence so far (affects topic repetition)
+   */
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ example: 0.5, description: 'Penalty for token presence to reduce repetition' })
+  presencePenalty?: number;
+
+  /**
+   * Penalize new tokens based on their frequency (affects frequent tokens)
+   */
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ example: 0.5, description: 'Penalty for token frequency to reduce frequent words' })
+  frequencyPenalty?: number;
+
+  /**
+   * Maximum number of tokens in the response
+   */
+  @IsNumber()
+  @IsOptional()
+  @ApiProperty({ example: 200, description: 'Maximum number of tokens to generate' })
+  maxTokens?: number;
+}
+
 export class VariableItem {
 
   @IsString()
@@ -110,6 +160,14 @@ export class ConversationModel {
   @IsOptional()
   @ApiProperty({ example: "unique-id" })
   id?: string;
+
+  /**
+   * System Prompt used for the conversation
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ example: "system promot" })
+  systemPrompt?: string;
 
   /**
    * Title of the conversation thread.
@@ -190,6 +248,14 @@ export class ConversationModel {
     ]
   })
   variables?: VariableItem[];
+
+  /**
+   * Configurations used
+   */
+  @IsOptional()
+  @ApiProperty({ type: ConfigurationModel })
+  @Type(() => ConfigurationModel)
+  configurations?: ConfigurationModel;
   
 
   /**
