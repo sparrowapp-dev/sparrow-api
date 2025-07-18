@@ -1474,20 +1474,12 @@ export class CollectionRequestService {
       user._id,
     );
     await this.checkPermission(aiRequest.workspaceId, user._id);
-    // Encrypt apiKey.authValue before updating
-    aiRequest.items.aiRequest.auth.apiKey.authValue = this.encryptionService.encrypt(String(aiRequest.items.aiRequest.auth.apiKey.authValue),);
     const collection = await this.collectionReposistory.updateAiRequest(
       aiRequest.collectionId,
       aiRequestId,
       aiRequest,
       user,
     );
-    // Decrypt apiKey.authValue before returning
-    if (collection?.aiRequest?.auth?.apiKey?.authValue) {
-      collection.aiRequest.auth.apiKey.authValue = this.encryptionService.decrypt(
-        String(collection.aiRequest.auth.apiKey.authValue),
-      );
-    }
     const collectionData = await this.collectionReposistory.getCollection(
       aiRequest.collectionId,
     );
