@@ -55,7 +55,7 @@ import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
-import { LicensesDto } from "@src/modules/common/models/licenses.model";
+import { LicenseManagementService } from "@src/modules/billing/services/license-management.service";
 
 /**
  * Workspace Service
@@ -72,44 +72,8 @@ export class WorkspaceService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly emailService: EmailService,
+    private readonly licenseManagementService: LicenseManagementService,
   ) {}
-
-  /**
-   * Updates license tracking for a team when workspace changes affect user count
-   * @param teamId - The team ID to update licenses for
-   * @param workspaceId - The workspace ID where the change occurred
-   */
-  private async updateLicenseTracking(teamId: string, workspaceId: string): Promise<void> {
-    try {
-      const team = await this.teamRepository.findTeamByTeamId(new ObjectId(teamId));
-      
-      // Calculate current active users and pending invites
-      const currentActiveUsers = team.users?.length || 0;
-      const currentPendingInvites =
-        team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
-      const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
-      
-      // Use existing licenses/billing to get total seats
-      const totalSeats = team.licenses?.totalSeats || 
-        team.billing?.seats || 
-        1;
-
-      const licenseData: LicensesDto = {
-        totalSeats: Number(totalSeats),
-        usedSeats: Number(totalCurrentUsage),
-        availableSeats: Number(totalSeats) - Number(totalCurrentUsage),
-        lastUpdated: new Date(),
-      };
-
-      // Update team with license data
-      await this.teamRepository.updateTeamById(new ObjectId(teamId), {
-        licenses: licenseData,
-      });
-    } catch (error) {
-      console.error('Error updating license tracking in workspace service:', error);
-      // Don't throw error to avoid breaking the main operation
-    }
-  }
 
   async get(id: string): Promise<WithId<Workspace>> {
     const data = await this.workspaceRepository.get(id);
@@ -150,7 +114,8 @@ export class WorkspaceService {
 
     if (workspaceIds.length > 0) {
       // Bulk fetch all workspaces in one DB call
-      const workspaceDocs = await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
+      const workspaceDocs =
+        await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
 
       workspaces = workspaceDocs.map((doc) => {
         const isNewInvite = workspaceIdMap.get(doc._id.toString()) ?? false;
@@ -160,7 +125,7 @@ export class WorkspaceService {
         };
       });
     }
-      
+
     if (!workspaces.length) {
       const teams = await this.teamService.getAllTeams(userId, currentUser);
       for (const team of teams) {
@@ -185,9 +150,10 @@ export class WorkspaceService {
   }
   async getAllTeamWorkSpaces(teamId: string): Promise<Workspace[]> {
     const team = await this.teamRepository.get(teamId);
-    const workspaceIds = team.workspaces?.map(w =>w.id.toString()) || [];
+    const workspaceIds = team.workspaces?.map((w) => w.id.toString()) || [];
     if (workspaceIds.length === 0) return [];
-    const workspaces = await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
+    const workspaces =
+      await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
     return workspaces;
   }
 
@@ -860,7 +826,9 @@ export class WorkspaceService {
 
     // Update license tracking after user removal from workspace
     // Note: This updates the team's license tracking when a user is removed from a workspace
-    await this.updateLicenseTracking(workspaceData.team.id, payload.workspaceId);
+    await this.licenseManagementService.updateLicenseTracking(
+      workspaceData.team.id,
+    );
 
     return response;
   }

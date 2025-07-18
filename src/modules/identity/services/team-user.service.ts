@@ -22,11 +22,11 @@ import { TeamService } from "./team.service";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { StripeSubscriptionService } from "@src/modules/billing/services/stripe-subscription.service";
+import { LicenseManagementService } from "@src/modules/billing/services/license-management.service";
 import { TeamDto } from "../payloads/team.payload";
 import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
-import { LicensesDto } from "@src/modules/common/models/licenses.model";
 /**
  * Team User Service
  */
@@ -41,48 +41,8 @@ export class TeamUserService {
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly stripeSubscriptionService: StripeSubscriptionService,
+    private readonly licenseManagementService: LicenseManagementService,
   ) {}
-
-  /**
-   * Updates license tracking for a team
-   * @param teamId - The team ID to update licenses for
-   * @param currentSeats - The current total seats (optional, will be calculated if not provided)
-   */
-  private async updateLicenseTracking(
-    teamId: string,
-    currentSeats?: number,
-  ): Promise<void> {
-    try {
-      const team = await this.teamRepository.findTeamByTeamId(
-        new ObjectId(teamId),
-      );
-
-      // Calculate current active users and pending invites
-      const currentActiveUsers = team.users?.length || 0;
-      const currentPendingInvites =
-        team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
-      const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
-
-      // Use provided seats or get from existing licenses/billing
-      const totalSeats =
-        currentSeats || team.licenses?.totalSeats || team.billing?.seats || 1;
-
-      const licenseData: LicensesDto = {
-        totalSeats: Number(totalSeats),
-        usedSeats: Number(totalCurrentUsage),
-        availableSeats: Number(totalSeats) - Number(totalCurrentUsage),
-        lastUpdated: new Date(),
-      };
-
-      // Update team with license data
-      await this.teamRepository.updateTeamById(new ObjectId(teamId), {
-        licenses: licenseData,
-      });
-    } catch (error) {
-      console.error("Error updating license tracking:", error);
-      // Don't throw error to avoid breaking the main operation
-    }
-  }
 
   async HasPermissionToRemove(
     payload: CreateOrUpdateTeamUserDto,
@@ -328,7 +288,7 @@ export class TeamUserService {
     );
 
     // Update license tracking after user removal
-    await this.updateLicenseTracking(payload.teamId);
+    await this.licenseManagementService.updateLicenseTracking(payload.teamId);
 
     return data;
   }
@@ -697,7 +657,7 @@ export class TeamUserService {
     );
 
     // Update license tracking after user leaves team
-    await this.updateLicenseTracking(teamId);
+    await this.licenseManagementService.updateLicenseTracking(teamId);
 
     return data;
   }
@@ -1388,7 +1348,7 @@ export class TeamUserService {
     const data = await this.removeTeamInvite(teamId, email);
 
     // Update license tracking after invite removal
-    await this.updateLicenseTracking(teamId);
+    await this.licenseManagementService.updateLicenseTracking(teamId);
 
     return data;
   }
