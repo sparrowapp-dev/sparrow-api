@@ -15,6 +15,7 @@ import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
 import { UserDto } from "@src/modules/common/models/user.model";
 import { Invite } from "@src/modules/common/models/team.model";
 import { logoDto as TeamLogoDto } from "@src/modules/common/models/team.model";
+import { LicensesDto } from "@src/modules/common/models/licenses.model";
 
 export class logoDto {
   @IsString()
@@ -100,6 +101,11 @@ export class TeamDto {
   @IsArray()
   @IsOptional()
   invites?: Invite[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LicensesDto)
+  licenses?: LicensesDto;
 }
 
 export class UpdateTeamDto {

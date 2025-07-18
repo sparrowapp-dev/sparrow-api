@@ -26,6 +26,7 @@ import { TeamDto } from "../payloads/team.payload";
 import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
+import { LicensesDto } from "@src/modules/common/models/licenses.model";
 /**
  * Team User Service
  */
@@ -41,6 +42,47 @@ export class TeamUserService {
     private readonly emailService: EmailService,
     private readonly stripeSubscriptionService: StripeSubscriptionService,
   ) {}
+
+  /**
+   * Updates license tracking for a team
+   * @param teamId - The team ID to update licenses for
+   * @param currentSeats - The current total seats (optional, will be calculated if not provided)
+   */
+  private async updateLicenseTracking(
+    teamId: string,
+    currentSeats?: number,
+  ): Promise<void> {
+    try {
+      const team = await this.teamRepository.findTeamByTeamId(
+        new ObjectId(teamId),
+      );
+
+      // Calculate current active users and pending invites
+      const currentActiveUsers = team.users?.length || 0;
+      const currentPendingInvites =
+        team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
+      const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
+
+      // Use provided seats or get from existing licenses/billing
+      const totalSeats =
+        currentSeats || team.licenses?.totalSeats || team.billing?.seats || 1;
+
+      const licenseData: LicensesDto = {
+        totalSeats: Number(totalSeats),
+        usedSeats: Number(totalCurrentUsage),
+        availableSeats: Number(totalSeats) - Number(totalCurrentUsage),
+        lastUpdated: new Date(),
+      };
+
+      // Update team with license data
+      await this.teamRepository.updateTeamById(new ObjectId(teamId), {
+        licenses: licenseData,
+      });
+    } catch (error) {
+      console.error("Error updating license tracking:", error);
+      // Don't throw error to avoid breaking the main operation
+    }
+  }
 
   async HasPermissionToRemove(
     payload: CreateOrUpdateTeamUserDto,
@@ -208,6 +250,7 @@ export class TeamUserService {
       payload.role,
       payload?.senderEmail,
     );
+
     const response = {
       nonExistingUsers: usersNotExist,
       alreadyTeamMember: alreadyTeamMember,
@@ -283,6 +326,10 @@ export class TeamUserService {
       ownerDetails.name.split(" ")[0],
       ownerDetails.email,
     );
+
+    // Update license tracking after user removal
+    await this.updateLicenseTracking(payload.teamId);
+
     return data;
   }
 
@@ -648,6 +695,9 @@ export class TeamUserService {
       ownerDetails.name.split(" ")[0],
       ownerDetails.email,
     );
+
+    // Update license tracking after user leaves team
+    await this.updateLicenseTracking(teamId);
 
     return data;
   }
@@ -1336,6 +1386,10 @@ export class TeamUserService {
       throw new NotFoundException("Invite not found");
     }
     const data = await this.removeTeamInvite(teamId, email);
+
+    // Update license tracking after invite removal
+    await this.updateLicenseTracking(teamId);
+
     return data;
   }
 

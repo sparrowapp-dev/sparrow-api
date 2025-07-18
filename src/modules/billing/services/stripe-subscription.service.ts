@@ -635,25 +635,6 @@ export class StripeSubscriptionService {
 
     await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
 
-    // Create or update basic license object for successful payments
-    const currentActiveUsers = team.users?.length || 0;
-    const currentPendingInvites =
-      team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
-    const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
-    const currentSeats = metadata?.userCount || 1;
-
-    const licenseData: LicensesDto = {
-      totalSeats: Number(currentSeats),
-      usedSeats: Number(totalCurrentUsage),
-      availableSeats: Number(currentSeats) - Number(totalCurrentUsage),
-      lastUpdated: new Date(),
-    };
-
-    // Update team with license data
-    await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
-      licenses: licenseData,
-    });
-
     // Log appropriate events based on payment type
     await this.logPaymentEvents(
       metadata.hubId,
@@ -1489,9 +1470,8 @@ export class StripeSubscriptionService {
       }
 
       // Categorize users into existing/already invited and truly new users
-      let existingUsersCount = 0; // Users who already exist in the system OR are already invited
-      let newUsersCount = 0; // Truly new users who need licenses
-      let skippedUsersCount = 0; // Users already in team or with pending invites
+      let newUsersCount = 0;
+      let skippedUsersCount = 0;
 
       for (const userEmail of userEmails) {
         const sanitizedEmail = userEmail.trim().toLowerCase();
@@ -1517,34 +1497,24 @@ export class StripeSubscriptionService {
       }
 
       // If all users are already members or have pending invites
-      if (
-        newUsersCount === 0 &&
-        existingUsersCount === 0 &&
-        skippedUsersCount > 0
-      ) {
+      if (newUsersCount === 0 && skippedUsersCount > 0) {
         return {
           success: true,
           message: `All ${skippedUsersCount} users are already team members or have pending invites`,
         };
       }
 
-      // For existing users only, skip license check as they don't consume new seats
-      if (existingUsersCount > 0 && newUsersCount === 0) {
-        return {
-          success: true,
-          message: `Inviting ${existingUsersCount} existing users - no additional licenses needed`,
-        };
-      }
-
       // Calculate current usage and available licenses
-      const currentActiveUsers = team.users?.length || 0;
-      const currentPendingInvites =
-        team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
+      const currentActiveUsers = Number(team.users?.length || 0);
+      const currentPendingInvites = Number(
+        team.invites?.filter((invite: any) => !invite.isAccepted).length || 0,
+      );
       const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
 
       // Get available licenses from license object or fallback to billing seats
-      const availableLicenses =
-        team.licenses?.totalSeats || team.billing.seats || 1;
+      const availableLicenses = Number(
+        team.licenses?.totalSeats || team.billing?.seats || 1,
+      );
       const unusedLicenses = Math.max(0, availableLicenses - totalCurrentUsage);
 
       // Only check licenses for new users (not existing users)
@@ -1552,16 +1522,29 @@ export class StripeSubscriptionService {
 
       // If we have enough unused licenses, proceed
       if (unusedLicenses >= usersRequiringLicenses) {
+        const newUsedSeats = totalCurrentUsage + usersRequiringLicenses;
+        const newTotalSeats = availableLicenses;
+
+        const licenseData: LicensesDto = {
+          totalSeats: newTotalSeats,
+          usedSeats: newUsedSeats,
+          availableSeats: newTotalSeats - newUsedSeats,
+          lastUpdated: new Date(),
+        };
+
+        // Update team with new license data
+        await this.stripeSubscriptionRepo.updateTeamById(String(team._id), {
+          licenses: licenseData,
+        });
+
         let message = `Using ${usersRequiringLicenses} of ${unusedLicenses} available licenses`;
-        if (existingUsersCount > 0) {
-          message += ` (${existingUsersCount} existing users don't require additional licenses)`;
-        }
         if (skippedUsersCount > 0) {
           message += ` (${skippedUsersCount} users already in team/invited)`;
         }
+
         return {
           success: true,
-          message: message,
+          message,
         };
       }
 
@@ -1574,7 +1557,7 @@ export class StripeSubscriptionService {
       }
 
       // Check for payment failed status - block new purchases until resolved
-      if (team.billing.status === SubscriptionStatus.PAYMENT_FAILED) {
+      if (team.billing?.status === SubscriptionStatus.PAYMENT_FAILED) {
         return {
           success: false,
           message:
@@ -1583,7 +1566,7 @@ export class StripeSubscriptionService {
       }
 
       // Check for action required status - block new purchases until 3DS is completed
-      if (team.billing.status === SubscriptionStatus.ACTION_REQUIRED) {
+      if (team.billing?.status === SubscriptionStatus.ACTION_REQUIRED) {
         return {
           success: false,
           message:
@@ -1592,9 +1575,11 @@ export class StripeSubscriptionService {
       }
 
       // Calculate additional seats needed (only for new users)
-      const additionalSeatsNeeded = usersRequiringLicenses - unusedLicenses;
-      const newTotalSeats =
-        Number(availableLicenses) + Number(additionalSeatsNeeded);
+      const additionalSeatsNeeded = Math.max(
+        0,
+        usersRequiringLicenses - unusedLicenses,
+      );
+      const newTotalSeats = availableLicenses + additionalSeatsNeeded;
 
       // Check if Stripe service is available for purchasing additional seats
       if (!this.stripeService) {
@@ -1607,7 +1592,7 @@ export class StripeSubscriptionService {
 
       // Check if team has active subscription
       if (
-        !team.billing.latest_invoice ||
+        !team.billing?.latest_invoice ||
         team.billing.status !== SubscriptionStatus.ACTIVE
       ) {
         return {
@@ -1617,7 +1602,7 @@ export class StripeSubscriptionService {
         };
       }
 
-      // Purchase additional seats via Stripe updateSubscription
+      // Get Stripe subscription ID
       const subscriptionId = team.billing.paymentProviders?.find(
         (provider: any) => provider.provider === PaymentProvider.STRIPE,
       )?.subscriptionId;
@@ -1636,12 +1621,12 @@ export class StripeSubscriptionService {
           subscriptionId,
           undefined, // no new price_id (we are updating seats)
           {
-            hubId: team._id.toString(),
-            userCount: newTotalSeats.toString(),
+            hubId: String(team._id),
+            userCount: String(newTotalSeats),
             planName: team.plan?.name,
             licenseUpdate: "true",
-            previousSeats: availableLicenses.toString(),
-            newSeats: newTotalSeats.toString(),
+            previousSeats: String(availableLicenses),
+            newSeats: String(newTotalSeats),
           },
           undefined, // default_payment_method (optional)
           "always_invoice", // prorationBehavior (optional)
@@ -1655,8 +1640,6 @@ export class StripeSubscriptionService {
         if (data.requiresAction) {
           let invoice = null;
           const latest_invoice = data?.subscription?.latest_invoice;
-
-          // get latest invoice details
           const invoices =
             await this.stripeService.getInvoiceById(latest_invoice);
 
@@ -1672,7 +1655,7 @@ export class StripeSubscriptionService {
 
           // Update team billing status to indicate action required
           await this.updateTeamPlanWithBilling(
-            team._id.toString(),
+            String(team._id),
             team.plan,
             billingDetails,
           );
@@ -1685,15 +1668,18 @@ export class StripeSubscriptionService {
         }
 
         // Payment succeeded - update licenses
+        const futurePendingInvites = currentPendingInvites + newUsersCount;
+        const futureTotalUsage = currentActiveUsers + futurePendingInvites;
+
         const licenseData: LicensesDto = {
-          totalSeats: Number(newTotalSeats),
-          usedSeats: Number(totalCurrentUsage),
-          availableSeats: Number(newTotalSeats) - Number(totalCurrentUsage),
+          totalSeats: newTotalSeats,
+          usedSeats: futureTotalUsage,
+          availableSeats: newTotalSeats - futureTotalUsage,
           lastUpdated: new Date(),
         };
 
         // Update team with new license data
-        await this.stripeSubscriptionRepo.updateTeamById(team._id.toString(), {
+        await this.stripeSubscriptionRepo.updateTeamById(String(team._id), {
           licenses: licenseData,
         });
 
@@ -1705,7 +1691,9 @@ export class StripeSubscriptionService {
         console.error("Error updating Stripe subscription:", stripeError);
         return {
           success: false,
-          message: `Failed to purchase additional seats: ${stripeError.message || "Stripe API error"}`,
+          message: `Failed to purchase additional seats: ${
+            stripeError.message || "Stripe API error"
+          }`,
         };
       }
     } catch (error) {
