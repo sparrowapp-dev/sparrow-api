@@ -20,6 +20,7 @@ import { SendSalesEmail } from "../payloads/sales-email.payload";
 
 // ---- Services
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
+import { UserService } from "@src/modules/identity/services/user.service";
 
 // ---- Enum
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
@@ -39,7 +40,10 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 @ApiTags("Sales Email")
 @Controller("api")
 export class SalesEmailController {
-  constructor(private readonly salesEmailService: SalesEmailService) {}
+  constructor(
+    private readonly salesEmailService: SalesEmailService,
+    private readonly userService: UserService,
+  ) {}
 
   /**
    * Add a new sales email record and send email.
@@ -119,6 +123,11 @@ export class SalesEmailController {
     const user = request.user;
     // Retrieve the added mail record for confirmation
     await this.salesEmailService.sendTrialConfirmationEmail(trailId, payload);
+    await this.userService.updateUser(
+      user._id.toString(),
+      { isUserTrialExhausted: true },
+      user,
+    );
     const responseData = new ApiResponseService(
       "Email Sent Successfully",
       HttpStatusCode.CREATED,
@@ -145,6 +154,11 @@ export class SalesEmailController {
       hubId,
       payload.trailFlow,
       payload.trialFrequency,
+    );
+    await this.userService.updateUser(
+      user._id.toString(),
+      { isUserTrialExhausted: true },
+      user,
     );
     const responseData = new ApiResponseService(
       "Email Sent Successfully",

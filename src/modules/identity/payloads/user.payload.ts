@@ -26,6 +26,10 @@ export class UpdateUserDto {
   @Matches(/^[a-zA-Z ]+$/)
   @IsNotEmpty()
   name: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isUserTrialExhausted?: boolean;
 }
 
 export class UserDto {
