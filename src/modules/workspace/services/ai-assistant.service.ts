@@ -70,6 +70,9 @@ import { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 
 // import { GoogleGenAI } from "@google/genai";
 
+import pdfParse from 'pdf-parse';
+import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
+
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
   try {
@@ -2044,11 +2047,22 @@ export class AiAssistantService {
     }
   }
 
-
-
-  public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string): Promise<{ fileId: string; fileUrl: string }[]> {
+  public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string, modelVersion: string): Promise<{ fileId: string; fileUrl: string }[]> {
     if (!docs?.length || !model || !authKey) {
       throw new BadRequestException('Missing required fields');
+    }
+
+    async function extractTextFromBuffer(buffer: Buffer, mimetype: string): Promise<string> {
+      if (mimetype === 'application/pdf') {
+        const result = await pdfParse(buffer);
+        return result.text;
+      }
+
+      if (mimetype === 'text/plain') {
+        return buffer.toString('utf8');
+      }
+
+      throw new BadRequestException(`Unsupported file type: ${mimetype}`);
     }
     
     if (model === Models.OpenAI) {
@@ -2056,8 +2070,29 @@ export class AiAssistantService {
       const { writeFile, unlink } = fs.promises;
       
       const results: { fileId: string; fileUrl: string; }[] = [];
+      let totalTokenCount = 0;
+      const acceptedFiles: string[] = [];
       
       for (const doc of docs) {
+
+        // Check the tokens of the File user has uploaded
+        const text = await extractTextFromBuffer(doc.buffer, doc.mimetype);
+        const model = modelVersion as TiktokenModel
+        const enc = encoding_for_model(model);
+        const tokens = enc.encode(text);
+
+        // Token limit exceeded check
+        if (totalTokenCount + tokens.length > 120000) {
+          const acceptedMsg = acceptedFiles.length
+            ? `Try uploading only the first ${acceptedFiles.length} file${acceptedFiles.length > 1 ? 's' : ''}.`
+            : 'Try with a file that contains less content.';
+
+          throw new BadRequestException(
+            `The uploaded content exceeds the model’s token limit of 128k. ${acceptedMsg}`
+          );
+        }
+        totalTokenCount += tokens.length;
+        acceptedFiles.push(doc.fieldname);
 
         // Upload document to azure blob 
         const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
@@ -2073,7 +2108,10 @@ export class AiAssistantService {
 
           results.push({ fileId: file.id, fileUrl: uploadFile });
         } catch (err) {
-          console.error(`Upload failed for ${doc.fieldname}:`, err);
+          const statusCode = err?.status || err?.response?.status || err?.code;
+          if (statusCode === 401 || err?.code === 'invalid_api_key') {
+            throw new BadRequestException(err?.error?.message);
+          }
         } finally {
           unlink(tempFilePath).catch(() =>
             console.warn(`Failed to delete temp file: ${tempFilePath}`)
@@ -2083,39 +2121,39 @@ export class AiAssistantService {
       return results;
     }
 
-    if (model === Models.Anthropic) {
+    // if (model === Models.Anthropic) {
 
-      const AnthropicClient = await this.createAnthropicClient(authKey);
-      const { writeFile, unlink } = fs.promises;
+    //   const AnthropicClient = await this.createAnthropicClient(authKey);
+    //   const { writeFile, unlink } = fs.promises;
 
-      const results: { fileId: string; fileUrl: string; }[] = [];
+    //   const results: { fileId: string; fileUrl: string; }[] = [];
 
-      for (const doc of docs) {
+    //   for (const doc of docs) {
 
-        // Upload document to azure blob 
-        const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
-        console.log(doc)
+    //     // Upload document to azure blob 
+    //     const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
+    //     console.log(doc)
 
-        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
-        try {
-          await writeFile(tempFilePath, new Uint8Array(doc.buffer));
+    //     const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+    //     try {
+    //       await writeFile(tempFilePath, new Uint8Array(doc.buffer));
 
-          const file = await AnthropicClient.beta.files.upload({
-            file: await toFile(fs.createReadStream(tempFilePath), undefined, { type: doc.mimetype }),
-            betas: ['files-api-2025-04-14'],
-          });
+    //       const file = await AnthropicClient.beta.files.upload({
+    //         file: await toFile(fs.createReadStream(tempFilePath), undefined, { type: doc.mimetype }),
+    //         betas: ['files-api-2025-04-14'],
+    //       });
 
-          results.push({ fileId: file.id, fileUrl: uploadFile });
-        } catch (err) {
-          console.error(`Upload failed for ${doc.fieldname}:`, err);
-        } finally {
-          unlink(tempFilePath).catch(() =>
-            console.warn(`Failed to delete temp file: ${tempFilePath}`)
-          );
-        }
-      }
-      return results;
-    }
+    //       results.push({ fileId: file.id, fileUrl: uploadFile });
+    //     } catch (err) {
+    //       console.error(`Upload failed for ${doc.fieldname}:`, err);
+    //     } finally {
+    //       unlink(tempFilePath).catch(() =>
+    //         console.warn(`Failed to delete temp file: ${tempFilePath}`)
+    //       );
+    //     }
+    //   }
+    //   return results;
+    // }
 
     // if (model === Models.Google) {
 

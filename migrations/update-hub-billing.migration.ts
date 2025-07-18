@@ -73,8 +73,6 @@ export class UpdateHubBillingMigration implements OnModuleInit {
         amount_billed: 119.88,
         currency: "usd",
         status: "active",
-        collection_method: "charge_manually",
-        paid_at: new Date("2025-07-08T13:04:28.000Z"),
         billingType: "paid",
         updatedBy: "system-admin",
         in_trial: false,

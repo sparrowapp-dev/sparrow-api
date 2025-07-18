@@ -21,6 +21,7 @@ import { SchemaObject } from "./openapi303.model";
 import { ApiProperty } from "@nestjs/swagger";
 import {
   Auth,
+  AuthProfiles,
   KeyValue,
   SparrowRequestBody,
   TransformedRequest,
@@ -1045,6 +1046,11 @@ export class Collection {
   @IsOptional()
   selectedAuthType?: CollectionAuthModeEnum;
 
+  @ApiProperty({ example: "6544cdea4b3d3b043a96c307" })
+  @IsString()
+  @IsOptional()
+  defaultSelectedAuthProfile?: string;
+
   @ApiProperty({
     type: [Auth],
     example: {
@@ -1056,6 +1062,18 @@ export class Collection {
   @ValidateNested({ each: true })
   @IsOptional()
   auth?: Auth;
+
+  @ApiProperty({
+    type: [Auth],
+    example: {
+      bearerToken: "Bearer xyz",
+    },
+  })
+  @IsArray()
+  @Type(() => AuthProfiles)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  authProfiles?: AuthProfiles[];
 
   @ApiProperty()
   @IsString()

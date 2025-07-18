@@ -33,6 +33,7 @@ import {
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
 import { Testflow } from "@src/modules/common/models/testflow.model";
+import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
 import { DecodedUserObject } from "@src/types/fastify";
 
 /**
@@ -88,6 +89,14 @@ export class TestflowService {
     const testflow = await this.testflowRepository.get(
       testflowData.insertedId.toString(),
     );
+    const currentWorkspaceObject = new ObjectId(createTestflowDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return testflow;
   }
 
@@ -136,6 +145,14 @@ export class TestflowService {
       user._id,
     );
     const updateMessage = `"${testflow.name}" testflow is deleted from "${workspace.name}" workspace`;
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
@@ -156,15 +173,11 @@ export class TestflowService {
     userId: ObjectId,
   ): Promise<WithId<Testflow>[]> {
     await this.checkPermission(id, userId);
-
     const workspace = await this.workspaceService.get(id);
-    const testflows = [];
-    for (let i = 0; i < workspace.testflows?.length; i++) {
-      const testflow = await this.testflowRepository.get(
-        workspace.testflows[i].id.toString(),
-      );
-      testflows.push(testflow);
-    }
+    const testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    if (testflowIds.length === 0) return [];
+    const testflows =
+      await this.testflowRepository.getTestflowsByIds(testflowIds);
     return testflows;
   }
 
@@ -177,13 +190,10 @@ export class TestflowService {
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const testflows = [];
-    for (let i = 0; i < workspace.testflows?.length; i++) {
-      const testflow = await this.testflowRepository.get(
-        workspace.testflows[i].id.toString(),
-      );
-      testflows.push(testflow);
-    }
+    const testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    if (testflowIds.length === 0) return [];
+    const testflows =
+      await this.testflowRepository.getTestflowsByIds(testflowIds);
     return testflows;
   }
 
@@ -226,6 +236,14 @@ export class TestflowService {
         }),
       });
     }
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return testflow;
   }
 

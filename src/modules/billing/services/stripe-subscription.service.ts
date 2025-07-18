@@ -1,18 +1,19 @@
-import {
-  Injectable,
-  NotFoundException,
-  Inject,
-  Optional,
-} from "@nestjs/common";
+import { Injectable, Inject, Optional } from "@nestjs/common";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
+import { BillingAuditService } from "./billing-audit.service";
+import { PaymentEmailHelper } from "../helpers/payment-email.helper";
+import { StripeSubscriptionHelpers } from "../helpers/stripe-subscription.helpers";
 import {
-  PaymentProvider,
   BillingType,
+  PaymentProvider,
   SubscriptionStatus,
+  BillingActorType,
+  BillingSource,
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
-import { v4 as uuidv4 } from "uuid";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
+import { ScheduledDowngradeDto } from "@src/modules/common/models/billing.model";
+import { LicensesDto } from "@src/modules/common/models/licenses.model";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -22,7 +23,6 @@ try {
 } catch (error) {
   console.warn("Stripe service not available");
 }
-
 /**
  * Service for handling Stripe subscription operations
  */
@@ -30,41 +30,118 @@ try {
 export class StripeSubscriptionService {
   constructor(
     private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
-    @Optional() @Inject(StripeService) private readonly stripeService: any,
-  ) {
-    if (!this.stripeService) {
-      console.warn(
-        "Stripe service not available, some features will be limited",
-      );
-    }
-  }
+    private readonly billingAuditService: BillingAuditService,
+    private readonly paymentEmailHelper: PaymentEmailHelper,
+    @Optional() @Inject(StripeService) private readonly stripeService?: any,
+  ) {}
 
   /**
    * Handle subscription creation event
    * @param subscription The Stripe subscription object
+   * @param eventId The Stripe event ID
    */
-  async handleSubscriptionCreated(subscription: any): Promise<void> {
+  async handleSubscriptionCreated(
+    subscription: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract metadata and validate required fields
-      const { isValid, metadata } = this.validateMetadata(
+      const { isValid, metadata } = StripeSubscriptionHelpers.validateMetadata(
         subscription.metadata,
         ["planName", "hubId"],
+      );
+
+      // Create billing details object
+      const billingDetails = StripeSubscriptionHelpers.extractBillingDetails(
+        subscription,
+        eventId,
       );
 
       if (!isValid) {
         return;
       }
 
-      // Check subscription status - only process active subscriptions
-      if (subscription.status !== SubscriptionStatus.ACTIVE) {
-        return;
-      }
+      // Get current team state for comparison
+      const currentTeam = await this.stripeSubscriptionRepo.findTeamById(
+        metadata.hubId,
+      );
+      const previousPlan = currentTeam?.plan?.name || null;
 
-      await this.updateTeamAndWorkspacesWithPlan(
+      // Log subscription creation regardless of status (including incomplete)
+      await this.billingAuditService.recordSubscriptionCreated(
         metadata.hubId,
         metadata.planName,
-        subscription,
+        {
+          id: subscription.id,
+          status: billingDetails.status,
+          seats: metadata?.userCount || 1,
+          trial_end: subscription.trial_end,
+          billing_cycle: billingDetails.current_period_end,
+          current_period_start: billingDetails.current_period_start,
+          current_period_end: billingDetails.current_period_end,
+          interval: billingDetails.interval,
+          interval_count: billingDetails.interval_count,
+        },
+        {
+          actor: {
+            type: BillingActorType.WEBHOOK,
+            name: PaymentProvider.STRIPE,
+          },
+          source: BillingSource.STRIPE_WEBHOOK,
+          externalId: eventId,
+          reason: `Subscription created with status: ${subscription.status}`,
+        },
       );
+
+      // Only update team state if subscription is active
+      if (subscription.status === SubscriptionStatus.ACTIVE) {
+        await this.updateTeamAndWorkspacesWithPlan(
+          metadata.hubId,
+          metadata.planName,
+          subscription,
+          eventId,
+        );
+
+        // Log plan change if this is different from current plan
+        if (previousPlan && previousPlan !== metadata.planName) {
+          // Get plan limits for audit tracking
+          let planLimits:
+            | { previous: Record<string, any>; new: Record<string, any> }
+            | undefined;
+
+          if (currentTeam?.plan?.limits) {
+            // Get the new plan details to access its limits
+            const newPlanDetails =
+              await this.stripeSubscriptionRepo.findPlanByName(
+                metadata.planName,
+              );
+            if (newPlanDetails?.limits) {
+              planLimits = {
+                previous: currentTeam.plan.limits,
+                new: newPlanDetails.limits,
+              };
+            }
+          }
+
+          await this.billingAuditService.recordPlanChange(
+            metadata.hubId,
+            previousPlan,
+            metadata.planName,
+            {
+              actor: {
+                type: BillingActorType.WEBHOOK,
+                name: PaymentProvider.STRIPE,
+              },
+              source: BillingSource.STRIPE_WEBHOOK,
+              externalId: eventId,
+              reason: "Plan upgraded via subscription creation",
+            },
+            undefined, // no seat change
+            undefined, // no subscription details needed
+            planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
+          );
+        }
+      }
     } catch (error) {
       throw error;
     }
@@ -73,11 +150,15 @@ export class StripeSubscriptionService {
   /**
    * Handle subscription update event - process cancellations and payment failures
    * @param subscription The updated Stripe subscription object
+   * @param eventId The Stripe event ID
    */
-  async handleSubscriptionUpdated(subscription: any): Promise<void> {
+  async handleSubscriptionUpdated(
+    subscription: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract metadata and validate required fields
-      const { isValid, metadata } = this.validateMetadata(
+      const { isValid, metadata } = StripeSubscriptionHelpers.validateMetadata(
         subscription.metadata,
         ["planName", "hubId"],
       );
@@ -88,67 +169,115 @@ export class StripeSubscriptionService {
 
       // Process subscription cancellations
       if (subscription.status === SubscriptionStatus.CANCELED) {
-        // Find the community plan for downgrade
-        const communityPlan =
-          await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
-        if (!communityPlan) {
-          return;
-        }
-         communityPlan.id = communityPlan._id;
-         delete communityPlan._id;
-
-        // Get cancellation reason if available
-        const cancellationReason =
-          subscription.cancellation_details?.reason || "unknown";
-
-        // Update billing details for canceled subscription
-        const billingDetails = {
-          ...this.extractBillingDetails(subscription),
-          status: SubscriptionStatus.CANCELED,
-          canceled_at: subscription.canceled_at
-            ? new Date(subscription.canceled_at * 1000)
-            : new Date(),
-          cancellation_reason: cancellationReason,
-          updatedBy: "system-stripe-webhook",
-        };
-
-        // Update team to community plan with canceled billing status
-        await this.updateTeamPlanWithBilling(
-          metadata.hubId,
-          communityPlan,
-          billingDetails,
+        await this.handleSubscriptionCancellation(
+          subscription,
+          metadata,
+          eventId,
         );
-
-        // Update associated workspaces
-        // const workspaceUpdateResult =
-        //   await this.stripeSubscriptionRepo.updateWorkspacePlans(
-        //     metadata.hubId,
-        //     {
-        //       id: communityPlan._id,
-        //       name: communityPlan.name,
-        //     },
-        //   );
-
-      } 
+      }
     } catch (error) {
       throw error;
     }
   }
 
   /**
+   * Handle subscription cancellation logic
+   * @param subscription The canceled subscription object
+   * @param metadata The subscription metadata
+   * @param eventId The Stripe event ID
+   */
+  private async handleSubscriptionCancellation(
+    subscription: any,
+    metadata: any,
+    eventId?: string,
+  ): Promise<void> {
+    // Get current team state
+    const currentTeam = await this.stripeSubscriptionRepo.findTeamById(
+      metadata.hubId,
+    );
+    const previousPlan = currentTeam?.plan?.name || "unknown";
+
+    // Find the community plan for downgrade
+    const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+      PlanName.COMMUNITY,
+    );
+    if (!communityPlan) {
+      console.error("Community plan not found");
+      return;
+    }
+
+    // Ensure the community plan has an ID for the update
+    communityPlan.id = communityPlan._id;
+    delete communityPlan._id;
+
+    // Get cancellation reason if available
+    const cancellationReason =
+      subscription.cancellation_details?.reason || "unknown";
+
+    // Update billing details for canceled subscription
+    const billingDetails = {
+      ...StripeSubscriptionHelpers.extractBillingDetails(subscription),
+      status: SubscriptionStatus.CANCELED,
+      canceled_at: subscription.canceled_at
+        ? new Date(subscription.canceled_at * 1000)
+        : new Date(),
+      cancellation_reason: cancellationReason,
+      seats: metadata?.userCount || 1,
+      updatedBy: BillingSource.STRIPE_WEBHOOK,
+      event_id: eventId,
+    };
+
+    // Update team to community plan with canceled billing status
+    await this.updateTeamPlanWithBilling(
+      metadata.hubId,
+      communityPlan,
+      billingDetails,
+    );
+
+    // Get plan limits for audit tracking
+    let planLimits:
+      | { previous: Record<string, any>; new: Record<string, any> }
+      | undefined;
+
+    if (currentTeam?.plan?.limits && communityPlan.limits) {
+      planLimits = {
+        previous: currentTeam.plan.limits,
+        new: communityPlan.limits,
+      };
+    }
+
+    // Log plan change event
+    await this.billingAuditService.recordPlanChange(
+      metadata.hubId,
+      previousPlan,
+      PlanName.COMMUNITY,
+      {
+        actor: { type: BillingActorType.WEBHOOK, name: PaymentProvider.STRIPE },
+        source: BillingSource.STRIPE_WEBHOOK,
+        externalId: eventId,
+        reason: `Subscription canceled - ${cancellationReason}`,
+      },
+      undefined, // no seat change
+      undefined, // no subscription details needed
+      planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
+    );
+  }
+
+  /**
    * Handle invoice payment failed event
    * @param invoice The failed invoice object from Stripe
+   * @param eventId The Stripe event ID
    */
-  async handleInvoicePaymentFailed(invoice: any): Promise<void> {
+  async handleInvoicePaymentFailed(
+    invoice: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract subscription ID and metadata
-      const { subscriptionId, metadata } = this.extractInvoiceData(invoice);
+      const { subscriptionId, metadata } =
+        StripeSubscriptionHelpers.extractInvoiceData(invoice);
 
-      if (!subscriptionId) {
-        return;
-      }
-
-      if (!metadata.hubId) {
+      if (!subscriptionId || !metadata.hubId) {
         return;
       }
 
@@ -161,158 +290,210 @@ export class StripeSubscriptionService {
         return;
       }
 
-      // Check if subscription is already in a terminal state (cancelled or deleted)
-      // This prevents race conditions with subscription.deleted events
-      if (team.billing && team.billing.status) {
-        if (
-          [SubscriptionStatus.CANCELED, SubscriptionStatus.DELETED].includes(
-            team.billing.status,
-          )
-        ) {
-          return;
-        }
-      }
-
-      // Determine the billing reason to handle the case properly
-      const billingReason = invoice.billing_reason || "unknown";
-
-      // Extract current period dates from the invoice or the existing billing record
-      let currentPeriodStart = null;
-      let currentPeriodEnd = null;
-
-      // Try to get period information from the invoice line items
-      if (invoice.lines?.data?.[0]?.period) {
-        currentPeriodStart = invoice.lines.data[0].period.start
-          ? new Date(invoice.lines.data[0].period.start * 1000)
-          : null;
-        currentPeriodEnd = invoice.lines.data[0].period.end
-          ? new Date(invoice.lines.data[0].period.end * 1000)
-          : null;
-      }
-
-      // If not found in the invoice, use the existing billing record
-      if (!currentPeriodStart && team.billing?.current_period_start) {
-        currentPeriodStart = team.billing.current_period_start;
-      }
-
-      if (!currentPeriodEnd && team.billing?.current_period_end) {
-        currentPeriodEnd = team.billing.current_period_end;
-      }
-
-      // Create billing details object with failed payment status
-      const billingDetails = {
-        status: SubscriptionStatus.PAYMENT_FAILED,
-        collection_method: invoice.collection_method,
-        latest_invoice: invoice.id,
-        failed_invoice_url: invoice.hosted_invoice_url,
-        next_payment_attempt: invoice.next_payment_attempt
-          ? new Date(invoice.next_payment_attempt * 1000)
-          : null,
-        attempt_count: invoice.attempt_count,
-        billing_reason: billingReason,
-        current_period_start: currentPeriodStart,
-        current_period_end: currentPeriodEnd,
-        requires_action_at_period_end:
-          billingReason === "subscription_update" ||
-          billingReason === "subscription_cycle",
-        failed_at: new Date(),
-        updatedBy: "system-stripe-webhook",
-
-        // payment providers
-        paymentProviders: this.createOrUpdatePaymentProvider(
-          team.billing?.paymentProviders || [],
-          PaymentProvider.STRIPE,
-          {
-            payment_method: invoice?.payment_settings?.payment_method_types,
-            subscriptionId: subscriptionId,
-            customerId: invoice.customer,
-          },
-          true,
-        ),
-      };
-
-      // For mid-cycle upgrade failures, we need to ensure we have a way to track when to take action
-      if (billingReason === "subscription_update" && currentPeriodEnd) {
-      }
-
-      // Check if this is a first payment (subscription creation) failure
-      const isFirstPayment = billingReason === "subscription_create";
-
-      // Check if this is a payment failure during a plan upgrade
-      const isUpgradeFailure = billingReason === "subscription_update";
-
-      // Check if this is a renewal payment failure
-      const isRenewalFailure = billingReason === "subscription_cycle";
-
-      // For renewal failures, we only mark the billing status as failed but keep the current plan
-      // until either payment succeeds or Stripe cancels the subscription after all retry attempts
-      if (isRenewalFailure || isUpgradeFailure) {
-        // Update only the billing status, but keep the current plan
-        await this.updateTeamPlanWithBilling(
-          metadata.hubId,
-          team.plan,
-          billingDetails,
-        );
-      } else if (isFirstPayment) {
-        // For first payment failures (subscription creation), downgrade to Community plan
-        // because the customer has never had access to the paid plan
-        const communityPlan =
-          await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
-        if (!communityPlan) {
-          return;
-        }
-
-         communityPlan.id = communityPlan._id;
-         delete communityPlan._id;
-
-        await this.updateTeamPlanWithBilling(
-          metadata.hubId,
-          communityPlan,
-          billingDetails,
-        );
-
-        // Also update all workspaces associated with this team to Community plan
-        // const workspaceUpdateResult =
-        //   await this.stripeSubscriptionRepo.updateWorkspacePlans(
-        //     metadata.hubId,
-        //     {
-        //       id: communityPlan._id,
-        //       name: communityPlan.name,
-        //     },
-        //   );
-
-      } else {
-        // For other types of payment failures, just update the billing status
-        await this.updateTeamPlanWithBilling(
-          metadata.hubId,
-          team.plan,
-          billingDetails,
-        );
-      }
+      await this.processPaymentFailure(invoice, team, metadata, eventId);
     } catch (error) {
       throw error;
     }
   }
 
   /**
-   * Handle invoice paid event (replacing invoice.payment_succeeded)
-   * @param invoice The paid invoice object from Stripe
+   * Process payment failure based on billing reason
+   * @param invoice The failed invoice
+   * @param team The team data
+   * @param metadata The invoice metadata
+   * @param eventId The Stripe event ID
    */
-  async handleInvoicePaid(invoice: any): Promise<void> {
-    try {
-      // Extract subscription ID and metadata
-      const { subscriptionId, metadata } = this.extractInvoiceData(invoice);
+  private async processPaymentFailure(
+    invoice: any,
+    team: any,
+    metadata: any,
+    eventId?: string,
+  ): Promise<void> {
+    const billingReason = invoice.billing_reason || "unknown";
+    const amount = invoice.amount_due ? invoice.amount_due / 100 : 0;
+    const { subscriptionId } =
+      StripeSubscriptionHelpers.extractInvoiceData(invoice);
 
-      if (!subscriptionId) {
-        console.warn("No subscription found in paid invoice");
-        return;
+    // Extract current period dates from the invoice or existing billing record
+    const periodDates = this.extractPeriodDates(invoice, team);
+    const { isFirstPayment, isUpgradeFailure, isRenewalFailure } =
+      StripeSubscriptionHelpers.determinePaymentFailureType(billingReason);
+
+    // Create billing details object with failed payment status
+    const billingDetails = {
+      status: SubscriptionStatus.PAYMENT_FAILED,
+      latest_invoice: invoice.id,
+      seats: metadata?.userCount || 1,
+      invoice_url: invoice.hosted_invoice_url,
+      billing_reason: billingReason,
+      current_period_start: periodDates.currentPeriodStart,
+      current_period_end: periodDates.currentPeriodEnd,
+      updatedBy: BillingSource.STRIPE_WEBHOOK,
+      event_id: eventId,
+      paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
+        team.billing?.paymentProviders || [],
+        PaymentProvider.STRIPE,
+        {
+          payment_method: invoice?.payment_settings?.payment_method_types,
+          subscriptionId: subscriptionId,
+          customerId: invoice.customer,
+        },
+        true,
+      ),
+    };
+
+    // Handle different failure scenarios
+    if (isRenewalFailure || isUpgradeFailure) {
+      // Keep current plan, just update billing status
+      await this.updateTeamPlanWithBilling(
+        metadata.hubId,
+        team.plan,
+        billingDetails,
+      );
+    } else if (isFirstPayment) {
+      // Downgrade to Community plan for first payment failures
+      await this.downgradeToCommunityPlan(
+        metadata.hubId,
+        team,
+        billingDetails,
+        eventId,
+      );
+    } else {
+      // For other types of payment failures, just update the billing status
+      await this.updateTeamPlanWithBilling(
+        metadata.hubId,
+        team.plan,
+        billingDetails,
+      );
+    }
+
+    // Log payment failure event
+    await this.billingAuditService.recordPaymentEvent(
+      metadata.hubId,
+      false, // payment failed
+      amount,
+      invoice.currency || "usd",
+      {
+        actor: { type: BillingActorType.WEBHOOK, name: PaymentProvider.STRIPE },
+        source: BillingSource.STRIPE_WEBHOOK,
+        externalId: eventId,
+        reason: `Payment failed - ${billingReason}`,
+      },
+      {
+        invoiceId: invoice.id,
+        subscriptionId,
+        billingReason,
+      },
+    );
+  }
+
+  /**
+   * Extract period dates from invoice or team billing data
+   * @param invoice The invoice object
+   * @param team The team data
+   * @returns Object with current period start and end dates
+   */
+  private extractPeriodDates(
+    invoice: any,
+    team: any,
+  ): {
+    currentPeriodStart: Date | null;
+    currentPeriodEnd: Date | null;
+  } {
+    let currentPeriodStart = null;
+    let currentPeriodEnd = null;
+
+    if (invoice.lines?.data?.[0]?.period) {
+      currentPeriodStart = invoice.lines.data[0].period.start
+        ? new Date(invoice.lines.data[0].period.start * 1000)
+        : null;
+      currentPeriodEnd = invoice.lines.data[0].period.end
+        ? new Date(invoice.lines.data[0].period.end * 1000)
+        : null;
+    }
+
+    if (!currentPeriodStart && team.billing?.current_period_start) {
+      currentPeriodStart = team.billing.current_period_start;
+    }
+
+    if (!currentPeriodEnd && team.billing?.current_period_end) {
+      currentPeriodEnd = team.billing.current_period_end;
+    }
+
+    return { currentPeriodStart, currentPeriodEnd };
+  }
+
+  /**
+   * Downgrade team to community plan
+   * @param hubId The team hub ID
+   * @param team The team data
+   * @param billingDetails The billing details
+   * @param eventId The event ID
+   */
+  private async downgradeToCommunityPlan(
+    hubId: string,
+    team: any,
+    billingDetails: any,
+    eventId?: string,
+  ): Promise<void> {
+    const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+      PlanName.COMMUNITY,
+    );
+    if (communityPlan) {
+      communityPlan.id = communityPlan._id;
+      delete communityPlan._id;
+
+      await this.updateTeamPlanWithBilling(
+        hubId,
+        communityPlan,
+        billingDetails,
+      );
+
+      // Get plan limits for audit tracking
+      let planLimits:
+        | { previous: Record<string, any>; new: Record<string, any> }
+        | undefined;
+
+      if (team?.plan?.limits && communityPlan.limits) {
+        planLimits = {
+          previous: team.plan.limits,
+          new: communityPlan.limits,
+        };
       }
 
-      // Validate metadata
-      if (!metadata.planName || !metadata.hubId) {
-        console.warn(
-          "Required metadata (planName or hubId) not found in invoice",
-        );
+      // Log plan change due to payment failure
+      await this.billingAuditService.recordPlanChange(
+        hubId,
+        team.plan?.name || "unknown",
+        PlanName.COMMUNITY,
+        {
+          actor: {
+            type: BillingActorType.WEBHOOK,
+            name: PaymentProvider.STRIPE,
+          },
+          source: BillingSource.STRIPE_WEBHOOK,
+          externalId: eventId,
+          reason: `First payment failed - downgraded to community`,
+        },
+        undefined, // no seat change
+        undefined, // no subscription details needed
+        planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
+      );
+    }
+  }
+
+  /**
+   * Handle invoice paid event
+   * @param invoice The paid invoice object from Stripe
+   * @param eventId The Stripe event ID
+   */
+  async handleInvoicePaid(invoice: any, eventId?: string): Promise<void> {
+    try {
+      // Extract subscription ID and metadata
+      const { subscriptionId, metadata } =
+        StripeSubscriptionHelpers.extractInvoiceData(invoice);
+
+      if (!subscriptionId || !metadata.planName || !metadata.hubId) {
         return;
       }
 
@@ -325,10 +506,11 @@ export class StripeSubscriptionService {
         return;
       }
 
-       plan.id = plan._id;
-       delete plan._id;
+      // Ensure the plan has an ID for the update
+      plan.id = plan._id;
+      delete plan._id;
 
-      // Check if team exists
+      // Check if team exists and get current state for comparison
       const team = await this.stripeSubscriptionRepo.findTeamById(
         metadata.hubId,
       );
@@ -336,92 +518,307 @@ export class StripeSubscriptionService {
         console.error(`Team not found with ID: ${metadata.hubId}`);
         return;
       }
-      // trial date
-      const trialEndDateStr = metadata?.trial_end_date;
-      let validLineItem = null;
-      // Check if the trial is ongoing
-      const isTrialOngoing =
-        trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
 
-      if (!isTrialOngoing) {
-        validLineItem = invoice.lines?.data?.find(
-          (item: any) => item.amount > 0,
-        );
-      } else {
-        validLineItem = invoice.lines?.data[0];
-      }
-
-      if (!validLineItem?.period) {
-        console.warn(
-          `No valid line item with amount > 0 found in invoice ${invoice.id}`,
-        );
-        return;
-      }
-
-      const period = validLineItem?.period;
-
-      // Create billing details object with successful payment status
-      const billingDetails = {
-        current_period_start: period.start
-          ? new Date(period.start * 1000)
-          : new Date(),
-        current_period_end: period.end ? new Date(period.end * 1000) : null,
-        amount_billed: invoice.amount_paid ? invoice.amount_paid / 100 : 0, // Convert cents to dollars
-        currency: invoice.currency,
-        status: SubscriptionStatus.ACTIVE,
-        collection_method: invoice.collection_method,
-        latest_invoice: invoice.id,
-        invoice_url: invoice.hosted_invoice_url,
-        paid_at: invoice.status_transitions?.paid_at
-          ? new Date(invoice.status_transitions.paid_at * 1000)
-          : new Date(),
-        billingType: this.determineBillingType(
-          {
-            status: SubscriptionStatus.ACTIVE,
-            discount: null,
-            metadata: metadata,
-          },
-          metadata,
-        ),
-        updatedBy: "system-stripe-webhook",
-        in_trial: isTrialOngoing || false,
-
-        //payment providers
-        paymentProviders: this.createOrUpdatePaymentProvider(
-          team.billing?.paymentProviders || [],
-          PaymentProvider.STRIPE,
-          {
-            subscriptionId: subscriptionId,
-            payment_method: invoice?.payment_settings?.payment_method_types,
-            customerId: invoice?.customer,
-          },
-          true,
-        ),
-      };
-
-      await this.updateTeamPlanWithBilling(
-        metadata.hubId,
+      await this.processSuccessfulPayment(
+        invoice,
         plan,
-        billingDetails,
+        team,
+        metadata,
+        eventId,
       );
-
-      // Update all workspaces associated with this team
-      // const workspaceUpdateResult =
-      //   await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-      //     id: plan._id,
-      //     name: plan.name,
-      //   });
-
     } catch (error) {
       throw error;
     }
   }
 
   /**
+   * Process successful payment and update team billing
+   * @param invoice The paid invoice
+   * @param plan The plan object
+   * @param team The team data
+   * @param metadata The invoice metadata
+   * @param eventId The event ID
+   */
+  private async processSuccessfulPayment(
+    invoice: any,
+    plan: any,
+    team: any,
+    metadata: any,
+    eventId?: string,
+  ): Promise<void> {
+    const { subscriptionId } =
+      StripeSubscriptionHelpers.extractInvoiceData(invoice);
+    const trialEndDateStr = metadata?.trial_end_date;
+    const isTrialOngoing =
+      trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
+
+    // Find valid line item
+    let validLineItem = null;
+    if (!isTrialOngoing) {
+      validLineItem = invoice.lines?.data?.find((item: any) => item.amount > 0);
+    } else {
+      validLineItem = invoice.lines?.data[0];
+    }
+
+    if (!validLineItem?.period) {
+      console.warn(
+        `No valid line item with amount > 0 found in invoice ${invoice.id}`,
+      );
+      return;
+    }
+
+    const period = validLineItem?.period;
+    const amount = invoice.amount_paid ? invoice.amount_paid / 100 : 0;
+
+    // Calculate billing cycle from period dates
+    const periodStart = new Date(period.start * 1000);
+    const periodEnd = new Date(period.end * 1000);
+    const { billingCycle, intervalCount, interval } =
+      StripeSubscriptionHelpers.calculateBillingCycle(periodStart, periodEnd);
+
+    // Get previous billing state for comparison
+    const previousPlan = team.plan?.name;
+    const newPlan = metadata.planName;
+    const previousSeats = team.billing?.seats?.toString() || "1";
+    const newSeats = (metadata?.userCount || 1).toString();
+
+    // Calculate previous interval from billing period dates
+    const previousInterval = this.calculateIntervalFromPeriod(
+      team.billing?.current_period_start,
+      team.billing?.current_period_end,
+    );
+
+    const previousPeriodStart = team.billing?.current_period_start;
+    const previousPeriodEnd = team.billing?.current_period_end;
+
+    const isPlanChange =
+      previousPlan &&
+      (previousPlan !== newPlan || previousInterval !== interval);
+    const isSeatChange = previousSeats !== newSeats;
+    const isSubscriptionRenewal =
+      !isPlanChange && !isSeatChange && previousPeriodEnd;
+
+    // Create billing details object with successful payment status
+    const billingDetails = {
+      current_period_start: period.start
+        ? new Date(period.start * 1000)
+        : new Date(),
+      current_period_end: period.end ? new Date(period.end * 1000) : null,
+      amount_billed: amount,
+      currency: invoice.currency,
+      status: SubscriptionStatus.ACTIVE,
+      latest_invoice: invoice.id,
+      seats: metadata?.userCount || 1,
+      invoice_url: invoice.hosted_invoice_url,
+      billingType: StripeSubscriptionHelpers.determineBillingType(
+        {
+          status: SubscriptionStatus.ACTIVE,
+          discount: null,
+          metadata: metadata,
+        },
+        metadata,
+      ),
+      updatedBy: BillingSource.STRIPE_WEBHOOK,
+      in_trial: isTrialOngoing || false,
+      event_id: eventId,
+      paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
+        team.billing?.paymentProviders || [],
+        PaymentProvider.STRIPE,
+        {
+          subscriptionId: subscriptionId,
+          payment_method: invoice?.payment_settings?.payment_method_types,
+          customerId: invoice?.customer,
+        },
+        true,
+      ),
+    };
+
+    await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
+
+    // Create or update basic license object for successful payments
+    const currentActiveUsers = team.users?.length || 0;
+    const currentPendingInvites =
+      team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
+    const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
+    const currentSeats = metadata?.userCount || 1;
+
+    const licenseData: LicensesDto = {
+      totalSeats: Number(currentSeats),
+      usedSeats: Number(totalCurrentUsage),
+      availableSeats: Number(currentSeats) - Number(totalCurrentUsage),
+      lastUpdated: new Date(),
+    };
+
+    // Update team with license data
+    await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
+      licenses: licenseData,
+    });
+
+    // Log appropriate events based on payment type
+    await this.logPaymentEvents(
+      metadata.hubId,
+      isPlanChange,
+      isSeatChange,
+      isSubscriptionRenewal,
+      previousPlan,
+      newPlan,
+      previousSeats,
+      newSeats,
+      period,
+      interval,
+      intervalCount,
+      amount,
+      invoice,
+      subscriptionId,
+      previousPeriodStart,
+      previousPeriodEnd,
+      eventId,
+    );
+  }
+
+  /**
+   * Log payment-related events (plan changes, renewals, payments)
+   */
+  private async logPaymentEvents(
+    hubId: string,
+    isPlanChange: boolean,
+    isSeatChange: boolean,
+    isSubscriptionRenewal: boolean,
+    previousPlan: string,
+    newPlan: string,
+    previousSeats: string,
+    newSeats: string,
+    period: any,
+    interval: string,
+    intervalCount: number,
+    amount: number,
+    invoice: any,
+    subscriptionId: string,
+    previousPeriodStart: Date,
+    previousPeriodEnd: Date,
+    eventId?: string,
+  ): Promise<void> {
+    // Log plan change if this is an upgrade/downgrade
+    if (isPlanChange || isSeatChange) {
+      // Get team data for email
+      const team = await this.stripeSubscriptionRepo.findTeamById(hubId);
+      const { metadata } =
+        StripeSubscriptionHelpers.extractInvoiceData(invoice);
+
+      // Get plan limits for audit tracking
+      let planLimits:
+        | { previous: Record<string, any>; new: Record<string, any> }
+        | undefined;
+
+      if (isPlanChange) {
+        // Get the new plan details to access its limits
+        const previousPlanDetails =
+          await this.stripeSubscriptionRepo.findPlanByName(previousPlan);
+        const newPlanDetails =
+          await this.stripeSubscriptionRepo.findPlanByName(newPlan);
+        if (newPlanDetails?.limits && previousPlanDetails?.limits) {
+          planLimits = {
+            previous: previousPlanDetails?.limits,
+            new: newPlanDetails.limits,
+          };
+        }
+      }
+
+      await this.billingAuditService.recordPlanChange(
+        hubId,
+        previousPlan || "unknown",
+        newPlan,
+        {
+          actor: {
+            type: BillingActorType.WEBHOOK,
+            name: PaymentProvider.STRIPE,
+          },
+          source: BillingSource.STRIPE_WEBHOOK,
+          externalId: eventId,
+          reason: `Plan change via successful payment - ${isPlanChange ? "plan" : ""}${isPlanChange && isSeatChange ? " and " : ""}${isSeatChange ? "seats" : ""} changed`,
+        },
+        isSeatChange ? { from: previousSeats, to: newSeats } : undefined,
+        {
+          current_period_start: period.start,
+          current_period_end: period.end,
+          interval: interval,
+          interval_count: intervalCount,
+        },
+        planLimits, // Add the plan limits for automatic HUB_LIMIT_UPDATED tracking
+      );
+
+      // Send plan upgrade email if this is a plan change (not just seat change)
+      if (isPlanChange && team && this.paymentEmailHelper) {
+        try {
+          await this.paymentEmailHelper.sendPlanUpgradedEmail(
+            invoice,
+            team,
+            metadata,
+            previousPlan,
+            newPlan,
+            interval,
+          );
+        } catch (error) {
+          console.error("Error sending plan upgrade email:", error);
+        }
+      }
+    }
+
+    // Log subscription renewal if this is a regular billing cycle renewal
+    if (isSubscriptionRenewal) {
+      await this.billingAuditService.recordSubscriptionRenewal(
+        hubId,
+        newPlan,
+        {
+          subscriptionId: subscriptionId,
+          seats: parseInt(newSeats),
+          previous_period_start: previousPeriodStart,
+          previous_period_end: previousPeriodEnd,
+          current_period_start: period.start,
+          current_period_end: period.end,
+          interval: interval,
+          interval_count: intervalCount,
+          amount_billed: amount,
+          currency: invoice.currency,
+        },
+        {
+          actor: {
+            type: BillingActorType.WEBHOOK,
+            name: PaymentProvider.STRIPE,
+          },
+          source: BillingSource.STRIPE_WEBHOOK,
+          externalId: eventId,
+          reason: "Subscription renewed for next billing cycle",
+        },
+      );
+    }
+
+    // Log successful payment event
+    await this.billingAuditService.recordPaymentEvent(
+      hubId,
+      true, // payment succeeded
+      amount,
+      invoice.currency || "usd",
+      {
+        actor: { type: BillingActorType.WEBHOOK, name: PaymentProvider.STRIPE },
+        source: BillingSource.STRIPE_WEBHOOK,
+        externalId: eventId,
+        reason: "Payment succeeded",
+      },
+      {
+        invoiceId: invoice.id,
+        subscriptionId,
+        planName: newPlan,
+      },
+    );
+  }
+
+  /**
    * Handle invoice voided event
    * @param invoice The voided invoice object from Stripe
+   * @param eventId The Stripe event ID
    */
-  async handleInvoiceVoided(invoice: any): Promise<void> {
+  async handleInvoiceVoided(invoice: any, eventId?: string): Promise<void> {
     try {
       // Extract metadata
       const { metadata } = this.extractInvoiceData(invoice);
@@ -440,36 +837,29 @@ export class StripeSubscriptionService {
 
       // Only update if the team has a billing record and the voided invoice is the latest one
       if (team.billing && team.billing.latest_invoice === invoice.id) {
-        const communityPlan =
-          await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
+        const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+          PlanName.COMMUNITY,
+        );
         if (!communityPlan) {
           return;
         }
 
+        // Ensure the community plan has an ID for the update
         communityPlan.id = communityPlan._id;
         delete communityPlan._id;
 
         const updatedBilling = {
           ...team.billing,
           status: SubscriptionStatus.VOIDED,
-          invoice_voided: true,
-          voided_at: new Date(),
-          updatedBy: "system-stripe-webhook",
+          updatedBy: BillingSource.STRIPE_WEBHOOK,
+          event_id: eventId,
         };
 
-        await this.stripeSubscriptionRepo.updateTeamPlan(
+        await this.updateTeamPlanWithBilling(
           metadata.hubId,
           communityPlan,
-          {
-            billing: updatedBilling,
-          },
+          updatedBilling,
         );
-
-        // await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-        //   id: communityPlan._id,
-        //   name: communityPlan.name,
-        // });
-
       }
     } catch (error) {
       throw error;
@@ -479,8 +869,12 @@ export class StripeSubscriptionService {
   /**
    * Handle subscription deletion event
    * @param subscription The deleted Stripe subscription object
+   * @param eventId The Stripe event ID
    */
-  async handleSubscriptionDeleted(subscription: any): Promise<void> {
+  async handleSubscriptionDeleted(
+    subscription: any,
+    eventId?: string,
+  ): Promise<void> {
     try {
       // Extract metadata and validate required fields
       const { isValid, metadata } = this.validateMetadata(
@@ -505,14 +899,21 @@ export class StripeSubscriptionService {
       }
 
       // Find the community plan for downgrade
-      const communityPlan =
-        await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
+      const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
+        PlanName.COMMUNITY,
+      );
       if (!communityPlan) {
         return;
       }
 
-       communityPlan.id = communityPlan._id;
-       delete communityPlan._id;
+      communityPlan.id = communityPlan._id;
+      delete communityPlan._id;
+
+      // Get current team state for the previous plan name
+      const team = await this.stripeSubscriptionRepo.findTeamById(
+        metadata.hubId,
+      );
+      const previousPlan = team?.plan?.name || "unknown";
 
       // Get cancellation reason if available
       const cancellationReason =
@@ -527,8 +928,10 @@ export class StripeSubscriptionService {
           ? new Date(subscription.ended_at * 1000)
           : new Date(),
         in_trial: false,
+        seats: metadata?.userCount || 1,
         cancellation_reason: cancellationReason,
-        updatedBy: "system-stripe-webhook",
+        updatedBy: BillingSource.STRIPE_WEBHOOK,
+        event_id: eventId,
       };
 
       // Update team to community plan with deleted billing status
@@ -538,345 +941,91 @@ export class StripeSubscriptionService {
         billingDetails,
       );
 
-      // Update associated workspaces
-      // const workspaceUpdateResult =
-      //   await this.stripeSubscriptionRepo.updateWorkspacePlans(metadata.hubId, {
-      //     id: communityPlan._id,
-      //     name: communityPlan.name,
-      //   });
-
+      // Record subscription canceled event
+      await this.billingAuditService.recordSubscriptionCanceled(
+        metadata.hubId,
+        previousPlan,
+        {
+          ...billingDetails,
+          subscriptionId: subscription.id,
+          status: SubscriptionStatus.DELETED,
+          current_period_start: subscription.current_period_start,
+          current_period_end: subscription.current_period_end,
+          canceled_at: new Date(),
+          ended_at: subscription.ended_at,
+          cancellation_reason: cancellationReason,
+        },
+        {
+          actor: {
+            type: BillingActorType.WEBHOOK,
+            name: PaymentProvider.STRIPE,
+          },
+          source: BillingSource.STRIPE_WEBHOOK,
+          externalId: eventId,
+          reason: `Subscription deleted - ${cancellationReason}`,
+        },
+      );
     } catch (error) {
       throw error;
     }
-  }
-
-  /**
-   * Extract metadata from an invoice, checking multiple potential locations
-   * @param invoice The invoice object from Stripe
-   * @returns Object containing subscriptionId and metadata
-   */
-  private extractInvoiceData(invoice: any): {
-    subscriptionId: string | null;
-    metadata: any;
-  } {
-    // Extract subscription ID from various possible locations
-    const subscriptionId =
-      invoice.subscription ||
-      invoice.parent?.subscription_details?.subscription ||
-      invoice.lines?.data?.[0]?.subscription ||
-      invoice.lines?.data?.[0]?.parent?.subscription_item_details?.subscription;
-
-    // Initialize metadata object
-    let metadata: any = {};
-
-    // Try to extract metadata from different possible locations, in order of preference
-    const metadataSources = [
-      // Direct subscription metadata
-      invoice.subscription_details?.metadata,
-      // Parent subscription metadata
-      invoice.parent?.subscription_details?.metadata,
-      // Line item metadata
-      invoice.lines?.data?.[0]?.metadata,
-      // Invoice metadata itself
-      invoice.metadata,
-    ];
-
-    // Use the first source that has a hubId
-    for (const source of metadataSources) {
-      if (source && source.hubId) {
-        metadata = source;
-        break;
-      }
-    }
-
-    return { subscriptionId, metadata };
-  }
-
-  /**
-   * Validate metadata to ensure required fields are present
-   * @param metadata The metadata object to validate
-   * @param requiredFields Array of required field names
-   * @returns Object with isValid flag and the metadata
-   */
-  private validateMetadata(
-    metadata: any,
-    requiredFields: string[],
-  ): { isValid: boolean; metadata: any } {
-    metadata = metadata || {};
-
-    // Check if all required fields are present
-    const missingFields = requiredFields.filter((field) => !metadata[field]);
-
-    if (missingFields.length > 0) {
-      return { isValid: false, metadata };
-    }
-
-    return { isValid: true, metadata };
   }
 
   /**
    * Update team plan with billing details
    * @param hubId The team/hub ID
-   * @param plan The plan object with id and name
-   * @param billingDetails The billing details to update
+   * @param planData The plan data to update
+   * @param billingDetails The billing details to set
+   * @returns The update result
    */
-  private async updateTeamPlanWithBilling(
+  async updateTeamPlanWithBilling(
     hubId: string,
-    plan: TeamsPlan,
+    planData: TeamsPlan,
     billingDetails: any,
-  ): Promise<void> {
-    const updateResult = await this.stripeSubscriptionRepo.updateTeamPlan(
-      hubId,
-      plan,
-      {
-        billing: billingDetails,
-      },
-    );
-
-    if (updateResult.matchedCount === 0) {
-      throw new NotFoundException(`Team not found with ID: ${hubId}`);
-    }
+  ): Promise<any> {
+    return await this.stripeSubscriptionRepo.updateTeamPlan(hubId, planData, {
+      billing: billingDetails,
+    });
   }
 
   /**
-   * Update team and its workspaces with a new plan
+   * Update team and workspaces with new plan
    * @param hubId The team/hub ID
-   * @param planName The name of the plan to apply
-   * @param subscription The Stripe subscription object for billing details
+   * @param planName The plan name
+   * @param subscription The subscription object
+   * @param eventId The event ID
    */
-  private async updateTeamAndWorkspacesWithPlan(
+  async updateTeamAndWorkspacesWithPlan(
     hubId: string,
     planName: string,
     subscription: any,
+    eventId?: string,
   ): Promise<void> {
     // Find the plan by name
     const plan = await this.stripeSubscriptionRepo.findPlanByName(planName);
     if (!plan) {
-      throw new NotFoundException(`Plan not found with name: ${planName}`);
+      console.error(`Plan not found with name: ${planName}`);
+      return;
     }
 
+    // Ensure the plan has an ID for the update
     plan.id = plan._id;
     delete plan._id;
 
+    // Extract billing details
+    const billingDetails = this.extractBillingDetails(subscription, eventId);
 
-    // Create billing details object
-    const billingDetails = this.extractBillingDetails(subscription);
-
-    // Update the team with the new plan
-    await this.updateTeamPlanWithBilling(
-      hubId,
-      plan,
-      billingDetails,
-    );
-
-    // Also update all workspaces associated with this team
-    // const workspaceUpdateResult =
-    //   await this.stripeSubscriptionRepo.updateWorkspacePlans(hubId, {
-    //     id: plan._id,
-    //     name: plan.name,
-    //   });
-
-
-  }
-
-  /**
-   * Extract billing details from a subscription object
-   * @param subscription The Stripe subscription object
-   * @returns Object containing relevant billing details
-   */
-  private extractBillingDetails(subscription: any): any {
-    const items = subscription.items?.data?.[0] || {};
-    const plan = items.plan || subscription.plan || {};
-    const { metadata } = this.extractInvoiceData(subscription) || {};
-
-    return {
-      current_period_start:
-        subscription.current_period_start || items.current_period_start
-          ? new Date(
-              (subscription.current_period_start ||
-                items.current_period_start) * 1000,
-            )
-          : new Date(),
-      current_period_end:
-        subscription.current_period_end || items.current_period_end
-          ? new Date(
-              (subscription.current_period_end || items.current_period_end) *
-                1000,
-            )
-          : null,
-      amount_billed: plan.amount ? plan.amount / 100 : 0, // Convert cents to dollars
-      currency: subscription.currency,
-      interval: plan.interval,
-      interval_count: plan.interval_count,
-      status: subscription.status,
-      collection_method: subscription.collection_method,
-      latest_invoice: subscription.latest_invoice,
-      billingType: this.determineBillingType(subscription, metadata),
-      updatedBy: "system-stripe-webhook",
-
-      // payment providers
-      paymentProviders: this.createOrUpdatePaymentProvider(
-        [], // Empty array since this is for new billing details
-        PaymentProvider.STRIPE,
-        {
-          subscriptionId: subscription?.id,
-          payment_method: subscription?.payment_settings?.payment_method_types,
-          customerId: subscription?.customer,
-        },
-        true,
-      ),
-    };
-  }
-
-  /**
-   * Extract subscription ID from payment providers array
-   * @param paymentProviders Array of payment providers
-   * @returns The Stripe subscription ID or null if not found
-   */
-  private extractSubscriptionIdFromPaymentProviders(
-    paymentProviders: any[],
-  ): string | null {
-    if (!paymentProviders || !Array.isArray(paymentProviders)) {
-      return null;
-    }
-
-    // Find the Stripe payment provider
-    const stripeProvider = paymentProviders.find(
-      (provider) =>
-        provider.provider === PaymentProvider.STRIPE &&
-        provider.currentPaymentMethod,
-    );
-
-    return stripeProvider?.subscriptionId || null;
-  }
-
-  /**
-   * Check for subscriptions that need action at the end of their billing cycles
-   * This method should be called by a scheduled job/cron
-   */
-  async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
-    try {
-      const now = new Date();
-
-      // Find all teams with failed payments that require action at the end of their billing cycle
-      // and where the current_period_end date has passed
-      const teamsToProcess =
-        await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
-          now,
-        );
-
-      if (!teamsToProcess || teamsToProcess.length === 0) {
-        return;
-      }
-
-      // Process each team that needs action
-      for (const team of teamsToProcess) {
-        try {
-          // Extract subscription ID from the new payment providers structure
-          const subscriptionId = this.extractSubscriptionIdFromPaymentProviders(
-            team.billing?.paymentProviders,
-          );
-
-          if (!subscriptionId) {
-            continue;
-          }
-
-          // Check if Stripe service is available before attempting to cancel
-          if (!this.stripeService) {
-            continue;
-          }
-
-          // Cancel the subscription immediately through Stripe
-          await this.stripeService.cancelSubscription(
-            subscriptionId,
-            true, // cancelImmediately = true
-          );
-        } catch (error) {
-          console.error(
-            `Error cancelling subscription for team ${team._id}:`,
-            error,
-          );
-        }
-      }
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Check for expired trials and revert them to community plan
-   * This method should be called by a scheduled job/cron
-   */
-  async checkAndRevertExpiredTrials(): Promise<void> {
-    try {
-      const now = new Date();
-
-      // Find all teams with expired trials
-      const teamsWithExpiredTrials =
-        await this.stripeSubscriptionRepo.findTeamsWithExpiredTrials(now);
-
-      if (!teamsWithExpiredTrials || teamsWithExpiredTrials.length === 0) {
-        return;
-      }
-
-      // Find the community plan for downgrade
-      const communityPlan =
-        await this.stripeSubscriptionRepo.findPlanByName(PlanName.COMMUNITY);
-      if (!communityPlan) {
-        console.error("Community plan not found");
-        return;
-      }
-
-       communityPlan.id = communityPlan._id;
-       delete communityPlan._id;
-
-      // Process each team with expired trial
-      for (const team of teamsWithExpiredTrials) {
-        try {
-          // Create billing details for expired trial
-          const expiredTrialBillingDetails = {
-            ...team.billing,
-            status: "expired",
-            billingType: BillingType.PAID,
-            trial_expired_at: now,
-            in_trial: false,
-            reverted_to_community_at: now,
-            updatedBy: "system-trial-expiry",
-          };
-
-          // Update team to community plan
-          await this.updateTeamPlanWithBilling(
-            team._id.toString(),
-            communityPlan,
-            expiredTrialBillingDetails,
-          );
-
-          // Update all associated workspaces to community plan
-          // await this.stripeSubscriptionRepo.updateWorkspacePlans(
-          //   team._id.toString(),
-          //   {
-          //     id: communityPlan._id,
-          //     name: communityPlan.name,
-          //   },
-          // );
-        } catch (error) {
-          console.error(
-            `Failed to revert expired trial for team ${team._id}:`,
-            error,
-          );
-        }
-      }
-    } catch (error) {
-      throw error;
-    }
+    // Update team plan with billing details
+    await this.updateTeamPlanWithBilling(hubId, plan, billingDetails);
   }
 
   /**
    * Handle subscription schedule updated event
    * @param subscriptionSchedule The updated Stripe subscription schedule object
+   * @param eventId The Stripe event ID
    */
   async handleSubscriptionScheduleUpdated(
     subscriptionSchedule: any,
+    eventId?: string,
   ): Promise<void> {
     try {
       // Find metadata in the phases - look for scheduled downgrade information
@@ -911,7 +1060,7 @@ export class StripeSubscriptionService {
       if (!team) return;
 
       const currentBilling = team.billing || {};
-      const scheduledDowngrade = {
+      const scheduledDowngrade: ScheduledDowngradeDto = {
         isScheduledDowngrade: true,
         startDate: startDate,
         planName: targetPlanName,
@@ -930,80 +1079,641 @@ export class StripeSubscriptionService {
         updatedBy: "system-stripe-webhook",
       };
 
-      await this.stripeSubscriptionRepo.updateTeamPlan(
-        hubId,
-        team.plan,
-        {
-          billing: updatedBilling,
-        },
-      );
+      await this.stripeSubscriptionRepo.updateTeamPlan(hubId, team.plan, {
+        billing: updatedBilling,
+      });
+
+      // Send plan downgrade email notification
+      if (this.paymentEmailHelper && targetPlanName && team.plan?.name) {
+        try {
+          await this.paymentEmailHelper.sendPlanDowngradedEmail(
+            team,
+            startDate,
+            team.plan.name, // Previous plan
+            targetPlanName, // New plan
+          );
+        } catch (error) {
+          console.error("Error sending plan downgrade email:", error);
+        }
+      }
     } catch (error) {
       throw error;
     }
   }
 
   /**
-   * Determine billing type based on subscription and metadata
-   * @param subscription The Stripe subscription object
-   * @param metadata The subscription metadata
-   * @returns BillingType enum value
+   * Check for subscriptions that need action at the end of their billing cycles
+   * This method should be called by a scheduled job/cron
    */
-  private determineBillingType(subscription: any, metadata: any): BillingType {
-    // trial date
-    const trialEndDateStr = metadata?.trial_end_date;
-    const isTrialOngoing =
-      trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
-    // Check if it's a trial period
-    if (subscription.status === SubscriptionStatus.TRIALING || isTrialOngoing) {
-      return BillingType.TRIAL;
-    }
+  async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
+    try {
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 600 * 100); //3 days ago
+      const teams =
+        await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
+          currentDate,
+        );
 
-    // Default to paid
-    return BillingType.PAID;
+      for (const team of teams) {
+        try {
+          // Cancel Stripe subscription manually before downgrading
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
+
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
+          // Find the community plan for downgrade
+          const communityPlan =
+            await this.stripeSubscriptionRepo.findPlanByName(
+              PlanName.COMMUNITY,
+            );
+          if (!communityPlan) {
+            console.error("Community plan not found");
+            continue;
+          }
+
+          // Ensure the plan has an ID for the update
+          communityPlan.id = communityPlan._id;
+          delete communityPlan._id;
+
+          // Update billing details for expired subscription
+          const billingDetails = {
+            paymentProviders: team.billing?.paymentProviders || [],
+            status: SubscriptionStatus.CANCELED,
+            billingType: BillingType.EXPIRED_SUBSCRIPTION,
+            canceled_at: new Date(),
+            cancellation_reason: "payment_failed_period_expired",
+            updatedBy: "system-maintenance-job",
+          };
+
+          // Update team to community plan
+          await this.updateTeamPlanWithBilling(
+            team._id.toString(),
+            communityPlan,
+            billingDetails,
+          );
+
+          // Send plan downgrade email notification
+          if (this.paymentEmailHelper && team.plan?.name) {
+            try {
+              await this.paymentEmailHelper.sendDowngradedToCommunityEmail(
+                team,
+                team.plan.name, // Previous plan
+              );
+            } catch (error) {
+              console.error(
+                "Error sending downgraded to community email:",
+                error,
+              );
+            }
+          }
+
+          // Get plan limits for audit tracking
+          let planLimits:
+            | { previous: Record<string, any>; new: Record<string, any> }
+            | undefined;
+
+          if (team?.plan?.limits && communityPlan.limits) {
+            planLimits = {
+              previous: team.plan.limits,
+              new: communityPlan.limits,
+            };
+          }
+
+          // Log the plan change
+          await this.billingAuditService.recordPlanChange(
+            team._id.toString(),
+            team.plan?.name || "unknown",
+            PlanName.COMMUNITY,
+            {
+              actor: { type: BillingActorType.SYSTEM, name: "maintenance-job" },
+              source: BillingSource.BILLING_MAINTENANCE,
+              reason: "Payment failed subscription expired at period end",
+            },
+            undefined, // no seat change
+            undefined, // no subscription details needed
+            planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
+          );
+        } catch (error) {
+          console.error(
+            `Error processing expired subscription for team ${team._id}:`,
+            error,
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Error checking subscriptions requiring end-of-cycle action:",
+        error,
+      );
+      throw error;
+    }
   }
 
   /**
-   * Create or update payment provider in the array format
-   * @param existingProviders Array of existing payment providers
-   * @param provider The provider type (e.g., 'stripe')
-   * @param providerData The provider-specific data
-   * @param setAsCurrent Whether to set this as the current payment method
-   * @returns Updated payment providers array
+   * Check for expired trials and revert them to community plan
+   * This method should be called by a scheduled job/cron
    */
-  private createOrUpdatePaymentProvider(
-    existingProviders: any[] = [],
-    provider: PaymentProvider,
-    providerData: any,
-    setAsCurrent: boolean = true,
-  ): any[] {
-    // Create a copy of existing providers
-    const providers = [...existingProviders];
+  async checkAndRevertExpiredTrials(): Promise<void> {
+    try {
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); //3 days ago
+      const teams =
+        await this.stripeSubscriptionRepo.findTeamsWithExpiredTrials(
+          currentDate,
+        );
 
-    // Find existing provider of the same type
-    const existingIndex = providers.findIndex((p) => p.provider === provider);
+      for (const team of teams) {
+        try {
+          // Cancel Stripe subscription manually before downgrading for expired trials
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
 
-    // If setting as current, mark all others as not current
-    if (setAsCurrent) {
-      providers.forEach((p) => (p.currentPaymentMethod = false));
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for expired trial team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
+          // Find the community plan for downgrade
+          const communityPlan =
+            await this.stripeSubscriptionRepo.findPlanByName(
+              PlanName.COMMUNITY,
+            );
+          if (!communityPlan) {
+            console.error("Community plan not found");
+            continue;
+          }
+
+          // Ensure the plan has an ID for the update
+          communityPlan.id = communityPlan._id;
+          delete communityPlan._id;
+
+          // Update billing details for expired trial
+          const billingDetails = {
+            paymentProviders: team.billing?.paymentProviders || [],
+            status: SubscriptionStatus.CANCELED,
+            billingType: BillingType.EXPIRED_TRIAL,
+            canceled_at: new Date(),
+            cancellation_reason: "trial_expired",
+            trial_expired: true,
+            updatedBy: "system-maintenance-job",
+          };
+
+          // Update team to community plan
+          await this.updateTeamPlanWithBilling(
+            team._id.toString(),
+            communityPlan,
+            billingDetails,
+          );
+
+          // Send plan downgrade email notification
+          if (this.paymentEmailHelper && team.plan?.name) {
+            try {
+              await this.paymentEmailHelper.sendDowngradedToCommunityEmail(
+                team,
+                team.plan.name, // Previous plan
+              );
+            } catch (error) {
+              console.error(
+                "Error sending downgraded to community email:",
+                error,
+              );
+            }
+          }
+
+          // Get plan limits for audit tracking
+          let planLimits:
+            | { previous: Record<string, any>; new: Record<string, any> }
+            | undefined;
+
+          if (team?.plan?.limits && communityPlan.limits) {
+            planLimits = {
+              previous: team.plan.limits,
+              new: communityPlan.limits,
+            };
+          }
+
+          // Log the plan change
+          await this.billingAuditService.recordPlanChange(
+            team._id.toString(),
+            team.plan?.name || "unknown",
+            PlanName.COMMUNITY,
+            {
+              actor: { type: BillingActorType.SYSTEM, name: "maintenance-job" },
+              source: BillingSource.BILLING_MAINTENANCE,
+              reason: "Trial period expired",
+            },
+            undefined, // no seat change
+            undefined, // no subscription details needed
+            planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
+          );
+        } catch (error) {
+          console.error(
+            `Error processing expired trial for team ${team._id}:`,
+            error,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error checking and reverting expired trials:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send subscription expired emails immediately when subscriptions/trials expire
+   * This method should be called by a scheduled job/cron - runs daily
+   */
+  async sendSubscriptionExpiredEmails(): Promise<void> {
+    try {
+      const currentDate = new Date();
+
+      // Find teams with expired failed subscriptions and trials (current day)
+      const expiredTeams =
+        await this.stripeSubscriptionRepo.findTeamsWithExpiredBilling(
+          currentDate,
+        );
+
+      for (const team of expiredTeams) {
+        try {
+          // Check if email was already sent
+          if (team.billing?.subscription_expired_email_sent) {
+            continue;
+          }
+
+          // Send subscription expired email
+          await this.paymentEmailHelper.sendSubscriptionExpiredEmail(team);
+
+          // Mark email as sent in billing object
+          await this.stripeSubscriptionRepo.updateTeamById(
+            team._id.toString(),
+            {
+              "billing.subscription_expired_email_sent": new Date(),
+            },
+          );
+        } catch (error) {
+          console.error(
+            `Error sending subscription expired email for team ${team._id}:`,
+            error,
+          );
+          // Continue with other teams even if one fails
+        }
+      }
+    } catch (error) {
+      console.error("Error sending subscription expired emails:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract billing details from a subscription object
+   * @param subscription The Stripe subscription object
+   * @param eventId Optional Stripe event ID for tracking
+   * @returns Object containing relevant billing details
+   */
+  private extractBillingDetails(subscription: any, eventId?: string): any {
+    return StripeSubscriptionHelpers.extractBillingDetails(
+      subscription,
+      eventId,
+    );
+  }
+
+  /**
+   * Validate metadata to ensure required fields are present
+   * @param metadata The metadata object to validate
+   * @param requiredFields Array of required field names
+   * @returns Object with isValid flag and the metadata
+   */
+  private validateMetadata(
+    metadata: any,
+    requiredFields: string[],
+  ): { isValid: boolean; metadata: any } {
+    return StripeSubscriptionHelpers.validateMetadata(metadata, requiredFields);
+  }
+
+  /**
+   * Extract metadata from an invoice, checking multiple potential locations
+   * @param invoice The invoice object from Stripe
+   * @returns Object containing subscriptionId and metadata
+   */
+  private extractInvoiceData(invoice: any): {
+    subscriptionId: string | null;
+    metadata: any;
+  } {
+    return StripeSubscriptionHelpers.extractInvoiceData(invoice);
+  }
+
+  /**
+   * Calculate the billing interval from the current_period_start and current_period_end dates
+   * @param currentPeriodStart The start date of the current period
+   * @param currentPeriodEnd The end date of the current period
+   * @returns The billing interval (e.g., "month", "year")
+   */
+  private calculateIntervalFromPeriod(
+    currentPeriodStart?: Date,
+    currentPeriodEnd?: Date,
+  ): string {
+    if (!currentPeriodStart || !currentPeriodEnd) {
+      return "month";
     }
 
-    // Create new provider entry
-    const newProvider = {
-      id: uuidv4(),
-      provider,
-      currentPaymentMethod: setAsCurrent,
-      ...providerData,
-      updatedAt: new Date(),
-    };
+    const diffInMilliseconds = Math.abs(
+      currentPeriodEnd.getTime() - currentPeriodStart.getTime(),
+    );
+    const diffInDays = Math.ceil(diffInMilliseconds / (1000 * 60 * 60 * 24));
 
-    if (existingIndex >= 0) {
-      // Update existing provider
-      providers[existingIndex] = newProvider;
+    // Determine billing interval based on the number of days in the period
+    if (diffInDays >= 335) {
+      return "year";
+    } else if (diffInDays >= 28 && diffInDays <= 31) {
+      return "month";
     } else {
-      // Add new provider
-      providers.push(newProvider);
+      return "month";
     }
+  }
 
-    return providers;
+  /**
+   * Check available licenses and manage seat purchasing via Stripe
+   * @param team The team data including billing information
+   * @param userEmails Array of email addresses to be invited
+   * @param userRepository User repository instance for checking existing users
+   * @returns Result indicating success/failure and message
+   */
+  async checkAndManageLicenses(
+    team: any,
+    userEmails: string[],
+    userRepository: any,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Skip license checking for community plan or if no billing info
+      if (
+        team.plan?.name === PlanName.COMMUNITY &&
+        team?.billing?.status !== SubscriptionStatus.PAYMENT_FAILED
+      ) {
+        return { success: true, message: "No license checking required" };
+      }
+
+      if (!userRepository) {
+        console.warn("UserRepository not provided to checkAndManageLicenses");
+        return {
+          success: false,
+          message: "User repository is required for license checking",
+        };
+      }
+
+      // Categorize users into existing/already invited and truly new users
+      let existingUsersCount = 0; // Users who already exist in the system OR are already invited
+      let newUsersCount = 0; // Truly new users who need licenses
+      let skippedUsersCount = 0; // Users already in team or with pending invites
+
+      for (const userEmail of userEmails) {
+        const sanitizedEmail = userEmail.trim().toLowerCase();
+
+        // Check if user is already a team member
+        const isTeamMember = team.users?.some(
+          (user: any) => user.email === sanitizedEmail,
+        );
+
+        // Check if user already has a pending invite
+        const hasPendingInvite = team.invites?.some(
+          (invite: any) => invite.email === sanitizedEmail,
+        );
+
+        if (isTeamMember || hasPendingInvite) {
+          // Skip users who are already team members or have pending invites
+          skippedUsersCount++;
+          continue;
+        } else {
+          // Completely new user - needs both invite and license
+          newUsersCount++;
+        }
+      }
+
+      // If all users are already members or have pending invites
+      if (
+        newUsersCount === 0 &&
+        existingUsersCount === 0 &&
+        skippedUsersCount > 0
+      ) {
+        return {
+          success: true,
+          message: `All ${skippedUsersCount} users are already team members or have pending invites`,
+        };
+      }
+
+      // For existing users only, skip license check as they don't consume new seats
+      if (existingUsersCount > 0 && newUsersCount === 0) {
+        return {
+          success: true,
+          message: `Inviting ${existingUsersCount} existing users - no additional licenses needed`,
+        };
+      }
+
+      // Calculate current usage and available licenses
+      const currentActiveUsers = team.users?.length || 0;
+      const currentPendingInvites =
+        team.invites?.filter((invite: any) => !invite.isAccepted).length || 0;
+      const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
+
+      // Get available licenses from license object or fallback to billing seats
+      const availableLicenses =
+        team.licenses?.totalSeats || team.billing.seats || 1;
+      const unusedLicenses = Math.max(0, availableLicenses - totalCurrentUsage);
+
+      // Only check licenses for new users (not existing users)
+      const usersRequiringLicenses = newUsersCount;
+
+      // If we have enough unused licenses, proceed
+      if (unusedLicenses >= usersRequiringLicenses) {
+        let message = `Using ${usersRequiringLicenses} of ${unusedLicenses} available licenses`;
+        if (existingUsersCount > 0) {
+          message += ` (${existingUsersCount} existing users don't require additional licenses)`;
+        }
+        if (skippedUsersCount > 0) {
+          message += ` (${skippedUsersCount} users already in team/invited)`;
+        }
+        return {
+          success: true,
+          message: message,
+        };
+      }
+
+      // Check if scheduled downgrade is active - block invites during downgrade
+      if (team.billing?.scheduledDowngrade) {
+        return {
+          success: false,
+          message: "Invite blocked due to your scheduled downgrade.",
+        };
+      }
+
+      // Check for payment failed status - block new purchases until resolved
+      if (team.billing.status === SubscriptionStatus.PAYMENT_FAILED) {
+        return {
+          success: false,
+          message:
+            "Invite failed. Please resolve your payment issue to send invites.",
+        };
+      }
+
+      // Check for action required status - block new purchases until 3DS is completed
+      if (team.billing.status === SubscriptionStatus.ACTION_REQUIRED) {
+        return {
+          success: false,
+          message:
+            "Invite failed. Please complete payment authentication to send invites.",
+        };
+      }
+
+      // Calculate additional seats needed (only for new users)
+      const additionalSeatsNeeded = usersRequiringLicenses - unusedLicenses;
+      const newTotalSeats =
+        Number(availableLicenses) + Number(additionalSeatsNeeded);
+
+      // Check if Stripe service is available for purchasing additional seats
+      if (!this.stripeService) {
+        return {
+          success: false,
+          message:
+            "Cannot purchase additional seats: Stripe service not available",
+        };
+      }
+
+      // Check if team has active subscription
+      if (
+        !team.billing.latest_invoice ||
+        team.billing.status !== SubscriptionStatus.ACTIVE
+      ) {
+        return {
+          success: false,
+          message:
+            "Cannot purchase additional seats: No active subscription found",
+        };
+      }
+
+      // Purchase additional seats via Stripe updateSubscription
+      const subscriptionId = team.billing.paymentProviders?.find(
+        (provider: any) => provider.provider === PaymentProvider.STRIPE,
+      )?.subscriptionId;
+
+      if (!subscriptionId) {
+        return {
+          success: false,
+          message:
+            "Cannot purchase additional seats: No Stripe subscription ID found",
+        };
+      }
+
+      try {
+        // Update subscription with new seat count using allow_incomplete payment behavior
+        const data = await this.stripeService.updateSubscription(
+          subscriptionId,
+          undefined, // no new price_id (we are updating seats)
+          {
+            hubId: team._id.toString(),
+            userCount: newTotalSeats.toString(),
+            planName: team.plan?.name,
+            licenseUpdate: "true",
+            previousSeats: availableLicenses.toString(),
+            newSeats: newTotalSeats.toString(),
+          },
+          undefined, // default_payment_method (optional)
+          "always_invoice", // prorationBehavior (optional)
+          false, // atPeriodEnd (optional)
+          newTotalSeats, // seats
+          "allow_incomplete", // payment_behavior
+          "unchanged", // billing cycle_anchor
+        );
+
+        // Handle 3DS authentication required
+        if (data.requiresAction) {
+          let invoice = null;
+          const latest_invoice = data?.subscription?.latest_invoice;
+
+          // get latest invoice details
+          const invoices =
+            await this.stripeService.getInvoiceById(latest_invoice);
+
+          if (invoices?.hosted_invoice_url) {
+            invoice = invoices.hosted_invoice_url;
+          }
+
+          const billingDetails = {
+            ...team.billing,
+            status: SubscriptionStatus.ACTION_REQUIRED,
+            invoice_url: invoice,
+          };
+
+          // Update team billing status to indicate action required
+          await this.updateTeamPlanWithBilling(
+            team._id.toString(),
+            team.plan,
+            billingDetails,
+          );
+
+          return {
+            success: false,
+            message:
+              "Invite failed. Please complete payment authentication to send invites.",
+          };
+        }
+
+        // Payment succeeded - update licenses
+        const licenseData: LicensesDto = {
+          totalSeats: Number(newTotalSeats),
+          usedSeats: Number(totalCurrentUsage),
+          availableSeats: Number(newTotalSeats) - Number(totalCurrentUsage),
+          lastUpdated: new Date(),
+        };
+
+        // Update team with new license data
+        await this.stripeSubscriptionRepo.updateTeamById(team._id.toString(), {
+          licenses: licenseData,
+        });
+
+        return {
+          success: true,
+          message: `Successfully purchased ${additionalSeatsNeeded} additional seats. Total: ${newTotalSeats} seats`,
+        };
+      } catch (stripeError) {
+        console.error("Error updating Stripe subscription:", stripeError);
+        return {
+          success: false,
+          message: `Failed to purchase additional seats: ${stripeError.message || "Stripe API error"}`,
+        };
+      }
+    } catch (error) {
+      console.error("Error in license checking:", error);
+      return {
+        success: false,
+        message: `License checking failed: ${error.message}`,
+      };
+    }
   }
 }

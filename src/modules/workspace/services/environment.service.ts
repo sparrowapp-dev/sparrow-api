@@ -32,6 +32,7 @@ import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
+import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
 import { DecodedUserObject } from "@src/types/fastify";
 import { User } from "@src/modules/common/models/user.model";
 
@@ -85,6 +86,16 @@ export class EnvironmentService {
       };
       const environment =
         await this.environmentRepository.addEnvironment(newEnvironment);
+      const currentWorkspaceObject = new ObjectId(
+        createEnvironmentDto.workspaceId,
+      );
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       return environment;
     } catch (error) {
       throw new BadRequestException(error);
@@ -131,6 +142,14 @@ export class EnvironmentService {
     const environment = await this.environmentRepository.get(id);
     const data = await this.environmentRepository.delete(id);
     const updateMessage = `"${environment.name}" environment is deleted from "${workspace.name}" workspace`;
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
@@ -153,13 +172,13 @@ export class EnvironmentService {
     await this.checkPermission(id, userId);
 
     const workspace = await this.workspaceReposistory.get(id);
-    const environments = [];
-    for (let i = 0; i < workspace.environments?.length; i++) {
-      const environment = await this.environmentRepository.get(
-        workspace.environments[i].id.toString(),
-      );
-      environments.push(environment);
-    }
+    const environmentIds =
+      workspace.environments?.map((e) => e.id.toString()) || [];
+
+    if (environmentIds.length === 0) return [];
+
+    const environments =
+      await this.environmentRepository.getEnvironmentsByIds(environmentIds);
     return environments;
   }
 
@@ -169,16 +188,15 @@ export class EnvironmentService {
    */
   async getAllPublicEnvironments(id: string): Promise<WithId<Environment>[]> {
     const workspace = await this.workspaceReposistory.get(id);
+
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const environments = [];
-    for (let i = 0; i < workspace.environments?.length; i++) {
-      const environment = await this.environmentRepository.get(
-        workspace.environments[i].id.toString(),
-      );
-      environments.push(environment);
-    }
+    const environmentIds =
+      workspace.environments?.map((e) => e.id.toString()) || [];
+    if (environmentIds.length === 0) return [];
+    const environments =
+      await this.environmentRepository.getEnvironmentsByIds(environmentIds);
     return environments;
   }
 
@@ -218,6 +236,14 @@ export class EnvironmentService {
         }),
       });
     }
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return data;
   }
 

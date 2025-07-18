@@ -37,6 +37,7 @@ import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
+import { EncryptionService } from "@src/modules/common/services/encryption.service";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -45,6 +46,7 @@ export class CollectionRequestService {
     private readonly workspaceService: WorkspaceService,
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
+    private readonly encryptionService: EncryptionService
   ) {}
 
   async addFolder(
@@ -1401,6 +1403,7 @@ export class CollectionRequestService {
     let updateMessage = ``;
     if (aiRequest.items.type === ItemTypeEnum.AI_REQUEST) {
       aiRequestObj.aiRequest = aiRequest.items.aiRequest;
+
       await this.collectionReposistory.addAiRequest(
         aiRequest.collectionId,
         aiRequestObj,
@@ -1415,7 +1418,9 @@ export class CollectionRequestService {
           workspaceId: aiRequest.workspaceId,
         }),
       });
+
       return aiRequestObj;
+
     } else {
       aiRequestObj.items = [
         {
@@ -1446,6 +1451,7 @@ export class CollectionRequestService {
           workspaceId: aiRequest.workspaceId,
         }),
       });
+
       return aiRequestObj.items[0];
     }
   }

@@ -19,10 +19,14 @@ import { PlanController } from "./controllers/plan.controller";
 import { RefreshTokenStrategy } from "./strategies/refresh-token.strategy";
 import { HubSpotService } from "./services/hubspot.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
+import { BillingModule } from "../billing/billing.module";
+import { BillingAuditService } from "../billing/services/billing-audit.service";
+import { StripeSubscriptionService } from "../billing/services/stripe-subscription.service";
 
 @Module({
   imports: [
     ConfigModule,
+    BillingModule.register(),
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -53,6 +57,8 @@ import { GoogleStrategy } from "./strategies/google.strategy";
     TeamUserService,
     TeamRepository,
     PlanRepository,
+    BillingAuditService,
+    StripeSubscriptionService,
     {
       provide: GoogleStrategy,
       useFactory: (configService: ConfigService) => {
@@ -81,6 +87,7 @@ import { GoogleStrategy } from "./strategies/google.strategy";
     PlanRepository,
     UserInvitesRepository,
     HubSpotService,
+    StripeSubscriptionService,
   ],
   controllers: [AuthController, UserController, TeamController, PlanController],
 })

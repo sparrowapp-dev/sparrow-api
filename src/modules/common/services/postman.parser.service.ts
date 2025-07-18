@@ -55,6 +55,8 @@ export class PostmanParserService {
       },
       createdAt: new Date(),
       updatedAt: new Date(),
+      authProfiles: [],
+      defaultSelectedAuthProfile: ""
     };
 
     // Flatten the Postman collection to resolve nested folder issue and return the updated collection

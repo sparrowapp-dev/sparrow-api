@@ -176,6 +176,10 @@ export class UpdateSubscriptionDto {
   @IsOptional()
   @IsBoolean()
   atPeriodEnd?: boolean;
+  @IsOptional()
+  @IsNumber()
+  seats?: number;
+  paymentBehavior?: "default_incomplete" | "allow_incomplete";
 }
 
 export class CancelSubscriptionDto {

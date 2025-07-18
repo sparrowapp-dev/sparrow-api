@@ -43,6 +43,7 @@
     "@azure/service-bus": "^7.9.1",
     "@azure/storage-blob": "^12.18.0",
     "@blazity/nest-file-fastify": "^1.0.0",
+    "@dqbd/tiktoken": "^1.0.21",
     "@fastify/helmet": "^11.0.0",
     "@fastify/multipart": "^8.0.0",
     "@fastify/rate-limit": "^8.0.3",
@@ -73,6 +74,7 @@
     "class-transformer": "0.5.1",
     "class-transformer-validator": "^0.9.1",
     "class-validator": "^0.14.0",
+    "crypto-js": "^4.2.0",
     "curlconverter": "^4.9.0",
     "dotenv": "16.0.1",
     "fastify": "4.28.1",
@@ -91,6 +93,7 @@
     "passport": "0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
+    "pdf-parse": "^1.1.1",
     "pino": "^8.15.3",
     "pino-pretty": "^10.2.0",
     "prom-client": "^15.1.3",
@@ -109,6 +112,7 @@
     "@jest/types": "^29.6.3",
     "@nestjs/testing": "^10.1.3",
     "@types/chai": "^4.3.5",
+    "@types/crypto-js": "^4.2.2",
     "@types/gravatar": "1.8.3",
     "@types/jest": "^29.5.3",
     "@types/js-yaml": "^4.0.7",
@@ -116,6 +120,7 @@
     "@types/mime-types": "^3.0.1",
     "@types/node": "16.11.56",
     "@types/passport-jwt": "^3.0.9",
+    "@types/pdf-parse": "^1.1.5",
     "@types/supertest": "^2.0.12",
     "@types/uuid": "^9.0.5",
     "@types/ws": "^8.5.13",
@@ -140,6 +145,6 @@
   },
   "packageManager": "pnpm@10.11.0",
   "optionalDependencies": {
-    "@sparrowapp-dev/stripe-billing": "^1.1.1"
+    "@sparrowapp-dev/stripe-billing": "^1.1.7"
   }
 }
