@@ -56,6 +56,7 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
 
+
 /**
  * Workspace Service
  */
@@ -112,7 +113,8 @@ export class WorkspaceService {
 
     if (workspaceIds.length > 0) {
       // Bulk fetch all workspaces in one DB call
-      const workspaceDocs = await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
+      const workspaceDocs =
+        await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
 
       workspaces = workspaceDocs.map((doc) => {
         const isNewInvite = workspaceIdMap.get(doc._id.toString()) ?? false;
@@ -122,7 +124,7 @@ export class WorkspaceService {
         };
       });
     }
-      
+
     if (!workspaces.length) {
       const teams = await this.teamService.getAllTeams(userId, currentUser);
       for (const team of teams) {
@@ -147,9 +149,10 @@ export class WorkspaceService {
   }
   async getAllTeamWorkSpaces(teamId: string): Promise<Workspace[]> {
     const team = await this.teamRepository.get(teamId);
-    const workspaceIds = team.workspaces?.map(w =>w.id.toString()) || [];
+    const workspaceIds = team.workspaces?.map((w) => w.id.toString()) || [];
     if (workspaceIds.length === 0) return [];
-    const workspaces = await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
+    const workspaces =
+      await this.workspaceRepository.getWorkspacesByIds(workspaceIds);
     return workspaces;
   }
 
@@ -819,6 +822,7 @@ export class WorkspaceService {
         user: currentUser,
       }),
     });
+
     return response;
   }
 

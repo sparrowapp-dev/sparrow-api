@@ -332,8 +332,8 @@ export class StripeWebhookHelper {
       const teamWithUpcomingInvoice =
         await this.stripeSubscriptionRepo.findTeamById(upcomingMetadata.hubId);
 
-      // Send upcoming payment email notification
       if (teamWithUpcomingInvoice) {
+        // Send upcoming payment email notification
         try {
           await this.paymentEmailHelper.sendUpcomingPaymentEmail(
             event.data.object,

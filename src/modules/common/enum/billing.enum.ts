@@ -87,6 +87,11 @@ export enum BillingEventType {
   PLAN_CHANGED = "plan_changed",
   SEATS_ADJUSTED = "seats_adjusted",
 
+  // License management events
+  SEAT_RESERVED_BY_USER_ADDITION = "seat_reserved_by_user_addition",
+  SEAT_RELEASED_BY_USER_REMOVAL = "seat_released_by_user_removal",
+  SEATS_CLEANED_UP_AS_UNUSED = "seats_cleaned_up_as_unused",
+
   // Billing adjustments
   CREDIT_APPLIED = "credit_applied",
   REFUND_ISSUED = "refund_issued",
