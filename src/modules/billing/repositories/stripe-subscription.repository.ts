@@ -6,6 +6,8 @@ import {
 } from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
+import { PlanName } from "@src/modules/common/enum/plan.enum";
+import { BillingDto } from "@src/modules/common/models/billing.model";
 
 /**
  * Repository for managing Stripe subscription data in the database
@@ -25,7 +27,7 @@ export class StripeSubscriptionRepository {
     hubId: string,
     planData: TeamsPlan,
     subscriptionData: {
-      billing?: any;
+      billing?: BillingDto;
     },
   ): Promise<UpdateResult> {
     try {
@@ -110,7 +112,6 @@ export class StripeSubscriptionRepository {
         .collection(Collections.TEAM)
         .find({
           "billing.status": SubscriptionStatus.PAYMENT_FAILED,
-          "billing.requires_action_at_period_end": true,
           "billing.current_period_end": { $lt: currentDate },
         })
         .toArray();
@@ -131,6 +132,51 @@ export class StripeSubscriptionRepository {
         .find({
           "billing.billingType": BillingType.TRIAL,
           "billing.current_period_end": { $lt: currentDate },
+        })
+        .toArray();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Find teams with either:
+   * 1. Failed payment subscriptions that have expired billing cycles, or
+   * 2. Expired trial periods,
+   * and that haven't already been processed today (no expired email sent today).
+   *
+   * @param currentDate The current date to compare against billing end dates
+   * @returns Array of team documents with expired billing needing action
+   */
+  async findTeamsWithExpiredBilling(currentDate: Date): Promise<any[]> {
+    try {
+      return await this.db
+        .collection(Collections.TEAM)
+        .find({
+          $and: [
+            {
+              $or: [
+                {
+                  "billing.status": SubscriptionStatus.PAYMENT_FAILED,
+                  "billing.current_period_end": { $lt: currentDate },
+                },
+                {
+                  "billing.billingType": BillingType.TRIAL,
+                  "billing.current_period_end": { $lt: currentDate },
+                },
+              ],
+            },
+            {
+              $or: [
+                {
+                  "billing.subscription_expired_email_sent": { $exists: false },
+                },
+              ],
+            },
+            {
+              "plan.name": { $ne: PlanName.COMMUNITY },
+            },
+          ],
         })
         .toArray();
     } catch (error) {

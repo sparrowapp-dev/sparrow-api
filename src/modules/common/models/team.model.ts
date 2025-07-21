@@ -19,6 +19,8 @@ import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
 import { Plan } from "./plan.model";
+import { BillingDto } from "./billing.model";
+import { LicensesDto } from "./licenses.model";
 
 export class logoDto {
   @IsString()
@@ -115,6 +117,14 @@ export class Team {
   @IsString()
   @IsOptional()
   updatedBy?: string;
+
+  @IsOptional()
+  @IsObject()
+  billing?: BillingDto;
+
+  @IsOptional()
+  @IsObject()
+  licenses?: LicensesDto;
 }
 
 export class TeamWithNewInviteTag extends Team {

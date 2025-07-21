@@ -10,7 +10,9 @@ export enum PaymentEmailType {
   PLAN_UPGRADED = "plan_upgraded",
   PLAN_DOWNGRADED = "plan_downgraded",
   UPCOMING_PAYMENT = "upcoming_payment",
+  SUBSCRIPTION_EXPIRED = "subscription_expired",
   PAYMENT_INFO_UPDATED = "payment_info_updated",
+  DOWNGRADED_TO_COMMUNITY = "downgraded_to_community",
 }
 
 export interface PaymentEmailData {
@@ -37,6 +39,10 @@ export interface PaymentEmailData {
   updatePaymentUrl?: string;
   nameOnCard?: string;
   updatedDate?: string;
+  totalSeats?: number;
+  usedSeats?: number;
+  availableSeats?: number;
+  manageUsersUrl?: string;
 }
 
 @Injectable()
@@ -78,8 +84,14 @@ export class PaymentEmailService {
         case PaymentEmailType.UPCOMING_PAYMENT:
           await this.sendUpcomingPaymentEmail(data);
           break;
+        case PaymentEmailType.SUBSCRIPTION_EXPIRED:
+          await this.sendSubscriptionExpiredEmail(data);
+          break;
         case PaymentEmailType.PAYMENT_INFO_UPDATED:
           await this.sendPaymentInfoUpdatedEmail(data);
+          break;
+        case PaymentEmailType.DOWNGRADED_TO_COMMUNITY:
+          await this.sendDowngradedToCommunityEmail(data);
           break;
         default:
           console.warn(`Unknown payment email type: ${emailType}`);
@@ -146,6 +158,9 @@ export class PaymentEmailService {
         planName: data.planName,
         amountDue: this.formatAmount(data.amount, data.currency),
         failureDate: this.formatDate(data.paymentDate),
+        nextRetryDate: this.formatDate(data.paymentDate, {
+          grace_period: true,
+        }),
         failureReason: data.failureReason || "Payment could not be processed",
         fixPaymentUrl: data.receiptUrl,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
@@ -346,6 +361,120 @@ export class PaymentEmailService {
     };
 
     await this.emailService.sendEmail(transporter, mailOptions);
+
+    // Also send action required email if conditions are met
+
+    try {
+      await this.sendUpcomingPaymentActionRequiredEmail(data);
+    } catch (error) {
+      console.error("Error sending action required email:", error);
+    }
+  }
+
+  /**
+   * Send upcoming payment action required email
+   */
+  private async sendUpcomingPaymentActionRequiredEmail(
+    data: PaymentEmailData,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    // Calculate days until expiry
+    const now = new Date();
+    const paymentDate = new Date(data.nextPaymentDate);
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const expireIn = Math.max(
+      0,
+      Math.ceil((paymentDate.getTime() - now.getTime()) / msPerDay),
+    );
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: data.ownerEmail,
+      text: "Action Required - Upcoming Payment",
+      template: "upcomingPaymentActionRequiredEmail",
+      context: {
+        firstName: this.extractFirstName(data.ownerName),
+        hubName: data.hubName,
+        expireIn,
+        planName: data.planName,
+        totalSeats: data.totalSeats || 0,
+        usedSeats: data.usedSeats || 0,
+        availableSeats: data.availableSeats || 0,
+        estimatedCharges: this.formatAmount(data.amount, data.currency),
+        manageUsersUrl: `${this.configService.get("admin.baseURL")}/hubs/members/${data.hubId}`,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Action Required: Your Sparrow plan will expire in ${expireIn} day${expireIn === 1 ? "" : "s"}`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
+  /**
+   * Send subscription expired email
+   */
+  private async sendSubscriptionExpiredEmail(
+    data: PaymentEmailData,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: data.ownerEmail,
+      text: "Subscription Expired",
+      template: "subscriptionExpiredEmail",
+      context: {
+        firstName: this.extractFirstName(data.ownerName),
+        hubName: data.hubName,
+        planName: data.planName,
+        billingUrl: `${this.configService.get("admin.baseURL")}/billing/billingOverview/${data.hubId}`,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Your Sparrow subscription has expired - Action required`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
+  /**
+   * Send downgraded to community email
+   */
+  private async sendDowngradedToCommunityEmail(
+    data: PaymentEmailData,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: data.ownerEmail,
+      text: "Hub Downgraded to Community Plan",
+      template: "downgradedToCommunityEmail",
+      context: {
+        firstName: this.extractFirstName(data.ownerName),
+        hubName: data.hubName,
+        previousPlanName: data.previousPlanName,
+        planName: data.planName || "Community Plan",
+        billingUrl: `${this.configService.get("admin.baseURL")}/billing/billingOverview/${data.hubId}`,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Your Sparrow hub is being downgraded to the Community Plan`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
   }
 
   /**
@@ -421,8 +550,6 @@ export class PaymentEmailService {
     ];
   }
 
-  //***********helper functions
-
   /**
    * Extract first name from full name
    */
@@ -441,10 +568,18 @@ export class PaymentEmailService {
   }
 
   /**
-   * Format date for display
+   * Format date for display, with optional grace period (+3 days)
    */
-  private formatDate(date: Date | number): string {
-    const d = typeof date === "number" ? new Date(date * 1000) : date;
+  private formatDate(
+    date: Date | number,
+    options?: { grace_period?: boolean },
+  ): string {
+    let d = typeof date === "number" ? new Date(date * 1000) : new Date(date);
+
+    if (options?.grace_period) {
+      d.setDate(d.getDate() + 3);
+    }
+
     return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",

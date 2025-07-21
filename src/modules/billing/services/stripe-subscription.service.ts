@@ -12,6 +12,8 @@ import {
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import { TeamsPlan } from "@src/modules/common/models/team.model";
+import { ScheduledDowngradeDto } from "@src/modules/common/models/billing.model";
+import { LicensesDto } from "@src/modules/common/models/licenses.model";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -288,13 +290,6 @@ export class StripeSubscriptionService {
         return;
       }
 
-      // Check if subscription is already in a terminal state
-      if (team.billing && team.billing.status) {
-        if (StripeSubscriptionHelpers.isTerminalStatus(team.billing.status)) {
-          return;
-        }
-      }
-
       await this.processPaymentFailure(invoice, team, metadata, eventId);
     } catch (error) {
       throw error;
@@ -327,21 +322,12 @@ export class StripeSubscriptionService {
     // Create billing details object with failed payment status
     const billingDetails = {
       status: SubscriptionStatus.PAYMENT_FAILED,
-      collection_method: invoice.collection_method,
       latest_invoice: invoice.id,
       seats: metadata?.userCount || 1,
-      failed_invoice_url: invoice.hosted_invoice_url,
-      next_payment_attempt: invoice.next_payment_attempt
-        ? new Date(invoice.next_payment_attempt * 1000)
-        : null,
-      attempt_count: invoice.attempt_count,
+      invoice_url: invoice.hosted_invoice_url,
       billing_reason: billingReason,
       current_period_start: periodDates.currentPeriodStart,
       current_period_end: periodDates.currentPeriodEnd,
-      requires_action_at_period_end:
-        billingReason === "subscription_update" ||
-        billingReason === "subscription_cycle",
-      failed_at: new Date(),
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
       paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
@@ -396,7 +382,6 @@ export class StripeSubscriptionService {
       {
         invoiceId: invoice.id,
         subscriptionId,
-        attemptCount: invoice.attempt_count,
         billingReason,
       },
     );
@@ -622,13 +607,9 @@ export class StripeSubscriptionService {
       amount_billed: amount,
       currency: invoice.currency,
       status: SubscriptionStatus.ACTIVE,
-      collection_method: invoice.collection_method,
       latest_invoice: invoice.id,
       seats: metadata?.userCount || 1,
       invoice_url: invoice.hosted_invoice_url,
-      paid_at: invoice.status_transitions?.paid_at
-        ? new Date(invoice.status_transitions.paid_at * 1000)
-        : new Date(),
       billingType: StripeSubscriptionHelpers.determineBillingType(
         {
           status: SubscriptionStatus.ACTIVE,
@@ -661,7 +642,7 @@ export class StripeSubscriptionService {
     const totalCurrentUsage = currentActiveUsers + currentPendingInvites;
     const currentSeats = metadata?.userCount || 1;
 
-    const licenseData = {
+    const licenseData: LicensesDto = {
       totalSeats: Number(currentSeats),
       usedSeats: Number(totalCurrentUsage),
       availableSeats: Number(currentSeats) - Number(totalCurrentUsage),
@@ -870,8 +851,6 @@ export class StripeSubscriptionService {
         const updatedBilling = {
           ...team.billing,
           status: SubscriptionStatus.VOIDED,
-          invoice_voided: true,
-          voided_at: new Date(),
           updatedBy: BillingSource.STRIPE_WEBHOOK,
           event_id: eventId,
         };
@@ -1081,7 +1060,7 @@ export class StripeSubscriptionService {
       if (!team) return;
 
       const currentBilling = team.billing || {};
-      const scheduledDowngrade = {
+      const scheduledDowngrade: ScheduledDowngradeDto = {
         isScheduledDowngrade: true,
         startDate: startDate,
         planName: targetPlanName,
@@ -1128,7 +1107,7 @@ export class StripeSubscriptionService {
    */
   async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
     try {
-      const currentDate = new Date();
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 600 * 100); //3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
           currentDate,
@@ -1136,6 +1115,28 @@ export class StripeSubscriptionService {
 
       for (const team of teams) {
         try {
+          // Cancel Stripe subscription manually before downgrading
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
+
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
           // Find the community plan for downgrade
           const communityPlan =
             await this.stripeSubscriptionRepo.findPlanByName(
@@ -1152,11 +1153,11 @@ export class StripeSubscriptionService {
 
           // Update billing details for expired subscription
           const billingDetails = {
-            ...team.billing,
+            paymentProviders: team.billing?.paymentProviders || [],
             status: SubscriptionStatus.CANCELED,
+            billingType: BillingType.EXPIRED_SUBSCRIPTION,
             canceled_at: new Date(),
             cancellation_reason: "payment_failed_period_expired",
-            requires_action_at_period_end: false,
             updatedBy: "system-maintenance-job",
           };
 
@@ -1166,6 +1167,21 @@ export class StripeSubscriptionService {
             communityPlan,
             billingDetails,
           );
+
+          // Send plan downgrade email notification
+          if (this.paymentEmailHelper && team.plan?.name) {
+            try {
+              await this.paymentEmailHelper.sendDowngradedToCommunityEmail(
+                team,
+                team.plan.name, // Previous plan
+              );
+            } catch (error) {
+              console.error(
+                "Error sending downgraded to community email:",
+                error,
+              );
+            }
+          }
 
           // Get plan limits for audit tracking
           let planLimits:
@@ -1215,7 +1231,7 @@ export class StripeSubscriptionService {
    */
   async checkAndRevertExpiredTrials(): Promise<void> {
     try {
-      const currentDate = new Date();
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); //3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredTrials(
           currentDate,
@@ -1223,6 +1239,28 @@ export class StripeSubscriptionService {
 
       for (const team of teams) {
         try {
+          // Cancel Stripe subscription manually before downgrading for expired trials
+          if (this.stripeService && team.billing?.paymentProviders) {
+            const subscriptionId = team.billing.paymentProviders?.find(
+              (provider: any) => provider.provider === PaymentProvider.STRIPE,
+            )?.subscriptionId;
+
+            if (subscriptionId) {
+              try {
+                await this.stripeService.cancelSubscription(
+                  subscriptionId,
+                  true, // cancel immediately instead of at period end
+                );
+              } catch (stripeError) {
+                console.error(
+                  `Failed to cancel Stripe subscription ${subscriptionId} for expired trial team ${team._id}:`,
+                  stripeError,
+                );
+                // Continue with downgrade even if Stripe cancellation fails
+              }
+            }
+          }
+
           // Find the community plan for downgrade
           const communityPlan =
             await this.stripeSubscriptionRepo.findPlanByName(
@@ -1239,7 +1277,7 @@ export class StripeSubscriptionService {
 
           // Update billing details for expired trial
           const billingDetails = {
-            ...team.billing,
+            paymentProviders: team.billing?.paymentProviders || [],
             status: SubscriptionStatus.CANCELED,
             billingType: BillingType.EXPIRED_TRIAL,
             canceled_at: new Date(),
@@ -1254,6 +1292,21 @@ export class StripeSubscriptionService {
             communityPlan,
             billingDetails,
           );
+
+          // Send plan downgrade email notification
+          if (this.paymentEmailHelper && team.plan?.name) {
+            try {
+              await this.paymentEmailHelper.sendDowngradedToCommunityEmail(
+                team,
+                team.plan.name, // Previous plan
+              );
+            } catch (error) {
+              console.error(
+                "Error sending downgraded to community email:",
+                error,
+              );
+            }
+          }
 
           // Get plan limits for audit tracking
           let planLimits:
@@ -1290,6 +1343,51 @@ export class StripeSubscriptionService {
       }
     } catch (error) {
       console.error("Error checking and reverting expired trials:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send subscription expired emails immediately when subscriptions/trials expire
+   * This method should be called by a scheduled job/cron - runs daily
+   */
+  async sendSubscriptionExpiredEmails(): Promise<void> {
+    try {
+      const currentDate = new Date();
+
+      // Find teams with expired failed subscriptions and trials (current day)
+      const expiredTeams =
+        await this.stripeSubscriptionRepo.findTeamsWithExpiredBilling(
+          currentDate,
+        );
+
+      for (const team of expiredTeams) {
+        try {
+          // Check if email was already sent
+          if (team.billing?.subscription_expired_email_sent) {
+            continue;
+          }
+
+          // Send subscription expired email
+          await this.paymentEmailHelper.sendSubscriptionExpiredEmail(team);
+
+          // Mark email as sent in billing object
+          await this.stripeSubscriptionRepo.updateTeamById(
+            team._id.toString(),
+            {
+              "billing.subscription_expired_email_sent": new Date(),
+            },
+          );
+        } catch (error) {
+          console.error(
+            `Error sending subscription expired email for team ${team._id}:`,
+            error,
+          );
+          // Continue with other teams even if one fails
+        }
+      }
+    } catch (error) {
+      console.error("Error sending subscription expired emails:", error);
       throw error;
     }
   }
@@ -1375,7 +1473,10 @@ export class StripeSubscriptionService {
   ): Promise<{ success: boolean; message: string }> {
     try {
       // Skip license checking for community plan or if no billing info
-      if (!team.billing || team.plan?.name === "Community") {
+      if (
+        team.plan?.name === PlanName.COMMUNITY &&
+        team?.billing?.status !== SubscriptionStatus.PAYMENT_FAILED
+      ) {
         return { success: true, message: "No license checking required" };
       }
 
@@ -1543,10 +1644,11 @@ export class StripeSubscriptionService {
             newSeats: newTotalSeats.toString(),
           },
           undefined, // default_payment_method (optional)
-          undefined, // prorationBehavior (optional)
+          "always_invoice", // prorationBehavior (optional)
           false, // atPeriodEnd (optional)
           newTotalSeats, // seats
           "allow_incomplete", // payment_behavior
+          "unchanged", // billing cycle_anchor
         );
 
         // Handle 3DS authentication required
@@ -1565,7 +1667,7 @@ export class StripeSubscriptionService {
           const billingDetails = {
             ...team.billing,
             status: SubscriptionStatus.ACTION_REQUIRED,
-            failed_invoice_url: invoice,
+            invoice_url: invoice,
           };
 
           // Update team billing status to indicate action required
@@ -1583,7 +1685,7 @@ export class StripeSubscriptionService {
         }
 
         // Payment succeeded - update licenses
-        const licenseData = {
+        const licenseData: LicensesDto = {
           totalSeats: Number(newTotalSeats),
           usedSeats: Number(totalCurrentUsage),
           availableSeats: Number(newTotalSeats) - Number(totalCurrentUsage),

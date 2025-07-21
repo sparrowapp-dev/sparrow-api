@@ -1,15 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import {
-  BillingAuditRepository,
-  BillingEventData,
-  BillingTransaction,
-} from "../repositories/billing-audit.repository";
+import { BillingAuditRepository } from "../repositories/billing-audit.repository";
 import {
   BillingEventType,
   BillingEntityType,
   BillingTransactionType,
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
+import {
+  BillingEventDto,
+  BillingTransactionDto,
+} from "@src/modules/common/models/billing.model";
 
 /**
  * Billing Audit Service - Enhanced with Hub Lifecycle Tracking
@@ -38,7 +38,7 @@ export class BillingAuditService {
    * Record a billing event - the core method for audit trail
    */
   async recordBillingEvent(
-    eventData: Partial<BillingEventData>,
+    eventData: Partial<BillingEventDto>,
   ): Promise<string> {
     return await this.billingAuditRepo.recordBillingEvent(eventData);
   }
@@ -47,7 +47,7 @@ export class BillingAuditService {
    * Record a financial transaction
    */
   async recordTransaction(
-    transactionData: Partial<BillingTransaction>,
+    transactionData: Partial<BillingTransactionDto>,
   ): Promise<string> {
     return await this.billingAuditRepo.recordTransaction(transactionData);
   }
@@ -59,7 +59,7 @@ export class BillingAuditService {
     entityId: string,
     planName: string,
     subscriptionDetails: any,
-    context: BillingEventData["context"],
+    context: BillingEventDto["context"],
   ): Promise<string> {
     return await this.recordBillingEvent({
       eventType: BillingEventType.SUBSCRIPTION_CREATED,
@@ -117,7 +117,7 @@ export class BillingAuditService {
     entityId: string,
     previousPlan: string,
     newPlan: string,
-    context: BillingEventData["context"],
+    context: BillingEventDto["context"],
     seatChange?: { from: string; to: string },
     subscriptionDetails?: any,
     planLimits?: { previous: Record<string, any>; new: Record<string, any> },
@@ -239,7 +239,7 @@ export class BillingAuditService {
     success: boolean,
     amount: number,
     currency: string,
-    context: BillingEventData["context"],
+    context: BillingEventDto["context"],
     metadata?: Record<string, any>,
   ): Promise<string> {
     const eventId = await this.recordBillingEvent({
@@ -291,7 +291,7 @@ export class BillingAuditService {
     entityId: string,
     planName: string,
     renewalDetails: any,
-    context: BillingEventData["context"],
+    context: BillingEventDto["context"],
   ): Promise<string> {
     const changes = [
       {
@@ -391,7 +391,7 @@ export class BillingAuditService {
     entityId: string,
     previousPlan: string,
     cancellationDetails: any,
-    context: BillingEventData["context"],
+    context: BillingEventDto["context"],
   ): Promise<string> {
     const changes = [
       {
@@ -448,7 +448,7 @@ export class BillingAuditService {
     entityId: string,
     hubName: string,
     initialPlan: string,
-    context: BillingEventData["context"],
+    context: BillingEventDto["context"],
     hubDetails?: {
       hubUrl?: string;
       description?: string;
