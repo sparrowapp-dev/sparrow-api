@@ -55,7 +55,7 @@ import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
-import { LicenseManagementService } from "@src/modules/billing/services/license-management.service";
+
 
 /**
  * Workspace Service
@@ -72,7 +72,6 @@ export class WorkspaceService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly emailService: EmailService,
-    private readonly licenseManagementService: LicenseManagementService,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -823,12 +822,6 @@ export class WorkspaceService {
         user: currentUser,
       }),
     });
-
-    // Update license tracking after user removal from workspace
-    // Note: This updates the team's license tracking when a user is removed from a workspace
-    await this.licenseManagementService.updateLicenseTracking(
-      workspaceData.team.id,
-    );
 
     return response;
   }
