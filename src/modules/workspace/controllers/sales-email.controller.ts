@@ -29,6 +29,8 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { SalesEmailService } from "../services/sales-email.service";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { RolesGuard } from "@src/modules/common/guards/roles.guard";
+import { Roles } from "@src/modules/common/decorators/roles.decorators";
 
 /**
  * Sales Email Controller
@@ -108,6 +110,8 @@ export class SalesEmailController {
   }
 
   @Post("trial-confirmation-mail/:trailId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
   @ApiOperation({
     summary: "Send a confirmation email",
     description: "Send a confirmation email to the user for trial",
@@ -136,6 +140,8 @@ export class SalesEmailController {
   }
 
   @Post("user-trial-confirmation-mail/:hubId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
   @ApiOperation({
     summary: "Send a confirmation email",
     description: "Send a confirmation email to the user for trial",
