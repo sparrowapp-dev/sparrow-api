@@ -20,6 +20,7 @@ import { SendSalesEmail } from "../payloads/sales-email.payload";
 
 // ---- Services
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
+import { UserService } from "@src/modules/identity/services/user.service";
 
 // ---- Enum
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
@@ -28,6 +29,8 @@ import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { SalesEmailService } from "../services/sales-email.service";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { RolesGuard } from "@src/modules/common/guards/roles.guard";
+import { Roles } from "@src/modules/common/decorators/roles.decorators";
 
 /**
  * Sales Email Controller
@@ -39,7 +42,10 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 @ApiTags("Sales Email")
 @Controller("api")
 export class SalesEmailController {
-  constructor(private readonly salesEmailService: SalesEmailService) {}
+  constructor(
+    private readonly salesEmailService: SalesEmailService,
+    private readonly userService: UserService,
+  ) {}
 
   /**
    * Add a new sales email record and send email.
@@ -104,6 +110,8 @@ export class SalesEmailController {
   }
 
   @Post("trial-confirmation-mail/:trailId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
   @ApiOperation({
     summary: "Send a confirmation email",
     description: "Send a confirmation email to the user for trial",
@@ -119,6 +127,11 @@ export class SalesEmailController {
     const user = request.user;
     // Retrieve the added mail record for confirmation
     await this.salesEmailService.sendTrialConfirmationEmail(trailId, payload);
+    await this.userService.updateUser(
+      user._id.toString(),
+      { isUserTrialExhausted: true },
+      user,
+    );
     const responseData = new ApiResponseService(
       "Email Sent Successfully",
       HttpStatusCode.CREATED,
@@ -127,6 +140,8 @@ export class SalesEmailController {
   }
 
   @Post("user-trial-confirmation-mail/:hubId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
   @ApiOperation({
     summary: "Send a confirmation email",
     description: "Send a confirmation email to the user for trial",
@@ -145,6 +160,11 @@ export class SalesEmailController {
       hubId,
       payload.trailFlow,
       payload.trialFrequency,
+    );
+    await this.userService.updateUser(
+      user._id.toString(),
+      { isUserTrialExhausted: true },
+      user,
     );
     const responseData = new ApiResponseService(
       "Email Sent Successfully",

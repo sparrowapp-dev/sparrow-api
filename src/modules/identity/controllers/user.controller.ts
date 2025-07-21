@@ -432,4 +432,26 @@ export class UserController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Get("trial-exhausted/:email")
+  @ApiOperation({
+    summary: "Get User Trial Exhausted Status",
+    description:
+      "Returns the isUserTrialExhausted property for the given user email",
+  })
+  @ApiResponse({ status: 200, description: "Status fetched" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async getUserTrialExhaustedStatus(
+    @Param("email") email: string,
+    @Res() res: FastifyReply,
+  ) {
+    const isExhausted =
+      await this.userService.getUserTrialExhaustedStatus(email);
+    const responseData = new ApiResponseService(
+      "User Trial Exhausted Status",
+      HttpStatusCode.OK,
+      { email: email, isUserTrialExhausted: isExhausted },
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }
