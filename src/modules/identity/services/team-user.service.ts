@@ -940,10 +940,10 @@ export class TeamUserService {
 
       if (emailAlreadyInvited) {
         try {
-          const response = await this.resendInvite(teamId, email, sender);
-          return response;
+          await this.resendInvite(teamId, email, sender);
+          return;
         } catch (error) {
-          throw new InternalServerErrorException("Failed to resend invite");
+          throw error;
         }
       }
     }
