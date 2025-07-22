@@ -128,6 +128,10 @@ export class BillingDto {
   @IsOptional()
   billingType?: string;
 
+  @IsBoolean()
+  @IsOptional()
+  in_trial?: boolean;
+
   @IsString()
   @IsOptional()
   billing_reason?: string;
