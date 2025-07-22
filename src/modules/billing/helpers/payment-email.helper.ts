@@ -603,8 +603,8 @@ export class PaymentEmailHelper {
       updatePaymentUrl: `${process.env.FRONTEND_URL || "https://app.sparrowapp.dev"}/billing/${metadata.hubId}`,
       // Include seat data for action required email logic
       totalSeats: team.licenses?.totalSeats || 0,
-      usedSeats: team.licenses?.usedSeats || 0,
-      availableSeats: team.licenses?.availableSeats || 0,
+      usedSeats: team?.users?.length || 0,
+      invitedSeats: team?.invites?.length || 0,
     };
   }
 
