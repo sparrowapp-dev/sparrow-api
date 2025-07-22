@@ -27,6 +27,7 @@ import { TeamDto } from "../payloads/team.payload";
 import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
+import { InternalServerErrorException } from "@nestjs/common";
 /**
  * Team User Service
  */
@@ -938,8 +939,12 @@ export class TeamUserService {
       );
 
       if (emailAlreadyInvited) {
-        const response = await this.resendInvite(teamId, email, sender);
-        return response;
+        try {
+          const response = await this.resendInvite(teamId, email, sender);
+          return response;
+        } catch (error) {
+          throw new InternalServerErrorException("Failed to resend invite");
+        }
       }
     }
 
