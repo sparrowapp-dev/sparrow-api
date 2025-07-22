@@ -1462,6 +1462,10 @@ export class StripeSubscriptionService {
         return { success: true, message: "No license checking required" };
       }
 
+      if (team?.billing.in_trial === true) {
+        return { success: true, message: "No license checking required" };
+      }
+
       if (!userRepository) {
         console.warn("UserRepository not provided to checkAndManageLicenses");
         return {
