@@ -114,6 +114,7 @@ export class UserRepository {
       .insertOne({
         ...payload,
         isEmailVerified: false,
+        isUserTrialExhausted: false,
         password: createHmac("sha256", payload.password).digest("hex"),
         teams: [],
         workspaces: [],

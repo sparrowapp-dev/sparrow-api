@@ -2,6 +2,7 @@ import { Injectable, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import {
   BillingType,
+  PaymentProvider,
   SubscriptionStatus,
 } from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
@@ -175,6 +176,55 @@ export class StripeSubscriptionRepository {
             },
             {
               "plan.name": { $ne: PlanName.COMMUNITY },
+            },
+          ],
+        })
+        .toArray();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Find teams with subscriptions ending in 3 days (for license optimization)
+   * @param targetDate The date to check (should be 3 days from current date)
+   * @returns Array of team documents with subscriptions ending in 3 days
+   */
+  async findTeamsWithSubscriptionsEndingIn3Days(
+    targetDate: Date,
+  ): Promise<any[]> {
+    try {
+      // Create date range for 3 days from now (targetDate to targetDate + 1 day)
+      const startOfTargetDate = new Date(targetDate);
+      startOfTargetDate.setHours(0, 0, 0, 0);
+
+      const endOfTargetDate = new Date(targetDate);
+      endOfTargetDate.setHours(23, 59, 59, 999);
+
+      return await this.db
+        .collection(Collections.TEAM)
+        .find({
+          $and: [
+            {
+              "billing.current_period_end": {
+                $gte: startOfTargetDate,
+                $lte: endOfTargetDate,
+              },
+            },
+            {
+              "billing.status": SubscriptionStatus.ACTIVE,
+            },
+            {
+              "plan.name": { $ne: PlanName.COMMUNITY },
+            },
+            {
+              // Only process teams with Stripe subscriptions
+              "billing.paymentProviders": {
+                $elemMatch: {
+                  provider: PaymentProvider.STRIPE,
+                  subscriptionId: { $exists: true, $ne: null },
+                },
+              },
             },
           ],
         })

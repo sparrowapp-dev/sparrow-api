@@ -4,6 +4,8 @@ import {
   BillingEventType,
   BillingEntityType,
   BillingTransactionType,
+  BillingActorType,
+  BillingSource,
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import {
@@ -515,6 +517,74 @@ export class BillingAuditService {
           field: `limit_${limitKey}`,
           previousValue: previousLimit || null,
           newValue: newLimit || null,
+        });
+      }
+    }
+
+    return changes;
+  }
+
+  /**
+   * Record a license change event (seats reserved, freed, or optimized)
+   */
+  async recordLicenseChange(
+    entityId: string,
+    eventType:
+      | BillingEventType.SEAT_RESERVED_BY_USER_ADDITION
+      | BillingEventType.SEAT_RELEASED_BY_USER_REMOVAL
+      | BillingEventType.SEATS_CLEANED_UP_AS_UNUSED,
+    previousLicense: any,
+    newLicense: any,
+    context: {
+      actor: { type: BillingActorType; name: string };
+      source: BillingSource;
+      externalId?: string;
+      reason?: string;
+    },
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    // Calculate license changes
+    const changes = this.calculateLicenseChanges(previousLicense, newLicense);
+
+    if (changes.length === 0) {
+      console.warn("No license changes detected, skipping audit log");
+      return "";
+    }
+
+    return await this.recordBillingEvent({
+      eventType,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes,
+      context,
+      metadata,
+    });
+  }
+
+  /**
+   * Calculate changes between license states
+   */
+  private calculateLicenseChanges(
+    previousLicense: any,
+    newLicense: any,
+  ): Array<{ field: string; previousValue: any; newValue: any }> {
+    const changes: Array<{
+      field: string;
+      previousValue: any;
+      newValue: any;
+    }> = [];
+
+    const licenseFields = ["totalSeats", "usedSeats", "availableSeats"];
+
+    for (const field of licenseFields) {
+      const previousValue = previousLicense?.[field];
+      const newValue = newLicense?.[field];
+
+      if (previousValue !== newValue) {
+        changes.push({
+          field,
+          previousValue: previousValue || null,
+          newValue: newValue || null,
         });
       }
     }
