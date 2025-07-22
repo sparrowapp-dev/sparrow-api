@@ -29,6 +29,7 @@ import { PricingRepository } from "./repositories/pricing.repository";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
+import { BillingModule } from "../billing/billing.module";
 
 // ---- Handler
 import { WorkspaceHandler } from "./handlers/workspace.handler";
@@ -80,7 +81,7 @@ import { EncryptionService } from "../common/services/encryption.service";
  * and controllers related to the workspace functionality.
  */
 @Module({
-  imports: [IdentityModule],
+  imports: [IdentityModule, BillingModule.register()],
   providers: [
     WorkspaceService,
     WorkspaceRepository,

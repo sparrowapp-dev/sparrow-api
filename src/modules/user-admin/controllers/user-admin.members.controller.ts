@@ -177,7 +177,6 @@ export class AdminMembersController {
       return res.status(responseData.httpStatusCode).send(responseData);
     }
   }
-
   /**
    * Withdraw a pending invite
    */
@@ -315,6 +314,9 @@ export class AdminMembersController {
     );
     res.status(responseData.httpStatusCode).send(responseData);
   }
+  /**
+   * remove user from hub
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("admin")
   @Delete("user-hubrole")
@@ -335,6 +337,9 @@ export class AdminMembersController {
     );
     res.status(responseData.httpStatusCode).send(responseData);
   }
+  /**
+   * remove user from workspace
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("admin")
   @Delete("deleteuser-workspace")

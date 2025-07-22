@@ -12,8 +12,10 @@ import { PaymentEmailService } from "./services/payment-email.service";
 import { PaymentEmailHelper } from "./helpers/payment-email.helper";
 import { StripeWebhookHelper } from "./helpers/stripe-webhook.helper";
 import { StripeCustomerService } from "./services/stripe-customer.service";
+import { LicenseManagementService } from "./services/license-management.service";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { AdminHubsRepository } from "@src/modules/user-admin/repositories/user-admin.hubs.repository";
+import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -46,6 +48,8 @@ export class BillingModule {
       PaymentEmailService,
       PaymentEmailHelper,
       StripeCustomerService,
+      LicenseManagementService,
+      TeamRepository,
       EmailService,
       AdminHubsRepository,
     ];
@@ -59,6 +63,7 @@ export class BillingModule {
       PaymentEmailService,
       PaymentEmailHelper,
       StripeCustomerService,
+      LicenseManagementService,
       BillingAuditService,
       ...(StripeModule ? [StripeModule] : []),
     ];

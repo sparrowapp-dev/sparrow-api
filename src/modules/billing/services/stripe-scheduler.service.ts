@@ -12,26 +12,33 @@ export class StripeSchedulerService {
   ) {}
 
   /**
-   * Runs daily to perform billing maintenance tasks:
+   * Runs daily to handle all billing-related maintenance tasks:
    * 1. Send subscription expired emails for newly expired subscriptions/trials
    * 2. Check for subscriptions that need action at the end of their billing cycle
-   * 3. Check for expired trials (both Stripe and manual) and revert to community plan
-   *
-   * This consolidated job handles both Stripe-managed and manually-managed billing scenarios
+   * 3. Revert expired trials to community plan (Stripe & manual)
    */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async handleBillingMaintenance() {
+  async handleDailyBillingMaintenance() {
     try {
-      // Send subscription expired emails for newly expired subscriptions/trials (immediate)
       await this.stripeSubscriptionService.sendSubscriptionExpiredEmails();
-
-      // Handle failed payments that require action at period end (3 days after expiry)
       await this.stripeSubscriptionService.checkSubscriptionsRequiringEndOfCycleAction();
-
-      // Handle expired trials (manual flows) (3 days after expiry)
       await this.stripeSubscriptionService.checkAndRevertExpiredTrials();
     } catch (error) {
-      console.error("Error during billing maintenance:", error);
+      console.error("Error during daily billing maintenance:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Runs every 2 hours to optimize licenses for teams whose subscriptions are ending in 1 day
+   * This helps ensure licenses are properly managed and available for renewal
+   */
+  @Cron(CronExpression.EVERY_2_HOURS)
+  async handleBillingSeatsOptimization() {
+    try {
+      await this.stripeSubscriptionService.optimizeLicensesForUpcomingRenewals();
+    } catch (error) {
+      console.error("Error during billing seats optimization:", error);
       throw error;
     }
   }

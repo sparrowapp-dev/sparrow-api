@@ -2,6 +2,7 @@ import { Injectable, Inject } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import {
   BillingType,
+  PaymentProvider,
   SubscriptionStatus,
 } from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
@@ -180,6 +181,50 @@ export class StripeSubscriptionRepository {
         })
         .toArray();
     } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Find teams with subscriptions ending in the given time window
+   * @param start Start datetime (e.g., now)
+   * @param end End datetime (e.g., now + 12 hours)
+   * @returns Array of team documents with subscriptions ending in range
+   */
+  async findTeamsWithSubscriptionsEndingInRange(
+    start: Date,
+    end: Date,
+  ): Promise<any[]> {
+    try {
+      return await this.db
+        .collection(Collections.TEAM)
+        .find({
+          $and: [
+            {
+              "billing.current_period_end": {
+                $gte: start,
+                $lte: end,
+              },
+            },
+            {
+              "billing.status": SubscriptionStatus.ACTIVE,
+            },
+            {
+              "plan.name": { $ne: PlanName.COMMUNITY },
+            },
+            {
+              "billing.paymentProviders": {
+                $elemMatch: {
+                  provider: PaymentProvider.STRIPE,
+                  subscriptionId: { $exists: true, $ne: null },
+                },
+              },
+            },
+          ],
+        })
+        .toArray();
+    } catch (error) {
+      console.error("Error fetching teams with expiring subscriptions:", error);
       throw error;
     }
   }

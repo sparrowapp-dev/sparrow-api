@@ -22,6 +22,7 @@ import { TeamService } from "./team.service";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { StripeSubscriptionService } from "@src/modules/billing/services/stripe-subscription.service";
+import { LicenseManagementService } from "@src/modules/billing/services/license-management.service";
 import { TeamDto } from "../payloads/team.payload";
 import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
@@ -40,6 +41,7 @@ export class TeamUserService {
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly stripeSubscriptionService: StripeSubscriptionService,
+    private readonly licenseManagementService: LicenseManagementService,
   ) {}
 
   async HasPermissionToRemove(
@@ -208,6 +210,7 @@ export class TeamUserService {
       payload.role,
       payload?.senderEmail,
     );
+
     const response = {
       nonExistingUsers: usersNotExist,
       alreadyTeamMember: alreadyTeamMember,
@@ -283,6 +286,10 @@ export class TeamUserService {
       ownerDetails.name.split(" ")[0],
       ownerDetails.email,
     );
+
+    // Update license tracking after user removal
+    await this.licenseManagementService.updateLicenseTracking(payload.teamId);
+
     return data;
   }
 
@@ -648,6 +655,9 @@ export class TeamUserService {
       ownerDetails.name.split(" ")[0],
       ownerDetails.email,
     );
+
+    // Update license tracking after user leaves team
+    await this.licenseManagementService.updateLicenseTracking(teamId);
 
     return data;
   }
@@ -1336,6 +1346,10 @@ export class TeamUserService {
       throw new NotFoundException("Invite not found");
     }
     const data = await this.removeTeamInvite(teamId, email);
+
+    // Update license tracking after invite removal
+    await this.licenseManagementService.updateLicenseTracking(teamId);
+
     return data;
   }
 
