@@ -553,6 +553,17 @@ export class StripeSubscriptionService {
     const isTrialOngoing =
       trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
 
+    // Initialize or update the licenses object based on billing seats
+    const currentSeats = metadata?.userCount || 1;
+    const existingUsedSeats =
+      team.licenses?.usedSeats || team.users?.length || 0;
+    const licenseUpdate: LicensesDto = {
+      totalSeats: Number(currentSeats),
+      usedSeats: existingUsedSeats,
+      availableSeats: Number(currentSeats) - existingUsedSeats,
+      lastUpdated: new Date(),
+    };
+
     // Find valid line item
     let validLineItem = null;
     if (!isTrialOngoing) {
@@ -609,7 +620,7 @@ export class StripeSubscriptionService {
       currency: invoice.currency,
       status: SubscriptionStatus.ACTIVE,
       latest_invoice: invoice.id,
-      seats: metadata?.userCount || 1,
+      seats: currentSeats,
       invoice_url: invoice.hosted_invoice_url,
       billingType: StripeSubscriptionHelpers.determineBillingType(
         {
@@ -635,7 +646,10 @@ export class StripeSubscriptionService {
     };
 
     await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
-
+    // Update team with new license data
+    await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
+      licenses: licenseUpdate,
+    });
     // Log appropriate events based on payment type
     await this.logPaymentEvents(
       metadata.hubId,
