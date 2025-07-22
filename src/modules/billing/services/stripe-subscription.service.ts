@@ -1931,18 +1931,18 @@ export class StripeSubscriptionService {
   }
 
   /**
-   * Optimize licenses for teams whose subscriptions are ending in 3 days
+   * Optimize licenses for teams whose subscriptions are ending in the next 12 hours
    * This method should be called by a scheduled job/cron
    */
   async optimizeLicensesForUpcomingRenewals(): Promise<void> {
     try {
-      // Calculate the target date (3 days from now)
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      const now = new Date();
+      const twelveHoursFromNow = new Date(now.getTime() + 12 * 60 * 60 * 1000);
 
       const teams =
-        await this.stripeSubscriptionRepo.findTeamsWithSubscriptionsEndingIn3Days(
-          threeDaysFromNow,
+        await this.stripeSubscriptionRepo.findTeamsWithSubscriptionsEndingInRange(
+          now,
+          twelveHoursFromNow,
         );
 
       for (const team of teams) {

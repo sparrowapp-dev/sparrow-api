@@ -41,7 +41,7 @@ export interface PaymentEmailData {
   updatedDate?: string;
   totalSeats?: number;
   usedSeats?: number;
-  availableSeats?: number;
+  invitedSeats?: number;
   manageUsersUrl?: string;
 }
 
@@ -82,7 +82,7 @@ export class PaymentEmailService {
           await this.sendPlanDowngradedEmail(data);
           break;
         case PaymentEmailType.UPCOMING_PAYMENT:
-          await this.sendUpcomingPaymentEmail(data);
+          await this.sendUpcomingPaymentActionRequiredEmail(data);
           break;
         case PaymentEmailType.SUBSCRIPTION_EXPIRED:
           await this.sendSubscriptionExpiredEmail(data);
@@ -331,47 +331,6 @@ export class PaymentEmailService {
   }
 
   /**
-   * Send upcoming payment email
-   */
-  private async sendUpcomingPaymentEmail(
-    data: PaymentEmailData,
-  ): Promise<void> {
-    const transporter = this.emailService.createTransporter();
-
-    const mailOptions = {
-      from: this.configService.get("app.senderEmail"),
-      to: data.ownerEmail,
-      text: "Upcoming Payment Reminder",
-      template: "upcomingPaymentEmail",
-      context: {
-        firstName: this.extractFirstName(data.ownerName),
-        hubName: data.hubName,
-        planName: data.planName,
-        billingAmount: this.formatAmount(data.amount, data.currency),
-        billingDate: this.formatDate(data.nextPaymentDate),
-        cardLast4: data.cardLast4 || "****",
-        updatePaymentUrl: `${this.configService.get("admin.baseURL")}/billing/billingInformation/${data.hubId}`,
-        sparrowEmail: this.configService.get("support.sparrowEmail"),
-        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
-        sparrowWebsiteName: this.configService.get(
-          "support.sparrowWebsiteName",
-        ),
-      },
-      subject: `Gentle Just a heads-up: Your upcoming payment for ${data.hubName}`,
-    };
-
-    await this.emailService.sendEmail(transporter, mailOptions);
-
-    // Also send action required email if conditions are met
-
-    try {
-      await this.sendUpcomingPaymentActionRequiredEmail(data);
-    } catch (error) {
-      console.error("Error sending action required email:", error);
-    }
-  }
-
-  /**
    * Send upcoming payment action required email
    */
   private async sendUpcomingPaymentActionRequiredEmail(
@@ -398,10 +357,11 @@ export class PaymentEmailService {
         firstName: this.extractFirstName(data.ownerName),
         hubName: data.hubName,
         expireIn,
+        billingDate: this.formatDate(data.nextPaymentDate),
         planName: data.planName,
         totalSeats: data.totalSeats || 0,
         usedSeats: data.usedSeats || 0,
-        availableSeats: data.availableSeats || 0,
+        invitedSeats: data.invitedSeats || 0,
         estimatedCharges: this.formatAmount(data.amount, data.currency),
         manageUsersUrl: `${this.configService.get("admin.baseURL")}/hubs/members/${data.hubId}`,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
