@@ -943,7 +943,7 @@ export class TeamUserService {
           await this.resendInvite(teamId, email, sender);
           return;
         } catch (error) {
-          throw error;
+          return;
         }
       }
     }
