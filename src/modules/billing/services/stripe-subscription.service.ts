@@ -620,7 +620,6 @@ export class StripeSubscriptionService {
         metadata,
       ),
       updatedBy: BillingSource.STRIPE_WEBHOOK,
-      in_trial: isTrialOngoing || false,
       event_id: eventId,
       paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
         team.billing?.paymentProviders || [],
@@ -909,7 +908,6 @@ export class StripeSubscriptionService {
         ended_at: subscription.ended_at
           ? new Date(subscription.ended_at * 1000)
           : new Date(),
-        in_trial: false,
         seats: metadata?.userCount || 1,
         cancellation_reason: cancellationReason,
         updatedBy: BillingSource.STRIPE_WEBHOOK,

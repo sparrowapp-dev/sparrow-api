@@ -75,7 +75,6 @@ export class UpdateHubBillingMigration implements OnModuleInit {
         status: "active",
         billingType: "paid",
         updatedBy: "system-admin",
-        in_trial: false,
         paymentProviders: [
           {
             id: "37069b1a-b266-4e9c-a010-31cd30075ac4",
