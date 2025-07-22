@@ -928,7 +928,7 @@ export class TeamUserService {
       return false;
     });
     if (teamMember) {
-      throw new BadRequestException("Hub Member already Exist.");
+      return;
     }
 
     // need to check, if user already exist in the invites array
@@ -938,9 +938,8 @@ export class TeamUserService {
       );
 
       if (emailAlreadyInvited) {
-        throw new BadRequestException(
-          "An invite has already been sent to this email.",
-        );
+        const response = await this.resendInvite(teamId, email, sender);
+        return response;
       }
     }
 
