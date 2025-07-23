@@ -410,4 +410,37 @@ export class UserRepository {
       },
     );
   }
+
+  /**
+   * Add applied promo code to user's array
+   */
+  async addAppliedPromoCode(
+    userId: string,
+    appliedPromoCode: {
+      id: string;
+      code: string;
+      used_on: Date;
+    },
+  ): Promise<boolean> {
+    try {
+      const _id = new ObjectId(userId);
+
+      const result = await this.db.collection<User>(Collections.USER).updateOne(
+        { _id },
+        {
+          $push: {
+            applied_promo_codes: {
+              ...appliedPromoCode,
+              id: new ObjectId(appliedPromoCode.id),
+            },
+          },
+        },
+      );
+
+      return result.modifiedCount > 0;
+    } catch (error) {
+      console.error("Error adding applied promo code to user:", error);
+      return false;
+    }
+  }
 }
