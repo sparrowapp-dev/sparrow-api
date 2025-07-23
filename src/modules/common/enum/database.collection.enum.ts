@@ -20,4 +20,5 @@ export enum Collections {
   BILLING_EVENTS = "billingevents",
   BILLING_TRANSACTIONS = "billingtransactions",
   PRICING = "pricing",
+  PROMOCODES = "promocodes",
 }
