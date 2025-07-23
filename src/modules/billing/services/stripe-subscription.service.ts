@@ -553,6 +553,17 @@ export class StripeSubscriptionService {
     const isTrialOngoing =
       trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
 
+    // Initialize or update the licenses object based on billing seats
+    const currentSeats = metadata?.userCount || 1;
+    const existingUsedSeats =
+      team.licenses?.usedSeats || team.users?.length || 0;
+    const licenseUpdate: LicensesDto = {
+      totalSeats: Number(currentSeats),
+      usedSeats: existingUsedSeats,
+      availableSeats: Number(currentSeats) - existingUsedSeats,
+      lastUpdated: new Date(),
+    };
+
     // Find valid line item
     let validLineItem = null;
     if (!isTrialOngoing) {
@@ -609,7 +620,7 @@ export class StripeSubscriptionService {
       currency: invoice.currency,
       status: SubscriptionStatus.ACTIVE,
       latest_invoice: invoice.id,
-      seats: metadata?.userCount || 1,
+      seats: currentSeats,
       invoice_url: invoice.hosted_invoice_url,
       billingType: StripeSubscriptionHelpers.determineBillingType(
         {
@@ -635,7 +646,10 @@ export class StripeSubscriptionService {
     };
 
     await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
-
+    // Update team with new license data
+    await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
+      licenses: licenseUpdate,
+    });
     // Log appropriate events based on payment type
     await this.logPaymentEvents(
       metadata.hubId,
@@ -1462,6 +1476,10 @@ export class StripeSubscriptionService {
         return { success: true, message: "No license checking required" };
       }
 
+      if (team?.billing.in_trial === true) {
+        return { success: true, message: "No license checking required" };
+      }
+
       if (!userRepository) {
         console.warn("UserRepository not provided to checkAndManageLicenses");
         return {
@@ -1931,18 +1949,18 @@ export class StripeSubscriptionService {
   }
 
   /**
-   * Optimize licenses for teams whose subscriptions are ending in 3 days
+   * Optimize licenses for teams whose subscriptions are ending in the next 12 hours
    * This method should be called by a scheduled job/cron
    */
   async optimizeLicensesForUpcomingRenewals(): Promise<void> {
     try {
-      // Calculate the target date (3 days from now)
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      const now = new Date();
+      const twelveHoursFromNow = new Date(now.getTime() + 12 * 60 * 60 * 1000);
 
       const teams =
-        await this.stripeSubscriptionRepo.findTeamsWithSubscriptionsEndingIn3Days(
-          threeDaysFromNow,
+        await this.stripeSubscriptionRepo.findTeamsWithSubscriptionsEndingInRange(
+          now,
+          twelveHoursFromNow,
         );
 
       for (const team of teams) {
