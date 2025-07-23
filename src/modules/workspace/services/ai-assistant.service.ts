@@ -1071,7 +1071,11 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
-        Sentry.captureException(`${emailId} ${error.message}`);
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
         let message =
           "Some Issue Occurred in Processing your Request. Please try again";
@@ -1297,7 +1301,11 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
-        Sentry.captureException(`${emailId} ${error.message}`);
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1482,7 +1490,11 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
-        Sentry.captureException(`${emailId} ${error.message}`);
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1725,7 +1737,11 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
-        Sentry.captureException(`${emailId} ${error.message}`);
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1973,7 +1989,9 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("Error in WebSocket loop:", error);
-      Sentry.captureException(`${error.message}`);
+        Sentry.withScope((scope) => {
+        Sentry.captureException(error.message);
+      });
       if (client.readyState === WebSocket.OPEN) {
         client.send(
           JSON.stringify({
@@ -2070,7 +2088,11 @@ export class AiAssistantService {
       return result;
     } catch (error) {
       console.error("Error processing prompt generation:", error);
-      Sentry.captureException(`${data.emailId} ${error.message}`);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", data.emailId);
+        scope.setExtra("emailId", data.emailId);
+        Sentry.captureException(error);
+      });
       throw new BadRequestException(
         "An error occurred while processing the request.",
       );
