@@ -23,6 +23,11 @@ export class AdminAuthService {
     const user = await await this.adminAuthRepository.findUserById(insertedId);
     const expiryTime = this.configService.get("app.jwtExpirationTime");
 
+    // Check if user is super admin
+    const isSuperAdmin = await this.adminAuthRepository.checkSuperAdminStatus(
+      user.email,
+    );
+
     return {
       expires: expiryTime.toString(),
       token: this.jwtService.sign(
@@ -31,6 +36,7 @@ export class AdminAuthService {
           email: user.email,
           name: user.name,
           role: "admin",
+          isSuperAdmin,
         },
         {
           secret: this.configService.get("app.jwtSecretKey"),
@@ -45,6 +51,11 @@ export class AdminAuthService {
     const user = await await this.adminAuthRepository.findUserById(insertedId);
     const expiryTime = this.configService.get("app.refreshTokenExpirationTime");
 
+    // Check if user is super admin
+    const isSuperAdmin = await this.adminAuthRepository.checkSuperAdminStatus(
+      user.email,
+    );
+
     return {
       expires: expiryTime.toString(),
       token: this.jwtService.sign(
@@ -53,6 +64,7 @@ export class AdminAuthService {
           email: user.email,
           name: user.name,
           role: "admin",
+          isSuperAdmin,
         },
         {
           secret: this.configService.get("app.refreshTokenSecretKey"),

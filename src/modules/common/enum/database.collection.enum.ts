@@ -21,4 +21,5 @@ export enum Collections {
   BILLING_TRANSACTIONS = "billingtransactions",
   PRICING = "pricing",
   PROMOCODES = "promocodes",
+  SUPERADMINS = "superadmins",
 }

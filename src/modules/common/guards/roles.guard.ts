@@ -22,7 +22,22 @@ export class RolesGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
 
-    if (!user || !requiredRoles.includes(user.role)) {
+    if (!user) {
+      throw new ForbiddenException("Access denied. User not authenticated.");
+    }
+
+    // Check for super-admin access
+    if (requiredRoles.includes("super-admin")) {
+      if (!user.isSuperAdmin) {
+        throw new ForbiddenException(
+          "Access denied. Super admin privileges required.",
+        );
+      }
+      return true;
+    }
+
+    // Regular role check
+    if (!requiredRoles.includes(user.role)) {
       throw new ForbiddenException(
         `Access denied. Required role(s): ${requiredRoles.join(", ")}`,
       );

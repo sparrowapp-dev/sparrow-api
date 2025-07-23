@@ -517,7 +517,7 @@ export class StripeController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles("admin")
+  @Roles("super-admin")
   @Post("promo-codes")
   async createPromoCode(
     @Body()

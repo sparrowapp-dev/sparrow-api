@@ -3,4 +3,5 @@ export class JwtPayload {
   exp: number;
   _id: string;
   role: string;
+  isSuperAdmin?: boolean;
 }
