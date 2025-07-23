@@ -67,6 +67,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BlobStorageService } from "@src/modules/common/services/blobStorage.service";
 import { ChatCompletionMessageParam } from "openai/resources/chat";
 import { MessageParam } from '@anthropic-ai/sdk/resources/messages';
+import * as Sentry from "@sentry/nestjs";
 
 // import { GoogleGenAI } from "@google/genai";
 
@@ -482,6 +483,7 @@ export class AiAssistantService {
     model?: string,
     activity?: string,
   ): Promise<void> {
+    try {
     // Fetch user details
     const user = await this.userService.getUserByEmail(emailId);
 
@@ -592,6 +594,18 @@ export class AiAssistantService {
           }),
         );
       });
+    } catch (error) {
+      console.error("OpenAI error:", error);
+      Sentry.captureException(`${emailId} ${error.message}`);
+      client.send(
+        JSON.stringify({
+          messages:
+            "Some issue occurred while processing your request. Please try again.",
+          thread_Id: null,
+          tab_id: tabId,
+        }),
+      );
+    }
   }
 
   /**
@@ -750,6 +764,7 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("DeepSeek error:", error);
+      Sentry.captureException(`${emailId} ${error.message}`);
       client.send(
         JSON.stringify({
           messages:
@@ -874,6 +889,7 @@ export class AiAssistantService {
     temperature: number,
     topP: number,
     maxTokens: number,
+    emailId: string
   ): Promise<void> {
     // Return early if Google client creation failed
     if (!GoogleClient) return;
@@ -1055,6 +1071,7 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.captureException(`${emailId} ${error.message}`);
         const timeTaken = Math.round(endTime - startTime);
         let message =
           "Some Issue Occurred in Processing your Request. Please try again";
@@ -1100,7 +1117,8 @@ export class AiAssistantService {
     temperature: number,
     topP: number,
     maxTokens: number,
-    fileSearch: boolean
+    fileSearch: boolean,
+    emailId: string
   ): Promise<void> {
     // Return early if Anthropic client creation failed
     if (!Anthropicclient) return;
@@ -1279,6 +1297,7 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.captureException(`${emailId} ${error.message}`);
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1310,6 +1329,7 @@ export class AiAssistantService {
     presencePenalty: number,
     frequencePenalty: number,
     maxTokens: number,
+    emailId: string
   ): Promise<void> {
     // Return early if DeepSeek client creation failed
     if (!DeepSeekClinet) return;
@@ -1462,6 +1482,7 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.captureException(`${emailId} ${error.message}`);
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1493,6 +1514,7 @@ export class AiAssistantService {
     presencePenalty: number,
     frequencePenalty: number,
     maxTokens: number,
+    emailId: string
   ): Promise<void> {
     // Return early if OpenAI client creation failed
     if (!OpenAIclient) return;
@@ -1703,6 +1725,7 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.captureException(`${emailId} ${error.message}`);
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1838,7 +1861,8 @@ export class AiAssistantService {
             frequencePenalty,
             maxTokens,
             topP,
-            fileSearch
+            fileSearch,
+            emailId
           } = parsedData;
 
           // Only support OpenAI model currently
@@ -1859,6 +1883,7 @@ export class AiAssistantService {
               presencePenalty,
               frequencePenalty,
               maxTokens,
+              emailId
             );
             continue;
           }
@@ -1881,7 +1906,8 @@ export class AiAssistantService {
               temperature,
               topP,
               maxTokens,
-              fileSearch
+              fileSearch,
+              emailId
             );
             continue;
           }
@@ -1906,6 +1932,7 @@ export class AiAssistantService {
               presencePenalty,
               frequencePenalty,
               maxTokens,
+              emailId
             );
             continue;
           }
@@ -1927,6 +1954,7 @@ export class AiAssistantService {
               temperature,
               topP,
               maxTokens,
+              emailId
             );
             continue;
           } else {
@@ -1945,6 +1973,7 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("Error in WebSocket loop:", error);
+      Sentry.captureException(`${error.message}`);
       if (client.readyState === WebSocket.OPEN) {
         client.send(
           JSON.stringify({
@@ -2041,6 +2070,7 @@ export class AiAssistantService {
       return result;
     } catch (error) {
       console.error("Error processing prompt generation:", error);
+      Sentry.captureException(`${data.emailId} ${error.message}`);
       throw new BadRequestException(
         "An error occurred while processing the request.",
       );
