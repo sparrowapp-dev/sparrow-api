@@ -596,7 +596,11 @@ export class AiAssistantService {
       });
     } catch (error) {
       console.error("OpenAI error:", error);
-      Sentry.captureException(`${emailId} ${error.message}`);
+      Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
       client.send(
         JSON.stringify({
           messages:
@@ -764,7 +768,11 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("DeepSeek error:", error);
-      Sentry.captureException(`${emailId} ${error.message}`);
+      Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+      });
       client.send(
         JSON.stringify({
           messages:
