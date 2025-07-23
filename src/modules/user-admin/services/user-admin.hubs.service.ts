@@ -5,6 +5,7 @@ import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository"
 import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.repository";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 
 interface SortOptions {
   sortBy: string;
@@ -16,6 +17,7 @@ export class AdminHubsService {
   constructor(
     private readonly teamsRepo: AdminHubsRepository,
     private readonly workspaceRepo: AdminWorkspaceRepository,
+    private readonly userRepo: UserRepository,
   ) {}
 
   async getHubsForUser(userId: string) {
@@ -171,7 +173,7 @@ export class AdminHubsService {
           sortOrder: sortOptions?.sortOrder,
         };
       }
-
+      const getUser = await this.userRepo?.getUserById(userId);
       const userTeams = await Promise.all(
         teams.data.map(async (team) => {
           const workspaceStats = {
@@ -179,9 +181,14 @@ export class AdminHubsService {
             private: 0,
             public: 0,
           };
+          const userWorkspaceIds =
+            getUser?.workspaces?.map((w) => w.workspaceId?.toString()) || [];
 
+          const selectedWorkspaces = team.workspaces.filter((w: any) =>
+            userWorkspaceIds.includes(w?.id?.toString()),
+          );
           const workspaces = await Promise.all(
-            (team.workspaces || []).map(async (workspace: any) => {
+            (selectedWorkspaces || []).map(async (workspace: any) => {
               try {
                 const workspaceInfo =
                   await this.workspaceRepo.findWorkspaceById(
