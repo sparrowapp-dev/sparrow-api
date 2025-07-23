@@ -38,6 +38,7 @@ import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
+import { Workspace } from "@src/modules/common/models/workspace.model";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -46,7 +47,7 @@ export class CollectionRequestService {
     private readonly workspaceService: WorkspaceService,
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
-    private readonly encryptionService: EncryptionService
+    private readonly encryptionService: EncryptionService,
   ) {}
 
   async addFolder(
@@ -103,6 +104,14 @@ export class CollectionRequestService {
       );
     }
     const updateMessage = `New Folder "${payload?.name}" is added in "${collection.name}" collection`;
+    const currentWorkspaceObject = new ObjectId(payload.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
@@ -173,6 +182,14 @@ export class CollectionRequestService {
         updatedBranch,
       );
     }
+    const currentWorkspaceObject = new ObjectId(payload.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     if (payload?.name) {
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -265,6 +282,14 @@ export class CollectionRequestService {
         updatedBranch,
       );
     }
+    const currentWorkspaceObject = new ObjectId(payload.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     const updateMessage = `"${folder?.name}" folder is deleted from "${collection?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
@@ -334,6 +359,14 @@ export class CollectionRequestService {
           requestObj,
         );
       }
+      const currentWorkspaceObject = new ObjectId(request.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New API request "${request.items.name}" is saved in "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -374,6 +407,14 @@ export class CollectionRequestService {
           folderId,
         );
       }
+      const currentWorkspaceObject = new ObjectId(request.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New API request "${request.items.items.name}" is saved in "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -453,6 +494,14 @@ export class CollectionRequestService {
         }),
       });
     }
+    const currentWorkspaceObject = new ObjectId(request.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return collection;
   }
 
@@ -486,6 +535,14 @@ export class CollectionRequestService {
       );
     }
     const updateMessage = `API request "${requestData?.name}" is deleted from "${collectionData?.name}" collection`;
+    const currentWorkspaceObject = new ObjectId(requestDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
         message: updateMessage,
@@ -559,6 +616,14 @@ export class CollectionRequestService {
         websocketObj,
         noOfRequests,
       );
+      const currentWorkspaceObject = new ObjectId(websocket.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New WebSocket "${websocket.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -589,6 +654,14 @@ export class CollectionRequestService {
         websocketObj,
         noOfRequests,
         websocket?.folderId,
+      );
+      const currentWorkspaceObject = new ObjectId(websocket.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
       );
       updateMessage = `New WebSocket "${websocket.items.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -629,6 +702,14 @@ export class CollectionRequestService {
     );
     const collectionData = await this.collectionReposistory.getCollection(
       websocket.collectionId,
+    );
+    const currentWorkspaceObject = new ObjectId(websocket.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `WebSocket "${
       websocket?.items?.name ?? websocket?.items?.items?.name
@@ -676,6 +757,14 @@ export class CollectionRequestService {
       noOfRequests,
       user,
       websocketDto?.folderId,
+    );
+    const currentWorkspaceObject = new ObjectId(websocketDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `WebSocket "${websocketData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -731,6 +820,14 @@ export class CollectionRequestService {
         socketioObj,
         noOfRequests,
       );
+      const currentWorkspaceObject = new ObjectId(socketio.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New Socket.IO "${socketio.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -761,6 +858,14 @@ export class CollectionRequestService {
         socketioObj,
         noOfRequests,
         socketio?.folderId,
+      );
+      const currentWorkspaceObject = new ObjectId(socketio.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
       );
       updateMessage = `New Socket.IO "${socketio.items.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -801,6 +906,14 @@ export class CollectionRequestService {
     );
     const collectionData = await this.collectionReposistory.getCollection(
       socketio.collectionId,
+    );
+    const currentWorkspaceObject = new ObjectId(socketio.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `Socket.IO "${
       socketio?.items?.name ?? socketio?.items?.items?.name
@@ -848,6 +961,14 @@ export class CollectionRequestService {
       noOfRequests,
       user,
       socketioDto?.folderId,
+    );
+    const currentWorkspaceObject = new ObjectId(socketioDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `Socket.IO "${socketioData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -903,6 +1024,14 @@ export class CollectionRequestService {
         graphqlObj,
         noOfRequests,
       );
+      const currentWorkspaceObject = new ObjectId(graphql.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New GraphQL "${graphql.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -933,6 +1062,14 @@ export class CollectionRequestService {
         graphqlObj,
         noOfRequests,
         graphql?.folderId,
+      );
+      const currentWorkspaceObject = new ObjectId(graphql.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
       );
       updateMessage = `New GraphQL "${graphql.items.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -973,6 +1110,14 @@ export class CollectionRequestService {
     );
     const collectionData = await this.collectionReposistory.getCollection(
       graphql.collectionId,
+    );
+    const currentWorkspaceObject = new ObjectId(graphql.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `GraphQL "${
       graphql?.items?.name ?? graphql?.items?.items?.name
@@ -1020,6 +1165,14 @@ export class CollectionRequestService {
       noOfRequests,
       user,
       graphqlDto?.folderId,
+    );
+    const currentWorkspaceObject = new ObjectId(graphqlDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `GraphQL "${graphqlData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -1074,6 +1227,14 @@ export class CollectionRequestService {
         requestResponse.requestId,
         requestResponseObj,
       );
+      const currentWorkspaceObject = new ObjectId(requestResponse.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `Response "${requestResponse.items.name}" is saved under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -1090,6 +1251,14 @@ export class CollectionRequestService {
         requestResponse.requestId,
         requestResponseObj,
         requestResponse?.folderId,
+      );
+      const currentWorkspaceObject = new ObjectId(requestResponse.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
       );
       updateMessage = `Response "${requestResponse.items.name}" is saved under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -1135,6 +1304,14 @@ export class CollectionRequestService {
     const requestResponseData = await this.findItemById(
       collectionData.items,
       responseId,
+    );
+    const currentWorkspaceObject = new ObjectId(requestResponse.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `Response "${
       requestResponseData?.name
@@ -1183,6 +1360,14 @@ export class CollectionRequestService {
       user,
       requestResponseDto?.folderId,
     );
+    const currentWorkspaceObject = new ObjectId(requestResponseDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     const updateMessage = `Response "${requestResponseData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
@@ -1226,6 +1411,14 @@ export class CollectionRequestService {
         requestObj,
         noOfRequests,
       );
+      const currentWorkspaceObject = new ObjectId(request.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New Mock API request "${request.items.name}" is saved in "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -1258,7 +1451,14 @@ export class CollectionRequestService {
         noOfRequests,
         folderId,
       );
-
+      const currentWorkspaceObject = new ObjectId(request.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New Mock API request "${request.items.items.name}" is saved in "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -1289,6 +1489,14 @@ export class CollectionRequestService {
       requestId,
       request,
       user,
+    );
+    const currentWorkspaceObject = new ObjectId(request.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
 
     if (
@@ -1353,6 +1561,14 @@ export class CollectionRequestService {
       user,
       requestDto?.folderId,
     );
+    const currentWorkspaceObject = new ObjectId(requestDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
 
     const updateMessage = `Mock API request "${requestData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -1409,6 +1625,14 @@ export class CollectionRequestService {
         aiRequestObj,
         noOfRequests,
       );
+      const currentWorkspaceObject = new ObjectId(aiRequest.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
+      );
       updateMessage = `New AI request "${aiRequest.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
         value: JSON.stringify({
@@ -1420,7 +1644,6 @@ export class CollectionRequestService {
       });
 
       return aiRequestObj;
-
     } else {
       aiRequestObj.items = [
         {
@@ -1441,6 +1664,14 @@ export class CollectionRequestService {
         aiRequestObj,
         noOfRequests,
         aiRequest?.folderId,
+      );
+      const currentWorkspaceObject = new ObjectId(aiRequest.workspaceId);
+      const updateWorkspaceData: Partial<Workspace> = {
+        updatedAt: new Date(),
+      };
+      await this.workspaceReposistory.updateWorkspaceById(
+        currentWorkspaceObject,
+        updateWorkspaceData,
       );
       updateMessage = `New AI request "${aiRequest.items.items.name}" is created under "${collection.name}" collection`;
       await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
@@ -1482,6 +1713,14 @@ export class CollectionRequestService {
     );
     const collectionData = await this.collectionReposistory.getCollection(
       aiRequest.collectionId,
+    );
+    const currentWorkspaceObject = new ObjectId(aiRequest.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     const updateMessage = `AI Request "${
       aiRequest?.items?.name ?? aiRequest?.items?.items?.name
@@ -1530,6 +1769,14 @@ export class CollectionRequestService {
       user,
       aiRequestDto?.folderId,
     );
+    const currentWorkspaceObject = new ObjectId(aiRequestDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     const updateMessage = `AI Request "${aiRequestData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
@@ -1577,6 +1824,16 @@ export class CollectionRequestService {
       updatedAt: new Date(),
     };
     let updateMessage = ``;
+    const currentWorkspaceObject = new ObjectId(
+      mockRequestResponse.workspaceId,
+    );
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     if (!mockRequestResponse?.folderId) {
       await this.collectionReposistory.addMockRequestResponse(
         mockRequestResponse.collectionId,
@@ -1646,6 +1903,16 @@ export class CollectionRequestService {
       collectionData.items,
       responseId,
     );
+    const currentWorkspaceObject = new ObjectId(
+      mockRequestResponse.workspaceId,
+    );
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     const updateMessage = `Mock response "${
       mockRequestResponseData?.name
     }" is updated under "${collectionData.name}" collection`;
@@ -1694,6 +1961,16 @@ export class CollectionRequestService {
         user,
         mockRequestResponseDto?.folderId,
       );
+    const currentWorkspaceObject = new ObjectId(
+      mockRequestResponseDto.workspaceId,
+    );
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     const updateMessage = `Mock response "${mockRequestResponseData?.name}" is deleted from "${collectionData?.name}" collection`;
     await this.producerService.produce(TOPIC.UPDATES_ADDED_TOPIC, {
       value: JSON.stringify({
@@ -1732,7 +2009,14 @@ export class CollectionRequestService {
       user,
       updateRatioDto.folderId,
     );
-
+    const currentWorkspaceObject = new ObjectId(updateRatioDto.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceReposistory.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return result;
   }
 }
