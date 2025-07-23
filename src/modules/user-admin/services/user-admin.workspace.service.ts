@@ -106,7 +106,7 @@ export class AdminWorkspaceService {
           const mappedCollections = collections.map((item: any) => {
             let count = 0;
             for (let i = 0; i < item.items.length; i++) {
-              if (item.items[i]?.items) {
+              if (item.items[i]?.items && item.items[i]?.items.length > 0) {
                 count += item.items[i].items?.length;
               } else {
                 count += 1;
@@ -218,15 +218,25 @@ export class AdminWorkspaceService {
               limit,
             });
 
-          const mappedCollections = collections.map((item: any) => ({
-            resourceType: "collections",
-            keyStats: item?.totalRequests,
-            name: item?.name,
-            updatedAt: item?.updatedAt,
-            createdBy: item?.createdBy,
-            updatedBy: item?.updatedBy,
-            id: item?.id,
-          }));
+          const mappedCollections = collections.map((item: any) => {
+            let count = 0;
+            for (let i = 0; i < item.items.length; i++) {
+              if (item.items[i]?.items && item.items[i]?.items.length > 0) {
+                count += item.items[i].items?.length;
+              } else {
+                count += 1;
+              }
+            }
+            return {
+              resourceType: "collections",
+              keyStats: count,
+              name: item?.name,
+              updatedAt: item?.updatedAt,
+              createdBy: item?.createdBy,
+              updatedBy: item?.updatedBy,
+              id: item?.id,
+            };
+          });
 
           return { resources: mappedCollections, totalCount };
         }
