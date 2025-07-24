@@ -1476,10 +1476,6 @@ export class StripeSubscriptionService {
         return { success: true, message: "No license checking required" };
       }
 
-      if (team?.billing.in_trial === true) {
-        return { success: true, message: "No license checking required" };
-      }
-
       if (!userRepository) {
         console.warn("UserRepository not provided to checkAndManageLicenses");
         return {
@@ -1690,6 +1686,7 @@ export class StripeSubscriptionService {
           newTotalSeats, // seats
           "allow_incomplete", // payment_behavior
           "unchanged", // billing cycle_anchor
+          team?.billing?.in_trial === true, // in_trial (optional)
         );
 
         // Handle 3DS authentication required
