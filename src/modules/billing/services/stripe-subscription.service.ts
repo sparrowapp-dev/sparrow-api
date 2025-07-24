@@ -224,6 +224,7 @@ export class StripeSubscriptionService {
         : new Date(),
       cancellation_reason: cancellationReason,
       seats: metadata?.userCount || 1,
+      billing_cycle: currentTeam.billing?.billing_cycle || 0,
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
     };
@@ -329,6 +330,7 @@ export class StripeSubscriptionService {
       billing_reason: billingReason,
       current_period_start: periodDates.currentPeriodStart,
       current_period_end: periodDates.currentPeriodEnd,
+      billing_cycle: team.billing?.billing_cycle || 0,
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
       paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
@@ -553,6 +555,17 @@ export class StripeSubscriptionService {
     const isTrialOngoing =
       trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
 
+    // Initialize or update the licenses object based on billing seats
+    const currentSeats = metadata?.userCount || 1;
+    const existingUsedSeats =
+      team.licenses?.usedSeats || team.users?.length || 0;
+    const licenseUpdate: LicensesDto = {
+      totalSeats: Number(currentSeats),
+      usedSeats: existingUsedSeats,
+      availableSeats: Number(currentSeats) - existingUsedSeats,
+      lastUpdated: new Date(),
+    };
+
     // Find valid line item
     let validLineItem = null;
     if (!isTrialOngoing) {
@@ -599,6 +612,12 @@ export class StripeSubscriptionService {
     const isSubscriptionRenewal =
       !isPlanChange && !isSeatChange && previousPeriodEnd;
 
+    // Calculate billing cycle count - only increment on true subscription renewal
+    const currentBillingCycleCount = team.billing?.billing_cycle || 0;
+    const billingCycleCount = isSubscriptionRenewal
+      ? currentBillingCycleCount + 1
+      : Math.max(currentBillingCycleCount, 1);
+
     // Create billing details object with successful payment status
     const billingDetails = {
       current_period_start: period.start
@@ -609,8 +628,9 @@ export class StripeSubscriptionService {
       currency: invoice.currency,
       status: SubscriptionStatus.ACTIVE,
       latest_invoice: invoice.id,
-      seats: metadata?.userCount || 1,
+      seats: currentSeats,
       invoice_url: invoice.hosted_invoice_url,
+      billing_cycle: billingCycleCount,
       billingType: StripeSubscriptionHelpers.determineBillingType(
         {
           status: SubscriptionStatus.ACTIVE,
@@ -635,7 +655,10 @@ export class StripeSubscriptionService {
     };
 
     await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
-
+    // Update team with new license data
+    await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
+      licenses: licenseUpdate,
+    });
     // Log appropriate events based on payment type
     await this.logPaymentEvents(
       metadata.hubId,
@@ -911,6 +934,7 @@ export class StripeSubscriptionService {
           : new Date(),
         in_trial: false,
         seats: metadata?.userCount || 1,
+        billing_cycle: team?.billing?.billing_cycle || 0,
         cancellation_reason: cancellationReason,
         updatedBy: BillingSource.STRIPE_WEBHOOK,
         event_id: eventId,
@@ -995,6 +1019,9 @@ export class StripeSubscriptionService {
 
     // Extract billing details
     const billingDetails = this.extractBillingDetails(subscription, eventId);
+
+    // Set billing_cycle to 1 for new subscription activation
+    billingDetails.billing_cycle = 1;
 
     // Update team plan with billing details
     await this.updateTeamPlanWithBilling(hubId, plan, billingDetails);
@@ -1672,6 +1699,7 @@ export class StripeSubscriptionService {
           newTotalSeats, // seats
           "allow_incomplete", // payment_behavior
           "unchanged", // billing cycle_anchor
+          team?.billing?.in_trial === true, // in_trial (optional)
         );
 
         // Handle 3DS authentication required
@@ -1931,18 +1959,18 @@ export class StripeSubscriptionService {
   }
 
   /**
-   * Optimize licenses for teams whose subscriptions are ending in 3 days
+   * Optimize licenses for teams whose subscriptions are ending in the next 12 hours
    * This method should be called by a scheduled job/cron
    */
   async optimizeLicensesForUpcomingRenewals(): Promise<void> {
     try {
-      // Calculate the target date (3 days from now)
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      const now = new Date();
+      const twelveHoursFromNow = new Date(now.getTime() + 12 * 60 * 60 * 1000);
 
       const teams =
-        await this.stripeSubscriptionRepo.findTeamsWithSubscriptionsEndingIn3Days(
-          threeDaysFromNow,
+        await this.stripeSubscriptionRepo.findTeamsWithSubscriptionsEndingInRange(
+          now,
+          twelveHoursFromNow,
         );
 
       for (const team of teams) {

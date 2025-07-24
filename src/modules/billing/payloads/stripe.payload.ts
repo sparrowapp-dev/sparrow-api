@@ -119,6 +119,14 @@ export class CreateSubscriptionDto {
   @IsOptional()
   @IsNumber()
   seats?: number;
+
+  @ApiPropertyOptional({
+    description: "Promo code ID to apply to the subscription (optional)",
+    example: "promo_1RnwMrFLRwufXqZCfYOUbX3o",
+  })
+  @IsOptional()
+  @IsString()
+  promoCodeId?: string;
 }
 
 export class SubscriptionResponseDto {

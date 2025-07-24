@@ -38,6 +38,8 @@ import {
   ReactivateSubscriptionDto,
 } from "../payloads/stripe.payload";
 import { StripeWebhookHelper } from "../helpers/stripe-webhook.helper";
+import { PromoCodeService } from "../services/promocode.service";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
@@ -59,6 +61,8 @@ export class StripeController {
   constructor(
     @Optional() @Inject(StripeService) private readonly stripeService: any,
     private readonly stripeWebhookHelper: StripeWebhookHelper,
+    private readonly promoCodeService: PromoCodeService,
+    private readonly userRepository: UserRepository,
   ) {
     this.isStripeAvailable = !!this.stripeService;
 
@@ -210,9 +214,36 @@ export class StripeController {
   })
   async createSubscription(
     @Body() createSubscriptionDto: CreateSubscriptionDto,
+    @Req() req: any,
   ): Promise<SubscriptionResponseDto> {
     try {
       this.checkStripeAvailability();
+
+      // Validate promo code before creating subscription if provided
+      if (createSubscriptionDto.promoCodeId) {
+        // Find promo code to get the actual code for validation
+        const promoCodeFromDb =
+          await this.promoCodeService.findByStripePromoCodeId(
+            createSubscriptionDto.promoCodeId,
+          );
+
+        if (!promoCodeFromDb) {
+          throw new HttpException(
+            "Invalid promo code. Please enter a valid promo code.",
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        // Validate the promo code
+        const validation = await this.promoCodeService.validatePromoCode(
+          promoCodeFromDb.code,
+          createSubscriptionDto.priceId,
+        );
+
+        if (validation.error) {
+          throw new HttpException(validation.message, HttpStatus.BAD_REQUEST);
+        }
+      }
 
       const subscription = await this.stripeService.createSubscription(
         createSubscriptionDto.customerId,
@@ -221,10 +252,39 @@ export class StripeController {
         createSubscriptionDto.metadata,
         createSubscriptionDto.trialPeriodDays,
         createSubscriptionDto.seats,
+        createSubscriptionDto.promoCodeId
+          ? { id: createSubscriptionDto.promoCodeId }
+          : undefined,
       );
+
+      // If promo code was applied and subscription was successful, update user and promo code
+      if (subscription && createSubscriptionDto.promoCodeId) {
+        const userId = req.user?._id;
+
+        if (userId) {
+          // Find the promo code to get its details
+          const promoCode = await this.promoCodeService.findByStripePromoCodeId(
+            createSubscriptionDto.promoCodeId,
+          );
+
+          if (promoCode) {
+            // Add applied promo code to user
+            await this.userRepository.addAppliedPromoCode(userId, {
+              id: promoCode._id!,
+              code: promoCode.code,
+              used_on: new Date(),
+            });
+          }
+        }
+      }
 
       return subscription;
     } catch (error) {
+      // If it's already an HttpException, re-throw it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new HttpException(
         error.message || "Failed to create subscription",
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
@@ -298,7 +358,7 @@ export class StripeController {
         updateSubscriptionDto.prorationBehavior,
         updateSubscriptionDto.atPeriodEnd,
         updateSubscriptionDto.seats,
-        updateSubscriptionDto.paymentBehavior
+        updateSubscriptionDto.paymentBehavior,
       );
 
       return subscription;
@@ -453,6 +513,109 @@ export class StripeController {
         error.message || "Failed to get customer invoices",
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("super-admin")
+  @Post("promo-codes")
+  async createPromoCode(
+    @Body()
+    createPromoCodeDto: {
+      code: string;
+      type: "percentage" | "amount";
+      value: number;
+      currency?: string;
+      applicableProducts?: string[];
+      startDate?: string;
+      endDate?: string;
+      maxRedemptions?: number;
+      billingCycle: number;
+    },
+    @Res() res: FastifyReply,
+  ): Promise<{
+    success: boolean;
+    promoCode?: any;
+    coupon?: any;
+    error?: string;
+  }> {
+    try {
+      this.checkStripeAvailability();
+
+      const params = {
+        ...createPromoCodeDto,
+        startDate: createPromoCodeDto.startDate
+          ? new Date(createPromoCodeDto.startDate)
+          : undefined,
+        endDate: createPromoCodeDto.endDate
+          ? new Date(createPromoCodeDto.endDate)
+          : undefined,
+      };
+
+      const result = await this.stripeService.createPromoCode(params);
+
+      if (!result.success) {
+        throw new HttpException(
+          result.error || "Failed to create promo code",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Save promo code to database
+      await this.promoCodeService.createPromoCode(result.promoCode);
+
+      const responseData = new ApiResponseService(
+        "Promo Code Created",
+        HttpStatusCode.OK,
+        {
+          promoCode: result.promoCode,
+        },
+      );
+      return res.status(HttpStatusCode.OK).send(responseData);
+    } catch (error) {
+      throw new HttpException(
+        error.message || "Failed to create promo code",
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("user", "admin")
+  @Post("promo-codes/validate")
+  async validatePromoCode(
+    @Body()
+    validateDto: {
+      promocode: string;
+      priceId: string;
+    },
+    @Res() res: FastifyReply,
+  ): Promise<void> {
+    try {
+      const validation = await this.promoCodeService.validatePromoCode(
+        validateDto.promocode,
+        validateDto.priceId,
+      );
+
+      const responseData = {
+        statusCode: HttpStatusCode.OK,
+        message: validation.message,
+        is_error: validation.error,
+        data: {
+          promo_id: validation?.promo_id || null,
+          type: validation?.type || null,
+          value: validation?.value || null,
+        },
+      };
+
+      return res.status(HttpStatusCode.OK).send(responseData);
+    } catch (error) {
+      const errorResponse = {
+        statusCode: HttpStatusCode.OK,
+        message: "Invalid promo code. Please enter a valid promo code.",
+        error: true,
+      };
+      return res.status(HttpStatusCode.OK).send(errorResponse);
     }
   }
 

@@ -439,6 +439,7 @@ export class UserController {
     description:
       "Returns the isUserTrialExhausted property for the given user email",
   })
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Status fetched" })
   @ApiResponse({ status: 404, description: "User not found" })
   async getUserTrialExhaustedStatus(

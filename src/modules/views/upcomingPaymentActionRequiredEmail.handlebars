@@ -98,38 +98,54 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
+                    <tr>
                         <td style="padding: 12px 20px; font-weight: 600; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
-                            Active Users
+                        Active Users
                         </td>
                         <td style="padding: 12px 20px; text-align: right; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
-                            {{usedSeats}} Users
+                        {{usedSeats}} Users
                         </td>
-                        </tr>
-                        <tr>
+                    </tr>
+                    <tr>
                         <td style="padding: 12px 20px; font-weight: 600; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
-                            Invited Users
+                        Invited Users
                         </td>
                         <td style="padding: 12px 20px; text-align: right; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
-                            {{totalSeats}} Users
+                        {{invitedSeats}} Users
                         </td>
-                        </tr>
-                        <tr>
+                    </tr>
+                    <tr>
                         <td style="padding: 12px 20px; font-weight: 600; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
-                            Total Billable Users
+                        Total Billable Users
                         </td>
                         <td style="padding: 12px 20px; text-align: right; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
-                            {{totalSeats}} Users
+                        {{totalSeats}} Users
                         </td>
-                        </tr>
-                        <tr>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 20px; font-weight: 600; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
+                        Estimated Charges
+                        </td>
+                        <td style="padding: 12px 20px; text-align: right; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
+                        ${{estimatedCharges}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 20px; font-weight: 600; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
+                        Next Billing Date
+                        </td>
+                        <td style="padding: 12px 20px; text-align: right; font-family: 'Inter', Arial, sans-serif; border-bottom: 1px solid #eee;">
+                        {{billingDate}}
+                        </td>
+                    </tr>
+                    <tr>
                         <td style="padding: 12px 20px; font-weight: 600; font-family: 'Inter', Arial, sans-serif;">
-                            Estimated Charges
+                        Plan
                         </td>
                         <td style="padding: 12px 20px; text-align: right; font-family: 'Inter', Arial, sans-serif;">
-                            ${{estimatedCharges}}/month
+                        {{planName}}
                         </td>
-                        </tr>
+                    </tr>
                     </tbody>
                     </table>
 
