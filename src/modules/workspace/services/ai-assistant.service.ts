@@ -112,6 +112,7 @@ export class AiAssistantService {
   private deepseekApiKey: string;
   private deepseekApiVersion: string;
   private deepseekurl: string;
+  private deepseekModel: string;
   // Default assistant configuration
   private assistant = {
     name: "API Instructor",
@@ -145,6 +146,7 @@ export class AiAssistantService {
     this.deepseekApiKey = this.configService.get("ai.deepseekApiKey");
     this.deepseekApiVersion = this.configService.get("ai.deepseekApiVersion");
     this.deepseekurl = this.configService.get("ai.deepseekURL");
+    this.deepseekModel = this.configService.get("ai.deepseekModel")
 
     // Initialize the AzureOpenAI client
     try {
@@ -676,7 +678,7 @@ export class AiAssistantService {
             top_p: 0.1,
             presence_penalty: 0,
             frequency_penalty: 0,
-            model: "DeepSeek-V3-DEV",
+            model: this.deepseekModel,
             stream: true,
           },
         })
@@ -2016,7 +2018,7 @@ export class AiAssistantService {
               { role: "system", content: promptInstruction },
               { role: "user", content: userInput },
             ],
-            model: DeepSeepModelVersion.DeepSeek_V3,
+            model: this.deepseekModel,
           },
         });
 
