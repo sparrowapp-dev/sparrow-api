@@ -224,6 +224,7 @@ export class StripeSubscriptionService {
         : new Date(),
       cancellation_reason: cancellationReason,
       seats: metadata?.userCount || 1,
+      billing_cycle: currentTeam.billing?.billing_cycle || 0,
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
     };
@@ -329,6 +330,7 @@ export class StripeSubscriptionService {
       billing_reason: billingReason,
       current_period_start: periodDates.currentPeriodStart,
       current_period_end: periodDates.currentPeriodEnd,
+      billing_cycle: team.billing?.billing_cycle || 0,
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
       paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
@@ -610,6 +612,12 @@ export class StripeSubscriptionService {
     const isSubscriptionRenewal =
       !isPlanChange && !isSeatChange && previousPeriodEnd;
 
+    // Calculate billing cycle count - only increment on true subscription renewal
+    const currentBillingCycleCount = team.billing?.billing_cycle || 0;
+    const billingCycleCount = isSubscriptionRenewal
+      ? currentBillingCycleCount + 1
+      : Math.max(currentBillingCycleCount, 1);
+
     // Create billing details object with successful payment status
     const billingDetails = {
       current_period_start: period.start
@@ -622,6 +630,7 @@ export class StripeSubscriptionService {
       latest_invoice: invoice.id,
       seats: currentSeats,
       invoice_url: invoice.hosted_invoice_url,
+      billing_cycle: billingCycleCount,
       billingType: StripeSubscriptionHelpers.determineBillingType(
         {
           status: SubscriptionStatus.ACTIVE,
@@ -925,6 +934,7 @@ export class StripeSubscriptionService {
           : new Date(),
         in_trial: false,
         seats: metadata?.userCount || 1,
+        billing_cycle: team?.billing?.billing_cycle || 0,
         cancellation_reason: cancellationReason,
         updatedBy: BillingSource.STRIPE_WEBHOOK,
         event_id: eventId,
@@ -1009,6 +1019,9 @@ export class StripeSubscriptionService {
 
     // Extract billing details
     const billingDetails = this.extractBillingDetails(subscription, eventId);
+
+    // Set billing_cycle to 1 for new subscription activation
+    billingDetails.billing_cycle = 1;
 
     // Update team plan with billing details
     await this.updateTeamPlanWithBilling(hubId, plan, billingDetails);
