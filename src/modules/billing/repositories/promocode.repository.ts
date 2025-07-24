@@ -28,6 +28,9 @@ export class PromoCodeRepository {
         : [],
       value: parseInt(stripePromoCode.coupon.metadata.value),
       billingCycles: stripePromoCode.coupon.metadata.billing_cycle,
+      allowedUsers: stripePromoCode.coupon.metadata.allowed_users
+        ? stripePromoCode.coupon.metadata.allowed_users.split(",")
+        : [],
     };
 
     const result = await this.db

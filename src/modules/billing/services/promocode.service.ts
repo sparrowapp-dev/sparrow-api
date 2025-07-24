@@ -22,6 +22,7 @@ export class PromoCodeService {
   async validatePromoCode(
     code: string,
     priceId: string,
+    userEmail?: string,
   ): Promise<{
     error: boolean;
     message: string;
@@ -37,6 +38,20 @@ export class PromoCodeService {
         error: true,
         message: "Invalid promo code. Please enter a valid promo code.",
       };
+    }
+
+    if (userEmail && promoCode?.allowedUsers?.length > 0) {
+      const lowercasedEmail = userEmail?.toLowerCase();
+      const lowercasedAllowedUsers = promoCode?.allowedUsers?.map((email) =>
+        email.toLowerCase(),
+      );
+
+      if (!lowercasedAllowedUsers.includes(lowercasedEmail)) {
+        return {
+          error: true,
+          message: "Invalid promo code. Please enter a valid promo code.",
+        };
+      }
     }
 
     // Check if promo code has expired
