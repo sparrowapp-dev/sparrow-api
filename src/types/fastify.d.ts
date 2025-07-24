@@ -11,6 +11,7 @@ export type DecodedUserObject = {
   workspaces?: UserWorkspaceDto[];
   emailVerificationCodeTimeStamp?: Date;
   lastActive?: Date;
+  isSuperAdmin?: boolean;
 };
 
 export interface ExtendedFastifyRequest extends FastifyRequest {

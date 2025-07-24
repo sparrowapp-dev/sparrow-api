@@ -37,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @param {any} done callback to resolve the request user with
    * @returns {Promise<boolean>} whether or not to validate the jwt token
    */
-  async validate({ exp, _id, role }: JwtPayload) {
+  async validate({ exp, _id, role, isSuperAdmin }: JwtPayload) {
     const timeDiff = exp - Date.now() / 1000;
     if (timeDiff <= 0) {
       throw new UnauthorizedException(ErrorMessages.ExpiredToken);
@@ -60,6 +60,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: role,
       teams: user.teams,
       workspaces: user.workspaces,
+      isSuperAdmin: isSuperAdmin || false,
     };
 
     // Return user object with necessary fields

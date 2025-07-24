@@ -57,4 +57,11 @@ export class AdminAuthRepository {
     }
     return user;
   }
+
+  async checkSuperAdminStatus(email: string): Promise<boolean> {
+    const superAdmin = await this.db
+      .collection(Collections.SUPERADMINS)
+      .findOne({ emails: email });
+    return !!superAdmin;
+  }
 }
