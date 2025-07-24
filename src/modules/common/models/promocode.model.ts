@@ -44,6 +44,10 @@ export class PromoCodeDto {
   @IsString({ each: true })
   @IsOptional()
   applicableProducts?: string[];
+
+  @IsString({ each: true })
+  @IsOptional()
+  allowedUsers?: string[];
 }
 
 export class CreatePromoCodeDto {

@@ -43,6 +43,7 @@ import { UserRepository } from "@src/modules/identity/repositories/user.reposito
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -525,12 +526,12 @@ export class StripeController {
       code: string;
       type: "percentage" | "amount";
       value: number;
-      currency?: string;
-      applicableProducts?: string[];
+      applicableProducts: string[];
       startDate?: string;
       endDate?: string;
       maxRedemptions?: number;
       billingCycle: number;
+      allowedUsers?: string[];
     },
     @Res() res: FastifyReply,
   ): Promise<{
@@ -590,11 +591,14 @@ export class StripeController {
       priceId: string;
     },
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ): Promise<void> {
+    const userEmail = request.user?.email || null;
     try {
       const validation = await this.promoCodeService.validatePromoCode(
         validateDto.promocode,
         validateDto.priceId,
+        userEmail,
       );
 
       const responseData = {
