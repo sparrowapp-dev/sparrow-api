@@ -76,37 +76,18 @@ export class PromoCodeService {
       };
     }
 
-    // Helper function to convert billing cycles number to words
-    const convertBillingCyclesToWords = (cycles: string): string => {
-      const numberWords: { [key: string]: string } = {
-        "1": "one",
-        "2": "two", 
-        "3": "three",
-        "4": "four",
-        "5": "five",
-        "6": "six",
-        "7": "seven",
-        "8": "eight",
-        "9": "nine",
-        "10": "ten",
-        "11": "eleven",
-        "12": "twelve"
-      };
-      return numberWords[cycles] || cycles;
-    };
-
     // Generate success message based on type and billing cycles
     let successMessage = "";
-    const billingCycleText = promoCode.billingCycles ? 
-      (promoCode.billingCycles === "1" ? 
-        `first billing cycle` : 
-        `first ${convertBillingCyclesToWords(promoCode.billingCycles)} billing cycles`) : 
-      "first billing cycle";
+    const billingCycleText = promoCode.billingCycles
+      ? promoCode.billingCycles === "1"
+        ? `first month`
+        : `first ${promoCode.billingCycles} months`
+      : "first month";
 
     if (promoCode.type === "percentage") {
-      successMessage = `Promo applied successfully! You'll get ${promoCode.value}% off for the ${billingCycleText} after your trial ends.`;
+      successMessage = `Promo applied successfully. You'll get ${promoCode.value}% off for the ${billingCycleText} after your trial ends.`;
     } else if (promoCode.type === "amount") {
-      successMessage = `Promo applied successfully! You'll get $${promoCode.value} off for the ${billingCycleText} after your trial ends.`;
+      successMessage = `Promo applied successfully. You'll get $${promoCode.value} off for the ${billingCycleText} after your trial ends.`;
     }
 
     return {
