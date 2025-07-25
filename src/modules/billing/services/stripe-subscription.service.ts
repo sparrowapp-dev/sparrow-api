@@ -1038,7 +1038,7 @@ export class StripeSubscriptionService {
    */
   async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
     try {
-      const currentDate = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000); // 8 days from now
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
           currentDate,
