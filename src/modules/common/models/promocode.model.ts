@@ -48,6 +48,9 @@ export class PromoCodeDto {
   @IsString({ each: true })
   @IsOptional()
   allowedUsers?: string[];
+
+  @IsString()
+  billingCycles: string;
 }
 
 export class CreatePromoCodeDto {

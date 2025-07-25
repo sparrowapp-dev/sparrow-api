@@ -609,6 +609,7 @@ export class StripeController {
           promo_id: validation?.promo_id || null,
           type: validation?.type || null,
           value: validation?.value || null,
+          billing_cycles: Number(validation?.billing_cycles) || null,
         },
       };
 
