@@ -224,7 +224,6 @@ export class StripeSubscriptionService {
         : new Date(),
       cancellation_reason: cancellationReason,
       seats: metadata?.userCount || 1,
-      billing_cycle: currentTeam.billing?.billing_cycle || 0,
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
     };
@@ -328,9 +327,10 @@ export class StripeSubscriptionService {
       seats: metadata?.userCount || 1,
       invoice_url: invoice.hosted_invoice_url,
       billing_reason: billingReason,
-      current_period_start: periodDates.currentPeriodStart,
-      current_period_end: periodDates.currentPeriodEnd,
-      billing_cycle: team.billing?.billing_cycle || 0,
+      current_period_start: team.billing?.current_period_start,
+      current_period_end: team.billing?.current_period_end,
+      upcoming_current_period_start: periodDates.currentPeriodStart,
+      upcoming_current_period_end: periodDates.currentPeriodEnd,
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
       paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
@@ -352,14 +352,6 @@ export class StripeSubscriptionService {
         metadata.hubId,
         team.plan,
         billingDetails,
-      );
-    } else if (isFirstPayment) {
-      // Downgrade to Community plan for first payment failures
-      await this.downgradeToCommunityPlan(
-        metadata.hubId,
-        team,
-        billingDetails,
-        eventId,
       );
     } else {
       // For other types of payment failures, just update the billing status
@@ -424,65 +416,6 @@ export class StripeSubscriptionService {
     }
 
     return { currentPeriodStart, currentPeriodEnd };
-  }
-
-  /**
-   * Downgrade team to community plan
-   * @param hubId The team hub ID
-   * @param team The team data
-   * @param billingDetails The billing details
-   * @param eventId The event ID
-   */
-  private async downgradeToCommunityPlan(
-    hubId: string,
-    team: any,
-    billingDetails: any,
-    eventId?: string,
-  ): Promise<void> {
-    const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
-      PlanName.COMMUNITY,
-    );
-    if (communityPlan) {
-      communityPlan.id = communityPlan._id;
-      delete communityPlan._id;
-
-      await this.updateTeamPlanWithBilling(
-        hubId,
-        communityPlan,
-        billingDetails,
-      );
-
-      // Get plan limits for audit tracking
-      let planLimits:
-        | { previous: Record<string, any>; new: Record<string, any> }
-        | undefined;
-
-      if (team?.plan?.limits && communityPlan.limits) {
-        planLimits = {
-          previous: team.plan.limits,
-          new: communityPlan.limits,
-        };
-      }
-
-      // Log plan change due to payment failure
-      await this.billingAuditService.recordPlanChange(
-        hubId,
-        team.plan?.name || "unknown",
-        PlanName.COMMUNITY,
-        {
-          actor: {
-            type: BillingActorType.WEBHOOK,
-            name: PaymentProvider.STRIPE,
-          },
-          source: BillingSource.STRIPE_WEBHOOK,
-          externalId: eventId,
-          reason: `First payment failed - downgraded to community`,
-        },
-        undefined, // no seat change
-        undefined, // no subscription details needed
-        planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
-      );
-    }
   }
 
   /**
@@ -612,12 +545,6 @@ export class StripeSubscriptionService {
     const isSubscriptionRenewal =
       !isPlanChange && !isSeatChange && previousPeriodEnd;
 
-    // Calculate billing cycle count - only increment on true subscription renewal
-    const currentBillingCycleCount = team.billing?.billing_cycle || 0;
-    const billingCycleCount = isSubscriptionRenewal
-      ? currentBillingCycleCount + 1
-      : Math.max(currentBillingCycleCount, 1);
-
     // Create billing details object with successful payment status
     const billingDetails = {
       current_period_start: period.start
@@ -630,7 +557,6 @@ export class StripeSubscriptionService {
       latest_invoice: invoice.id,
       seats: currentSeats,
       invoice_url: invoice.hosted_invoice_url,
-      billing_cycle: billingCycleCount,
       billingType: StripeSubscriptionHelpers.determineBillingType(
         {
           status: SubscriptionStatus.ACTIVE,
@@ -934,7 +860,6 @@ export class StripeSubscriptionService {
           : new Date(),
         in_trial: false,
         seats: metadata?.userCount || 1,
-        billing_cycle: team?.billing?.billing_cycle || 0,
         cancellation_reason: cancellationReason,
         updatedBy: BillingSource.STRIPE_WEBHOOK,
         event_id: eventId,
@@ -1019,9 +944,6 @@ export class StripeSubscriptionService {
 
     // Extract billing details
     const billingDetails = this.extractBillingDetails(subscription, eventId);
-
-    // Set billing_cycle to 1 for new subscription activation
-    billingDetails.billing_cycle = 1;
 
     // Update team plan with billing details
     await this.updateTeamPlanWithBilling(hubId, plan, billingDetails);
@@ -1116,7 +1038,7 @@ export class StripeSubscriptionService {
    */
   async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
     try {
-      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 600 * 100); //3 days ago
+      const currentDate = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000); // 8 days from now
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
           currentDate,

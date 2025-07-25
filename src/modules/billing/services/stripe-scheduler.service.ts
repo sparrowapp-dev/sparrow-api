@@ -17,7 +17,7 @@ export class StripeSchedulerService {
    * 2. Check for subscriptions that need action at the end of their billing cycle
    * 3. Revert expired trials to community plan (Stripe & manual)
    */
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async handleDailyBillingMaintenance() {
     try {
       await this.stripeSubscriptionService.sendSubscriptionExpiredEmails();
