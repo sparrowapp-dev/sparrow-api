@@ -150,7 +150,13 @@ export class SalesEmailController {
   @ApiResponse({ status: 400, description: "Failed to sent email" })
   async sendUserConfirmationEmail(
     @Param("hubId") hubId: string,
-    @Body() payload: { trailFlow: string; trialFrequency: string },
+    @Body()
+    payload: {
+      trailFlow: string;
+      trialFrequency: string;
+      promoDiscountType: string;
+      promoDiscountValue: number;
+    },
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
   ) {
@@ -160,6 +166,8 @@ export class SalesEmailController {
       hubId,
       payload.trailFlow,
       payload.trialFrequency,
+      payload.promoDiscountType,
+      payload.promoDiscountValue,
     );
     await this.userService.updateUser(
       user._id.toString(),
