@@ -33,7 +33,6 @@
     "start:upgrade-plan": "ts-node -r tsconfig-paths/register src/upgrade-plan.ts",
     "start:migration-mock-url": "ts-node -r tsconfig-paths/register src/migrationMockRequestUrl.ts",
     "start:migration-hub-billing": "ts-node -r tsconfig-paths/register src/migrationHubBilling.ts",
-    "start:migration-promocodes": "ts-node -r tsconfig-paths/register src/migration-promocodes.ts",
     "start:migration-superadmin": "ts-node -r tsconfig-paths/register src/migration-superadmin.ts"
   },
   "dependencies": {
