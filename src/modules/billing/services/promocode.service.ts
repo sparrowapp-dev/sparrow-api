@@ -29,7 +29,7 @@ export class PromoCodeService {
     type?: string;
     value?: number;
     promo_id?: string;
-    billing_cycles?: string;
+    billing_cycles?: string | number;
   }> {
     // Find promo code in database
     const promoCode = await this.promoCodeRepository.findByCode(code);
@@ -79,7 +79,7 @@ export class PromoCodeService {
     // Generate success message based on type and billing cycles
     let successMessage = "";
     const billingCycleText = promoCode.billingCycles
-      ? promoCode.billingCycles === "1"
+      ? Number(promoCode.billingCycles) === 1
         ? `first month`
         : `first ${promoCode.billingCycles} months`
       : "first month";
@@ -96,12 +96,26 @@ export class PromoCodeService {
       type: promoCode.type,
       value: promoCode.value,
       billing_cycles: promoCode.billingCycles,
-      promo_id: promoCode.stripePromoCodeId,
+      promo_id: promoCode.promoCodeProvider.find(p => p.provider === 'stripe')?.id,
     };
   }
 
   /**
-   * Find promo code by Stripe promo code ID
+   * Find promo code by provider ID and provider type
+   */
+  async findByPromoCodeProvider(
+    providerId: string,
+    provider: string = 'stripe'
+  ): Promise<PromoCodeDto | null> {
+    return await this.promoCodeRepository.findByPromoCodeProvider(
+      providerId,
+      provider,
+    );
+  }
+
+  /**
+   * Find promo code by Stripe promo code ID (legacy support)
+   * @deprecated Use findByPromoCodeProvider instead
    */
   async findByStripePromoCodeId(
     stripePromoCodeId: string,
