@@ -344,17 +344,24 @@ export class TeamService {
       );
     }
 
-    const userWorkspaceIds = user.workspaces.map(w => w.workspaceId.toString());
+    const userWorkspaceIds = user.workspaces.map((w) =>
+      w.workspaceId.toString(),
+    );
 
     // Collect team IDs from user.teams
-    const teamIdsFromUser = user.teams.map(t => t.id.toString());
+    const teamIdsFromUser = user.teams.map((t) => t.id.toString());
 
     // Collect team IDs from invites
-    const existingInvites = await this.userInvitesRepository.getByEmail(user.email);
-    const teamIdsFromInvites = existingInvites?.teamIds?.map(id => id.toString()) || [];
+    const existingInvites = await this.userInvitesRepository.getByEmail(
+      user.email,
+    );
+    const teamIdsFromInvites =
+      existingInvites?.teamIds?.map((id) => id.toString()) || [];
 
     // Merge + deduplicate
-    const allTeamIds = [...new Set([...teamIdsFromUser, ...teamIdsFromInvites])];
+    const allTeamIds = [
+      ...new Set([...teamIdsFromUser, ...teamIdsFromInvites]),
+    ];
 
     // Bulk fetch all teams
     const teamDocs = await this.teamRepository.getTeamsByIds(allTeamIds);
@@ -377,7 +384,7 @@ export class TeamService {
       const teamData = teamMap.get(id.toString());
       if (!teamData) continue;
 
-      const filteredWorkspaces = teamData.workspaces.filter(w =>
+      const filteredWorkspaces = teamData.workspaces.filter((w) =>
         userWorkspaceIds.includes(w.id.toString()),
       );
 
@@ -523,8 +530,32 @@ export class TeamService {
     }
   }
 
-  async doesHubUrlExist(hubUrl: string): Promise<boolean> {
-    return await this.teamRepository.doesHubUrlExist(hubUrl);
+  async doesHubUrlExist(
+    hubUrl: string,
+  ): Promise<{ isExist: boolean; isInvalid: boolean }> {
+    // Validate hubUrl format
+    try {
+      const match = hubUrl.match(/^https:\/\/([a-z0-9-]+)\.sparrowhub\.net$/);
+      let isInvalid = false;
+      if (!match) {
+        isInvalid = true;
+      }
+      const subdomain = match[1];
+      // Check if subdomain matches sanitized version
+      if (subdomain !== this.sanitizeName(subdomain)) {
+        isInvalid = true;
+      }
+      const isExist = await this.teamRepository.doesHubUrlExist(hubUrl);
+      return {
+        isExist,
+        isInvalid,
+      };
+    } catch (error) {
+      return {
+        isExist: false,
+        isInvalid: true,
+      };
+    }
   }
 
   async updateHubTrialAndPlan(teamId: string, userCount?: number) {
