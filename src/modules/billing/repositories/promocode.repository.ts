@@ -20,10 +20,13 @@ export class PromoCodeRepository {
       promoCodeProvider: [
         {
           id: stripePromoCode.id,
-          provider: PaymentProvider.STRIPE
-        }
+          provider: PaymentProvider.STRIPE,
+        },
       ],
       createdAt: new Date(stripePromoCode.created * 1000),
+      startDate: stripePromoCode.coupon.metadata.start_date
+        ? new Date(stripePromoCode.coupon.metadata.start_date)
+        : undefined,
       expiresAt: stripePromoCode.expires_at
         ? new Date(stripePromoCode.expires_at * 1000)
         : undefined,
@@ -75,18 +78,16 @@ export class PromoCodeRepository {
    */
   async findByPromoCodeProvider(
     providerId: string,
-    provider: string = 'stripe'
+    provider: string = "stripe",
   ): Promise<PromoCodeDto | null> {
-    const result = await this.db
-      .collection(Collections.PROMOCODES)
-      .findOne({ 
-        "promoCodeProvider": {
-          $elemMatch: {
-            id: providerId,
-            provider: provider
-          }
-        }
-      });
+    const result = await this.db.collection(Collections.PROMOCODES).findOne({
+      promoCodeProvider: {
+        $elemMatch: {
+          id: providerId,
+          provider: provider,
+        },
+      },
+    });
 
     if (!result) return null;
 
@@ -103,6 +104,6 @@ export class PromoCodeRepository {
   async findByStripePromoCodeId(
     stripePromoCodeId: string,
   ): Promise<PromoCodeDto | null> {
-    return this.findByPromoCodeProvider(stripePromoCodeId, 'stripe');
+    return this.findByPromoCodeProvider(stripePromoCodeId, "stripe");
   }
 }

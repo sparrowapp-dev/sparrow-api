@@ -40,6 +40,7 @@ import {
 import { StripeWebhookHelper } from "../helpers/stripe-webhook.helper";
 import { PromoCodeService } from "../services/promocode.service";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { PricingService } from "@src/modules/workspace/services/pricing.repository";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
@@ -64,6 +65,7 @@ export class StripeController {
     private readonly stripeWebhookHelper: StripeWebhookHelper,
     private readonly promoCodeService: PromoCodeService,
     private readonly userRepository: UserRepository,
+    private readonly pricingService: PricingService,
   ) {
     this.isStripeAvailable = !!this.stripeService;
 
@@ -542,6 +544,43 @@ export class StripeController {
   }> {
     try {
       this.checkStripeAvailability();
+
+      // Validate applicable products if provided
+      if (
+        createPromoCodeDto.applicableProducts &&
+        createPromoCodeDto.applicableProducts.length > 0
+      ) {
+        const priceValidation = await this.pricingService.validatePriceIds(
+          createPromoCodeDto.applicableProducts,
+        );
+        if (!priceValidation.valid) {
+          throw new HttpException(
+            `Invalid price IDs: ${priceValidation.invalidPriceIds.join(", ")}. Please provide valid price IDs for applicable products.`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      } else {
+        throw new HttpException(
+          "Please provide valid price IDs for applicable products.",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Validate discount amount for "amount" type coupons
+      if (createPromoCodeDto.type === "amount") {
+        const discountValidation =
+          await this.pricingService.validateDiscountAmount(
+            createPromoCodeDto.value,
+            createPromoCodeDto.applicableProducts || [],
+          );
+
+        if (!discountValidation.valid) {
+          throw new HttpException(
+            discountValidation.errors.join("; "),
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
 
       const params = {
         ...createPromoCodeDto,
