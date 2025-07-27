@@ -61,6 +61,7 @@ export class PaymentEmailService {
     emailType: PaymentEmailType,
     data: PaymentEmailData,
   ): Promise<void> {
+    return;
     try {
       switch (emailType) {
         case PaymentEmailType.PAYMENT_SUCCESS:
