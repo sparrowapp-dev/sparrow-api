@@ -4,12 +4,22 @@ import {
   IsOptional,
   IsString,
   IsEnum,
+  IsArray,
+  ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
 
 export enum PromoCodeType {
   PERCENTAGE = "percentage",
   AMOUNT = "amount",
+}
+
+export class PromoCodeProviderDto {
+  @IsString()
+  id: string;
+
+  @IsString()
+  provider: string;
 }
 
 export class PromoCodeDto {
@@ -20,8 +30,10 @@ export class PromoCodeDto {
   @IsString()
   code: string;
 
-  @IsString()
-  stripePromoCodeId: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PromoCodeProviderDto)
+  promoCodeProvider: PromoCodeProviderDto[];
 
   @IsDate()
   @Type(() => Date)
@@ -50,7 +62,7 @@ export class PromoCodeDto {
   allowedUsers?: string[];
 
   @IsString()
-  billingCycles: string;
+  billingCycles: string | number;
 }
 
 export class CreatePromoCodeDto {

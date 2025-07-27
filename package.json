@@ -33,7 +33,8 @@
     "start:upgrade-plan": "ts-node -r tsconfig-paths/register src/upgrade-plan.ts",
     "start:migration-mock-url": "ts-node -r tsconfig-paths/register src/migrationMockRequestUrl.ts",
     "start:migration-hub-billing": "ts-node -r tsconfig-paths/register src/migrationHubBilling.ts",
-    "start:migration-superadmin": "ts-node -r tsconfig-paths/register src/migration-superadmin.ts"
+    "start:migration-superadmin": "ts-node -r tsconfig-paths/register src/migration-superadmin.ts",
+    "start:migration-promocode-provider": "ts-node -r tsconfig-paths/register src/migration-promocode-provider.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
