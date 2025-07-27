@@ -19,6 +19,8 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { AdminHubsRepository } from "@src/modules/user-admin/repositories/user-admin.hubs.repository";
 import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { PricingService } from "@src/modules/workspace/services/pricing.repository";
+import { PricingRepository } from "@src/modules/workspace/repositories/pricing.repository";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -44,8 +46,10 @@ export class BillingModule {
       StripeSubscriptionRepository,
       BillingAuditRepository,
       PromoCodeRepository,
+      PricingRepository,
       BillingAuditService,
       PromoCodeService,
+      PricingService,
       StripeSubscriptionService,
       StripeWebhookGateway,
       StripeSchedulerService,
@@ -66,6 +70,8 @@ export class BillingModule {
       StripeSubscriptionRepository,
       BillingAuditRepository,
       BillingAuditService,
+      PromoCodeService,
+      PricingService,
       PaymentEmailService,
       PaymentEmailHelper,
       StripeCustomerService,

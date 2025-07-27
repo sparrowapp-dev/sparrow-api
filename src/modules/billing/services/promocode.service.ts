@@ -64,6 +64,14 @@ export class PromoCodeService {
       };
     }
 
+    // Check if promo code has not started yet
+    if (promoCode.startDate && now < promoCode.startDate) {
+      return {
+        error: true,
+        message: "This promo code is not yet active.",
+      };
+    }
+
     // Check if promo code is applicable for the selected plan
     if (
       promoCode.applicableProducts &&

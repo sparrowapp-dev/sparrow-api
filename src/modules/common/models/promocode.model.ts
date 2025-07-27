@@ -42,6 +42,11 @@ export class PromoCodeDto {
   @IsDate()
   @Type(() => Date)
   @IsOptional()
+  startDate?: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
   expiresAt?: Date;
 
   @IsString()
