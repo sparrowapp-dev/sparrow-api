@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PromoCodeRepository } from "../repositories/promocode.repository";
 import { PromoCodeDto } from "@src/modules/common/models/promocode.model";
+import { PaymentProvider } from "@src/modules/common/enum/billing.enum";
 
 /**
  * Service for managing promo codes
@@ -104,8 +105,9 @@ export class PromoCodeService {
       type: promoCode.type,
       value: promoCode.value,
       billing_cycles: promoCode.billingCycles,
-      promo_id: promoCode.promoCodeProvider.find((p) => p.provider === "stripe")
-        ?.id,
+      promo_id: promoCode.promoCodeProvider.find(
+        (p) => p.provider === PaymentProvider.STRIPE,
+      )?.id,
     };
   }
 
@@ -114,7 +116,7 @@ export class PromoCodeService {
    */
   async findByPromoCodeProvider(
     providerId: string,
-    provider: string = "stripe",
+    provider: string = PaymentProvider.STRIPE,
   ): Promise<PromoCodeDto | null> {
     return await this.promoCodeRepository.findByPromoCodeProvider(
       providerId,
