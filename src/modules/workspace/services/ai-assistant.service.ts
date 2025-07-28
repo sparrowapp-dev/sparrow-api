@@ -67,6 +67,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BlobStorageService } from "@src/modules/common/services/blobStorage.service";
 import { ChatCompletionMessageParam } from "openai/resources/chat";
 import { MessageParam } from '@anthropic-ai/sdk/resources/messages';
+import * as Sentry from "@sentry/nestjs";
 
 // import { GoogleGenAI } from "@google/genai";
 
@@ -112,6 +113,7 @@ export class AiAssistantService {
   private deepseekApiKey: string;
   private deepseekApiVersion: string;
   private deepseekurl: string;
+  private deepseekModel: string;
   // Default assistant configuration
   private assistant = {
     name: "API Instructor",
@@ -145,6 +147,7 @@ export class AiAssistantService {
     this.deepseekApiKey = this.configService.get("ai.deepseekApiKey");
     this.deepseekApiVersion = this.configService.get("ai.deepseekApiVersion");
     this.deepseekurl = this.configService.get("ai.deepseekURL");
+    this.deepseekModel = this.configService.get("ai.deepseekModel")
 
     // Initialize the AzureOpenAI client
     try {
@@ -482,6 +485,7 @@ export class AiAssistantService {
     model?: string,
     activity?: string,
   ): Promise<void> {
+    try {
     // Fetch user details
     const user = await this.userService.getUserByEmail(emailId);
 
@@ -592,6 +596,22 @@ export class AiAssistantService {
           }),
         );
       });
+    } catch (error) {
+      console.error("OpenAI error:", error);
+      Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
+      client.send(
+        JSON.stringify({
+          messages:
+            "Some issue occurred while processing your request. Please try again.",
+          thread_Id: null,
+          tab_id: tabId,
+        }),
+      );
+    }
   }
 
   /**
@@ -676,7 +696,7 @@ export class AiAssistantService {
             top_p: 0.1,
             presence_penalty: 0,
             frequency_penalty: 0,
-            model: "DeepSeek-V3-DEV",
+            model: this.deepseekModel,
             stream: true,
           },
         })
@@ -750,6 +770,11 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("DeepSeek error:", error);
+      Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+      });
       client.send(
         JSON.stringify({
           messages:
@@ -874,6 +899,7 @@ export class AiAssistantService {
     temperature: number,
     topP: number,
     maxTokens: number,
+    emailId: string
   ): Promise<void> {
     // Return early if Google client creation failed
     if (!GoogleClient) return;
@@ -1055,6 +1081,11 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
         let message =
           "Some Issue Occurred in Processing your Request. Please try again";
@@ -1100,7 +1131,8 @@ export class AiAssistantService {
     temperature: number,
     topP: number,
     maxTokens: number,
-    fileSearch: boolean
+    fileSearch: boolean,
+    emailId: string
   ): Promise<void> {
     // Return early if Anthropic client creation failed
     if (!Anthropicclient) return;
@@ -1279,15 +1311,22 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
+        const authErrorMessage = "Could not resolve authentication method. Expected either apiKey or authToken to be set.";
+        const errorMessage = error?.message || error?.error?.error?.message || "";
+        const statusCode = errorMessage.includes(authErrorMessage) ? 401 : error?.status || 500;
         client.send(
           JSON.stringify({
             timeTaken: `${timeTaken}ms`,
-            statusCode: error?.status || 500,
+            statusCode: statusCode,
             event: "error",
             message:
-              error?.message ||
-              error?.error?.error?.message ||
+              errorMessage ||
               "Some Issue Occurred in Processing your Request. Please try again",
           }),
         );
@@ -1310,6 +1349,7 @@ export class AiAssistantService {
     presencePenalty: number,
     frequencePenalty: number,
     maxTokens: number,
+    emailId: string
   ): Promise<void> {
     // Return early if DeepSeek client creation failed
     if (!DeepSeekClinet) return;
@@ -1462,6 +1502,11 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1493,6 +1538,7 @@ export class AiAssistantService {
     presencePenalty: number,
     frequencePenalty: number,
     maxTokens: number,
+    emailId: string
   ): Promise<void> {
     // Return early if OpenAI client creation failed
     if (!OpenAIclient) return;
@@ -1703,6 +1749,11 @@ export class AiAssistantService {
     } catch (error: any) {
       if (client.readyState === WebSocket.OPEN) {
         const endTime = performance.now();
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error.message);
+        });
         const timeTaken = Math.round(endTime - startTime);
         client.send(
           JSON.stringify({
@@ -1838,7 +1889,8 @@ export class AiAssistantService {
             frequencePenalty,
             maxTokens,
             topP,
-            fileSearch
+            fileSearch,
+            emailId
           } = parsedData;
 
           // Only support OpenAI model currently
@@ -1859,6 +1911,7 @@ export class AiAssistantService {
               presencePenalty,
               frequencePenalty,
               maxTokens,
+              emailId
             );
             continue;
           }
@@ -1881,7 +1934,8 @@ export class AiAssistantService {
               temperature,
               topP,
               maxTokens,
-              fileSearch
+              fileSearch,
+              emailId
             );
             continue;
           }
@@ -1906,6 +1960,7 @@ export class AiAssistantService {
               presencePenalty,
               frequencePenalty,
               maxTokens,
+              emailId
             );
             continue;
           }
@@ -1927,6 +1982,7 @@ export class AiAssistantService {
               temperature,
               topP,
               maxTokens,
+              emailId
             );
             continue;
           } else {
@@ -1945,6 +2001,9 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("Error in WebSocket loop:", error);
+        Sentry.withScope((scope) => {
+        Sentry.captureException(error.message);
+      });
       if (client.readyState === WebSocket.OPEN) {
         client.send(
           JSON.stringify({
@@ -2014,7 +2073,7 @@ export class AiAssistantService {
               { role: "system", content: promptInstruction },
               { role: "user", content: userInput },
             ],
-            model: DeepSeepModelVersion.DeepSeek_V3,
+            model: this.deepseekModel,
           },
         });
 
@@ -2041,6 +2100,11 @@ export class AiAssistantService {
       return result;
     } catch (error) {
       console.error("Error processing prompt generation:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", data.emailId);
+        scope.setExtra("emailId", data.emailId);
+        Sentry.captureException(error);
+      });
       throw new BadRequestException(
         "An error occurred while processing the request.",
       );

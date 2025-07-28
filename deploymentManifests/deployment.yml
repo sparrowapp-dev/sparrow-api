@@ -336,6 +336,11 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: DEEPSEEK_API_VERSION
+            - name: DEEPSEEK_API_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: DEEPSEEK_API_MODEL      
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
