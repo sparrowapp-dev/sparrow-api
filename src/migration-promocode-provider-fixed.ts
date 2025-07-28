@@ -70,13 +70,21 @@ const migratePromoCodeProvider = async (db: Db): Promise<void> => {
           },
         ];
 
-        // Update the document - add new field and remove old field
+        // Prepare update operation
+        const updateOperation: any = {
+          $set: { promoCodeProvider },
+          $unset: { stripePromoCodeId: "" },
+        };
+
+        // Add startDate field if it doesn't exist (set to null for existing records)
+        if (!promoCode.hasOwnProperty("startDate")) {
+          updateOperation.$set.startDate = null;
+        }
+
+        // Update the document
         const result = await collection.updateOne(
           { _id: promoCode._id },
-          {
-            $set: { promoCodeProvider },
-            $unset: { stripePromoCodeId: "" },
-          },
+          updateOperation,
         );
 
         if (result.modifiedCount > 0) {

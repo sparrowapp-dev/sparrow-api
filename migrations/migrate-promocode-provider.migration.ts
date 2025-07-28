@@ -5,7 +5,7 @@ import { Collections } from "@src/modules/common/enum/database.collection.enum";
  * Migration to convert stripePromoCodeId to promoCodeProvider array structure
  * This migration updates existing promo codes from the old structure:
  * { stripePromoCodeId: "promo_123" }
- * 
+ *
  * To the new structure:
  * { promoCodeProvider: [{ id: "promo_123", provider: "stripe" }] }
  */
@@ -25,7 +25,9 @@ export class MigratePromoCodeProviderMigration {
     console.log(`Found ${promoCodes.length} promo codes to migrate`);
 
     if (promoCodes.length === 0) {
-      console.log("No promo codes found with old structure. Migration complete.");
+      console.log(
+        "No promo codes found with old structure. Migration complete.",
+      );
       return;
     }
 
@@ -36,8 +38,8 @@ export class MigratePromoCodeProviderMigration {
         const promoCodeProvider = [
           {
             id: promoCode.stripePromoCodeId,
-            provider: "stripe"
-          }
+            provider: "stripe",
+          },
         ];
 
         // Update the document
@@ -45,11 +47,13 @@ export class MigratePromoCodeProviderMigration {
           { _id: promoCode._id },
           {
             $set: { promoCodeProvider },
-            $unset: { stripePromoCodeId: "" }
-          }
+            $unset: { stripePromoCodeId: "" },
+          },
         );
 
-        console.log(`Migrated promo code: ${promoCode.code} (${promoCode._id})`);
+        console.log(
+          `Migrated promo code: ${promoCode.code} (${promoCode._id})`,
+        );
       } catch (error) {
         console.error(`Failed to migrate promo code ${promoCode.code}:`, error);
         throw error;
@@ -72,7 +76,9 @@ export class MigratePromoCodeProviderMigration {
     console.log(`Found ${promoCodes.length} promo codes to rollback`);
 
     if (promoCodes.length === 0) {
-      console.log("No promo codes found with new structure. Rollback complete.");
+      console.log(
+        "No promo codes found with new structure. Rollback complete.",
+      );
       return;
     }
 
@@ -81,7 +87,7 @@ export class MigratePromoCodeProviderMigration {
       try {
         // Find the stripe provider entry
         const stripeProvider = promoCode.promoCodeProvider?.find(
-          (provider: any) => provider.provider === "stripe"
+          (provider: any) => provider.provider === "stripe",
         );
 
         if (stripeProvider) {
@@ -90,16 +96,23 @@ export class MigratePromoCodeProviderMigration {
             { _id: promoCode._id },
             {
               $set: { stripePromoCodeId: stripeProvider.id },
-              $unset: { promoCodeProvider: "" }
-            }
+              $unset: { promoCodeProvider: "" },
+            },
           );
 
-          console.log(`Rolled back promo code: ${promoCode.code} (${promoCode._id})`);
+          console.log(
+            `Rolled back promo code: ${promoCode.code} (${promoCode._id})`,
+          );
         } else {
-          console.log(`No stripe provider found for promo code: ${promoCode.code}`);
+          console.log(
+            `No stripe provider found for promo code: ${promoCode.code}`,
+          );
         }
       } catch (error) {
-        console.error(`Failed to rollback promo code ${promoCode.code}:`, error);
+        console.error(
+          `Failed to rollback promo code ${promoCode.code}:`,
+          error,
+        );
         throw error;
       }
     }
@@ -112,7 +125,7 @@ export class MigratePromoCodeProviderMigration {
 export async function runPromoCodeProviderMigration(
   mongoUrl: string,
   dbName: string,
-  direction: "up" | "down" = "up"
+  direction: "up" | "down" = "up",
 ): Promise<void> {
   const client = new MongoClient(mongoUrl);
 

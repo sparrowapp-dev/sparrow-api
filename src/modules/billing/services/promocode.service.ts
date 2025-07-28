@@ -104,7 +104,8 @@ export class PromoCodeService {
       type: promoCode.type,
       value: promoCode.value,
       billing_cycles: promoCode.billingCycles,
-      promo_id: promoCode.promoCodeProvider.find(p => p.provider === 'stripe')?.id,
+      promo_id: promoCode.promoCodeProvider.find((p) => p.provider === "stripe")
+        ?.id,
     };
   }
 
@@ -113,7 +114,7 @@ export class PromoCodeService {
    */
   async findByPromoCodeProvider(
     providerId: string,
-    provider: string = 'stripe'
+    provider: string = "stripe",
   ): Promise<PromoCodeDto | null> {
     return await this.promoCodeRepository.findByPromoCodeProvider(
       providerId,
