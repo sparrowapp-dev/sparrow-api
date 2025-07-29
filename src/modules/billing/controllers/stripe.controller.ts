@@ -536,6 +536,7 @@ export class StripeController {
       allowedUsers?: string[];
     },
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ): Promise<{
     success: boolean;
     promoCode?: any;
@@ -602,7 +603,8 @@ export class StripeController {
       }
 
       // Save promo code to database
-      await this.promoCodeService.createPromoCode(result.promoCode);
+      const userEmail = request.user?.email || null;
+      await this.promoCodeService.createPromoCode(result.promoCode, userEmail);
 
       const responseData = new ApiResponseService(
         "Promo Code Created",
