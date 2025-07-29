@@ -56,7 +56,7 @@ export class CollectionService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
-    private readonly cryptoService: EncryptionService
+    private readonly cryptoService: EncryptionService,
   ) {}
 
   async createCollection(
@@ -132,6 +132,14 @@ export class CollectionService {
       {
         isMockCollectionRunning: status,
       },
+    );
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     return data;
   }
@@ -428,7 +436,7 @@ export class CollectionService {
     await this.checkPermission(id, user._id);
     const workspace = await this.workspaceRepository.get(id);
 
-  
+
     // ✅ Only define this once
     const decryptAuthValuesInItems = (items: any[]) => {
       const stack = [...items]; // Avoid recursion
@@ -473,7 +481,7 @@ export class CollectionService {
 
       decryptedCollections.push(collections[i]);
     }
-  
+
     return decryptedCollections;
   }
 
@@ -705,7 +713,14 @@ export class CollectionService {
     if (result.modifiedCount === 0) {
       throw new BadRequestException("Auth profile update failed");
     }
-
+    const currentWorkspaceObject = new ObjectId(payload?.workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return updatedAuth;
   }
 
@@ -719,6 +734,14 @@ export class CollectionService {
       workspaceId,
       authId,
       user,
+    );
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
     );
     return data;
   }
@@ -924,7 +947,14 @@ export class CollectionService {
       },
       user._id,
     );
-
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
     return mockCollection;
   }
 

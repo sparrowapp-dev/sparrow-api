@@ -646,7 +646,7 @@ export class TeamController {
     const responseData = new ApiResponseService(
       "HubUrl existence check",
       HttpStatusCode.OK,
-      { isExist: exists },
+      exists,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }

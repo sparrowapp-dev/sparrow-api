@@ -27,6 +27,7 @@ import { TeamDto } from "../payloads/team.payload";
 import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
+import { InternalServerErrorException } from "@nestjs/common";
 /**
  * Team User Service
  */
@@ -928,7 +929,7 @@ export class TeamUserService {
       return false;
     });
     if (teamMember) {
-      throw new BadRequestException("Hub Member already Exist.");
+      return;
     }
 
     // need to check, if user already exist in the invites array
@@ -938,9 +939,12 @@ export class TeamUserService {
       );
 
       if (emailAlreadyInvited) {
-        throw new BadRequestException(
-          "An invite has already been sent to this email.",
-        );
+        try {
+          await this.resendInvite(teamId, email, sender);
+          return;
+        } catch (error) {
+          return;
+        }
       }
     }
 

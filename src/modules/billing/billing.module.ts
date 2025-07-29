@@ -4,10 +4,12 @@ import { StripeController } from "./controllers/stripe.controller";
 import { PaymentMethodsController } from "./controllers/payment-methods.controller";
 import { StripeSubscriptionRepository } from "./repositories/stripe-subscription.repository";
 import { BillingAuditRepository } from "./repositories/billing-audit.repository";
+import { PromoCodeRepository } from "./repositories/promocode.repository";
 import { StripeSubscriptionService } from "./services/stripe-subscription.service";
 import { StripeWebhookGateway } from "./gateways/stripe-webhook.gateway";
 import { StripeSchedulerService } from "./services/stripe-scheduler.service";
 import { BillingAuditService } from "./services/billing-audit.service";
+import { PromoCodeService } from "./services/promocode.service";
 import { PaymentEmailService } from "./services/payment-email.service";
 import { PaymentEmailHelper } from "./helpers/payment-email.helper";
 import { StripeWebhookHelper } from "./helpers/stripe-webhook.helper";
@@ -16,6 +18,9 @@ import { LicenseManagementService } from "./services/license-management.service"
 import { EmailService } from "@src/modules/common/services/email.service";
 import { AdminHubsRepository } from "@src/modules/user-admin/repositories/user-admin.hubs.repository";
 import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { PricingService } from "@src/modules/workspace/services/pricing.repository";
+import { PricingRepository } from "@src/modules/workspace/repositories/pricing.repository";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -40,7 +45,11 @@ export class BillingModule {
     const providers: Provider[] = [
       StripeSubscriptionRepository,
       BillingAuditRepository,
+      PromoCodeRepository,
+      PricingRepository,
       BillingAuditService,
+      PromoCodeService,
+      PricingService,
       StripeSubscriptionService,
       StripeWebhookGateway,
       StripeSchedulerService,
@@ -50,6 +59,7 @@ export class BillingModule {
       StripeCustomerService,
       LicenseManagementService,
       TeamRepository,
+      UserRepository,
       EmailService,
       AdminHubsRepository,
     ];
@@ -60,6 +70,8 @@ export class BillingModule {
       StripeSubscriptionRepository,
       BillingAuditRepository,
       BillingAuditService,
+      PromoCodeService,
+      PricingService,
       PaymentEmailService,
       PaymentEmailHelper,
       StripeCustomerService,

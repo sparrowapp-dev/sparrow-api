@@ -106,7 +106,7 @@ export class AdminWorkspaceService {
           const mappedCollections = collections.map((item: any) => {
             let count = 0;
             for (let i = 0; i < item.items.length; i++) {
-              if (item.items[i]?.items) {
+              if (item.items[i]?.items && item.items[i]?.items.length > 0) {
                 count += item.items[i].items?.length;
               } else {
                 count += 1;
@@ -218,15 +218,25 @@ export class AdminWorkspaceService {
               limit,
             });
 
-          const mappedCollections = collections.map((item: any) => ({
-            resourceType: "collections",
-            keyStats: item?.totalRequests,
-            name: item?.name,
-            updatedAt: item?.updatedAt,
-            createdBy: item?.createdBy,
-            updatedBy: item?.updatedBy,
-            id: item?.id,
-          }));
+          const mappedCollections = collections.map((item: any) => {
+            let count = 0;
+            for (let i = 0; i < item.items.length; i++) {
+              if (item.items[i]?.items && item.items[i]?.items.length > 0) {
+                count += item.items[i].items?.length;
+              } else {
+                count += 1;
+              }
+            }
+            return {
+              resourceType: "collections",
+              keyStats: count,
+              name: item?.name,
+              updatedAt: item?.updatedAt,
+              createdBy: item?.createdBy,
+              updatedBy: item?.updatedBy,
+              id: item?.id,
+            };
+          });
 
           return { resources: mappedCollections, totalCount };
         }
@@ -315,6 +325,13 @@ export class AdminWorkspaceService {
   async getWorkspaceSummary(workspaceId: string, hubId: string) {
     const workspace = await this.workspaceRepository.get(workspaceId);
     const hub = await this.adminHubService.findHubById(hubId);
+    const workspaceUserIds = new Set(
+      workspace.users.map((u) => u.id.toString()),
+    );
+
+    const nonWorkspaceHubMembers = hub.users.filter(
+      (user: any) => !workspaceUserIds.has(user.id.toString()),
+    );
     const workspace_summary = {
       totalCollections: workspace?.collection?.length ?? 0,
       totalContributors:
@@ -329,6 +346,7 @@ export class AdminWorkspaceService {
       )?.name,
       WorkspaceType: workspace?.workspaceType,
       hubName: hub?.name,
+      nonWorkspaceHubMembers,
     };
     return workspace_summary;
   }

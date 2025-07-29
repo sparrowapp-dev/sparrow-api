@@ -186,6 +186,8 @@ export class SalesEmailService {
     hubId: string,
     trialFlow: string,
     trialFrequency: string,
+    promoDiscountType: string,
+    promoDiscountValue: number,
   ): Promise<void> {
     const team: any = await this.teamService.get(hubId);
     const pricingDetails = await this.pricingService.getpricingDetails();
@@ -212,7 +214,16 @@ export class SalesEmailService {
       }
     }
     const invitedUserCount = team?.invites ? team.invites.length : 0;
-    const amount = price * (team.users.length + invitedUserCount);
+    let amount = price * (team.users.length + invitedUserCount);
+    if (promoDiscountType && promoDiscountValue) {
+      if (promoDiscountType === "percentage") {
+        const discountAmount = (amount * promoDiscountValue) / 100;
+        amount -= discountAmount;
+      } else if (promoDiscountType === "amount") {
+        amount -= promoDiscountValue;
+      }
+    }
+    // amount = Math.floor(amount * 100) / 100;
     const user = team.users.find((u: any) => u.role === "owner");
     await this.teamService.updateHubTrialAndPlan(team._id.toString());
 

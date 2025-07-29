@@ -327,8 +327,10 @@ export class StripeSubscriptionService {
       seats: metadata?.userCount || 1,
       invoice_url: invoice.hosted_invoice_url,
       billing_reason: billingReason,
-      current_period_start: periodDates.currentPeriodStart,
-      current_period_end: periodDates.currentPeriodEnd,
+      current_period_start: team.billing?.current_period_start,
+      current_period_end: team.billing?.current_period_end,
+      upcoming_current_period_start: periodDates.currentPeriodStart,
+      upcoming_current_period_end: periodDates.currentPeriodEnd,
       updatedBy: BillingSource.STRIPE_WEBHOOK,
       event_id: eventId,
       paymentProviders: StripeSubscriptionHelpers.createOrUpdatePaymentProvider(
@@ -350,14 +352,6 @@ export class StripeSubscriptionService {
         metadata.hubId,
         team.plan,
         billingDetails,
-      );
-    } else if (isFirstPayment) {
-      // Downgrade to Community plan for first payment failures
-      await this.downgradeToCommunityPlan(
-        metadata.hubId,
-        team,
-        billingDetails,
-        eventId,
       );
     } else {
       // For other types of payment failures, just update the billing status
@@ -422,65 +416,6 @@ export class StripeSubscriptionService {
     }
 
     return { currentPeriodStart, currentPeriodEnd };
-  }
-
-  /**
-   * Downgrade team to community plan
-   * @param hubId The team hub ID
-   * @param team The team data
-   * @param billingDetails The billing details
-   * @param eventId The event ID
-   */
-  private async downgradeToCommunityPlan(
-    hubId: string,
-    team: any,
-    billingDetails: any,
-    eventId?: string,
-  ): Promise<void> {
-    const communityPlan = await this.stripeSubscriptionRepo.findPlanByName(
-      PlanName.COMMUNITY,
-    );
-    if (communityPlan) {
-      communityPlan.id = communityPlan._id;
-      delete communityPlan._id;
-
-      await this.updateTeamPlanWithBilling(
-        hubId,
-        communityPlan,
-        billingDetails,
-      );
-
-      // Get plan limits for audit tracking
-      let planLimits:
-        | { previous: Record<string, any>; new: Record<string, any> }
-        | undefined;
-
-      if (team?.plan?.limits && communityPlan.limits) {
-        planLimits = {
-          previous: team.plan.limits,
-          new: communityPlan.limits,
-        };
-      }
-
-      // Log plan change due to payment failure
-      await this.billingAuditService.recordPlanChange(
-        hubId,
-        team.plan?.name || "unknown",
-        PlanName.COMMUNITY,
-        {
-          actor: {
-            type: BillingActorType.WEBHOOK,
-            name: PaymentProvider.STRIPE,
-          },
-          source: BillingSource.STRIPE_WEBHOOK,
-          externalId: eventId,
-          reason: `First payment failed - downgraded to community`,
-        },
-        undefined, // no seat change
-        undefined, // no subscription details needed
-        planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
-      );
-    }
   }
 
   /**
@@ -1103,7 +1038,7 @@ export class StripeSubscriptionService {
    */
   async checkSubscriptionsRequiringEndOfCycleAction(): Promise<void> {
     try {
-      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 600 * 100); //3 days ago
+      const currentDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
       const teams =
         await this.stripeSubscriptionRepo.findTeamsWithExpiredFailedSubscriptions(
           currentDate,
