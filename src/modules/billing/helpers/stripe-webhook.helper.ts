@@ -470,7 +470,10 @@ export class StripeWebhookHelper {
             last4: paymentMethod.card?.last4,
           },
           {
-            actor: { type: BillingActorType.SYSTEM, name: "stripe_webhook" },
+            actor: {
+              type: BillingActorType.SYSTEM,
+              name: BillingSource.STRIPE_WEBHOOK,
+            },
             source: BillingSource.STRIPE_WEBHOOK,
             externalId: event.id,
             reason: "Payment method attached via Stripe webhook",
