@@ -238,17 +238,19 @@ export class AiAssistantService {
   ): Promise<AIResponseDto> {
     const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`;
 
-    const { text: prompt, model } = data;
+    const { text: prompt } = data;
 
-    const response = await this.deepseekClient.path("/chat/completions").post({
-      body: {
-        messages: [
-          { role: "system", content: instructions },
-          { role: "user", content: prompt },
-        ],
-        model: DeepSeepModelVersion.DeepSeek_V3,
-      },
-    });
+    const response = await this.deepseekClient
+      .path("/chat/completions")
+      .post({
+        body: {
+          messages: [
+            { role: "system", content: instructions },
+            { role: "user", content: prompt },
+          ],
+          model: this.deepseekModel,
+        },
+      });
 
     if (response.status !== "200") {
       const data =
@@ -262,7 +264,7 @@ export class AiAssistantService {
     const eventMessage = {
       userId: user._id,
       tokenCount: tokens,
-      model: model,
+      model: "deepseek",
     };
 
     await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
