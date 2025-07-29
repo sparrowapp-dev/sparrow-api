@@ -325,6 +325,13 @@ export class AdminWorkspaceService {
   async getWorkspaceSummary(workspaceId: string, hubId: string) {
     const workspace = await this.workspaceRepository.get(workspaceId);
     const hub = await this.adminHubService.findHubById(hubId);
+    const workspaceUserIds = new Set(
+      workspace.users.map((u) => u.id.toString()),
+    );
+
+    const nonWorkspaceHubMembers = hub.users.filter(
+      (user: any) => !workspaceUserIds.has(user.id.toString()),
+    );
     const workspace_summary = {
       totalCollections: workspace?.collection?.length ?? 0,
       totalContributors:
@@ -339,6 +346,7 @@ export class AdminWorkspaceService {
       )?.name,
       WorkspaceType: workspace?.workspaceType,
       hubName: hub?.name,
+      nonWorkspaceHubMembers,
     };
     return workspace_summary;
   }
