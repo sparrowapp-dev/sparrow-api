@@ -14,9 +14,10 @@ export class PromoCodeRepository {
   /**
    * Create a new promo code from Stripe response
    */
-  async createPromoCode(stripePromoCode: any): Promise<PromoCodeDto> {
+  async createPromoCode(stripePromoCode: any, createdBy?: string): Promise<PromoCodeDto> {
     const promoCodeData = {
       code: stripePromoCode.code,
+      createdBy: createdBy || 'system',
       promoCodeProvider: [
         {
           id: stripePromoCode.id,
