@@ -13,8 +13,14 @@ export class PromoCodeService {
   /**
    * Create a new promo code and save to database from Stripe response
    */
-  async createPromoCode(stripePromoCode: any): Promise<PromoCodeDto> {
-    return await this.promoCodeRepository.createPromoCode(stripePromoCode);
+  async createPromoCode(
+    stripePromoCode: any,
+    createdBy: string,
+  ): Promise<PromoCodeDto> {
+    return await this.promoCodeRepository.createPromoCode(
+      stripePromoCode,
+      createdBy,
+    );
   }
 
   /**
