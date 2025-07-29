@@ -612,6 +612,7 @@ export class StripeSubscriptionService {
       previousPeriodStart,
       previousPeriodEnd,
       eventId,
+      team?.billing?.status,
     );
   }
 
@@ -636,6 +637,7 @@ export class StripeSubscriptionService {
     previousPeriodStart: Date,
     previousPeriodEnd: Date,
     eventId?: string,
+    status?: string,
   ): Promise<void> {
     // Log plan change if this is an upgrade/downgrade
     if (isPlanChange || isSeatChange) {
@@ -749,6 +751,7 @@ export class StripeSubscriptionService {
         subscriptionId,
         planName: newPlan,
       },
+      status,
     );
   }
 

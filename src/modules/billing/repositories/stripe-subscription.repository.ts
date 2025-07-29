@@ -101,6 +101,26 @@ export class StripeSubscriptionRepository {
   }
 
   /**
+   * Find a team by Stripe customer ID
+   * @param customerId The Stripe customer ID
+   * @returns The team document or null if not found
+   */
+  async findTeamByCustomerId(customerId: string): Promise<any> {
+    try {
+      return await this.db
+        .collection(Collections.TEAM)
+        .findOne({ 
+          $or: [
+            { "billing.customerId": customerId },
+            { "billing.paymentProviders.customerId": customerId }
+          ]
+        });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Find teams with failed payment subscriptions that have expired billing cycles
    * @param currentDate The current date to compare against billing cycle end dates
    * @returns Array of team documents with expired failed subscriptions
