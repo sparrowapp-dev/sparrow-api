@@ -484,12 +484,20 @@ export class StripeSubscriptionService {
   ): Promise<void> {
     const { subscriptionId } =
       StripeSubscriptionHelpers.extractInvoiceData(invoice);
+
+    // Fetch the latest subscription from Stripe to get the correct seat count
+    let latestSubscription = null;
+    if (this.stripeService && subscriptionId) {
+      latestSubscription =
+        await this.stripeService.getSubscription(subscriptionId);
+    }
     const trialEndDateStr = metadata?.trial_end_date;
     const isTrialOngoing =
       trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
 
     // Initialize or update the licenses object based on billing seats
-    const currentSeats = metadata?.userCount || 1;
+    const currentSeats =
+      latestSubscription?.quantity || metadata?.userCount || 1;
     const existingUsedSeats =
       team.licenses?.usedSeats || team.users?.length || 0;
     const licenseUpdate: LicensesDto = {
@@ -604,6 +612,7 @@ export class StripeSubscriptionService {
       previousPeriodStart,
       previousPeriodEnd,
       eventId,
+      team?.billing?.status,
     );
   }
 
@@ -628,6 +637,7 @@ export class StripeSubscriptionService {
     previousPeriodStart: Date,
     previousPeriodEnd: Date,
     eventId?: string,
+    status?: string,
   ): Promise<void> {
     // Log plan change if this is an upgrade/downgrade
     if (isPlanChange || isSeatChange) {
@@ -741,6 +751,7 @@ export class StripeSubscriptionService {
         subscriptionId,
         planName: newPlan,
       },
+      status,
     );
   }
 

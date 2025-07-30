@@ -159,4 +159,12 @@ export class SetDefaultPaymentMethodDto {
   })
   @IsString()
   paymentMethodId: string;
+
+  @ApiPropertyOptional({
+    description: "Hub ID for audit tracking",
+    example: "hub_12345",
+  })
+  @IsOptional()
+  @IsString()
+  hubId?: string;
 }
