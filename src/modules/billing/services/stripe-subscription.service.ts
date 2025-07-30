@@ -593,6 +593,69 @@ export class StripeSubscriptionService {
     await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
       licenses: licenseUpdate,
     });
+
+    // Log trial events based on trial status
+    const wasInTrial = team.billing?.in_trial === true;
+    const context = {
+      actor: { type: BillingActorType.WEBHOOK, name: PaymentProvider.STRIPE },
+      source: BillingSource.STRIPE_WEBHOOK,
+      externalId: eventId,
+      reason: "Trial status change via successful payment",
+    };
+
+    if (isTrialOngoing && !wasInTrial) {
+      // Trial started - new trial began
+      await this.billingAuditService.recordTrialStarted(
+        metadata.hubId,
+        newPlan,
+        {
+          trialEndDate: period.end ? new Date(period.end * 1000) : new Date(),
+          seats: currentSeats,
+        },
+        context,
+        {
+          invoiceId: invoice.id,
+          subscriptionId,
+          planName: newPlan,
+        },
+      );
+    } else if (isTrialOngoing && wasInTrial) {
+      // Trial ended - either expired or converted
+      if (amount > 0) {
+        // Trial converted to paid (payment made)
+        await this.billingAuditService.recordTrialConverted(
+          metadata.hubId,
+          newPlan,
+          {
+            trialEndDate: new Date(), // Trial ended now
+            seats: currentSeats,
+            amount,
+            currency: invoice.currency,
+          },
+          context,
+          {
+            invoiceId: invoice.id,
+            subscriptionId,
+            planName: newPlan,
+          },
+        );
+        await this.billingAuditService.recordTrialExpired(
+          metadata.hubId,
+          newPlan,
+          {
+            trialEndDate: new Date(), // Trial ended now
+            seats: currentSeats,
+          },
+          context,
+          {
+            invoiceId: invoice.id,
+            subscriptionId,
+            planName: newPlan,
+          },
+        );
+      }
+    }
+
     // Log appropriate events based on payment type
     await this.logPaymentEvents(
       metadata.hubId,
@@ -1261,6 +1324,26 @@ export class StripeSubscriptionService {
               new: communityPlan.limits,
             };
           }
+
+          // Log trial expired event
+          await this.billingAuditService.recordTrialExpired(
+            team._id.toString(),
+            team.plan?.name || "unknown",
+            {
+              trialEndDate: team.billing?.current_period_end || new Date(),
+              seats: team.billing?.seats || 1,
+            },
+            {
+              actor: { type: BillingActorType.SYSTEM, name: "maintenance-job" },
+              source: BillingSource.BILLING_MAINTENANCE,
+              reason: "Trial period expired via maintenance job",
+            },
+            {
+              invoiceId: team?.billing?.latest_invoice,
+              teamName: team?.name,
+              planName: team?.plan?.name,
+            },
+          );
 
           // Log the plan change
           await this.billingAuditService.recordPlanChange(

@@ -613,6 +613,160 @@ export class BillingAuditService {
   }
 
   /**
+   * Record a trial started event
+   */
+  async recordTrialStarted(
+    entityId: string,
+    planName: string,
+    trialDetails: {
+      trialEndDate: Date;
+      seats?: number;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    return await this.recordBillingEvent({
+      eventType: BillingEventType.TRIAL_STARTED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "in_trial",
+          previousValue: false,
+          newValue: true,
+        },
+        {
+          field: "trial_end_date",
+          previousValue: null,
+          newValue: trialDetails.trialEndDate,
+        },
+        {
+          field: "plan_name",
+          previousValue: null,
+          newValue: planName,
+        },
+      ],
+      context,
+      metadata: {
+        trialEndDate: trialDetails.trialEndDate,
+        seats: trialDetails.seats || 1,
+        planName,
+        ...metadata,
+      },
+    });
+  }
+
+  /**
+   * Record a trial expired event
+   */
+  async recordTrialExpired(
+    entityId: string,
+    planName: string,
+    trialDetails: {
+      trialEndDate: Date;
+      seats?: number;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    return await this.recordBillingEvent({
+      eventType: BillingEventType.TRIAL_EXPIRED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "in_trial",
+          previousValue: true,
+          newValue: false,
+        },
+        {
+          field: "trial_status",
+          previousValue: "active",
+          newValue: "expired",
+        },
+      ],
+      context,
+      metadata: {
+        trialEndDate: trialDetails.trialEndDate,
+        seats: trialDetails.seats || 1,
+        planName,
+        ...metadata,
+      },
+    });
+  }
+
+  /**
+   * Record a trial converted event
+   */
+  async recordTrialConverted(
+    entityId: string,
+    planName: string,
+    conversionDetails: {
+      trialEndDate: Date;
+      seats?: number;
+      amount?: number;
+      currency?: string;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    const eventId = await this.recordBillingEvent({
+      eventType: BillingEventType.TRIAL_CONVERTED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "in_trial",
+          previousValue: true,
+          newValue: false,
+        },
+        {
+          field: "billing_type",
+          previousValue: "trial",
+          newValue: "paid",
+        },
+        {
+          field: "trial_status",
+          previousValue: "active",
+          newValue: "converted",
+        },
+      ],
+      context,
+      financialImpact: conversionDetails.amount && conversionDetails.currency
+        ? {
+            amount: conversionDetails.amount,
+            currency: conversionDetails.currency,
+            transactionType: BillingTransactionType.CHARGE,
+          }
+        : undefined,
+      metadata: {
+        trialEndDate: conversionDetails.trialEndDate,
+        seats: conversionDetails.seats || 1,
+        planName,
+        convertedAmount: conversionDetails.amount,
+        convertedCurrency: conversionDetails.currency,
+        ...metadata,
+      },
+    });
+
+    // Record transaction if payment amount is provided
+    if (conversionDetails.amount && conversionDetails.currency) {
+      await this.recordTransaction({
+        entityType: BillingEntityType.HUB,
+        entityId,
+        transactionType: BillingTransactionType.CHARGE,
+        amount: conversionDetails.amount,
+        currency: conversionDetails.currency,
+        description: `Trial converted to paid subscription`,
+        eventId,
+        subscriptionId: metadata?.subscriptionId,
+      });
+    }
+
+    return eventId;
+  }
+
+  /**
    * Record a hub creation event - start of billing eligibility
    */
   async recordHubCreated(
