@@ -1570,4 +1570,37 @@ export class collectionController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  /**
+   * Endpoint to Generate the Variables of whole Collection using AI.
+   */
+  @Post("generate-variables")
+  @ApiOperation({
+    summary: "Generate Variables",
+    description:
+      "This will Generate Variables for the Collection using AI",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Variables Generated Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Generate Variables" })
+  async generateVariables(
+    @Body() collectionDTO: Partial<CollectionRequestDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request?.user;
+    const workspaceId = collectionDTO?.workspaceId
+    const collectionId = collectionDTO.collectionId
+    const collectionVariables = await this.collectionRequestService.generateVariables(
+      collectionId,
+      workspaceId,
+      user
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collectionVariables,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }

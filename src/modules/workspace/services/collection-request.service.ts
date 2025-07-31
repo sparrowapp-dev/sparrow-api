@@ -39,6 +39,7 @@ import { ProducerService } from "@src/modules/common/services/event-producer.ser
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { Workspace } from "@src/modules/common/models/workspace.model";
+import { AiAssistantService } from "./ai-assistant.service";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -48,6 +49,7 @@ export class CollectionRequestService {
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
     private readonly encryptionService: EncryptionService,
+    private readonly aiAssistantService: AiAssistantService
   ) {}
 
   async addFolder(
@@ -2018,5 +2020,401 @@ export class CollectionRequestService {
       updateWorkspaceData,
     );
     return result;
+  }
+
+  async generateVariables(
+    collectionId: string,
+    workspaceId: string,
+    userId: DecodedUserObject
+  ): Promise<any> {
+    const collection = await this.collectionReposistory.getCollection(collectionId);
+
+    if (!collection) {
+      throw new BadRequestException("Collection Not Found");
+    }
+
+    // Extract data from collection
+    const { urls, bodies, queryParams } = this.extractFromItems(collection.items);
+
+    // Generate variables for each type
+    const urlVariables = this.generateUrlVariables(urls);
+    const bodyVariables = this.generateBodyVariables(bodies);
+    const queryVariables = this.generateQueryVariables(queryParams);
+
+    return {
+      url: urlVariables,
+      body: bodyVariables,
+      query: queryVariables
+    };
+  }
+
+  private clean(arr: any[] = []): any[] {
+    return Array.isArray(arr)
+      ? arr.filter(entry => {
+          const key = entry?.key?.trim().toLowerCase();
+          const value = entry?.value?.trim();
+          return key && value && key !== 'user-agent' && key !== 'accept-encoding';
+        })
+      : [];
+  }
+
+  private extractFromItems(items: any[]) {
+    const urls: string[] = [];
+    const bodies: any[] = [];
+    const queryParams: any[] = [];
+
+    const traverse = (items: any[]) => {
+      for (const item of items) {
+        const { type } = item;
+        let req = null;
+
+        switch (type) {
+          case 'REQUEST':
+          case 'AI_REQUEST':
+            req = item.request || item.aiRequest;
+            if (req?.url) urls.push(req.url);
+
+            const urlencoded = this.clean(req.body?.urlencoded);
+            const formdataText = this.clean(req.body?.formdata?.text);
+            const formdataFile = this.clean(req.body?.formdata?.file);
+            const raw = req.body?.raw || '';
+
+            const body: any = { raw };
+
+            if (urlencoded.length > 0) body.urlencoded = urlencoded;
+            if (formdataText.length > 0 || formdataFile.length > 0) {
+              body.formdata = {};
+              if (formdataText.length > 0) body.formdata.text = formdataText;
+              if (formdataFile.length > 0) body.formdata.file = formdataFile;
+            }
+
+            const hasBodyContent =
+              raw.trim() !== '' ||
+              (body.urlencoded?.length > 0) ||
+              (body.formdata?.text?.length > 0 || body.formdata?.file?.length > 0);
+
+            if (hasBodyContent) {
+              bodies.push(body);
+            }
+
+            const cleanedQueryParams = this.clean(req.queryParams);
+            if (cleanedQueryParams.length > 0) {
+              queryParams.push(cleanedQueryParams);
+            }
+            break;
+
+          case 'WEBSOCKET':
+            req = item.websocket;
+            if (req?.url) urls.push(req.url);
+
+            const wsBody: any = {};
+            if (req.message?.trim()) wsBody.message = req.message;
+            if (Object.keys(wsBody).length > 0) bodies.push(wsBody);
+
+            const cleanedWsQuery = this.clean(req.queryParams);
+            if (cleanedWsQuery.length > 0) queryParams.push(cleanedWsQuery);
+            break;
+
+          case 'SOCKETIO':
+            req = item.socketio;
+            if (req?.url) urls.push(req.url);
+
+            const socketBody: any = {};
+            if (req.message?.trim()) socketBody.message = req.message;
+            if (req.eventName?.trim()) socketBody.event = req.eventName;
+            if (Object.keys(socketBody).length > 0) bodies.push(socketBody);
+
+            const cleanedSocketQuery = this.clean(req.queryParams);
+            if (cleanedSocketQuery.length > 0) queryParams.push(cleanedSocketQuery);
+            break;
+
+          case 'GRAPHQL':
+            req = item.graphql;
+            if (req?.url) urls.push(req.url);
+
+            const gqlBody: any = {};
+            if (req.query?.trim()) gqlBody.query = req.query;
+            if (req.mutation?.trim()) gqlBody.mutation = req.mutation;
+            if (req.variables?.trim()) gqlBody.variables = req.variables;
+
+            if (Object.keys(gqlBody).length > 0) bodies.push(gqlBody);
+            break;
+
+          case 'FOLDER':
+            if (item.items) traverse(item.items);
+            break;
+
+          default:
+            break;
+        }
+      }
+    };
+
+    traverse(items);
+    return { urls, bodies, queryParams };
+  }
+
+  private generateUrlVariables(urls: string[]): Record<string, string> {
+    if (urls.length === 0) return {};
+
+    // Identify existing variables
+    const existingVariablePattern = /\{\{?[^}]+\}?\}/g;
+    const preservedVariables = new Set<string>();
+    
+    urls.forEach(url => {
+      const matches = url.match(existingVariablePattern);
+      if (matches) {
+        matches.forEach(match => preservedVariables.add(match));
+      }
+    });
+
+    // Find common substrings
+    const substringFrequency = new Map<string, { count: number; urls: number[] }>();
+    
+    urls.forEach((url, urlIndex) => {
+      // Clean URL by removing existing variables
+      let cleanUrl = url;
+      Array.from(preservedVariables).forEach((variable, index) => {
+        if (url.includes(variable)) {
+          const placeholder = `__VAR_${index}__`;
+          cleanUrl = cleanUrl.replace(variable, placeholder);
+        }
+      });
+      
+      // Split URL into meaningful parts
+      const parts = cleanUrl.split(/[\/\?&=]/).filter(part => part.length > 0);
+      
+      // Generate substrings
+      for (let i = 0; i < parts.length; i++) {
+        for (let j = i + 1; j <= Math.min(parts.length, i + 4); j++) {
+          const substring = parts.slice(i, j).join('/');
+          
+          // Skip invalid substrings
+          if (substring.includes('__VAR_') || 
+              substring.length < 3 || 
+              /^\d+$/.test(substring) ||
+              substring.includes('%') || 
+              substring.includes('=')) continue;
+          
+          // Find actual substring in original URL
+          const urlParts = url.split('/');
+          let fullSubstring = '';
+          
+          for (let k = 0; k < urlParts.length; k++) {
+            for (let l = k + 1; l <= urlParts.length; l++) {
+              const testSubstring = urlParts.slice(k, l).join('/');
+              if (testSubstring.includes(substring) && 
+                  !Array.from(preservedVariables).some(v => testSubstring.includes(v)) &&
+                  testSubstring.length >= 8) {
+                fullSubstring = testSubstring;
+                break;
+              }
+            }
+            if (fullSubstring) break;
+          }
+          
+          if (fullSubstring && url.includes(fullSubstring)) {
+            if (!substringFrequency.has(fullSubstring)) {
+              substringFrequency.set(fullSubstring, { count: 0, urls: [] });
+            }
+            
+            const entry = substringFrequency.get(fullSubstring)!;
+            if (!entry.urls.includes(urlIndex)) {
+              entry.count++;
+              entry.urls.push(urlIndex);
+            }
+          }
+        }
+      }
+    });
+
+    // Filter and rank candidates
+    const threshold = this.getAdaptiveThreshold(urls.length);
+    
+    const candidates = Array.from(substringFrequency.entries())
+      .filter(([substring, data]) => {
+        return data.count >= threshold && 
+               substring.length >= 8 && 
+               !Array.from(preservedVariables).some(v => substring.includes(v));
+      })
+      .map(([substring, data]) => ({
+        substring,
+        count: data.count,
+        length: substring.length,
+        priority: data.count * 1000 + substring.length
+      }))
+      .sort((a, b) => b.priority - a.priority);
+
+    // Select non-overlapping candidates
+    const selectedCandidates: typeof candidates = [];
+    
+    for (const candidate of candidates) {
+      let shouldInclude = true;
+      
+      for (const selected of selectedCandidates) {
+        if (candidate.substring.includes(selected.substring) || 
+            selected.substring.includes(candidate.substring)) {
+          shouldInclude = false;
+          break;
+        }
+      }
+      
+      if (shouldInclude) {
+        selectedCandidates.push(candidate);
+      }
+      
+      if (selectedCandidates.length >= 8) break;
+    }
+
+    // Generate variable mappings
+    const variables: Record<string, string> = {};
+    selectedCandidates.forEach((candidate, index) => {
+      variables[`{{url_var${index + 1}}}`] = candidate.substring;
+    });
+
+    return variables;
+  }
+
+  private generateBodyVariables(bodies: any[]): Record<string, string> {
+    if (bodies.length === 0) return {};
+
+    const valueFrequencyByKey = new Map<string, Map<string, number>>();
+    const valueCountByKey: Record<string, number> = {};
+
+    const extractKeyValuePairs = (obj: any, parentKey = ''): Array<[string, string]> => {
+      const pairs: Array<[string, string]> = [];
+
+      if (typeof obj === 'string') {
+        if (obj.trim()) pairs.push([parentKey || 'body', obj.trim()]);
+      } else if (Array.isArray(obj)) {
+        obj.forEach((item) => pairs.push(...extractKeyValuePairs(item, parentKey)));
+      } else if (typeof obj === 'object' && obj !== null) {
+        for (const [k, v] of Object.entries(obj)) {
+          pairs.push(...extractKeyValuePairs(v, k));
+        }
+      }
+
+      return pairs;
+    };
+
+    // Parse all values with keys
+    for (const body of bodies) {
+      // Process urlencoded
+      if (body.urlencoded) {
+        for (const item of body.urlencoded) {
+          if (item.checked !== false && item.value?.trim()) {
+            const key = item.key.trim();
+            const value = item.value.trim();
+            this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
+          }
+        }
+      }
+
+      // Process formdata
+      if (body.formdata?.text) {
+        for (const item of body.formdata.text) {
+          if (item.checked !== false && item.value?.trim()) {
+            const key = item.key.trim();
+            const value = item.value.trim();
+            this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
+          }
+        }
+      }
+
+      // Process raw JSON
+      if (body.raw?.trim()) {
+        try {
+          const parsed = JSON.parse(body.raw);
+          const keyVals = extractKeyValuePairs(parsed);
+          for (const [key, value] of keyVals) {
+            this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+      }
+
+      // Process other body types (websocket, socketio, graphql)
+      ['message', 'event', 'query', 'mutation', 'variables'].forEach(field => {
+        if (body[field]?.trim()) {
+          this.addToFrequencyMap(field, body[field].trim(), valueFrequencyByKey, valueCountByKey);
+        }
+      });
+    }
+
+    // Generate variables
+    const result: Record<string, string> = {};
+    const keyVarCounters: Record<string, number> = {};
+
+    for (const [key, valMap] of valueFrequencyByKey.entries()) {
+      const threshold = this.getAdaptiveThreshold(valueCountByKey[key]);
+      keyVarCounters[key] = keyVarCounters[key] || 1;
+
+      for (const [value, count] of valMap.entries()) {
+        if (count >= threshold) {
+          const cleanKey = key || 'body';
+          const varName = `{{${cleanKey}_var${keyVarCounters[key]++}}}`;
+          result[varName] = value;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
+    if (paramGroups.length === 0) return {};
+
+    const keyValueFrequency = new Map<string, Map<string, number>>();
+    const keyValueCount: Record<string, number> = {};
+
+    // Count frequencies per key
+    for (const group of paramGroups) {
+      for (const param of group) {
+        if (param.checked !== false && param.value?.trim()) {
+          const key = param.key;
+          const value = param.value.trim();
+          this.addToFrequencyMap(key, value, keyValueFrequency, keyValueCount);
+        }
+      }
+    }
+
+    // Generate variable names per key
+    const result: Record<string, string> = {};
+    const keyCounters: Record<string, number> = {};
+
+    for (const [key, valMap] of keyValueFrequency.entries()) {
+      const threshold = this.getAdaptiveThreshold(keyValueCount[key]);
+      keyCounters[key] = keyCounters[key] || 1;
+
+      for (const [value, count] of valMap.entries()) {
+        if (count >= threshold) {
+          const varName = `{{${key}_var${keyCounters[key]++}}}`;
+          result[varName] = value;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private addToFrequencyMap(
+    key: string, 
+    value: string, 
+    frequencyMap: Map<string, Map<string, number>>, 
+    countMap: Record<string, number>
+  ) {
+    if (!frequencyMap.has(key)) {
+      frequencyMap.set(key, new Map());
+      countMap[key] = 0;
+    }
+
+    const valMap = frequencyMap.get(key)!;
+    valMap.set(value, (valMap.get(value) || 0) + 1);
+    countMap[key]++;
+  }
+
+  private getAdaptiveThreshold(count: number): number {
+    return count <= 10 ? 3 : 5;
   }
 }
