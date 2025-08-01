@@ -39,7 +39,6 @@ import { ProducerService } from "@src/modules/common/services/event-producer.ser
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { Workspace } from "@src/modules/common/models/workspace.model";
-import { AiAssistantService } from "./ai-assistant.service";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -48,8 +47,7 @@ export class CollectionRequestService {
     private readonly workspaceService: WorkspaceService,
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
-    private readonly encryptionService: EncryptionService,
-    private readonly aiAssistantService: AiAssistantService
+    private readonly encryptionService: EncryptionService
   ) {}
 
   async addFolder(
