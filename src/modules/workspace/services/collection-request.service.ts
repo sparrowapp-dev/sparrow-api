@@ -47,7 +47,7 @@ export class CollectionRequestService {
     private readonly workspaceService: WorkspaceService,
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
-    private readonly encryptionService: EncryptionService
+    private readonly encryptionService: EncryptionService,
   ) {}
 
   async addFolder(
@@ -1618,26 +1618,7 @@ export class CollectionRequestService {
     };
     let updateMessage = ``;
     if (aiRequest.items.type === ItemTypeEnum.AI_REQUEST) {
-
-      let encryptedAuthValue: string | undefined;
-      if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
-          encryptedAuthValue = this.encryptionService.encrypt(
-            aiRequest.items.aiRequest.auth.apiKey.authValue as string,
-          );
-          aiRequestObj.aiRequest = {
-          ...aiRequest.items.aiRequest,
-          auth: {
-            ...aiRequest.items.aiRequest.auth,
-            apiKey: {
-              ...aiRequest.items.aiRequest.auth.apiKey,
-              authValue: encryptedAuthValue,
-            },
-          },
-        };
-      }
-      else {
-        aiRequestObj.aiRequest = aiRequest.items.aiRequest;
-      }
+      aiRequestObj.aiRequest = aiRequest.items.aiRequest;
 
       await this.collectionReposistory.addAiRequest(
         aiRequest.collectionId,
@@ -1662,58 +1643,8 @@ export class CollectionRequestService {
         }),
       });
 
-      if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
-          return {
-        ...aiRequestObj,
-        aiRequest: {
-          ...aiRequestObj.aiRequest,
-          auth: {
-            ...aiRequestObj.aiRequest.auth,
-            apiKey: {
-              ...aiRequestObj.aiRequest.auth.apiKey,
-              authValue: this.encryptionService.decrypt(
-                aiRequestObj.aiRequest.auth.apiKey.authValue as string,
-              ),
-            },
-          },
-        },
-      };
-      }
-      else {
-        return aiRequestObj;
-      }
-
-
+      return aiRequestObj;
     } else {
-      if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
-        const encryptedAuthValue = this.encryptionService.encrypt(
-        aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
-      );
-      aiRequestObj.items = [
-        {
-          id: uuidv4(),
-          name: aiRequest.items.items.name,
-          type: aiRequest.items.items.type,
-          description: aiRequest.items.items.description,
-          aiRequest: {
-            ...aiRequest.items.items.aiRequest,
-            auth: {
-              ...aiRequest.items.items.aiRequest.auth,
-              apiKey: {
-                ...aiRequest.items.items.aiRequest.auth.apiKey,
-                authValue: encryptedAuthValue,
-              },
-            },
-          },
-          source: SourceTypeEnum.USER,
-          createdBy: user?.name,
-          updatedBy: user?.name,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
-    }
-    else {
       aiRequestObj.items = [
         {
           id: uuidv4(),
@@ -1728,7 +1659,6 @@ export class CollectionRequestService {
           updatedAt: new Date(),
         },
       ];
-    }
       await this.collectionReposistory.addAiRequestInFolder(
         aiRequest.collectionId,
         aiRequestObj,
@@ -1752,28 +1682,8 @@ export class CollectionRequestService {
           workspaceId: aiRequest.workspaceId,
         }),
       });
-      if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
-        // Decrypt before returning
-        const decryptedItem = {
-          ...aiRequestObj.items[0],
-          aiRequest: {
-            ...aiRequestObj.items[0].aiRequest,
-            auth: {
-              ...aiRequestObj.items[0].aiRequest.auth,
-              apiKey: {
-                ...aiRequestObj.items[0].aiRequest.auth.apiKey,
-                authValue: this.encryptionService.decrypt(
-                  aiRequestObj.items[0].aiRequest.auth.apiKey.authValue as string,
-                ),
-              },
-            },
-          },
-        };
-        return decryptedItem;
-      }
-      else {
-        return aiRequestObj.items[0];
-      }
+
+      return aiRequestObj.items[0];
     }
   }
 
@@ -1796,6 +1706,8 @@ export class CollectionRequestService {
     );
     await this.checkPermission(aiRequest.workspaceId, user._id);
     // Encrypt only apiKey.authValue
+    let encryptedAuthValue: string | undefined;
+    if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
       const encryptedAuthValue = this.encryptionService.encrypt(
         aiRequest.items.aiRequest.auth.apiKey.authValue as string,
       );
@@ -1810,6 +1722,7 @@ export class CollectionRequestService {
           },
         },
       };
+    }
     const collection = await this.collectionReposistory.updateAiRequest(
       aiRequest.collectionId,
       aiRequestId,
