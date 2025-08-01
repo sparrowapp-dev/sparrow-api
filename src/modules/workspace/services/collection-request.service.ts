@@ -1685,7 +1685,7 @@ export class CollectionRequestService {
 
 
     } else {
-      if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
+      if (aiRequest.items.items.aiRequest?.auth?.apiKey?.authValue) {
         const encryptedAuthValue = this.encryptionService.encrypt(
         aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
       );
@@ -1796,22 +1796,42 @@ export class CollectionRequestService {
     );
     await this.checkPermission(aiRequest.workspaceId, user._id);
     // Encrypt only apiKey.authValue
-    let encryptedAuthValue: string | undefined;
-    if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
-      const encryptedAuthValue = this.encryptionService.encrypt(
-        aiRequest.items.aiRequest.auth.apiKey.authValue as string,
-      );
+    if (aiRequest.items.type === ItemTypeEnum.AI_REQUEST) {
+      let encryptedAuthValue: string | undefined;
+      if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
+        const encryptedAuthValue = this.encryptionService.encrypt(
+          aiRequest.items.aiRequest.auth.apiKey.authValue as string,
+        );
 
-      aiRequest.items.aiRequest = {
-        ...aiRequest.items.aiRequest,
-        auth: {
-          ...aiRequest.items.aiRequest.auth,
-          apiKey: {
-            ...aiRequest.items.aiRequest.auth.apiKey,
-            authValue: encryptedAuthValue,
+        aiRequest.items.aiRequest = {
+          ...aiRequest.items.aiRequest,
+          auth: {
+            ...aiRequest.items.aiRequest.auth,
+            apiKey: {
+              ...aiRequest.items.aiRequest.auth.apiKey,
+              authValue: encryptedAuthValue,
+            },
           },
-        },
-      };
+        };
+      }
+    }
+    else {
+      if (aiRequest.items.items.aiRequest?.auth?.apiKey?.authValue) {
+        const encryptedAuthValue = this.encryptionService.encrypt(
+          aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
+        );
+
+        aiRequest.items.items.aiRequest = {
+          ...aiRequest.items.items.aiRequest,
+          auth: {
+            ...aiRequest.items.items.aiRequest.auth,
+            apiKey: {
+              ...aiRequest.items.items.aiRequest.auth.apiKey,
+              authValue: encryptedAuthValue,
+            },
+          },
+        };
+      }
     }
     const collection = await this.collectionReposistory.updateAiRequest(
       aiRequest.collectionId,
