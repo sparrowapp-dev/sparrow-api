@@ -649,6 +649,11 @@ export class AiAssistantService {
     }
 
     if (!this.deepseekClient) {
+      Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException("DeepSeek Initialization Failed.");
+        });
       throw new InternalServerErrorException(
         "DeepSeek AI client is not initialized.",
       );
@@ -665,12 +670,17 @@ export class AiAssistantService {
         } else {
           console.warn("Invalid conversation format: Not a string or array");
         }
-      } catch (e) {
-        console.warn("Failed to parse conversation:", e);
+      } catch (error) {
+        console.warn("Failed to parse conversation:", error);
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setExtra("emailId", emailId);
+          Sentry.captureException(error);
+        });
       }
     }
 
-    const userInput = `{Text: ${text}, API data: ${apiData}}`;
+    const userInput = JSON.stringify({ Text: text, "API data": apiData });
 
     const messageHistory: ChatMessage[] = [
       { role: Roles.system, content: instructions },
@@ -744,12 +754,21 @@ export class AiAssistantService {
               model: model,
             };
 
-            await this.producerService.produce(
-              TOPIC.AI_RESPONSE_GENERATED_TOPIC,
-              {
-                value: JSON.stringify(eventMessage),
-              },
-            );
+            try {
+              await this.producerService.produce(
+                TOPIC.AI_RESPONSE_GENERATED_TOPIC,
+                {
+                  value: JSON.stringify(eventMessage),
+                },
+              );
+            } catch (e) {
+              console.warn("Kafka logging failed", e);
+              Sentry.withScope((scope) => {
+                  scope.setTag("emailId", emailId);
+                  scope.setExtra("emailId", emailId);
+                  Sentry.captureException(e);
+                });
+              }
 
             const activityLog = {
               userId: user._id.toString(),
@@ -759,15 +778,30 @@ export class AiAssistantService {
               threadId: "null",
             };
 
+            try {
+              await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+                value: JSON.stringify(activityLog),
+              });
+            } catch (e) {
+              console.warn("Kafka logging failed", e);
+              Sentry.withScope((scope) => {
+                  scope.setTag("emailId", emailId);
+                  scope.setExtra("emailId", emailId);
+                  Sentry.captureException(e);
+                });
+              }
+
             // Send activity log to Kafka topic
-            await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
-              value: JSON.stringify(activityLog),
-            });
           } else {
             console.warn("Run usage not yet available.");
           }
         } catch (e) {
           console.error("Invalid JSON in event data:", event.data, e);
+          Sentry.withScope((scope) => {
+            scope.setTag("emailId", emailId);
+            scope.setExtra("emailId", emailId);
+            Sentry.captureException(e);
+          });
         }
       }
     } catch (error) {
@@ -775,7 +809,7 @@ export class AiAssistantService {
       Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
           scope.setExtra("emailId", emailId);
-          Sentry.captureException(error.message);
+          Sentry.captureException(error);
       });
       client.send(
         JSON.stringify({
@@ -1794,6 +1828,11 @@ export class AiAssistantService {
         try {
           parsedData = JSON.parse(message);
         } catch (err) {
+          Sentry.withScope((scope) => {
+            scope.setTag("emailId", parsedData.emailId);
+            scope.setExtra("emailId", parsedData.emailId);
+            Sentry.captureException(err);
+          });
           client.send(
             JSON.stringify({ event: "error", message: "Invalid JSON format." }),
           );
@@ -2004,7 +2043,7 @@ export class AiAssistantService {
     } catch (error) {
       console.error("Error in WebSocket loop:", error);
         Sentry.withScope((scope) => {
-        Sentry.captureException(error.message);
+        Sentry.captureException(error);
       });
       if (client.readyState === WebSocket.OPEN) {
         client.send(
