@@ -1842,6 +1842,21 @@ export class CollectionRequestService {
     const collectionData = await this.collectionReposistory.getCollection(
       aiRequest.collectionId,
     );
+    // Decrypt authValue in flat structure
+    if (collection?.aiRequest?.auth?.apiKey?.authValue) {
+      collection.aiRequest.auth.apiKey.authValue = this.encryptionService.decrypt(
+        String(collection.aiRequest.auth.apiKey.authValue),
+      );
+    }
+
+    // Decrypt authValue in nested structure
+    if (collection?.items?.items?.aiRequest?.auth?.apiKey?.authValue) {
+      collection.items.items.aiRequest.auth.apiKey.authValue =
+        this.encryptionService.decrypt(
+          String(collection.items.items.aiRequest.auth.apiKey.authValue),
+        );
+    }
+
     const currentWorkspaceObject = new ObjectId(aiRequest.workspaceId);
     const updateWorkspaceData: Partial<Workspace> = {
       updatedAt: new Date(),
