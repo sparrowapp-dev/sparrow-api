@@ -152,6 +152,15 @@ export class UpdateTeamDto {
   hubUrl?: string;
 }
 
+export class TeamDtoWithTimeStamps extends TeamDto {
+  @IsDateString()
+  updatedAt: Date;
+
+  @IsString()
+  @IsOptional()
+  updatedBy?: string;
+}
+
 export class ResponseTeam {
   @IsString()
   @IsNotEmpty()

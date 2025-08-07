@@ -28,6 +28,7 @@ import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
 import { InternalServerErrorException } from "@nestjs/common";
+import { TeamDtoWithTimeStamps } from "../payloads/team.payload";
 /**
  * Team User Service
  */
@@ -1202,6 +1203,11 @@ export class TeamUserService {
     });
     // now remove it from invites array
     await this.removeTeamInvite(teamId, matchedInvite.email);
+    const updatePayload: TeamDtoWithTimeStamps = {
+      updatedAt: new Date(),
+      updatedBy: "System",
+    };
+    await this.teamRepository.updateTeamById(teamObjectId, updatePayload);
     return {
       teamId: teamId,
       email: matchedInvite.email,
@@ -1274,6 +1280,11 @@ export class TeamUserService {
     });
     // now remove it from invites array
     await this.removeTeamInvite(teamId, matchedInvite.email);
+    const updatePayload: TeamDtoWithTimeStamps = {
+      updatedAt: new Date(),
+      updatedBy: "System",
+    };
+    await this.teamRepository.updateTeamById(teamObjectId, updatePayload);
   }
 
   /**
@@ -1371,6 +1382,11 @@ export class TeamUserService {
       throw new NotFoundException("Invite not found");
     }
     const data = await this.removeTeamInvite(teamId, senderEmail);
+    const updatePayload: TeamDtoWithTimeStamps = {
+      updatedAt: new Date(),
+      updatedBy: "System",
+    };
+    await this.teamRepository.updateTeamById(teamObjectId, updatePayload);
     return data;
   }
 
@@ -1480,6 +1496,11 @@ export class TeamUserService {
       const promise = [this.emailService.sendEmail(transporter, mailOptions)];
       await Promise.all(promise);
     }
+    const updatePayload: TeamDtoWithTimeStamps = {
+      updatedAt: new Date(),
+      updatedBy: "System",
+    };
+    await this.teamRepository.updateTeamById(teamObjectId, updatePayload);
     return response;
   }
 
@@ -1558,6 +1579,11 @@ export class TeamUserService {
         : `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
     };
     await this.emailService.sendEmail(transporter, mailOptions);
+    const updatePayload: TeamDtoWithTimeStamps = {
+      updatedAt: new Date(),
+      updatedBy: "System",
+    };
+    await this.teamRepository.updateTeamById(teamObjectId, updatePayload);
     return response;
   }
 
@@ -1719,5 +1745,14 @@ export class TeamUserService {
       }
       await this.emailService.sendEmail(transporter, mailOptions);
     }
+  }
+
+  async teamTimestamps(teamId: string) {
+    const teamDetails = await this.teamService.get(teamId);
+    const timestamps = {
+      updatedAt: teamDetails?.updatedAt,
+      updatedBy: teamDetails?.updatedBy,
+    };
+    return timestamps;
   }
 }

@@ -710,4 +710,17 @@ export class TeamController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Get(":teamId/updates")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "It will send updated timestamps.",
+    description: "IT will be provides team time stamps.",
+  })
+  async getTeamUpdateStatus(@Param("teamId") teamId: string) {
+    const teamTimestamps = await this.teamUserService.teamTimestamps(teamId);
+    if (teamTimestamps) {
+      return teamTimestamps;
+    }
+  }
 }

@@ -20,6 +20,7 @@ import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { PlanDto } from "../payloads/plan.payload";
 import { DecodedUserObject } from "@src/types/fastify";
+import { TeamDtoWithTimeStamps } from "../payloads/team.payload";
 
 /**
  * Team Service
@@ -87,7 +88,7 @@ export class TeamRepository {
     return team;
   }
 
-   /**
+  /**
    * Fetches teams from database by UUID
    * @param {string[]} teamIds
    * @returns {Promise<Team>} queried team data
@@ -95,7 +96,7 @@ export class TeamRepository {
   async getTeamsByIds(teamIds: string[]): Promise<WithId<Team>[]> {
     const teams = await this.db.collection<Team>(Collections.TEAM)
     .find({ _id: { $in: teamIds.map(id => new ObjectId(id)) } })
-    .toArray();
+      .toArray();
     if (!teams) {
       throw new BadRequestException(
         "The teams with that ids could not be found.",
@@ -165,7 +166,7 @@ export class TeamRepository {
 
   async updateTeamById(
     id: ObjectId,
-    updateParams: Partial<TeamDto>,
+    updateParams: Partial<TeamDtoWithTimeStamps>,
   ): Promise<WithId<Team>> {
     const updatedTeamParams = {
       $set: updateParams,
