@@ -39,6 +39,7 @@ export class AdminHubsService {
         role: matchedUser?.role,
         users: team.users,
         workspaces: team.workspaces,
+        plan: team?.plan?.name
       };
     });
   }
