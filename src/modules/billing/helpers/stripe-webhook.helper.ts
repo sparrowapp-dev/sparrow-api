@@ -5,7 +5,11 @@ import {
   PaymentEventType,
 } from "../gateways/stripe-webhook.gateway";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
-import { SubscriptionStatus } from "@src/modules/common/enum/billing.enum";
+import {
+  SubscriptionStatus,
+  BillingActorType,
+  BillingSource,
+} from "@src/modules/common/enum/billing.enum";
 import { PaymentEmailHelper } from "../helpers/payment-email.helper";
 
 @Injectable()
@@ -53,6 +57,10 @@ export class StripeWebhookHelper {
 
       case "subscription_schedule.updated":
         await this.handleSubscriptionScheduleUpdated(event);
+        break;
+
+      case "payment_method.attached":
+        await this.handlePaymentMethodAttached(event);
         break;
 
       default:
@@ -435,5 +443,58 @@ export class StripeWebhookHelper {
     }
 
     return null;
+  }
+
+  /**
+   * Handle payment method attached webhook event
+   */
+  private async handlePaymentMethodAttached(event: any): Promise<void> {
+    const paymentMethod = event.data.object;
+    const customerId = paymentMethod.customer;
+
+    // Find the team associated with this customer via billing.customerId
+    const team = await this.findTeamByCustomerId(customerId);
+
+    if (team) {
+      // Get billing audit service from the subscription service
+      const billingAuditService = (this.stripeSubscriptionService as any)
+        .billingAuditService;
+
+      if (billingAuditService) {
+        await billingAuditService.recordPaymentMethodAdded(
+          team._id.toString(),
+          {
+            paymentMethodId: paymentMethod.id,
+            type: paymentMethod.type,
+            brand: paymentMethod.card?.brand,
+            last4: paymentMethod.card?.last4,
+          },
+          {
+            actor: {
+              type: BillingActorType.SYSTEM,
+              name: BillingSource.STRIPE_WEBHOOK,
+            },
+            source: BillingSource.STRIPE_WEBHOOK,
+            externalId: event.id,
+            reason: "Payment method attached via Stripe webhook",
+          },
+          {
+            customerId,
+          },
+        );
+      }
+    }
+  }
+
+  /**
+   * Helper method to find team by Stripe customer ID
+   */
+  private async findTeamByCustomerId(customerId: string): Promise<any> {
+    try {
+      return await this.stripeSubscriptionRepo.findTeamByCustomerId(customerId);
+    } catch (error) {
+      console.error("Error finding team by customer ID:", error);
+      return null;
+    }
   }
 }

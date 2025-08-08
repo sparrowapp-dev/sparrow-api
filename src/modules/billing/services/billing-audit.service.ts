@@ -12,6 +12,8 @@ import {
   BillingEventDto,
   BillingTransactionDto,
 } from "@src/modules/common/models/billing.model";
+import { P } from "pino";
+import { PaymentEventType } from "../gateways/stripe-webhook.gateway";
 
 /**
  * Billing Audit Service - Enhanced with Hub Lifecycle Tracking
@@ -243,6 +245,7 @@ export class BillingAuditService {
     currency: string,
     context: BillingEventDto["context"],
     metadata?: Record<string, any>,
+    status?: string,
   ): Promise<string> {
     const eventId = await this.recordBillingEvent({
       eventType: success
@@ -268,6 +271,34 @@ export class BillingAuditService {
       metadata,
     });
 
+    // Handle automatic dunning events
+    if (!success && metadata?.invoiceId) {
+      // Record dunning started for payment failures
+      await this.recordDunningStarted(
+        entityId,
+        {
+          invoiceId: metadata.invoiceId,
+          attemptNumber: metadata.attemptNumber || 1,
+        },
+        context,
+        { triggerredByPaymentFailure: true, ...metadata },
+      );
+    } else if (success && status === PaymentEventType.PAYMENT_FAILED) {
+      // Record dunning resolved for successful payments that resolve dunning
+      await this.recordDunningResolved(
+        entityId,
+        {
+          invoiceId: metadata.invoiceId,
+          totalAttempts: metadata.totalAttempts || 1,
+          resolutionMethod: PaymentEventType.PAYMENT_SUCCESS,
+          amount,
+          currency,
+        },
+        context,
+        { resolvedByPaymentSuccess: true, ...metadata },
+      );
+    }
+
     // Record transaction if payment succeeded
     if (success) {
       await this.recordTransaction({
@@ -282,6 +313,144 @@ export class BillingAuditService {
         subscriptionId: metadata?.subscriptionId,
       });
     }
+
+    return eventId;
+  }
+
+  /**
+   * Record a payment method added event
+   */
+  async recordPaymentMethodAdded(
+    entityId: string,
+    paymentMethodDetails: {
+      paymentMethodId: string;
+      type: string;
+      brand?: string;
+      last4?: string;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    return await this.recordBillingEvent({
+      eventType: BillingEventType.PAYMENT_METHOD_ADDED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "payment_method",
+          previousValue: null,
+          newValue: {
+            id: paymentMethodDetails.paymentMethodId,
+            type: paymentMethodDetails.type,
+            brand: paymentMethodDetails.brand,
+            last4: paymentMethodDetails.last4,
+          },
+        },
+      ],
+      context,
+      metadata: {
+        paymentMethodId: paymentMethodDetails.paymentMethodId,
+        paymentMethodType: paymentMethodDetails.type,
+        ...metadata,
+      },
+    });
+  }
+
+  /**
+   * Record dunning started event - when payment recovery process begins
+   */
+  async recordDunningStarted(
+    entityId: string,
+    dunningDetails: {
+      invoiceId: string;
+      attemptNumber: number;
+      failureReason?: string;
+      nextAttemptDate?: Date;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    return await this.recordBillingEvent({
+      eventType: BillingEventType.DUNNING_STARTED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "dunning_status",
+          previousValue: "none",
+          newValue: "active",
+        },
+        {
+          field: "payment_attempt_count",
+          previousValue: dunningDetails.attemptNumber - 1,
+          newValue: dunningDetails.attemptNumber,
+        },
+      ],
+      context,
+      metadata: {
+        invoiceId: dunningDetails.invoiceId,
+        attemptNumber: dunningDetails.attemptNumber,
+        ...metadata,
+      },
+    });
+  }
+
+  /**
+   * Record dunning resolved event - when payment recovery succeeds
+   */
+  async recordDunningResolved(
+    entityId: string,
+    resolutionDetails: {
+      invoiceId: string;
+      totalAttempts: number;
+      resolutionMethod: string; // 'payment_succeeded' | 'manual_intervention' | 'subscription_updated'
+      amount: number;
+      currency: string;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    const eventId = await this.recordBillingEvent({
+      eventType: BillingEventType.DUNNING_RESOLVED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "dunning_status",
+          previousValue: "active",
+          newValue: "resolved",
+        },
+        {
+          field: "payment_status",
+          previousValue: "failed",
+          newValue: "succeeded",
+        },
+      ],
+      context,
+      financialImpact: {
+        amount: resolutionDetails.amount,
+        currency: resolutionDetails.currency,
+        transactionType: BillingTransactionType.CHARGE,
+      },
+      metadata: {
+        invoiceId: resolutionDetails.invoiceId,
+        totalAttempts: resolutionDetails.totalAttempts,
+        resolutionMethod: resolutionDetails.resolutionMethod,
+        ...metadata,
+      },
+    });
+
+    // Record transaction for successful dunning resolution
+    await this.recordTransaction({
+      entityType: BillingEntityType.HUB,
+      entityId,
+      transactionType: BillingTransactionType.CHARGE,
+      amount: resolutionDetails.amount,
+      currency: resolutionDetails.currency,
+      description: `Payment recovered after ${resolutionDetails.totalAttempts} attempts`,
+      eventId,
+      invoiceId: resolutionDetails.invoiceId,
+    });
 
     return eventId;
   }
@@ -441,6 +610,160 @@ export class BillingAuditService {
               : new Date(),
       },
     });
+  }
+
+  /**
+   * Record a trial started event
+   */
+  async recordTrialStarted(
+    entityId: string,
+    planName: string,
+    trialDetails: {
+      trialEndDate: Date;
+      seats?: number;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    return await this.recordBillingEvent({
+      eventType: BillingEventType.TRIAL_STARTED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "in_trial",
+          previousValue: false,
+          newValue: true,
+        },
+        {
+          field: "trial_end_date",
+          previousValue: null,
+          newValue: trialDetails.trialEndDate,
+        },
+        {
+          field: "plan_name",
+          previousValue: null,
+          newValue: planName,
+        },
+      ],
+      context,
+      metadata: {
+        trialEndDate: trialDetails.trialEndDate,
+        seats: trialDetails.seats || 1,
+        planName,
+        ...metadata,
+      },
+    });
+  }
+
+  /**
+   * Record a trial expired event
+   */
+  async recordTrialExpired(
+    entityId: string,
+    planName: string,
+    trialDetails: {
+      trialEndDate: Date;
+      seats?: number;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    return await this.recordBillingEvent({
+      eventType: BillingEventType.TRIAL_EXPIRED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "in_trial",
+          previousValue: true,
+          newValue: false,
+        },
+        {
+          field: "trial_status",
+          previousValue: "active",
+          newValue: "expired",
+        },
+      ],
+      context,
+      metadata: {
+        trialEndDate: trialDetails.trialEndDate,
+        seats: trialDetails.seats || 1,
+        planName,
+        ...metadata,
+      },
+    });
+  }
+
+  /**
+   * Record a trial converted event
+   */
+  async recordTrialConverted(
+    entityId: string,
+    planName: string,
+    conversionDetails: {
+      trialEndDate: Date;
+      seats?: number;
+      amount?: number;
+      currency?: string;
+    },
+    context: BillingEventDto["context"],
+    metadata?: Record<string, any>,
+  ): Promise<string> {
+    const eventId = await this.recordBillingEvent({
+      eventType: BillingEventType.TRIAL_CONVERTED,
+      entityType: BillingEntityType.HUB,
+      entityId,
+      changes: [
+        {
+          field: "in_trial",
+          previousValue: true,
+          newValue: false,
+        },
+        {
+          field: "billing_type",
+          previousValue: "trial",
+          newValue: "paid",
+        },
+        {
+          field: "trial_status",
+          previousValue: "active",
+          newValue: "converted",
+        },
+      ],
+      context,
+      financialImpact: conversionDetails.amount && conversionDetails.currency
+        ? {
+            amount: conversionDetails.amount,
+            currency: conversionDetails.currency,
+            transactionType: BillingTransactionType.CHARGE,
+          }
+        : undefined,
+      metadata: {
+        trialEndDate: conversionDetails.trialEndDate,
+        seats: conversionDetails.seats || 1,
+        planName,
+        convertedAmount: conversionDetails.amount,
+        convertedCurrency: conversionDetails.currency,
+        ...metadata,
+      },
+    });
+
+    // Record transaction if payment amount is provided
+    if (conversionDetails.amount && conversionDetails.currency) {
+      await this.recordTransaction({
+        entityType: BillingEntityType.HUB,
+        entityId,
+        transactionType: BillingTransactionType.CHARGE,
+        amount: conversionDetails.amount,
+        currency: conversionDetails.currency,
+        description: `Trial converted to paid subscription`,
+        eventId,
+        subscriptionId: metadata?.subscriptionId,
+      });
+    }
+
+    return eventId;
   }
 
   /**

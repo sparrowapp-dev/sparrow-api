@@ -76,6 +76,9 @@ export enum BillingEventType {
   // Payment events
   PAYMENT_SUCCEEDED = "payment_succeeded",
   PAYMENT_FAILED = "payment_failed",
+  PAYMENT_METHOD_ADDED = "payment_method_added",
+  DUNNING_STARTED = "dunning_started",
+  DUNNING_RESOLVED = "dunning_resolved",
 
   // Trial events
   TRIAL_STARTED = "trial_started",
