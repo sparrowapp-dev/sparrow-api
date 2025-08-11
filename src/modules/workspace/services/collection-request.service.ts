@@ -2181,17 +2181,19 @@ export class CollectionRequestService {
     }
 
     // Extract data from collection
-    const { urls, bodies, queryParams } = this.extractFromItems(collection.items);
+    const { urls, bodies, queryParams, headers } = this.extractFromItems(collection.items);
 
     // Generate variables for each type
     const urlVariables = this.generateUrlVariables(urls);
     const bodyVariables = this.generateBodyVariables(bodies);
     const queryVariables = this.generateQueryVariables(queryParams);
+    const headerVariables = this.generateHeaderVariables(headers);
 
     return {
       url: urlVariables,
       body: bodyVariables,
-      query: queryVariables
+      query: queryVariables,
+      headers: headerVariables
     };
   }
 
@@ -2242,6 +2244,7 @@ export class CollectionRequestService {
     const urls: string[] = [];
     const bodies: any[] = [];
     const queryParams: any[] = [];
+    const headers: any[] = [];
 
     const traverse = (items: any[]) => {
       for (const item of items) {
@@ -2254,6 +2257,13 @@ export class CollectionRequestService {
             req = item.request || item.aiRequest;
             if (req?.url) urls.push(req.url);
 
+            // Headers
+            const cleanedHeaders = this.clean(req.headers);
+            if (cleanedHeaders.length > 0) {
+              headers.push(cleanedHeaders);
+            }
+
+            // Body
             const urlencoded = this.clean(req.body?.urlencoded);
             const formdataText = this.clean(req.body?.formdata?.text);
             const formdataFile = this.clean(req.body?.formdata?.file);
@@ -2277,6 +2287,7 @@ export class CollectionRequestService {
               bodies.push(body);
             }
 
+            // Query params
             const cleanedQueryParams = this.clean(req.queryParams);
             if (cleanedQueryParams.length > 0) {
               queryParams.push(cleanedQueryParams);
@@ -2286,6 +2297,9 @@ export class CollectionRequestService {
           case ItemTypeEnum.WEBSOCKET:
             req = item.websocket;
             if (req?.url) urls.push(req.url);
+
+            const wsHeaders = this.clean(req.headers);
+            if (wsHeaders.length > 0) headers.push(wsHeaders);
 
             const wsBody: any = {};
             if (req.message?.trim()) wsBody.message = req.message;
@@ -2299,6 +2313,9 @@ export class CollectionRequestService {
             req = item.socketio;
             if (req?.url) urls.push(req.url);
 
+            const socketHeaders = this.clean(req.headers);
+            if (socketHeaders.length > 0) headers.push(socketHeaders);
+
             const socketBody: any = {};
             if (req.message?.trim()) socketBody.message = req.message;
             if (req.eventName?.trim()) socketBody.event = req.eventName;
@@ -2311,6 +2328,9 @@ export class CollectionRequestService {
           case ItemTypeEnum.GRAPHQL:
             req = item.graphql;
             if (req?.url) urls.push(req.url);
+
+            const gqlHeaders = this.clean(req.headers);
+            if (gqlHeaders.length > 0) headers.push(gqlHeaders);
 
             const gqlBody: any = {};
             if (req.query?.trim()) gqlBody.query = req.query;
@@ -2331,7 +2351,7 @@ export class CollectionRequestService {
     };
 
     traverse(items);
-    return { urls, bodies, queryParams };
+    return { urls, bodies, queryParams, headers };
   }
 
   /**
@@ -2620,7 +2640,7 @@ export class CollectionRequestService {
     // Count frequencies per key
     for (const group of paramGroups) {
       for (const param of group) {
-        if (param.checked !== false && param.value?.trim()) {
+        if (param.value?.trim()) {
           const key = param.key;
           const value = param.value.trim();
           this.addToFrequencyMap(key, value, keyValueFrequency, keyValueCount);
@@ -2646,6 +2666,50 @@ export class CollectionRequestService {
 
     return result;
   }
+
+  /**
+   * Generates header variables by detecting frequently occurring header values.
+
+    * @returns A record mapping generated variable names to header values.
+  */
+  private generateHeaderVariables(
+    headerGroups: Array<Array<{ key: string; value: string; checked: boolean }>>
+  ): Record<string, string> {
+    if (headerGroups.length === 0) return {};
+
+    const keyValueFrequency = new Map<string, Map<string, number>>();
+    const keyValueCount: Record<string, number> = {};
+
+    // Count frequencies per header key
+    for (const group of headerGroups) {
+      for (const header of group) {
+        if (header.value?.trim()) {
+          const key = header.key;
+          const value = header.value.trim();
+          this.addToFrequencyMap(key, value, keyValueFrequency, keyValueCount);
+        }
+      }
+    }
+
+    // Generate variable names per header key
+    const result: Record<string, string> = {};
+    const keyCounters: Record<string, number> = {};
+
+    for (const [key, valMap] of keyValueFrequency.entries()) {
+      const threshold = this.getAdaptiveThreshold(keyValueCount[key]);
+      keyCounters[key] = keyCounters[key] || 1;
+
+      for (const [value, count] of valMap.entries()) {
+        if (count >= threshold) {
+          const varName = `{{${key}_var${keyCounters[key]++}}}`;
+          result[varName] = value;
+        }
+      }
+    }
+
+    return result;
+  }
+
 
   /**
    * Adds a key–value occurrence to a nested frequency map and updates its count.

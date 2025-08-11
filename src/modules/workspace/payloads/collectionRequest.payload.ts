@@ -942,4 +942,11 @@ export class GeneratedVariablesDto {
   })
   @IsObject()
   query: Record<string, string>;
+
+  @ApiProperty({
+    example: { '{{headers_var1}}': 'someHeadersValue' },
+    description: 'Key-value pairs of headers parameters'
+  })
+  @IsObject()
+  headers: Record<string, string>;
 }
