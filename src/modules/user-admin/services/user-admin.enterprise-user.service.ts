@@ -104,7 +104,11 @@ export class AdminUsersService {
         users: team.users,
       };
     });
-    return { teams: updatedFilteredTeams, users: newestUniqueUsers };
+    console?.log(newestUniqueUsers);
+    return {
+      teams: updatedFilteredTeams,
+      users: newestUniqueUsers.filter((user) => !!user.email),
+    };
   }
   async getUserDetails(
     ownerId: string,
