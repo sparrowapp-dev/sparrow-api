@@ -1574,7 +1574,7 @@ export class collectionController {
   /**
    * Endpoint to Generate the Variables of whole Collection using AI.
    */
-  @Post("generate-variables")
+  @Post("generate-variables/:collectionId")
   @ApiOperation({
     summary: "Generate Variables",
     description:
@@ -1584,13 +1584,13 @@ export class collectionController {
   @ApiResponse({ status: 200, description: "Variables Generated Successfully" })
   @ApiResponse({ status: 400, description: "Failed to Generate Variables" })
   async generateVariables(
-    @Body() collectionDTO: Partial<CollectionRequestDto>,
+    @Param("collectionId") collectionId: string,
+    @Body() collectionDto: Partial<CollectionRequestDto>,
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request?.user;
-    const workspaceId = collectionDTO?.workspaceId
-    const collectionId = collectionDTO.collectionId
+    const workspaceId = collectionDto?.workspaceId
     const collectionVariables = await this.collectionRequestService.generateVariables(
       collectionId,
       workspaceId,

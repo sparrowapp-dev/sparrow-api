@@ -21,6 +21,7 @@ import {
   UpdateCollectionRequestResponseDto,
   MockResponseRatioDto,
   UpdateMockResponseRatioDto,
+  GeneratedVariablesDto
 } from "../payloads/collectionRequest.payload";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -39,7 +40,6 @@ import { ProducerService } from "@src/modules/common/services/event-producer.ser
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { Workspace } from "@src/modules/common/models/workspace.model";
-import { AiAssistantService } from "./ai-assistant.service";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -49,7 +49,6 @@ export class CollectionRequestService {
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
     private readonly encryptionService: EncryptionService,
-    private readonly aiAssistantService: AiAssistantService
   ) {}
 
   async addFolder(
@@ -2160,11 +2159,22 @@ export class CollectionRequestService {
     return result;
   }
 
+  /**
+   * Generates URL, body, and query parameter variables from a collection's request data.
+   *
+   * This method:
+   * 1. Retrieves the collection by its ID.
+   * 2. Extracts URLs, request bodies, and query parameters from the collection items.
+   * 3. Identifies recurring patterns/values to generate reusable variable placeholders.
+   * @returns
+   * A promise that resolves to an object containing generated variables
+   * grouped by type (`url`, `body`, and `query`).
+  */
   async generateVariables(
     collectionId: string,
     workspaceId: string,
     userId: DecodedUserObject
-  ): Promise<any> {
+  ): Promise<GeneratedVariablesDto> {
     const collection = await this.collectionReposistory.getCollection(collectionId);
 
     if (!collection) {
@@ -2186,6 +2196,15 @@ export class CollectionRequestService {
     };
   }
 
+  /**
+   * Removes invalid or unwanted key-value entries from the given array.
+   * This method:
+   * - Ensures the input is an array.
+   * - Trims `key` and `value` fields.
+   * - Excludes entries where either `key` or `value` is missing or empty.
+   * - Filters out headers/keys named "user-agent" or "accept-encoding" (case-insensitive).
+   * @returns A new array containing only valid and allowed entries.
+  */
   private clean(arr: any[] = []): any[] {
     return Array.isArray(arr)
       ? arr.filter(entry => {
@@ -2196,6 +2215,30 @@ export class CollectionRequestService {
       : [];
   }
 
+  /**
+   * Recursively traverses a collection of items and extracts:
+   * - All request URLs
+   * - Request bodies (from multiple protocols/types)
+   * - Query parameters
+   *
+   * Supported `type` values:
+   * - `REQUEST` / `AI_REQUEST` → Extracts from `request` or `aiRequest`
+   * - `WEBSOCKET` → Extracts from `websocket`
+   * - `SOCKETIO` → Extracts from `socketio`
+   * - `GRAPHQL` → Extracts from `graphql`
+   * - `FOLDER` → Recursively processes nested `items`
+   *
+   * Notes:
+   * - Calls `this.clean()` to remove empty/invalid key-value pairs in
+   *   body form data, URL-encoded data, and query parameters.
+   * - Only bodies with actual content are added to the `bodies` array.
+   * - Query parameters are collected as groups (arrays of key-value pairs).
+   * @returns 
+   *   An object containing:
+   *   - `urls`: Array of all extracted URLs
+   *   - `bodies`: Array of body objects containing request payload data
+   *   - `queryParams`: Array of arrays, each containing cleaned query parameter objects
+  */
   private extractFromItems(items: any[]) {
     const urls: string[] = [];
     const bodies: any[] = [];
@@ -2207,8 +2250,8 @@ export class CollectionRequestService {
         let req = null;
 
         switch (type) {
-          case 'REQUEST':
-          case 'AI_REQUEST':
+          case UpdatesType.REQUEST:
+          case UpdatesType.AI_REQUEST:
             req = item.request || item.aiRequest;
             if (req?.url) urls.push(req.url);
 
@@ -2241,7 +2284,7 @@ export class CollectionRequestService {
             }
             break;
 
-          case 'WEBSOCKET':
+          case UpdatesType.WEBSOCKET:
             req = item.websocket;
             if (req?.url) urls.push(req.url);
 
@@ -2253,7 +2296,7 @@ export class CollectionRequestService {
             if (cleanedWsQuery.length > 0) queryParams.push(cleanedWsQuery);
             break;
 
-          case 'SOCKETIO':
+          case UpdatesType.SOCKETIO:
             req = item.socketio;
             if (req?.url) urls.push(req.url);
 
@@ -2266,7 +2309,7 @@ export class CollectionRequestService {
             if (cleanedSocketQuery.length > 0) queryParams.push(cleanedSocketQuery);
             break;
 
-          case 'GRAPHQL':
+          case UpdatesType.GRAPHQL:
             req = item.graphql;
             if (req?.url) urls.push(req.url);
 
@@ -2278,7 +2321,7 @@ export class CollectionRequestService {
             if (Object.keys(gqlBody).length > 0) bodies.push(gqlBody);
             break;
 
-          case 'FOLDER':
+          case UpdatesType.FOLDER:
             if (item.items) traverse(item.items);
             break;
 
@@ -2292,6 +2335,33 @@ export class CollectionRequestService {
     return { urls, bodies, queryParams };
   }
 
+  /**
+   * Analyzes a list of URLs to identify recurring patterns and replace them with variable placeholders.
+   *
+   * The algorithm:
+   * 1. Detects and preserves any existing variables in the format `{{varName}}` or `{varName}`.
+   * 2. Removes preserved variables from the URLs to avoid re-replacing them.
+   * 3. Splits each cleaned URL into meaningful path/query parts.
+   * 4. Generates candidate substrings (1–4 consecutive parts) and counts their occurrences across URLs.
+   * 5. Filters substrings by:
+   *    - Minimum length (≥ 8 characters)
+   *    - Frequency threshold (adaptive based on URL count)
+   *    - Exclusion of purely numeric or percent-encoded values
+   * 6. Selects the top non-overlapping substrings (up to 8) based on occurrence count and length.
+   * 7. Assigns them sequential variable names in the format `{{url_var1}}`, `{{url_var2}}`, etc.
+   *
+   * Example:
+   * ```ts
+   * generateUrlVariables([
+   *   "https://api.example.com/v1/users/123/details",
+   *   "https://api.example.com/v1/users/456/details"
+   * ]);
+   * // Might return:
+   * // { "{{url_var1}}": "api.example.com/v1/users" }
+   * ```
+   * @returns
+   *   An object mapping generated variable names (e.g., `{{url_var1}}`) to their corresponding substring values.
+  */
   private generateUrlVariables(urls: string[]): Record<string, string> {
     if (urls.length === 0) return {};
 
@@ -2413,6 +2483,35 @@ export class CollectionRequestService {
     return variables;
   }
 
+  /**
+   * Analyzes an array of request bodies to detect frequently repeated values
+   * and generates variable placeholders for them.
+   *
+   * The algorithm:
+   * 1. Iterates through each body object and inspects:
+   *    - `urlencoded` fields
+   *    - `formdata.text` fields
+   *    - Raw JSON content (parsed and traversed for key-value pairs)
+   *    - Special string fields like `message`, `event`, `query`, `mutation`, `variables`
+   * 2. For each key/value pair found, counts how often each value appears per key.
+   * 3. Uses an adaptive threshold (via `getAdaptiveThreshold`) to determine
+   *    which values occur often enough to be replaced by variables.
+   * 4. Generates sequential variable names in the format `{{<key>_varN}}`,
+   *    mapping them to the original repeated values.
+   *
+   * Example:
+   * ```ts
+   * generateBodyVariables([
+   *   { urlencoded: [{ key: "userId", value: "123", checked: true }] },
+   *   { urlencoded: [{ key: "userId", value: "123", checked: true }] },
+   *   { urlencoded: [{ key: "userId", value: "456", checked: true }] }
+   * ]);
+   * // Might return:
+   * // { "{{userId_var1}}": "123" }
+   * ```
+   * @returns
+   *   An object mapping generated variable names (e.g., `{{key_var1}}`) to their corresponding values.
+  */
   private generateBodyVariables(bodies: any[]): Record<string, string> {
     if (bodies.length === 0) return {};
 
@@ -2500,6 +2599,19 @@ export class CollectionRequestService {
     return result;
   }
 
+  /**
+   * Generates variable mappings for frequently occurring query parameter values.
+   *
+   * This method:
+   * - Iterates over grouped query parameters (arrays of `{ key, value, checked }` objects).
+   * - Ignores unchecked parameters (`checked === false`) or empty values.
+   * - Tracks the frequency of each value for its corresponding key.
+   * - Uses an adaptive threshold (`getAdaptiveThreshold`) to decide if a value
+   *   occurs often enough to be replaced with a variable.
+   * - Generates variable names in the format `{{<key>_varN}}` for repeated values.
+   * @returns
+   *   An object mapping generated variable names to their original string values.
+  */
   private generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
     if (paramGroups.length === 0) return {};
 
@@ -2536,6 +2648,16 @@ export class CollectionRequestService {
     return result;
   }
 
+  /**
+   * Adds a key–value occurrence to a nested frequency map and updates its count.
+   *
+   * Maintains two data structures:
+   * - `frequencyMap`: Tracks how many times each value occurs for each key.
+   * - `countMap`: Tracks the total number of values recorded for each key.
+   *
+   * If the key does not exist in `frequencyMap`, it is initialized with
+   * an empty value map and a zero count in `countMap`.
+  */
   private addToFrequencyMap(
     key: string, 
     value: string, 
@@ -2552,6 +2674,15 @@ export class CollectionRequestService {
     countMap[key]++;
   }
 
+  /**
+   * Determines the minimum frequency threshold based on the total occurrence count.
+   *
+   * Used to decide whether a value is common enough to be extracted as a variable.
+   * - For small datasets (≤ 10 total occurrences), a lower threshold is applied.
+   * - For larger datasets (> 10 total occurrences), a higher threshold is applied.
+   * @returns
+   *   The minimum frequency threshold to qualify as significant.
+  */
   private getAdaptiveThreshold(count: number): number {
     return count <= 10 ? 3 : 5;
   }
