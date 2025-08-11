@@ -104,7 +104,6 @@ export class AdminUsersService {
         users: team.users,
       };
     });
-    console?.log(newestUniqueUsers);
     return {
       teams: updatedFilteredTeams,
       users: newestUniqueUsers.filter((user) => !!user.email),
