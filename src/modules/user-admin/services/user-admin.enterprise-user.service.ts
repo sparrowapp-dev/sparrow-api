@@ -73,9 +73,9 @@ export class AdminUsersService {
           const userRole = team.users.find(
             (member: any) => member.id.toString() === user.id.toString(),
           )?.role;
-
+          console.log(team?._id, "TeamId");
           return {
-            id: team._id,
+            id: team?._id || "1234",
             name: team.name,
             role: userRole,
           };
@@ -86,9 +86,9 @@ export class AdminUsersService {
           currentUser,
         );
         return {
-          id: user.id,
+          id: user?.id || user?._id,
           name: user.name,
-          email: userOrg.email,
+          email: userOrg.email || "",
           teams: userTeams,
           teamsAccess: user.teams.length,
           lastActive: userOrg?.lastActive || "",
