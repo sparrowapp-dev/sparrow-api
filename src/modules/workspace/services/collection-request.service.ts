@@ -1844,7 +1844,6 @@ export class CollectionRequestService {
       aiRequest.collectionId,
     );
 
-    console.log("Collection: ", collection)
     // Decrypt authValue in flat structure
     if (collection?.aiRequest?.auth?.apiKey?.authValue) {
       collection.aiRequest.auth.apiKey.authValue = this.encryptionService.decrypt(
@@ -2250,8 +2249,8 @@ export class CollectionRequestService {
         let req = null;
 
         switch (type) {
-          case UpdatesType.REQUEST:
-          case UpdatesType.AI_REQUEST:
+          case ItemTypeEnum.REQUEST:
+          case ItemTypeEnum.AI_REQUEST:
             req = item.request || item.aiRequest;
             if (req?.url) urls.push(req.url);
 
@@ -2284,7 +2283,7 @@ export class CollectionRequestService {
             }
             break;
 
-          case UpdatesType.WEBSOCKET:
+          case ItemTypeEnum.WEBSOCKET:
             req = item.websocket;
             if (req?.url) urls.push(req.url);
 
@@ -2296,7 +2295,7 @@ export class CollectionRequestService {
             if (cleanedWsQuery.length > 0) queryParams.push(cleanedWsQuery);
             break;
 
-          case UpdatesType.SOCKETIO:
+          case ItemTypeEnum.SOCKETIO:
             req = item.socketio;
             if (req?.url) urls.push(req.url);
 
@@ -2309,7 +2308,7 @@ export class CollectionRequestService {
             if (cleanedSocketQuery.length > 0) queryParams.push(cleanedSocketQuery);
             break;
 
-          case UpdatesType.GRAPHQL:
+          case ItemTypeEnum.GRAPHQL:
             req = item.graphql;
             if (req?.url) urls.push(req.url);
 
@@ -2321,7 +2320,7 @@ export class CollectionRequestService {
             if (Object.keys(gqlBody).length > 0) bodies.push(gqlBody);
             break;
 
-          case UpdatesType.FOLDER:
+          case ItemTypeEnum.FOLDER:
             if (item.items) traverse(item.items);
             break;
 
