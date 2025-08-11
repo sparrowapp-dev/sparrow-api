@@ -98,7 +98,7 @@ export default () => ({
     conversationLimit: 30,
     conversationConatiner: process.env.AI_CONVERSATION_BLOB_CONTAINER,
     encryptionSecret: process.env.ENCRYPTION_SECRET,
-    deepseekModel: process.env.DEEPSEEK_API_MODEL
+    deepseekModel: process.env.DEEPSEEK_API_MODEL,
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,
@@ -128,6 +128,7 @@ export default () => ({
   },
   sparrowAdmin: {
     adminKey: process.env.SPARROW_ADMIN_KEY,
+    stakeholdersEmailList: process.env.STAKEHOLDERS_EMAIL_LIST,
   },
   admin: {
     baseURL: process.env.ADMIN_BASE_URL,

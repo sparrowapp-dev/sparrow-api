@@ -37,4 +37,24 @@ export class AiLogRepository {
 
     return data;
   }
+
+  async getTokenUsageReport(start: Date, end: Date) {
+    const data = this.db.collection(Collections.AILOGS).aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: { userId: "$userId", model: "$model" },
+          totalTokens: { $sum: "$tokenConsumed" },
+        },
+      },
+      {
+        $sort: { "_id.userId": 1, "_id.model": 1 },
+      },
+    ]);
+    return data;
+  }
 }
