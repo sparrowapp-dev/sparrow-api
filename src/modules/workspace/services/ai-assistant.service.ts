@@ -602,7 +602,7 @@ export class AiAssistantService {
       console.error("OpenAI error:", error);
       Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException(error.message);
         });
       client.send(
@@ -651,7 +651,7 @@ export class AiAssistantService {
     if (!this.deepseekClient) {
       Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException("DeepSeek Initialization Failed.");
         });
       throw new InternalServerErrorException(
@@ -674,7 +674,7 @@ export class AiAssistantService {
         console.warn("Failed to parse conversation:", error);
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException(error);
         });
       }
@@ -765,7 +765,7 @@ export class AiAssistantService {
               console.warn("Kafka logging failed", e);
               Sentry.withScope((scope) => {
                   scope.setTag("emailId", emailId);
-                  scope.setExtra("emailId", emailId);
+                  scope.setTag("isAIError", true);
                   Sentry.captureException(e);
                 });
               }
@@ -786,7 +786,7 @@ export class AiAssistantService {
               console.warn("Kafka logging failed", e);
               Sentry.withScope((scope) => {
                   scope.setTag("emailId", emailId);
-                  scope.setExtra("emailId", emailId);
+                  scope.setTag("isAIError", true);
                   Sentry.captureException(e);
                 });
               }
@@ -799,7 +799,7 @@ export class AiAssistantService {
           console.error("Invalid JSON in event data:", event.data, e);
           Sentry.withScope((scope) => {
             scope.setTag("emailId", emailId);
-            scope.setExtra("emailId", emailId);
+            scope.setTag("isAIError", true);
             Sentry.captureException(e);
           });
         }
@@ -808,7 +808,7 @@ export class AiAssistantService {
       console.error("DeepSeek error:", error);
       Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException(error);
       });
       client.send(
@@ -1119,7 +1119,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
@@ -1349,7 +1349,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
@@ -1540,7 +1540,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
@@ -1787,7 +1787,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("isAIError", true);
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
