@@ -278,6 +278,7 @@ export class AiAssistantService {
 
       const activityLog = {
         userId: user._id.toString(),
+        userEmail: id.email,
         activity: "generate-doc",
         model: "deepseek",
         tokenConsumed: tokens,
@@ -600,6 +601,7 @@ export class AiAssistantService {
             // Update the actvity log in the database
             const activityLog = {
               userId: user._id.toString(),
+              userEmail: emailId,
               activity: activity,
               model: model,
               tokenConsumed: tokenUsage,
@@ -801,6 +803,7 @@ export class AiAssistantService {
 
             const activityLog = {
               userId: user._id.toString(),
+              userEmail: emailId,
               activity: activity,
               model: model,
               tokenConsumed: tokenUsage,
@@ -2169,6 +2172,7 @@ export class AiAssistantService {
 
       const activityLog = {
         userId: user._id.toString(),
+        userEmail: emailId,
         activity: "generate-prompt",
         model: "deepseek",
         tokenConsumed: tokens,

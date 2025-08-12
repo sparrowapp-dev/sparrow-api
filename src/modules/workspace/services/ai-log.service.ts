@@ -14,6 +14,7 @@ export class AiLogService {
     await this.ailogrepository.addLogs(
       {
         userId: payload.userId,
+        emailId: payload.emailId,
         activity: payload.activity,
         model: payload.model,
         tokenConsumed: payload.tokenConsumed,
