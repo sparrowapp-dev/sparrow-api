@@ -346,6 +346,7 @@ export class AdminWorkspaceService {
       )?.name,
       WorkspaceType: workspace?.workspaceType,
       hubName: hub?.name,
+      plan: hub?.plan?.name,
       nonWorkspaceHubMembers,
     };
     return workspace_summary;
