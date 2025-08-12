@@ -25,12 +25,14 @@ export class AiLogHandler implements OnModuleInit {
       onMessage: async (message) => {
         const data = JSON.parse(message.value.toString());
         const userId = data.userId.toString();
+        const emailId = data.userEmail;
         const activity = data.activity.toString();
         const model = data.model.toString();
         const tokenConsumed = data.tokenConsumed;
         const thread_id = data.threadId.toString();
         await this.ailogService.addLog({
           userId,
+          emailId,
           activity,
           model,
           tokenConsumed,
