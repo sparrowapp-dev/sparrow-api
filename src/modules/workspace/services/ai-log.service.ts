@@ -23,4 +23,8 @@ export class AiLogService {
       payload.userId,
     );
   }
+
+  async getTokenUsageReport(start: Date, end: Date) {
+    return this.ailogrepository.getTokenUsageReport(start, end);
+  }
 }
