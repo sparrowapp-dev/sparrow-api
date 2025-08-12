@@ -41,25 +41,27 @@ export class AiConsumptionScheduler {
 
     const cursor = await this.aiLogService.getTokenUsageReport(start, end);
     const rows = await cursor.toArray();
-    console.log("Token usage rows:", rows);
 
     // Step 1: Build pivot table data structure
-    const pivotData: Record<string, Record<string, number>> = {};
+    const pivotData: Record<string, Record<string, any>> = {};
     const modelNames = new Set<string>();
     const grandTotalsByModel: Record<string, number> = {};
     let grandTotalTokens = 0;
 
     for await (const row of rows) {
       const userId = row._id.userId;
+      const emailId = row._id.emailId || "";
       const model = row._id.model;
       const tokens = row.totalTokens;
 
       modelNames.add(model);
 
       if (!pivotData[userId]) {
-        pivotData[userId] = {};
+        pivotData[userId] = { emailId, models: {} as any };
       }
-      pivotData[userId][model] = (pivotData[userId][model] || 0) + tokens;
+      pivotData[userId].emailId = emailId; // always update to latest seen
+      pivotData[userId].models[model] =
+        (pivotData[userId].models[model] || 0) + tokens;
 
       grandTotalsByModel[model] = (grandTotalsByModel[model] || 0) + tokens;
       grandTotalTokens += tokens;
@@ -68,21 +70,23 @@ export class AiConsumptionScheduler {
     const sortedModels = Array.from(modelNames).sort();
 
     // Step 2: Convert pivotData to array for CSV
-    const csvRows = Object.entries(pivotData).map(([userId, modelTokens]) => {
-      const row: any = { userId };
-      let totalTokens = 0;
+    const csvRows = Object.entries(pivotData).map(
+      ([userId, { emailId, models }]) => {
+        const row: any = { userId, emailId };
+        let totalTokens = 0;
 
-      for (const model of sortedModels) {
-        const tokens = modelTokens[model] || 0;
-        row[`${model} Tokens`] = tokens;
-        totalTokens += tokens;
-      }
-      row["Total Tokens"] = totalTokens;
-      return row;
-    });
+        for (const model of sortedModels) {
+          const tokens = models[model] || 0;
+          row[`${model} Tokens`] = tokens;
+          totalTokens += tokens;
+        }
+        row["Total Tokens"] = totalTokens;
+        return row;
+      },
+    );
 
     // Step 3: Add Grand Total row
-    const grandTotalRow: any = { userId: "GRAND TOTAL" };
+    const grandTotalRow: any = { userId: "GRAND TOTAL", emailId: "" };
     for (const model of sortedModels) {
       grandTotalRow[`${model} Tokens`] = grandTotalsByModel[model] || 0;
     }
@@ -93,6 +97,7 @@ export class AiConsumptionScheduler {
     // Step 4: Generate CSV
     const fields = [
       { label: "User ID", value: "userId" },
+      { label: "Email ID", value: "emailId" },
       ...sortedModels.map((model) => ({
         label: `${model} Tokens`,
         value: `${model} Tokens`,
@@ -118,7 +123,7 @@ export class AiConsumptionScheduler {
       text: `AI consumption report for the period: ${startDateStr} to ${endDateStr}`,
       attachments: [
         {
-          filename: "ai-logs-report.csv",
+          filename: `ai-logs-report-${startDateStr}-${endDateStr}.csv`,
           content: csv,
         },
       ],

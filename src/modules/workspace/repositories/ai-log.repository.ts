@@ -47,7 +47,7 @@ export class AiLogRepository {
       },
       {
         $group: {
-          _id: { userId: "$userId", model: "$model" },
+          _id: { userId: "$userId", emailId: "$emailId", model: "$model" },
           totalTokens: { $sum: "$tokenConsumed" },
         },
       },
