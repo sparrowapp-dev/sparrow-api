@@ -73,6 +73,7 @@ import * as Sentry from "@sentry/nestjs";
 
 import pdfParse from 'pdf-parse';
 import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
+import { error } from "node:console";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -114,6 +115,7 @@ export class AiAssistantService {
   private deepseekApiVersion: string;
   private deepseekurl: string;
   private deepseekModel: string;
+  private azureOpenaiModel: string;
   // Default assistant configuration
   private assistant = {
     name: "API Instructor",
@@ -148,6 +150,7 @@ export class AiAssistantService {
     this.deepseekApiVersion = this.configService.get("ai.deepseekApiVersion");
     this.deepseekurl = this.configService.get("ai.deepseekURL");
     this.deepseekModel = this.configService.get("ai.deepseekModel")
+    this.azureOpenaiModel = this.configService.get("ai.azureOpenaiModel")
 
     // Initialize the AzureOpenAI client
     try {
@@ -240,60 +243,108 @@ export class AiAssistantService {
     const userId = user?._id.toString() ?? ""
     const id = await this.userService.getUserById(userId)
 
+    const promptInstruction = "You're an assistant that helps create well-structured prompts from user text. You are provided with user input and must generate a clean, optimized prompt. Return only the generated prompt—no explanations or additional output.";
+
+    const { text: prompt } = data;
+
     try {
-      const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`;
-      
-      const { text: prompt } = data;
-      
-      const response = await this.deepseekClient
-      .path("/chat/completions")
-      .post({
-        body: {
-          messages: [
-            { role: "system", content: instructions },
+      if (data.model === Models.GPT) {
+
+        // Fetch user details
+        const user = await this.userService.getUserByEmail(id.email);
+
+        const response = await this.gptAssistantsClient.responses.create({
+          model: this.azureOpenaiModel,
+          input: [
+            { role: "system", content: promptInstruction },
             { role: "user", content: prompt },
-          ],
-          model: this.deepseekModel,
-        },
-      });
+          ]
+        });
+        
+        if (response.status !== "completed") {
+          const data =
+          "Some Issue Occurred in Processing your Request. Please try again";
+          return { result: data };
+        }
+        
+        const tokens = response.usage?.total_tokens;
+        
+        const eventMessage = {
+          userId: user._id,
+          tokenCount: tokens,
+          model: "gpt",
+        };
+        await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+          value: JSON.stringify(eventMessage),
+        });
 
-      if (response.status !== "200") {
-        const data =
-        "Some Issue Occurred in Processing your Request. Please try again";
-        return { result: data };
+        const activityLog = {
+          userId: user._id.toString(),
+          userEmail: id.email,
+          activity: "generate-doc",
+          model: "gpt",
+          tokenConsumed: tokens,
+          threadId: "null"
+        };
+
+        // Send activity log to Kafka topic
+        await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+          value: JSON.stringify(activityLog),
+        });
+        return { result: response.output_text };
       }
-      
-      const body = response.body as any;
-      const tokens = body?.usage?.total_tokens;
-      
-      const eventMessage = {
-        userId: user._id,
-        tokenCount: tokens,
-        model: "deepseek",
-      };
-      
-      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-        value: JSON.stringify(eventMessage),
-      });
 
-      const activityLog = {
-        userId: user._id.toString(),
-        userEmail: id.email,
-        activity: "generate-doc",
-        model: "deepseek",
-        tokenConsumed: tokens,
-        threadId: "null"
-      };
+      else {
+          const response = await this.deepseekClient
+            .path("/chat/completions")
+            .post({
+            body: {
+              messages: [
+                { role: "system", content: instructions },
+                { role: "user", content: prompt },
+              ],
+              model: this.deepseekModel,
+            },
+          });
 
-      // Send activity log to Kafka topic
-      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
-        value: JSON.stringify(activityLog),
-      });
-      
-      const output = (response.body as any).choices?.[0]?.message?.content;
-      return { result: output };
+        if (response.status !== "200") {
+          const data =
+          "Some Issue Occurred in Processing your Request. Please try again";
+          return { result: data };
+        }
+        
+        const body = response.body as any;
+        const tokens = body?.usage?.total_tokens;
+        
+        const eventMessage = {
+          userId: user._id,
+          tokenCount: tokens,
+          model: "deepseek",
+        };
+        
+        await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+          value: JSON.stringify(eventMessage),
+        });
+
+        const activityLog = {
+          userId: user._id.toString(),
+          userEmail: id.email,
+          activity: "generate-doc",
+          model: "deepseek",
+          tokenConsumed: tokens,
+          threadId: "null"
+        };
+        
+        // Send activity log to Kafka topic
+        await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+          value: JSON.stringify(activityLog),
+        });
+        
+        const output = (response.body as any).choices?.[0]?.message?.content;
+        return { result: output };
+      }
     } catch (error) {
-      console.error("Error processing prompt generation:", error);
+      console.error("Error processing generate documentation:", error);
       Sentry.withScope((scope) => {
         scope.setTag("emailId", id.email);
         scope.setTag("errorType", "AI");
@@ -527,8 +578,13 @@ export class AiAssistantService {
     }
 
     if (!this.gptAssistantsClient) {
+      Sentry.withScope((scope) => {
+          scope.setTag("emailId", emailId);
+          scope.setTag("errorType", "AI");
+          Sentry.captureException("OpenAI-GPT Initialization Failed.");
+        });
       throw new InternalServerErrorException(
-        "AI assistant client is not initialized.",
+        "OpenAI-GPT client is not initialized.",
       );
     }
 
@@ -540,7 +596,7 @@ export class AiAssistantService {
 
     await this.gptAssistantsClient.beta.threads.messages.create(threadId, {
       role: "user",
-      content: `{Text: ${text}, API data: ${apiData}}`,
+      content: JSON.stringify({ Text: text, "API data": apiData })
     });
 
     client.send(
@@ -591,12 +647,21 @@ export class AiAssistantService {
               model: model,
             };
 
-            await this.producerService.produce(
-              TOPIC.AI_RESPONSE_GENERATED_TOPIC,
-              {
-                value: JSON.stringify(eventMessage),
-              },
-            );
+            try {
+              await this.producerService.produce(
+                TOPIC.AI_RESPONSE_GENERATED_TOPIC,
+                {
+                  value: JSON.stringify(eventMessage),
+                },
+              );
+            } catch (e) {
+              console.warn("Kafka logging failed", e);
+              Sentry.withScope((scope) => {
+                  scope.setTag("emailId", emailId);
+                  scope.setTag("errorType", "AI");
+                  Sentry.captureException(e);
+                });
+              }
 
             // Update the actvity log in the database
             const activityLog = {
@@ -609,9 +674,18 @@ export class AiAssistantService {
             };
 
             // Send activity log to Kafka topic
-            await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
-              value: JSON.stringify(activityLog),
-            });
+            try {
+              await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+                value: JSON.stringify(activityLog),
+              });
+            } catch (e) {
+              console.warn("Kafka logging failed", e);
+              Sentry.withScope((scope) => {
+                  scope.setTag("emailId", emailId);
+                  scope.setTag("errorType", "AI");
+                  Sentry.captureException(e);
+                });
+              }
           } else {
             console.warn("Run usage not yet available.");
           }
@@ -620,6 +694,11 @@ export class AiAssistantService {
         }
       })
       .on("error", () => {
+        Sentry.withScope((scope) => {
+            scope.setTag("emailId", emailId);
+            scope.setTag("errorType", "AI");
+            Sentry.captureException(error);
+          });
         client.send(
           JSON.stringify({
             messages:
@@ -2129,17 +2208,59 @@ export class AiAssistantService {
     }
   }
 
-  public async promptGeneration(data: ChatBotPayload): Promise<string> {
+  public async promptGeneration(data: ChatBotPayload): Promise<any> {
     try {
-      const { userInput, emailId } = data;
+      const { userInput, emailId, model } = data;
 
       const promptInstruction =
         "You're an assistant that helps create well-structured prompts from user text. You are provided with user input and must generate a clean, optimized prompt. Return only the generated prompt—no explanations or additional output.";
-
+        
       // Fetch user details
       const user = await this.userService.getUserByEmail(emailId);
 
-      const response = await this.deepseekClient
+      if (model === Models.GPT) {
+        const response = await this.gptAssistantsClient.responses.create({
+          model: this.azureOpenaiModel,
+          input: [
+            { role: "system", content: promptInstruction },
+            { role: "user", content: userInput },
+          ]
+        });
+        
+        if (response.status !== "completed") {
+          const data =
+          "Some Issue Occurred in Processing your Request. Please try again";
+          return data;
+        }
+        
+        const tokens = response.usage?.total_tokens;
+        
+        const eventMessage = {
+          userId: user._id,
+          tokenCount: tokens,
+          model: "gpt",
+        };
+        await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+          value: JSON.stringify(eventMessage),
+        });
+
+        const activityLog = {
+          userId: user._id.toString(),
+          userEmail: emailId,
+          activity: "generate-prompt",
+          model: "gpt",
+          tokenConsumed: tokens,
+          threadId: "null"
+        };
+        await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+          value: JSON.stringify(activityLog),
+        });
+
+        return response.output_text;
+      }
+
+      else {
+        const response = await this.deepseekClient
         .path("/chat/completions")
         .post({
           body: {
@@ -2150,42 +2271,43 @@ export class AiAssistantService {
             model: this.deepseekModel,
           },
         });
-
-      if (response.status !== "200") {
-        const data =
+        
+        if (response.status !== "200") {
+          const data =
           "Some Issue Occurred in Processing your Request. Please try again";
-        return data;
+          return data;
+        }
+
+        const body = response.body as any;
+        const tokens = body?.usage?.total_tokens;
+
+        const eventMessage = {
+          userId: user._id,
+          tokenCount: tokens,
+          model: "deepseek",
+        };
+
+        await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+          value: JSON.stringify(eventMessage),
+        });
+
+        const activityLog = {
+          userId: user._id.toString(),
+          userEmail: emailId,
+          activity: "generate-prompt",
+          model: "deepseek",
+          tokenConsumed: tokens,
+          threadId: "null"
+        };
+
+        // Send activity log to Kafka topic
+        await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+          value: JSON.stringify(activityLog),
+        });
+
+        const result = (response.body as any).choices?.[0]?.message?.content;
+        return result;
       }
-
-      const body = response.body as any;
-      const tokens = body?.usage?.total_tokens;
-
-      const eventMessage = {
-        userId: user._id,
-        tokenCount: tokens,
-        model: "deepseek",
-      };
-
-      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-        value: JSON.stringify(eventMessage),
-      });
-
-      const activityLog = {
-        userId: user._id.toString(),
-        userEmail: emailId,
-        activity: "generate-prompt",
-        model: "deepseek",
-        tokenConsumed: tokens,
-        threadId: "null"
-      };
-
-      // Send activity log to Kafka topic
-      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
-        value: JSON.stringify(activityLog),
-      });
-
-      const result = (response.body as any).choices?.[0]?.message?.content;
-      return result;
     } catch (error) {
       console.error("Error processing prompt generation:", error);
       Sentry.withScope((scope) => {
