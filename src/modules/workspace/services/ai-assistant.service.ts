@@ -2208,7 +2208,7 @@ export class AiAssistantService {
     }
   }
 
-  public async promptGeneration(data: ChatBotPayload): Promise<any> {
+  public async promptGeneration(data: ChatBotPayload): Promise<string> {
     try {
       const { userInput, emailId, model } = data;
 
