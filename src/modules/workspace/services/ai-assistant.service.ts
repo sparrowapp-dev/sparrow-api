@@ -236,11 +236,16 @@ export class AiAssistantService {
     data: PromptPayload,
     user: DecodedUserObject,
   ): Promise<AIResponseDto> {
-    const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`;
 
-    const { text: prompt } = data;
+    const userId = user?._id.toString() ?? ""
+    const id = await this.userService.getUserById(userId)
 
-    const response = await this.deepseekClient
+    try {
+      const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`;
+      
+      const { text: prompt } = data;
+      
+      const response = await this.deepseekClient
       .path("/chat/completions")
       .post({
         body: {
@@ -252,27 +257,52 @@ export class AiAssistantService {
         },
       });
 
-    if (response.status !== "200") {
-      const data =
+      if (response.status !== "200") {
+        const data =
         "Some Issue Occurred in Processing your Request. Please try again";
-      return { result: data };
+        return { result: data };
+      }
+      
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+      
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+      
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: id.email,
+        activity: "generate-doc",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null"
+      };
+
+      // Send activity log to Kafka topic
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+        value: JSON.stringify(activityLog),
+      });
+      
+      const output = (response.body as any).choices?.[0]?.message?.content;
+      return { result: output };
+    } catch (error) {
+      console.error("Error processing prompt generation:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", id.email);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException(
+        "An error occurred while processing the request.",
+      );
     }
-
-    const body = response.body as any;
-    const tokens = body?.usage?.total_tokens;
-
-    const eventMessage = {
-      userId: user._id,
-      tokenCount: tokens,
-      model: "deepseek",
-    };
-
-    await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
-      value: JSON.stringify(eventMessage),
-    });
-
-    const output = (response.body as any).choices?.[0]?.message?.content;
-    return { result: output };
 
     // const assistantId = await this.createAssistant(instructions);
     // if (!assistantId) {
@@ -571,6 +601,7 @@ export class AiAssistantService {
             // Update the actvity log in the database
             const activityLog = {
               userId: user._id.toString(),
+              userEmail: emailId,
               activity: activity,
               model: model,
               tokenConsumed: tokenUsage,
@@ -602,7 +633,7 @@ export class AiAssistantService {
       console.error("OpenAI error:", error);
       Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException(error.message);
         });
       client.send(
@@ -651,7 +682,7 @@ export class AiAssistantService {
     if (!this.deepseekClient) {
       Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException("DeepSeek Initialization Failed.");
         });
       throw new InternalServerErrorException(
@@ -674,7 +705,7 @@ export class AiAssistantService {
         console.warn("Failed to parse conversation:", error);
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException(error);
         });
       }
@@ -765,13 +796,14 @@ export class AiAssistantService {
               console.warn("Kafka logging failed", e);
               Sentry.withScope((scope) => {
                   scope.setTag("emailId", emailId);
-                  scope.setExtra("emailId", emailId);
+                  scope.setTag("errorType", "AI");
                   Sentry.captureException(e);
                 });
               }
 
             const activityLog = {
               userId: user._id.toString(),
+              userEmail: emailId,
               activity: activity,
               model: model,
               tokenConsumed: tokenUsage,
@@ -786,7 +818,7 @@ export class AiAssistantService {
               console.warn("Kafka logging failed", e);
               Sentry.withScope((scope) => {
                   scope.setTag("emailId", emailId);
-                  scope.setExtra("emailId", emailId);
+                  scope.setTag("errorType", "AI");
                   Sentry.captureException(e);
                 });
               }
@@ -799,7 +831,7 @@ export class AiAssistantService {
           console.error("Invalid JSON in event data:", event.data, e);
           Sentry.withScope((scope) => {
             scope.setTag("emailId", emailId);
-            scope.setExtra("emailId", emailId);
+            scope.setTag("errorType", "AI");
             Sentry.captureException(e);
           });
         }
@@ -808,7 +840,7 @@ export class AiAssistantService {
       console.error("DeepSeek error:", error);
       Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException(error);
       });
       client.send(
@@ -1119,7 +1151,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
@@ -1349,7 +1381,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
@@ -1540,7 +1572,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
@@ -1787,7 +1819,7 @@ export class AiAssistantService {
         const endTime = performance.now();
         Sentry.withScope((scope) => {
           scope.setTag("emailId", emailId);
-          scope.setExtra("emailId", emailId);
+          scope.setTag("errorType", "AI");
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
@@ -1830,7 +1862,7 @@ export class AiAssistantService {
         } catch (err) {
           Sentry.withScope((scope) => {
             scope.setTag("emailId", parsedData.emailId);
-            scope.setExtra("emailId", parsedData.emailId);
+            scope.setTag("errorType", "AI");
             Sentry.captureException(err);
           });
           client.send(
@@ -2042,7 +2074,8 @@ export class AiAssistantService {
       }
     } catch (error) {
       console.error("Error in WebSocket loop:", error);
-        Sentry.withScope((scope) => {
+      Sentry.withScope((scope) => {
+        scope.setTag("errorType", "AI");
         Sentry.captureException(error);
       });
       if (client.readyState === WebSocket.OPEN) {
@@ -2137,13 +2170,27 @@ export class AiAssistantService {
         value: JSON.stringify(eventMessage),
       });
 
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: emailId,
+        activity: "generate-prompt",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null"
+      };
+
+      // Send activity log to Kafka topic
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+        value: JSON.stringify(activityLog),
+      });
+
       const result = (response.body as any).choices?.[0]?.message?.content;
       return result;
     } catch (error) {
       console.error("Error processing prompt generation:", error);
       Sentry.withScope((scope) => {
         scope.setTag("emailId", data.emailId);
-        scope.setExtra("emailId", data.emailId);
+        scope.setTag("errorType", "AI");
         Sentry.captureException(error);
       });
       throw new BadRequestException(
