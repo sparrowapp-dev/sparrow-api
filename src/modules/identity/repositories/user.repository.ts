@@ -66,13 +66,14 @@ export class UserRepository {
         { _id },
         { projection: { password: 0, verificationCode: 0, refresh_tokens: 0 } },
       );
+
     const userObj: DecodedUserObject = {
-      _id: data._id,
-      email: data.email,
-      name: data.name,
+      _id: data?._id,
+      email: data?.email,
+      name: data?.name,
       role: "",
-      teams: data.teams,
-      workspaces: data.workspaces,
+      teams: data?.teams,
+      workspaces: data?.workspaces,
       emailVerificationCodeTimeStamp: data?.emailVerificationCodeTimeStamp,
       lastActive: data?.lastActive,
     };

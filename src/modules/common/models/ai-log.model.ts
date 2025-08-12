@@ -27,6 +27,10 @@ export class AiLogs {
   @IsString()
   userId: string;
 
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  emailId?: string;
 
   @ApiProperty()
   @IsMongoId()
