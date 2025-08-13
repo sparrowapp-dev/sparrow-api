@@ -1635,6 +1635,6 @@ export class collectionController {
       content.workspaceId,
       user,
     );
-    return res.send(responseData);
+    return res.status(responseData.HttpStatusCode).send(responseData);
   }
 }

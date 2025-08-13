@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 
@@ -1178,12 +1179,15 @@ export class CollectionService {
     workspaceId: string,
     user: DecodedUserObject,
   ) {
-    if (generatedPairs.length < 1 || !collectionId) {
+    if (generatedPairs.length < 1 && !collectionId) {
       throw new BadRequestException(
         "Please provide collectionId and Generated Variables.",
       );
     }
     let collectionDocument = await this.getCollection(collectionId);
+    if (!collectionDocument) {
+      throw new NotFoundException("Collection is not Found.");
+    }
     const traverseAndUpdate = (items: any[]) => {
       for (const item of items) {
         if (
@@ -1210,6 +1214,10 @@ export class CollectionService {
       workspaceId,
       user,
     );
-    return response;
+    return {
+      HttpStatusCode: 200,
+      message: "Generated Variables inserted Successfully",
+      data: response,
+    };
   }
 }
