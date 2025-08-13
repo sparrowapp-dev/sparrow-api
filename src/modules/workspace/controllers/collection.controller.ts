@@ -1610,9 +1610,9 @@ export class collectionController {
    */
   @Post("generate-variables/insert")
   @ApiOperation({
-    summary: "Add A Mock Response",
+    summary: "Insert Generated Variables into Collection",
     description:
-      "This will add a mock response inside mock request in collection",
+      "Updates each request in the collection by replacing the content field with its corresponding generated variable key.",
   })
   @UseGuards(JwtAuthGuard)
   @ApiResponse({
