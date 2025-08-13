@@ -1622,15 +1622,17 @@ export class collectionController {
     const user = request?.user;
     const workspaceId = collectionDto?.workspaceId
     const collectionVariables = await this.collectionRequestService.generateVariables(
-      collectionId,
-      workspaceId,
-      user
-    );
+        collectionId,
+        workspaceId,
+        user,
+      );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
-      collectionVariables);
-  };
+      collectionVariables,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
   /**
    * Endpoint to update all the New generated Variables in requests.
    *
