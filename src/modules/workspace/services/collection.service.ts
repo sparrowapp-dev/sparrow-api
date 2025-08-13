@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 
@@ -42,9 +43,13 @@ import { PostmanParserService } from "@src/modules/common/services/postman.parse
 import { v4 as uuidv4 } from "uuid";
 import { AddTo } from "@src/modules/common/models/collection.rxdb.model";
 import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
-import { Workspace, WorkspaceType } from "@src/modules/common/models/workspace.model";
+import {
+  Workspace,
+  WorkspaceType,
+} from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
+import { VariableDto } from "@src/modules/common/models/environment.model";
 
 @Injectable()
 export class CollectionService {
@@ -436,7 +441,6 @@ export class CollectionService {
     await this.checkPermission(id, user._id);
     const workspace = await this.workspaceRepository.get(id);
 
-
     // ✅ Only define this once
     const decryptAuthValuesInItems = (items: any[]) => {
       const stack = [...items]; // Avoid recursion
@@ -446,27 +450,31 @@ export class CollectionService {
 
         if (!item) continue;
 
-        if (item.type === 'AI_REQUEST') {
+        if (item.type === "AI_REQUEST") {
           const apiKeyAuth = item?.aiRequest?.auth?.apiKey;
-          if (apiKeyAuth && typeof apiKeyAuth.authValue === 'string') {
+          if (apiKeyAuth && typeof apiKeyAuth.authValue === "string") {
             try {
-              apiKeyAuth.authValue = this.cryptoService.decrypt(apiKeyAuth.authValue);
+              apiKeyAuth.authValue = this.cryptoService.decrypt(
+                apiKeyAuth.authValue,
+              );
             } catch (error) {
-              console.warn('Failed to decrypt authValue:', error);
+              console.warn("Failed to decrypt authValue:", error);
             }
           }
         }
 
-        if (item.type === 'FOLDER' && Array.isArray(item.items)) {
+        if (item.type === "FOLDER" && Array.isArray(item.items)) {
           stack.push(...item.items);
         }
       }
     };
 
-    const collectionIds = workspace.collection?.map(c => c.id.toString()) || [];
+    const collectionIds =
+      workspace.collection?.map((c) => c.id.toString()) || [];
     if (collectionIds.length === 0) return [];
     // Bulk fetch all collections
-    const collections = await this.collectionRepository.getCollectionsByIds(collectionIds);
+    const collections =
+      await this.collectionRepository.getCollectionsByIds(collectionIds);
 
     const decryptedCollections = [];
     // 🔄 Only the minimum loop remains
@@ -1128,5 +1136,84 @@ export class CollectionService {
 
       return item;
     });
+  }
+
+  private updatedRequestInCollection(
+    generatedVariables: VariableDto[],
+    requestItem: any,
+  ): any {
+    // Recursive function to deeply replace matches
+    const replaceValues = (obj: any, path: string = ""): any => {
+      if (Array.isArray(obj)) {
+        return obj.map((item, index) =>
+          replaceValues(item, `${path}[${index}]`),
+        );
+      } else if (obj && typeof obj === "object") {
+        const newObj: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          newObj[key] = replaceValues(value, `${path}.${key}`);
+        }
+        return newObj;
+      } else if (typeof obj === "string") {
+        for (const variable of generatedVariables) {
+          if (obj === variable.value) {
+            return `{{${variable.key}}}`;
+          }
+          if (obj.includes(variable.value)) {
+            obj = obj.replace(
+              new RegExp(variable.value, "g"),
+              `{{${variable.key}}}`,
+            );
+          }
+        }
+        return obj;
+      }
+      return obj;
+    };
+    return replaceValues(requestItem, "root");
+  }
+
+  public async insertGeneratedVariables(
+    collectionId: string,
+    generatedPairs: VariableDto[],
+    workspaceId: string,
+    user: DecodedUserObject,
+  ) {
+    if (generatedPairs.length < 1 && !collectionId) {
+      throw new BadRequestException(
+        "Please provide collectionId and Generated Variables.",
+      );
+    }
+    let collectionDocument = await this.getCollection(collectionId);
+    if (!collectionDocument) {
+      throw new NotFoundException("Collection is not Found.");
+    }
+    const traverseAndUpdate = (items: any[]) => {
+      for (const item of items) {
+        if (
+          item.type === ItemTypeEnum.REQUEST ||
+          item.type === ItemTypeEnum.GRAPHQL ||
+          item.type === ItemTypeEnum.SOCKETIO ||
+          item.type === ItemTypeEnum.WEBSOCKET
+        ) {
+          item.request = this.updatedRequestInCollection(
+            generatedPairs,
+            item.request,
+          );
+        }
+        // If folder or item has nested items
+        if (Array.isArray(item.items) && item.items.length > 0) {
+          traverseAndUpdate(item.items);
+        }
+      }
+    };
+    traverseAndUpdate(collectionDocument.items);
+    const response = await this.updateCollection(
+      collectionId,
+      collectionDocument,
+      workspaceId,
+      user,
+    );
+    return response;
   }
 }

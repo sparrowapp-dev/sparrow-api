@@ -34,6 +34,8 @@ import {
 } from "@src/modules/common/models/collection.rxdb.model";
 import { IsObject } from 'class-validator';
 
+import { VariableDto } from "@src/modules/common/models/environment.model";
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 export class CollectionRequestBody {
@@ -949,4 +951,31 @@ export class GeneratedVariablesDto {
   })
   @IsObject()
   headers: Record<string, string>;
+}
+
+export class CollectionGeneratedVariableDto {
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  collectionId: string;
+
+  @ApiProperty({ example: "6538e910aa77d958912371f5" })
+  @IsString()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @ApiProperty({
+    required: true,
+    example: [
+      {
+        key: "key",
+        value: "value",
+        checked: true,
+      },
+    ],
+  })
+  @IsArray()
+  @Type(() => VariableDto)
+  @ValidateNested({ each: true })
+  generatedeVariables: VariableDto[];
 }

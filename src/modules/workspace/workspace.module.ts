@@ -76,6 +76,9 @@ import { LlmConversationRepository } from "./repositories/llm-conversation.repos
 import { LlmConversationController } from "./controllers/llm-conversation.controller";
 import { EncryptionService } from "../common/services/encryption.service";
 
+// ---- Schedulers
+import { AiConsumptionScheduler } from "./schedulers/ai-consumption.scheduler";
+
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
  * and controllers related to the workspace functionality.
@@ -130,6 +133,7 @@ import { EncryptionService } from "../common/services/encryption.service";
     EncryptionService,
     PricingService,
     PricingRepository,
+    AiConsumptionScheduler,
   ],
   exports: [
     CollectionService,
