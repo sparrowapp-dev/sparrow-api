@@ -1143,7 +1143,6 @@ export class CollectionService {
   ): any {
     // Recursive function to deeply replace matches
     const replaceValues = (obj: any, path: string = ""): any => {
-      console.log(`Processing path: ${path}`, obj);
       if (Array.isArray(obj)) {
         return obj.map((item, index) =>
           replaceValues(item, `${path}[${index}]`),
@@ -1193,7 +1192,6 @@ export class CollectionService {
           item.type === ItemTypeEnum.SOCKETIO ||
           item.type === ItemTypeEnum.WEBSOCKET
         ) {
-          console.log(`Updating request for item: ${item.name}`);
           item.request = this.updatedRequestInCollection(
             generatedPairs,
             item.request,
@@ -1201,7 +1199,6 @@ export class CollectionService {
         }
         // If folder or item has nested items
         if (Array.isArray(item.items) && item.items.length > 0) {
-          console.log(`Traversing folder: ${item.name}`);
           traverseAndUpdate(item.items);
         }
       }
