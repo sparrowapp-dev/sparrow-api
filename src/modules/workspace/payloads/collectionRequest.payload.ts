@@ -32,6 +32,8 @@ import {
   Auth,
   KeyValue,
 } from "@src/modules/common/models/collection.rxdb.model";
+import { IsObject } from 'class-validator';
+
 import { VariableDto } from "@src/modules/common/models/environment.model";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -919,6 +921,36 @@ export class UpdateMockResponseRatioDto {
   @ValidateNested({ each: true })
   @Type(() => MockResponseRatioDto)
   mockResponseRatios: MockResponseRatioDto[];
+}
+
+export class GeneratedVariablesDto {
+  @ApiProperty({
+    example: { '{{url_var1}}': 'https://example.com/api' },
+    description: 'Key-value pairs of URL variables'
+  })
+  @IsObject()
+  url: Record<string, string>;
+
+  @ApiProperty({
+    example: { '{{body_var1}}': 'someValue' },
+    description: 'Key-value pairs of body variables'
+  })
+  @IsObject()
+  body: Record<string, string>;
+
+  @ApiProperty({
+    example: { '{{query_var1}}': 'someQueryValue' },
+    description: 'Key-value pairs of query parameters'
+  })
+  @IsObject()
+  query: Record<string, string>;
+
+  @ApiProperty({
+    example: { '{{headers_var1}}': 'someHeadersValue' },
+    description: 'Key-value pairs of headers parameters'
+  })
+  @IsObject()
+  headers: Record<string, string>;
 }
 
 export class CollectionGeneratedVariableDto {
