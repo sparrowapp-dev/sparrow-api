@@ -1142,6 +1142,30 @@ export class CollectionService {
     generatedVariables: VariableDto[],
     requestItem: any,
   ): any {
+    // Helper: replace only outside {{ }} blocks
+    const replaceOutsideBraces = (text: string): string => {
+      return text.replace(
+        /(\{\{.*?\}\})|([^{}]+)/g,
+        (match, insideBraces, outside) => {
+          // If this part is inside {{ }}, keep it as is
+          if (insideBraces) return insideBraces;
+          // Otherwise, replace occurrences in the outside text
+          let updated = outside;
+          for (const variable of generatedVariables) {
+            if (updated === variable.value) {
+              updated = `{{${variable.key}}}`;
+            } else if (updated.includes(variable.value)) {
+              updated = updated.replace(
+                new RegExp(variable.value, "g"),
+                `{{${variable.key}}}`,
+              );
+            }
+          }
+          return updated;
+        },
+      );
+    };
+
     // Recursive function to deeply replace matches
     const replaceValues = (obj: any, path: string = ""): any => {
       if (Array.isArray(obj)) {
@@ -1155,18 +1179,7 @@ export class CollectionService {
         }
         return newObj;
       } else if (typeof obj === "string") {
-        for (const variable of generatedVariables) {
-          if (obj === variable.value) {
-            return `{{${variable.key}}}`;
-          }
-          if (obj.includes(variable.value)) {
-            obj = obj.replace(
-              new RegExp(variable.value, "g"),
-              `{{${variable.key}}}`,
-            );
-          }
-        }
-        return obj;
+        return replaceOutsideBraces(obj);
       }
       return obj;
     };
@@ -1190,15 +1203,28 @@ export class CollectionService {
     }
     const traverseAndUpdate = (items: any[]) => {
       for (const item of items) {
-        if (
-          item.type === ItemTypeEnum.REQUEST ||
-          item.type === ItemTypeEnum.GRAPHQL ||
-          item.type === ItemTypeEnum.SOCKETIO ||
-          item.type === ItemTypeEnum.WEBSOCKET
-        ) {
+        if (item.type === ItemTypeEnum.REQUEST) {
           item.request = this.updatedRequestInCollection(
             generatedPairs,
             item.request,
+          );
+        }
+        if (item.type === ItemTypeEnum.SOCKETIO) {
+          item.socketio = this.updatedRequestInCollection(
+            generatedPairs,
+            item.socketio,
+          );
+        }
+        if (item.type === ItemTypeEnum.WEBSOCKET) {
+          item.websocket = this.updatedRequestInCollection(
+            generatedPairs,
+            item.websocket,
+          );
+        }
+        if (item.type === ItemTypeEnum.GRAPHQL) {
+          item.graphql = this.updatedRequestInCollection(
+            generatedPairs,
+            item.graphql,
           );
         }
         // If folder or item has nested items
