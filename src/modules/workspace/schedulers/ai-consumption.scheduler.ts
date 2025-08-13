@@ -31,7 +31,7 @@ export class AiConsumptionScheduler {
     return { start, end };
   }
 
-  @Cron(CronExpression.EVERY_WEEK)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async handleConsumption() {
     // This method will handle the AI consumption logic.
     // It can be used to schedule tasks related to AI consumption.
