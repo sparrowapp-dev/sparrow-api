@@ -22,7 +22,7 @@ import {
   CreateCollectionDto,
   UpdateCollectionDto,
   UpdateMockCollectionStatusDto,
-  AuthCollection
+  AuthCollection,
 } from "../payloads/collection.payload";
 import { FastifyReply } from "fastify";
 import { CollectionService } from "../services/collection.service";
@@ -32,6 +32,7 @@ import { WorkspaceService } from "../services/workspace.service";
 import {
   BranchChangeDto,
   CollectionAiRequestDto,
+  CollectionGeneratedVariableDto,
   CollectionGraphQLDto,
   CollectionMockRequestResponseDto,
   CollectionRequestDto,
@@ -168,7 +169,6 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-
   @Put(":collectionId/workspace/:workspaceId")
   @ApiOperation({
     summary: "Update A  Collections",
@@ -207,24 +207,27 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Get('auth-profiles/:collectionId')
+  @Get("auth-profiles/:collectionId")
   @ApiOperation({
-    summary: 'Get all auth profiles for a collection',
-    description: 'Fetches all auth profiles stored in the given collection.',
+    summary: "Get all auth profiles for a collection",
+    description: "Fetches all auth profiles stored in the given collection.",
   })
   @UseGuards(JwtAuthGuard)
-  @ApiResponse({ status: 200, description: 'List of auth profiles returned' })
-  @ApiResponse({ status: 404, description: 'Collection not found' })
+  @ApiResponse({ status: 200, description: "List of auth profiles returned" })
+  @ApiResponse({ status: 404, description: "Collection not found" })
   async getAuthProfiles(
-    @Param('collectionId') collectionId: string,
+    @Param("collectionId") collectionId: string,
     @Res() res: FastifyReply,
     @Req() req: ExtendedFastifyRequest,
   ) {
     const user = req.user;
-    const authProfiles = await this.collectionService.getAuthProfiles(collectionId, user);
+    const authProfiles = await this.collectionService.getAuthProfiles(
+      collectionId,
+      user,
+    );
 
     const responseData = new ApiResponseService(
-      'Success',
+      "Success",
       HttpStatusCode.OK,
       authProfiles,
     );
@@ -240,9 +243,16 @@ export class collectionController {
   @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Auth profile Added Successfully" })
   @ApiResponse({ status: 400, description: "Adding operation Failed" })
-  async addAuthProfiles(@Body() updateCollectionDto: Partial<UpdateCollectionDto>, @Res() res: FastifyReply, @Req() request: ExtendedFastifyRequest) {
+  async addAuthProfiles(
+    @Body() updateCollectionDto: Partial<UpdateCollectionDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
     const user = request.user;
-    const message = await this.collectionService.addAuthProfile(updateCollectionDto, user);
+    const message = await this.collectionService.addAuthProfile(
+      updateCollectionDto,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -258,11 +268,21 @@ export class collectionController {
     description: "This will update an auth profile ",
   })
   @UseGuards(JwtAuthGuard)
-  @ApiResponse({ status: 200, description: "Auth profile Updated Successfully" })
+  @ApiResponse({
+    status: 200,
+    description: "Auth profile Updated Successfully",
+  })
   @ApiResponse({ status: 400, description: "Update operation Failed" })
-  async updateAuthProfiles(@Body() payload: AuthCollection, @Res() res: FastifyReply, @Req() request: ExtendedFastifyRequest) {
+  async updateAuthProfiles(
+    @Body() payload: AuthCollection,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
     const user = request.user;
-    const message = await this.collectionService.updateAuthProfile(payload, user);
+    const message = await this.collectionService.updateAuthProfile(
+      payload,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -278,11 +298,21 @@ export class collectionController {
     description: "This will delete an auth profile ",
   })
   @UseGuards(JwtAuthGuard)
-  @ApiResponse({ status: 200, description: "Auth profile Updated Successfully" })
+  @ApiResponse({
+    status: 200,
+    description: "Auth profile Updated Successfully",
+  })
   @ApiResponse({ status: 400, description: "Deletion operation Failed" })
-  async deleteAuthProfiles(@Body() payload: AuthCollection, @Res() res: FastifyReply, @Req() request: ExtendedFastifyRequest) {
+  async deleteAuthProfiles(
+    @Body() payload: AuthCollection,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
     const user = request.user;
-    const message = await this.collectionService.deleteAuthProfile(payload, user);
+    const message = await this.collectionService.deleteAuthProfile(
+      payload,
+      user,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -1567,6 +1597,78 @@ export class collectionController {
       "Mock Response Ratios Updated Successfully",
       HttpStatusCode.OK,
       result,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Endpoint to Generate the Variables of whole Collection using AI.
+   */
+  @Post("generate-variables/:collectionId")
+  @ApiOperation({
+    summary: "Generate Variables",
+    description:
+      "This will Generate Variables for the Collection using AI",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Variables Generated Successfully" })
+  @ApiResponse({ status: 400, description: "Failed to Generate Variables" })
+  async generateVariables(
+    @Param("collectionId") collectionId: string,
+    @Body() collectionDto: Partial<CollectionRequestDto>,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request?.user;
+    const workspaceId = collectionDto?.workspaceId
+    const collectionVariables = await this.collectionRequestService.generateVariables(
+      collectionId,
+      workspaceId,
+      user
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collectionVariables);
+  };
+  /**
+   * Endpoint to update all the New generated Variables in requests.
+   *
+   * @param collectionId The collectionId.
+   * @param KeyValuePairs[] The collectionId.
+   * @returns The response object with status and data.
+   */
+  @Post("generate-variables/insert")
+  @ApiOperation({
+    summary: "Insert Generated Variables into Collection",
+    description:
+      "Updates each request in the collection by replacing the content field with its corresponding generated variable key.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Generated Variables Added Successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to add a Generate Variables.",
+  })
+  async addGeneratedVariables(
+    @Body() content: CollectionGeneratedVariableDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const response = await this.collectionService.insertGeneratedVariables(
+      content.collectionId,
+      content.generatedeVariables,
+      content.workspaceId,
+      user,
+    );
+    const responseData = new ApiResponseService(
+      "Generated Variables Inserted Successfully",
+      HttpStatusCode.OK,
+      response,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
