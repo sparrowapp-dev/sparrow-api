@@ -1629,12 +1629,17 @@ export class collectionController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    const responseData = await this.collectionService.insertGeneratedVariables(
+    const response = await this.collectionService.insertGeneratedVariables(
       content.collectionId,
       content.generatedeVariables,
       content.workspaceId,
       user,
     );
-    return res.status(responseData.HttpStatusCode).send(responseData);
+    const responseData = new ApiResponseService(
+      "Generated Variables Inserted Successfully",
+      HttpStatusCode.OK,
+      response,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

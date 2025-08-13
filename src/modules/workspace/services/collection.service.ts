@@ -1214,10 +1214,6 @@ export class CollectionService {
       workspaceId,
       user,
     );
-    return {
-      HttpStatusCode: 200,
-      message: "Generated Variables inserted Successfully",
-      data: response,
-    };
+    return response;
   }
 }
