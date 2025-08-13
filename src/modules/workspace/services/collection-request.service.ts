@@ -21,7 +21,7 @@ import {
   UpdateCollectionRequestResponseDto,
   MockResponseRatioDto,
   UpdateMockResponseRatioDto,
-  GeneratedVariablesDto
+  GeneratedVariablesDto,
 } from "../payloads/collectionRequest.payload";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -40,6 +40,7 @@ import { ProducerService } from "@src/modules/common/services/event-producer.ser
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { Workspace } from "@src/modules/common/models/workspace.model";
+import { VariableDto } from "@src/modules/common/models/environment.model";
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -1622,10 +1623,10 @@ export class CollectionRequestService {
 
       let encryptedAuthValue: string | undefined;
       if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
-          encryptedAuthValue = this.encryptionService.encrypt(
-            aiRequest.items.aiRequest.auth.apiKey.authValue as string,
-          );
-          aiRequestObj.aiRequest = {
+        encryptedAuthValue = this.encryptionService.encrypt(
+          aiRequest.items.aiRequest.auth.apiKey.authValue as string,
+        );
+        aiRequestObj.aiRequest = {
           ...aiRequest.items.aiRequest,
           auth: {
             ...aiRequest.items.aiRequest.auth,
@@ -1664,21 +1665,21 @@ export class CollectionRequestService {
       });
 
       if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
-          return {
-        ...aiRequestObj,
-        aiRequest: {
-          ...aiRequestObj.aiRequest,
-          auth: {
-            ...aiRequestObj.aiRequest.auth,
-            apiKey: {
-              ...aiRequestObj.aiRequest.auth.apiKey,
-              authValue: this.encryptionService.decrypt(
-                aiRequestObj.aiRequest.auth.apiKey.authValue as string,
-              ),
+        return {
+          ...aiRequestObj,
+          aiRequest: {
+            ...aiRequestObj.aiRequest,
+            auth: {
+              ...aiRequestObj.aiRequest.auth,
+              apiKey: {
+                ...aiRequestObj.aiRequest.auth.apiKey,
+                authValue: this.encryptionService.decrypt(
+                  aiRequestObj.aiRequest.auth.apiKey.authValue as string,
+                ),
+              },
             },
           },
-        },
-      };
+        };
       }
       else {
         return aiRequestObj;
@@ -1688,48 +1689,48 @@ export class CollectionRequestService {
     } else {
       if (aiRequest.items.items.aiRequest?.auth?.apiKey?.authValue) {
         const encryptedAuthValue = this.encryptionService.encrypt(
-        aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
-      );
-      aiRequestObj.items = [
-        {
-          id: uuidv4(),
-          name: aiRequest.items.items.name,
-          type: aiRequest.items.items.type,
-          description: aiRequest.items.items.description,
-          aiRequest: {
-            ...aiRequest.items.items.aiRequest,
-            auth: {
-              ...aiRequest.items.items.aiRequest.auth,
-              apiKey: {
-                ...aiRequest.items.items.aiRequest.auth.apiKey,
-                authValue: encryptedAuthValue,
+          aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
+        );
+        aiRequestObj.items = [
+          {
+            id: uuidv4(),
+            name: aiRequest.items.items.name,
+            type: aiRequest.items.items.type,
+            description: aiRequest.items.items.description,
+            aiRequest: {
+              ...aiRequest.items.items.aiRequest,
+              auth: {
+                ...aiRequest.items.items.aiRequest.auth,
+                apiKey: {
+                  ...aiRequest.items.items.aiRequest.auth.apiKey,
+                  authValue: encryptedAuthValue,
+                },
               },
             },
+            source: SourceTypeEnum.USER,
+            createdBy: user?.name,
+            updatedBy: user?.name,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           },
-          source: SourceTypeEnum.USER,
-          createdBy: user?.name,
-          updatedBy: user?.name,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
+        ];
     }
     else {
-      aiRequestObj.items = [
-        {
-          id: uuidv4(),
-          name: aiRequest.items.items.name,
-          type: aiRequest.items.items.type,
-          description: aiRequest.items.items.description,
-          aiRequest: { ...aiRequest.items.items.aiRequest },
-          source: SourceTypeEnum.USER,
-          createdBy: user?.name,
-          updatedBy: user?.name,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
-    }
+        aiRequestObj.items = [
+          {
+            id: uuidv4(),
+            name: aiRequest.items.items.name,
+            type: aiRequest.items.items.type,
+            description: aiRequest.items.items.description,
+            aiRequest: { ...aiRequest.items.items.aiRequest },
+            source: SourceTypeEnum.USER,
+            createdBy: user?.name,
+            updatedBy: user?.name,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ];
+      }
       await this.collectionReposistory.addAiRequestInFolder(
         aiRequest.collectionId,
         aiRequestObj,
@@ -1847,8 +1848,8 @@ export class CollectionRequestService {
     // Decrypt authValue in flat structure
     if (collection?.aiRequest?.auth?.apiKey?.authValue) {
       collection.aiRequest.auth.apiKey.authValue = this.encryptionService.decrypt(
-        String(collection.aiRequest.auth.apiKey.authValue),
-      );
+          String(collection.aiRequest.auth.apiKey.authValue),
+        );
     }
 
 
@@ -2168,13 +2169,14 @@ export class CollectionRequestService {
    * @returns
    * A promise that resolves to an object containing generated variables
    * grouped by type (`url`, `body`, and `query`).
-  */
+   */
   async generateVariables(
     collectionId: string,
     workspaceId: string,
-    userId: DecodedUserObject
-  ): Promise<GeneratedVariablesDto> {
-    const collection = await this.collectionReposistory.getCollection(collectionId);
+    userId: DecodedUserObject,
+  ): Promise<VariableDto[]> {
+    const collection =
+      await this.collectionReposistory.getCollection(collectionId);
 
     if (!collection) {
       throw new BadRequestException("Collection Not Found");
@@ -2184,17 +2186,41 @@ export class CollectionRequestService {
     const { urls, bodies, queryParams, headers } = this.extractFromItems(collection.items);
 
     // Generate variables for each type
-    const urlVariables = this.generateUrlVariables(urls);
-    const bodyVariables = this.generateBodyVariables(bodies);
-    const queryVariables = this.generateQueryVariables(queryParams);
-    const headerVariables = this.generateHeaderVariables(headers);
-
-    return {
-      url: urlVariables,
-      body: bodyVariables,
-      query: queryVariables,
-      headers: headerVariables
-    };
+    const urlVariables = Object.entries(this.generateUrlVariables(urls)).map(
+      ([key, value]) => ({
+        key,
+        value,
+        checked: true,
+      }),
+    );
+    const bodyVariables = Object.entries(
+      this.generateBodyVariables(bodies),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    const queryVariables = Object.entries(
+      this.generateQueryVariables(queryParams),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    const headerVariables = Object.entries(
+      this.generateHeaderVariables(headers),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    const allKeyPairs = [
+      ...urlVariables,
+      ...bodyVariables,
+      ...queryVariables,
+      ...headerVariables,
+    ];
+    return allKeyPairs;
   }
 
   /**
@@ -2205,7 +2231,7 @@ export class CollectionRequestService {
    * - Excludes entries where either `key` or `value` is missing or empty.
    * - Filters out headers/keys named "user-agent" or "accept-encoding" (case-insensitive).
    * @returns A new array containing only valid and allowed entries.
-  */
+   */
   private clean(arr: any[] = []): any[] {
     return Array.isArray(arr)
       ? arr.filter(entry => {
@@ -2234,12 +2260,12 @@ export class CollectionRequestService {
    *   body form data, URL-encoded data, and query parameters.
    * - Only bodies with actual content are added to the `bodies` array.
    * - Query parameters are collected as groups (arrays of key-value pairs).
-   * @returns 
+   * @returns
    *   An object containing:
    *   - `urls`: Array of all extracted URLs
    *   - `bodies`: Array of body objects containing request payload data
    *   - `queryParams`: Array of arrays, each containing cleaned query parameter objects
-  */
+   */
   private extractFromItems(items: any[]) {
     const urls: string[] = [];
     const bodies: any[] = [];
@@ -2380,14 +2406,14 @@ export class CollectionRequestService {
    * ```
    * @returns
    *   An object mapping generated variable names (e.g., `{{url_var1}}`) to their corresponding substring values.
-  */
+   */
   private generateUrlVariables(urls: string[]): Record<string, string> {
     if (urls.length === 0) return {};
 
     // Identify existing variables
     const existingVariablePattern = /\{\{?[^}]+\}?\}/g;
     const preservedVariables = new Set<string>();
-    
+
     urls.forEach(url => {
       const matches = url.match(existingVariablePattern);
       if (matches) {
@@ -2397,7 +2423,7 @@ export class CollectionRequestService {
 
     // Find common substrings
     const substringFrequency = new Map<string, { count: number; urls: number[] }>();
-    
+
     urls.forEach((url, urlIndex) => {
       // Clean URL by removing existing variables
       let cleanUrl = url;
@@ -2407,26 +2433,26 @@ export class CollectionRequestService {
           cleanUrl = cleanUrl.replace(variable, placeholder);
         }
       });
-      
+
       // Split URL into meaningful parts
       const parts = cleanUrl.split(/[\/\?&=]/).filter(part => part.length > 0);
-      
+
       // Generate substrings
       for (let i = 0; i < parts.length; i++) {
         for (let j = i + 1; j <= Math.min(parts.length, i + 4); j++) {
           const substring = parts.slice(i, j).join('/');
-          
+
           // Skip invalid substrings
           if (substring.includes('__VAR_') || 
-              substring.length < 3 || 
-              /^\d+$/.test(substring) ||
+            substring.length < 3 ||
+            /^\d+$/.test(substring) ||
               substring.includes('%') || 
               substring.includes('=')) continue;
-          
+
           // Find actual substring in original URL
           const urlParts = url.split('/');
           let fullSubstring = '';
-          
+
           for (let k = 0; k < urlParts.length; k++) {
             for (let l = k + 1; l <= urlParts.length; l++) {
               const testSubstring = urlParts.slice(k, l).join('/');
@@ -2439,12 +2465,12 @@ export class CollectionRequestService {
             }
             if (fullSubstring) break;
           }
-          
+
           if (fullSubstring && url.includes(fullSubstring)) {
             if (!substringFrequency.has(fullSubstring)) {
               substringFrequency.set(fullSubstring, { count: 0, urls: [] });
             }
-            
+
             const entry = substringFrequency.get(fullSubstring)!;
             if (!entry.urls.includes(urlIndex)) {
               entry.count++;
@@ -2457,11 +2483,11 @@ export class CollectionRequestService {
 
     // Filter and rank candidates
     const threshold = this.getAdaptiveThreshold(urls.length);
-    
+
     const candidates = Array.from(substringFrequency.entries())
       .filter(([substring, data]) => {
         return data.count >= threshold && 
-               substring.length >= 8 && 
+          substring.length >= 8 &&
                !Array.from(preservedVariables).some(v => substring.includes(v));
       })
       .map(([substring, data]) => ({
@@ -2474,10 +2500,10 @@ export class CollectionRequestService {
 
     // Select non-overlapping candidates
     const selectedCandidates: typeof candidates = [];
-    
+
     for (const candidate of candidates) {
       let shouldInclude = true;
-      
+
       for (const selected of selectedCandidates) {
         if (candidate.substring.includes(selected.substring) || 
             selected.substring.includes(candidate.substring)) {
@@ -2485,18 +2511,18 @@ export class CollectionRequestService {
           break;
         }
       }
-      
+
       if (shouldInclude) {
         selectedCandidates.push(candidate);
       }
-      
+
       if (selectedCandidates.length >= 8) break;
     }
 
     // Generate variable mappings
     const variables: Record<string, string> = {};
     selectedCandidates.forEach((candidate, index) => {
-      variables[`{{url_var${index + 1}}}`] = candidate.substring;
+      variables[`url_var${index + 1}`] = candidate.substring;
     });
 
     return variables;
@@ -2530,7 +2556,7 @@ export class CollectionRequestService {
    * ```
    * @returns
    *   An object mapping generated variable names (e.g., `{{key_var1}}`) to their corresponding values.
-  */
+   */
   private generateBodyVariables(bodies: any[]): Record<string, string> {
     if (bodies.length === 0) return {};
 
@@ -2592,9 +2618,9 @@ export class CollectionRequestService {
 
       // Process other body types (websocket, socketio, graphql)
       ['message', 'event', 'query', 'mutation', 'variables'].forEach(field => {
-        if (body[field]?.trim()) {
+          if (body[field]?.trim()) {
           this.addToFrequencyMap(field, body[field].trim(), valueFrequencyByKey, valueCountByKey);
-        }
+          }
       });
     }
 
@@ -2609,7 +2635,7 @@ export class CollectionRequestService {
       for (const [value, count] of valMap.entries()) {
         if (count >= threshold) {
           const cleanKey = key || 'body';
-          const varName = `{{${cleanKey}_var${keyVarCounters[key]++}}}`;
+          const varName = `${cleanKey}_var${keyVarCounters[key]++}`;
           result[varName] = value;
         }
       }
@@ -2630,7 +2656,7 @@ export class CollectionRequestService {
    * - Generates variable names in the format `{{<key>_varN}}` for repeated values.
    * @returns
    *   An object mapping generated variable names to their original string values.
-  */
+   */
   private generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
     if (paramGroups.length === 0) return {};
 
@@ -2658,7 +2684,7 @@ export class CollectionRequestService {
 
       for (const [value, count] of valMap.entries()) {
         if (count >= threshold) {
-          const varName = `{{${key}_var${keyCounters[key]++}}}`;
+          const varName = `${key}_var${keyCounters[key]++}`;
           result[varName] = value;
         }
       }
@@ -2701,7 +2727,7 @@ export class CollectionRequestService {
 
       for (const [value, count] of valMap.entries()) {
         if (count >= threshold) {
-          const varName = `{{${key}_var${keyCounters[key]++}}}`;
+          const varName = `${key}_var${keyCounters[key]++}`;
           result[varName] = value;
         }
       }
@@ -2720,11 +2746,11 @@ export class CollectionRequestService {
    *
    * If the key does not exist in `frequencyMap`, it is initialized with
    * an empty value map and a zero count in `countMap`.
-  */
+   */
   private addToFrequencyMap(
-    key: string, 
-    value: string, 
-    frequencyMap: Map<string, Map<string, number>>, 
+    key: string,
+    value: string,
+    frequencyMap: Map<string, Map<string, number>>,
     countMap: Record<string, number>
   ) {
     if (!frequencyMap.has(key)) {
@@ -2745,7 +2771,7 @@ export class CollectionRequestService {
    * - For larger datasets (> 10 total occurrences), a higher threshold is applied.
    * @returns
    *   The minimum frequency threshold to qualify as significant.
-  */
+   */
   private getAdaptiveThreshold(count: number): number {
     return count <= 10 ? 3 : 5;
   }
