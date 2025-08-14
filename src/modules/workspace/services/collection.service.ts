@@ -50,6 +50,7 @@ import {
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { VariableDto } from "@src/modules/common/models/environment.model";
+import { RequestBodyDto } from "@src/modules/common/models/collection.model";
 
 @Injectable()
 export class CollectionService {
@@ -1147,9 +1148,7 @@ export class CollectionService {
       return text.replace(
         /(\{\{.*?\}\})|([^{}]+)/g,
         (match, insideBraces, outside) => {
-          // If this part is inside {{ }}, keep it as is
           if (insideBraces) return insideBraces;
-          // Otherwise, replace occurrences in the outside text
           let updated = outside;
           for (const variable of generatedVariables) {
             if (updated === variable.value) {
@@ -1166,24 +1165,66 @@ export class CollectionService {
       );
     };
 
-    // Recursive function to deeply replace matches
-    const replaceValues = (obj: any, path: string = ""): any => {
-      if (Array.isArray(obj)) {
-        return obj.map((item, index) =>
-          replaceValues(item, `${path}[${index}]`),
-        );
-      } else if (obj && typeof obj === "object") {
-        const newObj: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-          newObj[key] = replaceValues(value, `${path}.${key}`);
-        }
-        return newObj;
-      } else if (typeof obj === "string") {
-        return replaceOutsideBraces(obj);
-      }
-      return obj;
+    // Special updater for array of key-value objects
+    const updateKeyValueArray = (arr: any[]) => {
+      return arr.map((entry) => ({
+        ...entry,
+        key:
+          typeof entry.key === "string"
+            ? replaceOutsideBraces(entry.key)
+            : entry.key,
+        value:
+          typeof entry.value === "string"
+            ? replaceOutsideBraces(entry.value)
+            : entry.value,
+      }));
     };
-    return replaceValues(requestItem, "root");
+
+    // Main recursive update
+    const replaceValues = (obj: any): any => {
+      if (!obj || typeof obj !== "object") {
+        return typeof obj === "string" ? replaceOutsideBraces(obj) : obj;
+      }
+      const newObj: any = Array.isArray(obj) ? [] : {};
+      for (const [key, value] of Object.entries(obj)) {
+        if (key === "url" && typeof value === "string") {
+          newObj[key] = replaceOutsideBraces(value);
+        } else if (key === "headers" && Array.isArray(value)) {
+          newObj[key] = updateKeyValueArray(value);
+        } else if (key === "queryParams" && Array.isArray(value)) {
+          newObj[key] = updateKeyValueArray(value);
+        } else if (
+          key === "body" &&
+          typeof value === "object" &&
+          value !== null
+        ) {
+          const updatedBody = { ...(value as RequestBodyDto) };
+          if (typeof updatedBody.raw === "string") {
+            updatedBody.raw = replaceOutsideBraces(updatedBody.raw);
+          }
+          if (Array.isArray(updatedBody.urlencoded)) {
+            updatedBody.urlencoded = updateKeyValueArray(
+              updatedBody.urlencoded,
+            );
+          }
+          if (
+            updatedBody.formdata &&
+            typeof updatedBody.formdata === "object"
+          ) {
+            if (Array.isArray(updatedBody.formdata.text)) {
+              updatedBody.formdata.text = updateKeyValueArray(
+                updatedBody.formdata.text,
+              );
+            }
+          }
+          newObj[key] = updatedBody;
+        } else {
+          newObj[key] = replaceValues(value);
+        }
+      }
+      return newObj;
+    };
+    return replaceValues(requestItem);
   }
 
   public async insertGeneratedVariables(
