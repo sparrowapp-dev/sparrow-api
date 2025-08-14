@@ -1158,3 +1158,12 @@ export class CollectionDto {
   @IsOptional()
   activeSync?: boolean;
 }
+
+export interface RequestBodyDto {
+  raw?: string;
+  urlencoded?: { key: string; value: string; checked: boolean }[];
+  formdata?: {
+    text?: { key: string; value: string; checked: boolean }[];
+    file?: any[];
+  };
+}
