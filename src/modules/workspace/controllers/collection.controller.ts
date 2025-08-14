@@ -1604,7 +1604,7 @@ export class collectionController {
   /**
    * Endpoint to Generate the Variables of whole Collection using AI.
    */
-  @Post("generate-variables/:collectionId")
+  @Post(":collectionId/generate-variables")
   @ApiOperation({
     summary: "Generate Variables",
     description:
@@ -1640,7 +1640,7 @@ export class collectionController {
    * @param KeyValuePairs[] The collectionId.
    * @returns The response object with status and data.
    */
-  @Post("generate-variables/insert")
+  @Post(":collectionId/insert-variables")
   @ApiOperation({
     summary: "Insert Generated Variables into Collection",
     description:
@@ -1656,21 +1656,23 @@ export class collectionController {
     description: "Failed to add a Generate Variables.",
   })
   async addGeneratedVariables(
+    @Param("collectionId") collectionId: string,
     @Body() content: CollectionGeneratedVariableDto,
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    const response = await this.collectionService.insertGeneratedVariables(
-      content.collectionId,
+    await this.collectionService.insertGeneratedVariables(
+      collectionId,
       content.generatedeVariables,
       content.workspaceId,
       user,
     );
+    const collection = await this.collectionService.getCollection(collectionId);
     const responseData = new ApiResponseService(
       "Generated Variables Inserted Successfully",
       HttpStatusCode.OK,
-      response,
+      collection,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
