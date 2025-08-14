@@ -1640,7 +1640,7 @@ export class collectionController {
    * @param KeyValuePairs[] The collectionId.
    * @returns The response object with status and data.
    */
-  @Post("generate-variables/insert")
+  @Post("insert-variables")
   @ApiOperation({
     summary: "Insert Generated Variables into Collection",
     description:
@@ -1667,10 +1667,11 @@ export class collectionController {
       content.workspaceId,
       user,
     );
+    const collection = await this.collectionService.getCollection(content.collectionId);
     const responseData = new ApiResponseService(
       "Generated Variables Inserted Successfully",
       HttpStatusCode.OK,
-      response,
+      collection,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
