@@ -2560,6 +2560,7 @@ export class CollectionRequestService {
   private generateBodyVariables(bodies: any[]): Record<string, string> {
     if (bodies.length === 0) return {};
 
+    const existingVariablePattern = /\{\{?[^}]+\}?\}/; // pre-existing vars like {{VAR}} or {var}
     const valueFrequencyByKey = new Map<string, Map<string, number>>();
     const valueCountByKey: Record<string, number> = {};
 
@@ -2567,7 +2568,7 @@ export class CollectionRequestService {
       const pairs: Array<[string, string]> = [];
 
       if (typeof obj === 'string') {
-        if (obj.trim()) pairs.push([parentKey || 'body', obj.trim()]);
+        if (obj.trim() && !existingVariablePattern.test(obj.trim())) { pairs.push([parentKey || 'body', obj.trim()]); }
       } else if (Array.isArray(obj)) {
         obj.forEach((item) => pairs.push(...extractKeyValuePairs(item, parentKey)));
       } else if (typeof obj === 'object' && obj !== null) {
@@ -2584,7 +2585,7 @@ export class CollectionRequestService {
       // Process urlencoded
       if (body.urlencoded) {
         for (const item of body.urlencoded) {
-          if (item.checked !== false && item.value?.trim()) {
+          if (item.checked !== false && item.value?.trim() && !existingVariablePattern.test(item.value)) {
             const key = item.key.trim();
             const value = item.value.trim();
             this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
@@ -2595,7 +2596,7 @@ export class CollectionRequestService {
       // Process formdata
       if (body.formdata?.text) {
         for (const item of body.formdata.text) {
-          if (item.checked !== false && item.value?.trim()) {
+          if (item.checked !== false && item.value?.trim() && !existingVariablePattern.test(item.value)) {
             const key = item.key.trim();
             const value = item.value.trim();
             this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
@@ -2618,7 +2619,7 @@ export class CollectionRequestService {
 
       // Process other body types (websocket, socketio, graphql)
       ['message', 'event', 'query', 'mutation', 'variables'].forEach(field => {
-          if (body[field]?.trim()) {
+        if (body[field]?.trim() && !existingVariablePattern.test(body[field])) {
           this.addToFrequencyMap(field, body[field].trim(), valueFrequencyByKey, valueCountByKey);
           }
       });
@@ -2659,6 +2660,7 @@ export class CollectionRequestService {
    */
   private generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
     if (paramGroups.length === 0) return {};
+    const existingVariablePattern = /\{\{?[^}]+\}?\}/; // Matches {{VAR}}, {VAR}
 
     const keyValueFrequency = new Map<string, Map<string, number>>();
     const keyValueCount: Record<string, number> = {};
@@ -2666,8 +2668,10 @@ export class CollectionRequestService {
     // Count frequencies per key
     for (const group of paramGroups) {
       for (const param of group) {
-        if (param.value?.trim()) {
-          const key = param.key;
+        if ( param.value?.trim() &&
+          !existingVariablePattern.test(param.value.trim()) // skip pre-existing vars
+        ) {
+          const key = param.key.trim();
           const value = param.value.trim();
           this.addToFrequencyMap(key, value, keyValueFrequency, keyValueCount);
         }
@@ -2703,14 +2707,19 @@ export class CollectionRequestService {
   ): Record<string, string> {
     if (headerGroups.length === 0) return {};
 
+    const existingVariablePattern = /\{\{?[^}]+\}?\}/; // Matches {{VAR}}, {VAR}
+
     const keyValueFrequency = new Map<string, Map<string, number>>();
     const keyValueCount: Record<string, number> = {};
 
     // Count frequencies per header key
     for (const group of headerGroups) {
       for (const header of group) {
-        if (header.value?.trim()) {
-          const key = header.key;
+        if (
+          header.value?.trim() &&
+          !existingVariablePattern.test(header.value.trim()) // skip pre-existing vars
+        ) {
+          const key = header.key.trim();
           const value = header.value.trim();
           this.addToFrequencyMap(key, value, keyValueFrequency, keyValueCount);
         }
