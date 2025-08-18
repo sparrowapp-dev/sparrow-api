@@ -1,6 +1,9 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 
-import { AuthCollection, UpdateCollectionDto } from "../payloads/collection.payload";
+import {
+  AuthCollection,
+  UpdateCollectionDto,
+} from "../payloads/collection.payload";
 import {
   Db,
   DeleteResult,
@@ -59,10 +62,13 @@ export class CollectionRepository {
    * @param {string[]} collectionIds
    * @returns {Promise<Team>} queried team data
    */
-  async getCollectionsByIds(collectionIds: string[]): Promise<WithId<Collection>[]> {
-    const collections = await this.db.collection<Collection>(Collections.COLLECTION)
-    .find({ _id: { $in: collectionIds.map(id => new ObjectId(id)) } })
-    .toArray();
+  async getCollectionsByIds(
+    collectionIds: string[],
+  ): Promise<WithId<Collection>[]> {
+    const collections = await this.db
+      .collection<Collection>(Collections.COLLECTION)
+      .find({ _id: { $in: collectionIds.map((id) => new ObjectId(id)) } })
+      .toArray();
     if (!collections) {
       throw new BadRequestException(
         "The collections with that ids could not be found.",
@@ -71,7 +77,6 @@ export class CollectionRepository {
     return collections;
   }
 
-  
   async update(
     id: string,
     updateCollectionDto: Partial<UpdateCollectionDto>,
@@ -95,23 +100,20 @@ export class CollectionRepository {
   }
 
   async unsetDefaultAuth(collectionId: string): Promise<UpdateResult> {
-    return this.db.collection(Collections.COLLECTION).updateOne(
-      { _id: new ObjectId(collectionId) },
-      { $set: { "authProfiles.$[elem].defaultKey": false } },
-      { arrayFilters: [{ "elem.defaultKey": true }] },
-    );
+    return this.db
+      .collection(Collections.COLLECTION)
+      .updateOne(
+        { _id: new ObjectId(collectionId) },
+        { $set: { "authProfiles.$[elem].defaultKey": false } },
+        { arrayFilters: [{ "elem.defaultKey": true }] },
+      );
   }
 
-  async addAuth(
-    collectionId: string, 
-    updateDoc: any
-  ): Promise<UpdateResult> {
-    return this.db.collection(Collections.COLLECTION).updateOne(
-      { _id: new ObjectId(collectionId) },
-      updateDoc,
-    );
+  async addAuth(collectionId: string, updateDoc: any): Promise<UpdateResult> {
+    return this.db
+      .collection(Collections.COLLECTION)
+      .updateOne({ _id: new ObjectId(collectionId) }, updateDoc);
   }
-
 
   async deleteAuth(
     collectionId: string,
@@ -136,15 +138,16 @@ export class CollectionRepository {
     );
 
     if (result.modifiedCount === 0) {
-      throw new BadRequestException("Auth profile not found or already deleted.");
+      throw new BadRequestException(
+        "Auth profile not found or already deleted.",
+      );
     }
     return "Auth profile deleted successfully.";
   }
 
-
   async updateAuth(
-    collectionId: string, 
-    updateDoc: any
+    collectionId: string,
+    updateDoc: any,
   ): Promise<UpdateResult> {
     return this.db
       .collection(Collections.COLLECTION)
@@ -253,6 +256,8 @@ export class CollectionRepository {
             $push: { "items.$.items": request.items[0] },
             $set: {
               totalRequests: noOfRequests + 1,
+              // update folder timestamps
+              "items.$.updatedAt": new Date(),
             },
           },
         );
@@ -305,6 +310,16 @@ export class CollectionRepository {
               request.items.items.description,
             "items.$[i].items.$[j].request": request.items.items.request,
             "items.$[i].items.$[j].updatedAt": new Date(),
+            "items.$[i].items.$[j].updatedBy": {
+              id: user._id.toString(),
+              name: user.name,
+            },
+            // update folder timestamps
+            "items.$[i].updatedAt": new Date(),
+            "items.$[i].updatedBy": {
+              id: user._id.toString(),
+              name: user.name,
+            },
             updatedAt: new Date(),
             updatedBy: {
               id: user._id.toString(),
@@ -343,6 +358,11 @@ export class CollectionRepository {
             },
             $set: {
               totalRequests: noOfRequests - 1,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
@@ -463,6 +483,8 @@ export class CollectionRepository {
             $push: { "items.$.items": websocket.items[0] },
             $set: {
               totalRequests: noOfRequests + 1,
+              // update folder timestamps
+              "items.$.updatedAt": new Date(),
             },
           },
         );
@@ -529,6 +551,12 @@ export class CollectionRepository {
                 id: user._id.toString(),
                 name: user.name,
               },
+              // update folder timestamps
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
             },
           },
           {
@@ -574,6 +602,11 @@ export class CollectionRepository {
             },
             $set: {
               totalRequests: noOfRequests - 1,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
@@ -669,6 +702,8 @@ export class CollectionRepository {
             $push: { "items.$.items": socketio.items[0] },
             $set: {
               totalRequests: noOfRequests + 1,
+              // update folder timestamps
+              "items.$.updatedAt": new Date(),
             },
           },
         );
@@ -730,6 +765,11 @@ export class CollectionRepository {
           {
             $set: {
               "items.$[i].items.$[j]": socketio.items.items,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
@@ -780,6 +820,11 @@ export class CollectionRepository {
             },
             $set: {
               totalRequests: noOfRequests - 1,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
@@ -875,6 +920,8 @@ export class CollectionRepository {
             $push: { "items.$.items": graphql.items[0] },
             $set: {
               totalRequests: noOfRequests + 1,
+              // update folder timestamps
+              "items.$.updatedAt": new Date(),
             },
           },
         );
@@ -936,6 +983,11 @@ export class CollectionRepository {
           {
             $set: {
               "items.$[i].items.$[j]": graphql.items.items,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
@@ -983,6 +1035,11 @@ export class CollectionRepository {
             },
             $set: {
               totalRequests: noOfRequests - 1,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
@@ -1511,6 +1568,8 @@ export class CollectionRepository {
             $push: { "items.$.items": aiRequest.items[0] },
             $set: {
               totalRequests: noOfRequests + 1,
+              // update folder timestamps
+              "items.$.updatedAt": new Date(),
             },
           },
         );
@@ -1572,6 +1631,11 @@ export class CollectionRepository {
           {
             $set: {
               "items.$[i].items.$[j]": aiRequest.items.items,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
@@ -1622,6 +1686,11 @@ export class CollectionRepository {
             },
             $set: {
               totalRequests: noOfRequests - 1,
+              "items.$[i].updatedAt": new Date(),
+              "items.$[i].updatedBy": {
+                id: user._id.toString(),
+                name: user.name,
+              },
               updatedAt: new Date(),
               updatedBy: {
                 id: user._id.toString(),
