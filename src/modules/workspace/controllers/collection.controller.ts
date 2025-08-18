@@ -1390,8 +1390,6 @@ export class collectionController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    await this.workSpaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
-
     const collection = await this.collectionService.getCollection(collectionId);
     const responseData = new ApiResponseService(
       "Success",
@@ -1607,8 +1605,7 @@ export class collectionController {
   @Post(":collectionId/generate-variables")
   @ApiOperation({
     summary: "Generate Variables",
-    description:
-      "This will Generate Variables for the Collection using AI",
+    description: "This will Generate Variables for the Collection using AI",
   })
   @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Variables Generated Successfully" })
@@ -1620,8 +1617,9 @@ export class collectionController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request?.user;
-    const workspaceId = collectionDto?.workspaceId
-    const collectionVariables = await this.collectionRequestService.generateVariables(
+    const workspaceId = collectionDto?.workspaceId;
+    const collectionVariables =
+      await this.collectionRequestService.generateVariables(
         collectionId,
         workspaceId,
         user,
