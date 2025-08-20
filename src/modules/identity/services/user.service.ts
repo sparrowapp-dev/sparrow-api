@@ -656,7 +656,7 @@ export class UserService {
         userName: name,
         userEmail: email,
         userPassword: userPassword,
-        sparrowAuthWebsite: this.configService.get("auth.baseUrl"),
+        sparrowAuthWebsite: await this.configService.get("auth.baseURL"),
       },
       subject: `Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
     };
