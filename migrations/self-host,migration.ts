@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { TeamRole, WorkspaceRole } from "@src/modules/common/enum/roles.enum";
 import { LimitArea } from "@src/modules/common/models/plan.model";
+import { Team } from "@src/modules/common/models/team.model";
 import { createHmac } from "crypto";
 
 import { Db } from "mongodb";
@@ -120,6 +121,10 @@ export class SelftHostMigration implements OnModuleInit {
           isSelfHostedVersionAdmin: true,
           isUserTrialExhausted: true,
         });
+        const selfHostPlan = await planCollection.findOne({
+          name: defaultHubPlan,
+        });
+        const hubUrl = await this.generateUniqueHubUrl(DEFAULT_TEAM.name);
 
         // Insert the new team
         const teamData = {
@@ -140,6 +145,11 @@ export class SelftHostMigration implements OnModuleInit {
           createdAt: new Date(),
           updatedAt: new Date(),
           updatedBy: userId,
+          plan: selfHostPlan,
+          linkedinUrl: "",
+          xUrl: "",
+          githubUrl: "",
+          hubUrl: hubUrl,
         };
         const { insertedId: teamId } =
           await teamsCollection.insertOne(teamData);
@@ -186,9 +196,11 @@ export class SelftHostMigration implements OnModuleInit {
             id: teamId.toString(),
             name: DEFAULT_TEAM.name,
           },
+          workspaceType: "PRIVATE",
           users: usersInfo,
           admins: adminInfo,
           environments: [] as any,
+          collection: [] as any,
           createdAt: new Date(),
           createdBy: userId.toString(),
           updatedAt: new Date(),
@@ -239,5 +251,46 @@ export class SelftHostMigration implements OnModuleInit {
     } catch (error) {
       console.error("Error during migration:", error);
     }
+  }
+  private sanitizeName(name: string): string {
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+  private async generateUniqueHubUrl(name: string): Promise<string> {
+    const prefix = "https://";
+    const suffix = ".sparrowhub.net";
+    // const envPath =
+    //   process.env.NODE_ENV === "production" ? "/release/v1" : "/dev";
+
+    let base = this.sanitizeName(name);
+    if (base.length > 50) {
+      base = base.slice(0, 50);
+    }
+    const baseUrl = `${prefix}${base}`;
+
+    const regexPattern = `^${baseUrl}\\d*${suffix}$`;
+
+    const existingTeams = await this.db
+      .collection<Team>(Collections.TEAM)
+      .find({ hubUrl: { $regex: regexPattern, $options: "i" } })
+      .project({ hubUrl: 1 })
+      .toArray();
+
+    const existingUrls = new Set(existingTeams.map((team) => team.hubUrl));
+    const finalUrl = `${baseUrl}${suffix}`;
+
+    if (!existingUrls.has(finalUrl)) {
+      return finalUrl;
+    }
+
+    let counter = 1;
+    while (existingUrls.has(`${baseUrl}${counter}${suffix}`)) {
+      counter++;
+    }
+
+    return `${baseUrl}${counter}${suffix}`;
   }
 }
