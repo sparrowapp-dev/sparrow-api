@@ -29,6 +29,8 @@ export default () => ({
     mailPort: process.env.SMTP_MAIL_PORT,
     mailSecure: process.env.SMTP_MAIL_SECURE,
     userName: process.env.SMTP_USER_NAME,
+    appEdition: process.env.APP_EDITION,
+    selfHostHubPlan: "SelfHost(Community)",
   },
   db: {
     url: process.env.DB_URL,
@@ -98,7 +100,7 @@ export default () => ({
     conversationLimit: 30,
     conversationConatiner: process.env.AI_CONVERSATION_BLOB_CONTAINER,
     encryptionSecret: process.env.ENCRYPTION_SECRET,
-    deepseekModel: process.env.DEEPSEEK_API_MODEL
+    deepseekModel: process.env.DEEPSEEK_API_MODEL,
   },
   hubspot: {
     hubspotEnabled: process.env.HUBSPOT_INTEGRATION_ENABLED,
@@ -131,5 +133,9 @@ export default () => ({
   },
   admin: {
     baseURL: process.env.ADMIN_BASE_URL,
+  },
+  selfHost: {
+    adminEmail: process.env.SELF_HOST_ADMIN_EMAIL,
+    adminPassword: process.env.SELF_HOST_ADMIN_PASSWORD,
   },
 });
