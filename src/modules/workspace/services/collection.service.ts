@@ -221,6 +221,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -283,6 +284,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -345,6 +347,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -407,6 +410,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
     ];

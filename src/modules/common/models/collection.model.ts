@@ -340,6 +340,11 @@ export class RequestResponseMetaData {
   @IsNotEmpty()
   selectedRequestAuthType?: AuthModeEnum;
 
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  selectedRequestAuthProfileId?: string;
+
   @ApiProperty({
     example: {
       name: "search",
