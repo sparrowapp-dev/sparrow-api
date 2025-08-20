@@ -1218,8 +1218,6 @@ export class CollectionService {
             }
           }
           newObj[key] = updatedBody;
-        } else {
-          newObj[key] = replaceValues(value);
         }
       }
       return newObj;
