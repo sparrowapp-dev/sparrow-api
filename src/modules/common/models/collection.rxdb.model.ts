@@ -32,6 +32,7 @@ export class TransformedRequest {
 export interface SparrowRequest {
   selectedRequestBodyType?: BodyModeEnum | PostmanBodyModeEnum;
   selectedRequestAuthType?: AuthModeEnum;
+  selectedRequestAuthProfileId?: string;
   method: string;
   url: string;
   body: SparrowRequestBody;
@@ -79,7 +80,7 @@ export class Auth {
 }
 
 export class AuthProfiles extends Auth {
-  authId?:string
+  authId?: string;
   name?: string;
   description?: string;
   authType?: CollectionAuthModeEnum;
