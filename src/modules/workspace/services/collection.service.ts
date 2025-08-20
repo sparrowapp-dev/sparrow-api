@@ -1152,7 +1152,7 @@ export class CollectionService {
       return text.replace(
         /(\{\{.*?\}\})|([^{}]+)/g,
         (match, insideBraces, outside) => {
-          if (insideBraces) return insideBraces;
+          if (insideBraces) return insideBraces; // skip {{ }}
           let updated = outside;
           for (const variable of generatedVariables) {
             if (updated === variable.value) {
@@ -1184,49 +1184,38 @@ export class CollectionService {
       }));
     };
 
-    // Main recursive update
-    const replaceValues = (obj: any): any => {
-      if (!obj || typeof obj !== "object") {
-        return typeof obj === "string" ? replaceOutsideBraces(obj) : obj;
+    const newRequest: any = { ...requestItem };
+    // url
+    if (typeof newRequest.url === "string") {
+      newRequest.url = replaceOutsideBraces(newRequest.url);
+    }
+    // headers
+    if (Array.isArray(newRequest.headers)) {
+      newRequest.headers = updateKeyValueArray(newRequest.headers);
+    }
+    // queryParams
+    if (Array.isArray(newRequest.queryParams)) {
+      newRequest.queryParams = updateKeyValueArray(newRequest.queryParams);
+    }
+    // body
+    if (typeof newRequest.body === "object" && newRequest.body !== null) {
+      const updatedBody = { ...newRequest.body };
+      if (typeof updatedBody.raw === "string") {
+        updatedBody.raw = replaceOutsideBraces(updatedBody.raw);
       }
-      const newObj: any = Array.isArray(obj) ? [] : {};
-      for (const [key, value] of Object.entries(obj)) {
-        if (key === "url" && typeof value === "string") {
-          newObj[key] = replaceOutsideBraces(value);
-        } else if (key === "headers" && Array.isArray(value)) {
-          newObj[key] = updateKeyValueArray(value);
-        } else if (key === "queryParams" && Array.isArray(value)) {
-          newObj[key] = updateKeyValueArray(value);
-        } else if (
-          key === "body" &&
-          typeof value === "object" &&
-          value !== null
-        ) {
-          const updatedBody = { ...(value as RequestBodyDto) };
-          if (typeof updatedBody.raw === "string") {
-            updatedBody.raw = replaceOutsideBraces(updatedBody.raw);
-          }
-          if (Array.isArray(updatedBody.urlencoded)) {
-            updatedBody.urlencoded = updateKeyValueArray(
-              updatedBody.urlencoded,
-            );
-          }
-          if (
-            updatedBody.formdata &&
-            typeof updatedBody.formdata === "object"
-          ) {
-            if (Array.isArray(updatedBody.formdata.text)) {
-              updatedBody.formdata.text = updateKeyValueArray(
-                updatedBody.formdata.text,
-              );
-            }
-          }
-          newObj[key] = updatedBody;
+      if (Array.isArray(updatedBody.urlencoded)) {
+        updatedBody.urlencoded = updateKeyValueArray(updatedBody.urlencoded);
+      }
+      if (updatedBody.formdata && typeof updatedBody.formdata === "object") {
+        if (Array.isArray(updatedBody.formdata.text)) {
+          updatedBody.formdata.text = updateKeyValueArray(
+            updatedBody.formdata.text,
+          );
         }
       }
-      return newObj;
-    };
-    return replaceValues(requestItem);
+      newRequest.body = updatedBody;
+    }
+    return newRequest;
   }
 
   public async insertGeneratedVariables(
