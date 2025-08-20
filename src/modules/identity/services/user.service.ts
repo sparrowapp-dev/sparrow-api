@@ -233,7 +233,11 @@ export class UserService {
       refreshToken,
     };
     // Disabling the welcome email due to hubspot integration
-    // await this.sendSignUpEmail(firstName, payload.email);
+    await this.sendVerifiedAdminSignUpEmail(
+      firstName,
+      payload.email,
+      payload.password,
+    );
     // if (!payload?.isUserAlreadyVerified) {
     //   await this.sendUserVerificationEmail({ email: payload.email });
     // }
@@ -630,6 +634,29 @@ export class UserService {
         sparrowWebsiteName: this.configService.get(
           "support.sparrowWebsiteName",
         ),
+      },
+      subject: `Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
+    };
+    const promise = [this.emailService.sendEmail(transporter, mailOptions)];
+    await Promise.all(promise);
+  }
+
+  async sendVerifiedAdminSignUpEmail(
+    name: string,
+    email: string,
+    userPassword?: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Sparrow Welcome",
+      template: "signUpVerifiedUserEmail",
+      context: {
+        userName: name,
+        userEmail: email,
+        userPassword: userPassword,
+        sparrowAuthWebsite: this.configService.get("auth.baseUrl"),
       },
       subject: `Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
     };
