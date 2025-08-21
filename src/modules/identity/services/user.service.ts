@@ -647,6 +647,7 @@ export class UserService {
     userPassword?: string,
   ): Promise<void> {
     const transporter = this.emailService.createTransporter();
+    const authBaseUrl = this.configService.get("auth.baseURL");
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: email,
@@ -656,7 +657,7 @@ export class UserService {
         userName: name,
         userEmail: email,
         userPassword: userPassword,
-        sparrowAuthWebsite: await this.configService.get("auth.baseURL"),
+        sparrowAuthWebsite: authBaseUrl + "/init?source=web",
       },
       subject: `Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
     };
