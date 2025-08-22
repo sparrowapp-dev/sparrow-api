@@ -56,7 +56,6 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
 
-
 /**
  * Workspace Service
  */
@@ -266,6 +265,19 @@ export class WorkspaceService {
     workspaceData: CreateWorkspaceDto,
     user: DecodedUserObject,
   ): Promise<InsertOneResult<Document>> {
+    const MAX_NAME_LENGTH = 100;
+    const isOnlySpecialCharacters = (str: string) =>
+      /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/.test(str);
+    if (
+      typeof workspaceData.name !== "string" ||
+      workspaceData.name.trim().length === 0 ||
+      workspaceData.name.length > MAX_NAME_LENGTH ||
+      isOnlySpecialCharacters(workspaceData.name)
+    ) {
+      throw new BadRequestException(
+        `Workspace name must be 1-${MAX_NAME_LENGTH} characters and cannot consist of only special characters.`,
+      );
+    }
     const teamId = new ObjectId(workspaceData.id);
     let teamData: WithId<Team>;
     if (workspaceData?.firstWorkspace) {

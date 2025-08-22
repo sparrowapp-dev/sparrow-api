@@ -106,6 +106,21 @@ export class TeamService {
     user: DecodedUserObject,
     image?: MemoryStorageFile,
   ): Promise<InsertOneResult<Team>> {
+    const MAX_NAME_LENGTH = 100;
+    // Checks if string has only special characters (no letters or numbers)
+    const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
+
+    if (
+      typeof teamData.name !== "string" ||
+      teamData.name.trim().length === 0 || // empty after trim
+      teamData.name.length > MAX_NAME_LENGTH || // too long
+      !SAFE_NAME_REGEX.test(teamData.name) // only special chars
+    ) {
+      throw new BadRequestException(
+        `Team name must be 1-${MAX_NAME_LENGTH} characters and cannot consist of only special characters.`,
+      );
+    }
+
     let team;
     const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
 
