@@ -2,8 +2,13 @@ import { Injectable, OnModuleInit, Inject } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { TeamRole, WorkspaceRole } from "@src/modules/common/enum/roles.enum";
+import {
+  DefaultEnvironment,
+  EnvironmentType,
+} from "@src/modules/common/models/environment.model";
 import { LimitArea } from "@src/modules/common/models/plan.model";
 import { Team } from "@src/modules/common/models/team.model";
+import { CreateEnvironmentDto } from "@src/modules/workspace/payloads/environment.payload";
 import { createHmac } from "crypto";
 
 import { Db } from "mongodb";
@@ -43,6 +48,9 @@ export class SelftHostMigration implements OnModuleInit {
         const userCollection = this.db.collection(Collections.USER);
         const teamsCollection = this.db.collection(Collections.TEAM);
         const workspaceCollection = this.db.collection(Collections.WORKSPACE);
+        const environmentCollection = this.db.collection(
+          Collections.ENVIRONMENT,
+        );
 
         const existingPlan = await planCollection.findOne({
           name: defaultHubPlan,
@@ -175,6 +183,29 @@ export class SelftHostMigration implements OnModuleInit {
             },
           },
         );
+        // Create new global environment
+        const environmentPayload: CreateEnvironmentDto = {
+          name: DefaultEnvironment.GLOBAL,
+          variable: [
+            {
+              key: "",
+              value: "",
+              checked: true,
+            },
+          ],
+        };
+
+        const newEnvironment = {
+          ...environmentPayload,
+          type: EnvironmentType.GLOBAL,
+          createdBy: "Admin",
+          updatedBy: "Admin",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const { insertedId: environmentId } =
+          await environmentCollection.insertOne(newEnvironment);
         // Prepare workspace users and admins
         const adminInfo = [];
         const usersInfo = [];
@@ -204,7 +235,13 @@ export class SelftHostMigration implements OnModuleInit {
           workspaceType: "PRIVATE",
           users: usersInfo,
           admins: adminInfo,
-          environments: [] as any,
+          environments: [
+            {
+              id: environmentId.toString(),
+              name: environmentPayload.name,
+              type: EnvironmentType.GLOBAL,
+            },
+          ],
           collection: [] as any,
           createdAt: new Date(),
           createdBy: userId.toString(),
