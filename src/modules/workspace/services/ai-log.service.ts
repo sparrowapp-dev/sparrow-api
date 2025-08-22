@@ -14,6 +14,7 @@ export class AiLogService {
     await this.ailogrepository.addLogs(
       {
         userId: payload.userId,
+        emailId: payload.emailId,
         activity: payload.activity,
         model: payload.model,
         tokenConsumed: payload.tokenConsumed,
@@ -21,5 +22,9 @@ export class AiLogService {
       },
       payload.userId,
     );
+  }
+
+  async getTokenUsageReport(start: Date, end: Date) {
+    return this.ailogrepository.getTokenUsageReport(start, end);
   }
 }

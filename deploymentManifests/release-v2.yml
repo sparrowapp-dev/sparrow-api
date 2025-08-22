@@ -309,7 +309,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: release-api-v2-secret
-                  key: DEEPSEEK_API_MODEL      
+                  key: DEEPSEEK_API_MODEL
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
@@ -350,6 +350,11 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: ADMIN_BASE_URL
+            - name: STAKEHOLDERS_EMAIL_LIST
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: STAKEHOLDERS_EMAIL_LIST
 
 ---
 apiVersion: v1

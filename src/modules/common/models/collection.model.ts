@@ -240,6 +240,11 @@ export class RequestMetaData {
   @IsNotEmpty()
   selectedRequestAuthType?: AuthModeEnum;
 
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  selectedRequestAuthProfileId?: string;
+
   @ApiProperty({
     example: {
       name: "search",
@@ -334,6 +339,11 @@ export class RequestResponseMetaData {
   @IsString()
   @IsNotEmpty()
   selectedRequestAuthType?: AuthModeEnum;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  selectedRequestAuthProfileId?: string;
 
   @ApiProperty({
     example: {
@@ -1157,4 +1167,13 @@ export class CollectionDto {
   @IsBoolean()
   @IsOptional()
   activeSync?: boolean;
+}
+
+export interface RequestBodyDto {
+  raw?: string;
+  urlencoded?: { key: string; value: string; checked: boolean }[];
+  formdata?: {
+    text?: { key: string; value: string; checked: boolean }[];
+    file?: any[];
+  };
 }

@@ -9,18 +9,22 @@ interface MailOptions {
   from: string;
   to: string;
   text?: string;
-  template: string;
+  template?: string;
   context?: {
     [key: string]: any;
   };
   subject: string;
+  attachments?: {
+    filename: string;
+    content: any;
+  }[];
 }
 
 @Injectable()
 export class EmailService {
   constructor(private configService: ConfigService) {}
 
-  createTransporter() {
+  createTransporter(useTemplate = true) {
     const transporter = nodemailer.createTransport({
       host: this.configService.get("app.mailHost"),
       port: this.configService.get("app.mailPort"),
@@ -31,23 +35,25 @@ export class EmailService {
       },
     });
 
-    const handlebarOptions = {
-      viewEngine: {
-        extname: ".handlebars",
-        partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
-        layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
-        defaultLayout: "main",
-        helpers: {
-          linkedinUrl: () => this.configService.get("social.linkedinUrl"),
-          githubUrl: () => this.configService.get("social.githubUrl"),
-          discordUrl: () => this.configService.get("social.discordUrl"),
+    if (useTemplate) {
+      const handlebarOptions = {
+        viewEngine: {
+          extname: ".handlebars",
+          partialsDir: path.resolve(__dirname, "..", "..", "views", "partials"),
+          layoutsDir: path.resolve(__dirname, "..", "..", "views", "layouts"),
+          defaultLayout: "main",
+          helpers: {
+            linkedinUrl: () => this.configService.get("social.linkedinUrl"),
+            githubUrl: () => this.configService.get("social.githubUrl"),
+            discordUrl: () => this.configService.get("social.discordUrl"),
+          },
         },
-      },
-      viewPath: path.resolve(__dirname, "..", "..", "views"),
-      extName: ".handlebars",
-    };
+        viewPath: path.resolve(__dirname, "..", "..", "views"),
+        extName: ".handlebars",
+      };
 
-    transporter.use("compile", hbs(handlebarOptions));
+      transporter.use("compile", hbs(handlebarOptions));
+    }
 
     return transporter;
   }

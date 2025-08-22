@@ -161,6 +161,7 @@ function transformPath(
         },
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
+        selectedRequestAuthProfileId: ""
       },
       createdBy: username,
       updatedBy: username,
