@@ -125,6 +125,11 @@ export class SelftHostMigration implements OnModuleInit {
           name: defaultHubPlan,
         });
         const hubUrl = await this.generateUniqueHubUrl(DEFAULT_TEAM.name);
+        const hubPlan = {
+          ...selfHostPlan,
+          id: selfHostPlan._id,
+        };
+        delete hubPlan._id;
 
         // Insert the new team
         const teamData = {
@@ -145,7 +150,7 @@ export class SelftHostMigration implements OnModuleInit {
           createdAt: new Date(),
           updatedAt: new Date(),
           updatedBy: userId,
-          plan: selfHostPlan,
+          plan: hubPlan,
           linkedinUrl: "",
           xUrl: "",
           githubUrl: "",
