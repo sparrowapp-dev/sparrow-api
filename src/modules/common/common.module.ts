@@ -21,7 +21,7 @@ import { PostmanParserService } from "./services/postman.parser.service";
 import { CreateUserMigration } from "migrations/create-test-user.migration";
 import { InstrumentService } from "./services/instrument.service";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-import { SelftHostMigration } from "migrations/self-host,migration";
+import { SelftHostMigration } from "migrations/self-host.migration";
 
 /**
  * Common Module provides global services and configurations used across the application.
