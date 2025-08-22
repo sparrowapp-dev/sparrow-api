@@ -266,13 +266,12 @@ export class WorkspaceService {
     user: DecodedUserObject,
   ): Promise<InsertOneResult<Document>> {
     const MAX_NAME_LENGTH = 100;
-    const isOnlySpecialCharacters = (str: string) =>
-      /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/.test(str);
+    const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
     if (
       typeof workspaceData.name !== "string" ||
       workspaceData.name.trim().length === 0 ||
       workspaceData.name.length > MAX_NAME_LENGTH ||
-      isOnlySpecialCharacters(workspaceData.name)
+      !SAFE_NAME_REGEX.test(workspaceData.name)
     ) {
       throw new BadRequestException(
         `Workspace name must be 1-${MAX_NAME_LENGTH} characters and cannot consist of only special characters.`,
