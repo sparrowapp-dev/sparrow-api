@@ -11,6 +11,7 @@ import {
 } from "@src/modules/common/models/user.model";
 
 import { DecodedUserObject } from "@src/types/fastify";
+import { UserGenerateVariableDto } from "../payloads/user.payload";
 
 export interface IGenericMessageBody {
   message: string;
@@ -196,7 +197,7 @@ export class UserRepository {
 
   async updateUserById(
     id: ObjectId,
-    updateParams: Partial<UserDto>,
+    updateParams: Partial<UserGenerateVariableDto>,
   ): Promise<WithId<User>> {
     const updatedUserParams = {
       $set: updateParams,

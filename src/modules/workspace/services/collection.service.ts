@@ -51,6 +51,7 @@ import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { VariableDto } from "@src/modules/common/models/environment.model";
 import { RequestBodyDto } from "@src/modules/common/models/collection.model";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 
 @Injectable()
 export class CollectionService {
@@ -63,6 +64,7 @@ export class CollectionService {
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
     private readonly cryptoService: EncryptionService,
+    private readonly userRepository: UserRepository,
   ) {}
 
   async createCollection(
@@ -221,6 +223,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -283,6 +286,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -345,6 +349,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -407,6 +412,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
     ];
@@ -476,6 +482,19 @@ export class CollectionService {
     // Bulk fetch all collections
     const collections =
       await this.collectionRepository.getCollectionsByIds(collectionIds);
+
+    const userDetails = await this.userRepository.getUserByEmail(user.email);
+    for (let i = 0; i < collections.length; i++) {
+      const collectionId = collections[i]._id.toString();
+      // Case 1: Already processed
+      if (userDetails.isGenerateVariableTrial.includes(collectionId)) {
+        collections[i].isGenerateVariableTrial = false;
+        continue;
+      }
+      // Case 2: Not processed yet → run frequency check
+      const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
+      collections[i].isGenerateVariableTrial = hasExceeded;
+    }
 
     const decryptedCollections = [];
     // 🔄 Only the minimum loop remains
@@ -1269,5 +1288,103 @@ export class CollectionService {
       user,
     );
     return response;
+  }
+
+  public async hasVariableFrequencyExceeded(
+    collectionId: string,
+  ): Promise<boolean> {
+    const collectionDocument = await this.getCollection(collectionId);
+    if (!collectionDocument) {
+      throw new NotFoundException("Collection not found");
+    }
+    const frequencyMap = new Map<string, number>();
+    // helper: count frequency of plain strings
+    const countValue = (value: string) => {
+      if (!value) return;
+      if (/^\s*\{\{.*\}\}\s*$/.test(value)) {
+        return;
+      }
+      const current = frequencyMap.get(value) ?? 0;
+      const updated = current + 1;
+      frequencyMap.set(value, updated);
+      if (updated >= 3) {
+        throw new Error("__STOP__"); // shortcut exit when threshold reached
+      }
+    };
+    const traverse = (items: any[]) => {
+      for (const item of items) {
+        if (item.type === ItemTypeEnum.REQUEST) {
+          checkRequest(item.request);
+        }
+        if (item.type === ItemTypeEnum.SOCKETIO) {
+          checkRequest(item.socketio);
+        }
+        if (item.type === ItemTypeEnum.WEBSOCKET) {
+          checkRequest(item.websocket);
+        }
+        if (item.type === ItemTypeEnum.GRAPHQL) {
+          checkRequest(item.graphql);
+        }
+
+        if (Array.isArray(item.items) && item.items.length > 0) {
+          traverse(item.items);
+        }
+      }
+    };
+    const checkRequest = (request: any) => {
+      if (!request) return;
+      // url
+      if (typeof request.url === "string") {
+        countValue(request.url);
+      }
+
+      // headers
+      if (Array.isArray(request.headers)) {
+        request.headers.forEach((h: any) => {
+          if (typeof h.key === "string") countValue(h.key);
+          if (typeof h.value === "string") countValue(h.value);
+        });
+      }
+
+      // query params
+      if (Array.isArray(request.queryParams)) {
+        request.queryParams.forEach((q: any) => {
+          if (typeof q.key === "string") countValue(q.key);
+          if (typeof q.value === "string") countValue(q.value);
+        });
+      }
+
+      // body
+      if (typeof request.body === "object" && request.body !== null) {
+        if (typeof request.body.raw === "string") {
+          countValue(request.body.raw);
+        }
+        if (Array.isArray(request.body.urlencoded)) {
+          request.body.urlencoded.forEach((p: any) => {
+            if (typeof p.key === "string") countValue(p.key);
+            if (typeof p.value === "string") countValue(p.value);
+          });
+        }
+        if (
+          request.body.formdata &&
+          typeof request.body.formdata === "object" &&
+          Array.isArray(request.body.formdata.text)
+        ) {
+          request.body.formdata.text.forEach((f: any) => {
+            if (typeof f.key === "string") countValue(f.key);
+            if (typeof f.value === "string") countValue(f.value);
+          });
+        }
+      }
+    };
+    try {
+      traverse(collectionDocument.items);
+    } catch (e: any) {
+      if (e.message === "__STOP__") {
+        return true;
+      }
+      throw e;
+    }
+    return false;
   }
 }

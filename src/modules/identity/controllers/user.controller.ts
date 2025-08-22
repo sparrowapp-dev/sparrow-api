@@ -455,4 +455,29 @@ export class UserController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post(":collectionId/trial-generate-variable/:email")
+  @ApiOperation({
+    summary: "Insert Generate Variable Trial",
+    description:
+      "Insert a trial generate-variable flag for a user and collection.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Trial inserted successfully" })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async generateVariableTrialInsert(
+    @Param("email") email: string,
+    @Param("collectionId") collectionId: string,
+  ) {
+    const result = await this.userService.insertGenerateVariableTrial(
+      email,
+      collectionId,
+    );
+
+    return new ApiResponseService(
+      "Trial Generate Variable inserted successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+  }
 }

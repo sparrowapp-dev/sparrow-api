@@ -340,6 +340,11 @@ export class RequestResponseMetaData {
   @IsNotEmpty()
   selectedRequestAuthType?: AuthModeEnum;
 
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  selectedRequestAuthProfileId?: string;
+
   @ApiProperty({
     example: {
       name: "search",
@@ -1147,6 +1152,12 @@ export class Collection {
   @IsOptional()
   @IsDateString()
   syncedAt?: Date;
+}
+
+export class CollectionGenerateVariableDto extends Collection {
+  @IsOptional()
+  @IsBoolean()
+  isGenerateVariableTrial?: boolean;
 }
 
 export class CollectionDto {

@@ -134,6 +134,11 @@ export class User {
   @IsBoolean()
   @IsOptional()
   isUserTrialExhausted?: boolean;
+
+  @IsArray()
+  @IsString({ each: true })
+  @Type(() => String)
+  isGenerateVariableTrial?: string[];
 }
 
 export class UserDto {

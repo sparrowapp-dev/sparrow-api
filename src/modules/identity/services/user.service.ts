@@ -652,4 +652,22 @@ export class UserService {
     }
     return user.isUserTrialExhausted ?? false;
   }
+
+  async insertGenerateVariableTrial(email: string, collectionId: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    const updateGenerateTrialCollections = [
+      ...(userDetails.isGenerateVariableTrial || []),
+      collectionId,
+    ];
+    const updatedUser = await this.userRepository.updateUserById(
+      userDetails._id,
+      { isGenerateVariableTrial: updateGenerateTrialCollections },
+    );
+    if(updatedUser){
+      return updatedUser.email;
+    }
+  }
 }
