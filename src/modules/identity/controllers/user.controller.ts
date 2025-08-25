@@ -480,4 +480,25 @@ export class UserController {
       result,
     );
   }
+
+  @Post(":email/generate-variable-demo")
+  @ApiOperation({
+    summary: "When the User has completed the Generate variable Demo.",
+    description:
+      "we will make a property true when user has completed generate variable demo.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Generate Variable Demo completed successfully",
+  })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async generateVariableTrialCompleted(@Param("email") email: string) {
+    const result = await this.userService.generateVariableDemoCompleted(email);
+    return new ApiResponseService(
+      "Generate Variable Demo completed successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+  }
 }

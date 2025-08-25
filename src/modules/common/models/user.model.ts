@@ -139,6 +139,10 @@ export class User {
   @IsString({ each: true })
   @Type(() => String)
   isGenerateVariableTrial?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  isGenerateVariableDemoCompleted?: boolean;
 }
 
 export class UserDto {

@@ -58,6 +58,10 @@ export class UserGenerateVariableDto extends UserDto {
   @IsString({ each: true })
   @Type(() => String)
   isGenerateVariableTrial?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  isGenerateVariableDemoCompleted?: boolean;
 }
 
 export class RegisteredWith {

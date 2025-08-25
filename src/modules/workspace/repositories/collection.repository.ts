@@ -44,7 +44,7 @@ export class CollectionRepository {
     return response;
   }
 
-  async get(id: string): Promise<WithId<Collection>> {
+  async get(id: string): Promise<WithId<CollectionGenerateVariableDto>> {
     const _id = new ObjectId(id);
     const data = await this.db
       .collection<Collection>(Collections.COLLECTION)
