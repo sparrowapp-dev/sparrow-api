@@ -12,6 +12,7 @@ export type DecodedUserObject = {
   emailVerificationCodeTimeStamp?: Date;
   lastActive?: Date;
   isSuperAdmin?: boolean;
+  isSelfHostedVersionAdmin?: boolean;
 };
 
 export interface ExtendedFastifyRequest extends FastifyRequest {
