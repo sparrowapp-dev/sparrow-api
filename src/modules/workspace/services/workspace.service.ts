@@ -419,6 +419,19 @@ export class WorkspaceService {
     updates: Partial<UpdateWorkspaceDto>,
     user: DecodedUserObject,
   ): Promise<UpdateResult<Document>> {
+    const MAX_NAME_LENGTH = 100;
+    const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
+    if (
+      updates.name !== undefined &&
+      (typeof updates.name !== "string" ||
+        updates.name.trim().length === 0 ||
+        updates.name.length > MAX_NAME_LENGTH ||
+        !SAFE_NAME_REGEX.test(updates.name))
+    ) {
+      throw new BadRequestException(
+        `Workspace name must be 1-${MAX_NAME_LENGTH} characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.`,
+      );
+    }
     const workspace = await this.IsWorkspaceAdminOrEditor(id, user._id);
     const updateNameMessage = `Workspace is renamed from "${workspace.name}" to "${updates.name}"`;
     const data = await this.workspaceRepository.update(id, updates, user._id);
