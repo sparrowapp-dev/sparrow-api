@@ -51,6 +51,11 @@ export class UserService {
     id: string,
     user?: DecodedUserObject,
   ): Promise<DecodedUserObject> {
+    if (user && !user.isSuperAdmin) {
+      throw new BadRequestException(
+        "You do not have permission to access this user.",
+      );
+    }
     const data = await this.userRepository.getUserById(id, user);
     return data;
   }
