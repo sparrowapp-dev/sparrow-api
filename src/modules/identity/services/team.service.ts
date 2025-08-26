@@ -109,7 +109,7 @@ export class TeamService {
   ): Promise<InsertOneResult<Team>> {
     if (!isValidName(teamData.name)) {
       throw new BadRequestException(
-        "Team name must be 1-100 characters and cannot consist of only special characters.",
+        "Team name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
       );
     }
     let team;

@@ -268,7 +268,7 @@ export class WorkspaceService {
   ): Promise<InsertOneResult<Document>> {
     if (!isValidName(workspaceData.name)) {
       throw new BadRequestException(
-        "Workspace name must be 1-100 characters and cannot consist of only special characters.",
+        "Workspace name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
       );
     }
     const teamId = new ObjectId(workspaceData.id);
