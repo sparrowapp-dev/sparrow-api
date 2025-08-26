@@ -68,21 +68,21 @@ export class UserController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Get(":userId")
-  @ApiOperation({
-    summary: "Retrieve  User",
-    description: "This will return  information about a specific user",
-  })
-  @UseGuards(JwtAuthGuard)
-  async getUser(@Param("userId") id: string, @Res() res: FastifyReply) {
-    const data = await this.userService.getUserById(id);
-    const responseData = new ApiResponseService(
-      "Success",
-      HttpStatusCode.OK,
-      data,
-    );
-    return res.status(responseData.httpStatusCode).send(responseData);
-  }
+  // @Get(":userId")
+  // @ApiOperation({
+  //   summary: "Retrieve  User",
+  //   description: "This will return  information about a specific user",
+  // })
+  // @UseGuards(JwtAuthGuard)
+  // async getUser(@Param("userId") id: string, @Res() res: FastifyReply) {
+  //   const data = await this.userService.getUserById(id);
+  //   const responseData = new ApiResponseService(
+  //     "Success",
+  //     HttpStatusCode.OK,
+  //     data,
+  //   );
+  //   return res.status(responseData.httpStatusCode).send(responseData);
+  // }
 
   @Get("email/:email")
   @ApiOperation({

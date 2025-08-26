@@ -25,12 +25,12 @@ import { AppRepository } from "./app.repository";
 
 @Module({
   imports: [
-    PrometheusModule.register({
-      path: "/metrics",
-      defaultMetrics: {
-        enabled: false,
-      },
-    }),
+    // PrometheusModule.register({
+    //   path: "/metrics",
+    //   defaultMetrics: {
+    //     enabled: false,
+    //   },
+    // }),
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     LoggerModule.forRootAsync({
       useFactory: async () => {
