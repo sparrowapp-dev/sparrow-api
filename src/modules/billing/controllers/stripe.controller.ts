@@ -40,11 +40,14 @@ import {
 import { StripeWebhookHelper } from "../helpers/stripe-webhook.helper";
 import { PromoCodeService } from "../services/promocode.service";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { SalesEmailRepository } from "@src/modules/workspace/repositories/sales-email.repository";
 import { PricingService } from "@src/modules/workspace/services/pricing.repository";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { ConfigService } from "@nestjs/config";
+import { TrialType } from "@src/modules/common/enum/trial.enum";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -66,6 +69,8 @@ export class StripeController {
     private readonly promoCodeService: PromoCodeService,
     private readonly userRepository: UserRepository,
     private readonly pricingService: PricingService,
+    private readonly configService: ConfigService,
+    private readonly salesEmailRepository: SalesEmailRepository,
   ) {
     this.isStripeAvailable = !!this.stripeService;
 
@@ -221,7 +226,44 @@ export class StripeController {
   ): Promise<SubscriptionResponseDto> {
     try {
       this.checkStripeAvailability();
+      const currentUser = req.user;
+      const userRecord = await this.userRepository.getUserByEmail(
+        currentUser.email,
+      );
+      if (!userRecord) {
+        throw new HttpException("User does not exist", HttpStatus.BAD_REQUEST);
+      }
+      const isTrialExhausted = userRecord.isUserTrialExhausted;
+      if (isTrialExhausted) {
+        throw new HttpException(
+          "User trial has already been exhausted.",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
+      const salesEmailRecord =
+        await this.salesEmailRepository.getSalesEmailRecordByCustomerEmail(
+          currentUser.email,
+        );
+      const salesTrialDays = salesEmailRecord.trialPeriod;
+      const configuredTrialDays =
+        this.configService.get<number>("trial.trialPeriod");
+      const days = Number(createSubscriptionDto.trialPeriodDays);
+      if (createSubscriptionDto.trialType === TrialType.STANDARD) {
+        if (!Number.isInteger(days) || days !== configuredTrialDays) {
+          throw new HttpException(
+            `Invalid trialPeriod. For this trial the trialPeriod must be ${configuredTrialDays} days.`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      } else {
+        if (!Number.isInteger(days) || days !== salesTrialDays) {
+          throw new HttpException(
+            `Invalid trialPeriod. For this trial the trialPeriod must be ${salesTrialDays} days.`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
       // Validate promo code before creating subscription if provided
       if (createSubscriptionDto.promoCodeId) {
         // Find promo code to get the actual code for validation
