@@ -1386,7 +1386,7 @@ export class AiAssistantService {
         });
         const timeTaken = Math.round(endTime - startTime);
         const authErrorMessage = "Could not resolve authentication method. Expected either apiKey or authToken to be set.";
-        const errorMessage = error?.message || error?.error?.error?.message || "";
+        const errorMessage = error?.error?.error?.message || error?.message || error?.error?.error?.message || "";
         const statusCode = errorMessage.includes(authErrorMessage) ? 401 : error?.status || 500;
         client.send(
           JSON.stringify({
