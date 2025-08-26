@@ -73,6 +73,12 @@ export class LogDTO {
 
 
   @ApiProperty()
+  @IsString()
+  @IsOptional()
+  emailId?: string;
+
+
+  @ApiProperty()
   @IsMongoId()
   @IsNotEmpty()
   @IsString()

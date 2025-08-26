@@ -340,7 +340,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: sparrow-api-secret
-                  key: DEEPSEEK_API_MODEL      
+                  key: DEEPSEEK_API_MODEL
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
@@ -381,6 +381,26 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: ADMIN_BASE_URL
+            - name: STAKEHOLDERS_EMAIL_LIST
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: STAKEHOLDERS_EMAIL_LIST
+            - name: APP_EDITION
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: APP_EDITION
+            - name: SELF_HOST_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SELF_HOST_ADMIN_EMAIL
+            - name: SELF_HOST_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: SELF_HOST_ADMIN_PASSWORD
 
 ---
 apiVersion: v1

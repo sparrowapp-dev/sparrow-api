@@ -179,6 +179,7 @@ function convertRequest(request: any): RequestMetaData {
     selectedRequestAuthType:
       // @ts-ignore
       PostmanAuthModeEnum[request?.auth?.type || "noauth"],
+    selectedRequestAuthProfileId: "",
   };
 }
 
