@@ -33,6 +33,7 @@ import {
   BillingActorType,
   BillingSource,
 } from "@src/modules/common/enum/billing.enum";
+import { isValidName } from "@src/modules/common/util/validate.name.util";
 
 /**
  * Team Service
@@ -106,21 +107,11 @@ export class TeamService {
     user: DecodedUserObject,
     image?: MemoryStorageFile,
   ): Promise<InsertOneResult<Team>> {
-    const MAX_NAME_LENGTH = 100;
-    // Checks if string has only special characters (no letters or numbers)
-    const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
-
-    if (
-      typeof teamData.name !== "string" ||
-      teamData.name.trim().length === 0 || // empty after trim
-      teamData.name.length > MAX_NAME_LENGTH || // too long
-      !SAFE_NAME_REGEX.test(teamData.name) // only special chars
-    ) {
+    if (!isValidName(teamData.name)) {
       throw new BadRequestException(
-        `Team name must be 1-${MAX_NAME_LENGTH} characters and cannot consist of only special characters.`,
+        "Team name must be 1-100 characters and cannot consist of only special characters.",
       );
     }
-
     let team;
     const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
 
@@ -290,20 +281,12 @@ export class TeamService {
         "The teams with that id does not exist in the system.",
       );
     }
-
-    const MAX_NAME_LENGTH = 100;
-    const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
-    if (
-      teamData.name !== undefined &&
-      (typeof teamData.name !== "string" ||
-        teamData.name.trim().length === 0 ||
-        teamData.name.length > MAX_NAME_LENGTH ||
-        !SAFE_NAME_REGEX.test(teamData.name))
-    ) {
+    if (teamData.name !== undefined && !isValidName(teamData.name)) {
       throw new BadRequestException(
-        `Team name must be 1-${MAX_NAME_LENGTH} characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.`,
+        "Team name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
       );
     }
+
     let team;
     if (image) {
       await this.isImageSizeValid(image.size);

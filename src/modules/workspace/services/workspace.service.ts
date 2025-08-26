@@ -55,6 +55,7 @@ import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { isValidName } from "@src/modules/common/util/validate.name.util";
 
 /**
  * Workspace Service
@@ -265,16 +266,9 @@ export class WorkspaceService {
     workspaceData: CreateWorkspaceDto,
     user: DecodedUserObject,
   ): Promise<InsertOneResult<Document>> {
-    const MAX_NAME_LENGTH = 100;
-    const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
-    if (
-      typeof workspaceData.name !== "string" ||
-      workspaceData.name.trim().length === 0 ||
-      workspaceData.name.length > MAX_NAME_LENGTH ||
-      !SAFE_NAME_REGEX.test(workspaceData.name)
-    ) {
+    if (!isValidName(workspaceData.name)) {
       throw new BadRequestException(
-        `Workspace name must be 1-${MAX_NAME_LENGTH} characters and cannot consist of only special characters.`,
+        "Workspace name must be 1-100 characters and cannot consist of only special characters.",
       );
     }
     const teamId = new ObjectId(workspaceData.id);
@@ -419,17 +413,9 @@ export class WorkspaceService {
     updates: Partial<UpdateWorkspaceDto>,
     user: DecodedUserObject,
   ): Promise<UpdateResult<Document>> {
-    const MAX_NAME_LENGTH = 100;
-    const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
-    if (
-      updates.name !== undefined &&
-      (typeof updates.name !== "string" ||
-        updates.name.trim().length === 0 ||
-        updates.name.length > MAX_NAME_LENGTH ||
-        !SAFE_NAME_REGEX.test(updates.name))
-    ) {
+    if (updates.name !== undefined && !isValidName(updates.name)) {
       throw new BadRequestException(
-        `Workspace name must be 1-${MAX_NAME_LENGTH} characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.`,
+        "Workspace name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
       );
     }
     const workspace = await this.IsWorkspaceAdminOrEditor(id, user._id);
