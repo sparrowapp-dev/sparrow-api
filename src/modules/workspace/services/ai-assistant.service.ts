@@ -73,7 +73,6 @@ import * as Sentry from "@sentry/nestjs";
 
 import pdfParse from 'pdf-parse';
 import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
-import { error } from "node:console";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -693,7 +692,7 @@ export class AiAssistantService {
           console.error("Error handling usage after stream:", err);
         }
       })
-      .on("error", () => {
+      .on("error", (error) => {
         Sentry.withScope((scope) => {
             scope.setTag("emailId", emailId);
             scope.setTag("errorType", "AI");
