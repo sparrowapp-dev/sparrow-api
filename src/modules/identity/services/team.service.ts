@@ -33,6 +33,7 @@ import {
   BillingActorType,
   BillingSource,
 } from "@src/modules/common/enum/billing.enum";
+import { isValidName } from "@src/modules/common/util/validate.name.util";
 
 /**
  * Team Service
@@ -106,6 +107,11 @@ export class TeamService {
     user: DecodedUserObject,
     image?: MemoryStorageFile,
   ): Promise<InsertOneResult<Team>> {
+    if (!isValidName(teamData.name)) {
+      throw new BadRequestException(
+        "Team name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
     let team;
     const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
 
@@ -275,6 +281,12 @@ export class TeamService {
         "The teams with that id does not exist in the system.",
       );
     }
+    if (teamData.name !== undefined && !isValidName(teamData.name)) {
+      throw new BadRequestException(
+        "Team name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
+
     let team;
     if (image) {
       await this.isImageSizeValid(image.size);
