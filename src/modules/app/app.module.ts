@@ -31,12 +31,12 @@ import { BillingModule } from "../billing/billing.module";
   imports: [
     SentryModule.forRoot(),
     ScheduleModule.forRoot(),
-    PrometheusModule.register({
-      path: "/metrics",
-      defaultMetrics: {
-        enabled: false,
-      },
-    }),
+    // PrometheusModule.register({
+    //   path: "/metrics",
+    //   defaultMetrics: {
+    //     enabled: false,
+    //   },
+    // }),
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     LoggerModule.forRootAsync({
       useFactory: async () => {

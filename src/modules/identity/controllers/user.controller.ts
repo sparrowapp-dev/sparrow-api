@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -102,6 +103,11 @@ export class UserController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const currentUser = request.user;
+    if (currentUser && !currentUser.isSuperAdmin) {
+      throw new BadRequestException(
+        "You do not have permission to access this user.",
+      );
+    }
     const data = await this.userService.getUserById(id, currentUser);
     const responseData = new ApiResponseService(
       "Success",
@@ -144,6 +150,11 @@ export class UserController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const currentUser = request.user;
+    if (currentUser && !currentUser.isSuperAdmin) {
+      throw new BadRequestException(
+        "You do not have permission to access this user.",
+      );
+    }
     const user = await this.userService.updateUser(
       id,
       updateUserDto,
@@ -163,7 +174,17 @@ export class UserController {
     description: "This will delete a User Account",
   })
   @UseGuards(JwtAuthGuard)
-  async deleteUser(@Param("userId") id: string, @Res() res: FastifyReply) {
+  async deleteUser(
+    @Param("userId") id: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const currentUser = request.user;
+    if (currentUser && !currentUser.isSuperAdmin) {
+      throw new BadRequestException(
+        "You do not have permission to access this user.",
+      );
+    }
     const data = await this.userService.deleteUser(id);
     const responseData = new ApiResponseService(
       "User Deleted",
