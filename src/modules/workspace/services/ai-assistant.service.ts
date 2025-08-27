@@ -247,7 +247,7 @@ export class AiAssistantService {
     const { text: prompt } = data;
 
     try {
-      if (data.model === Models.GPT) {
+      if (data?.model === Models.GPT) {
 
         // Fetch user details
         const user = await this.userService.getUserByEmail(id.email);
