@@ -233,14 +233,18 @@ export class StripeController {
       if (!userRecord) {
         throw new HttpException("User does not exist", HttpStatus.BAD_REQUEST);
       }
-      const isTrialExhausted = userRecord.isUserTrialExhausted;
-      if (isTrialExhausted) {
-        throw new HttpException(
-          "User trial has already been exhausted.",
-          HttpStatus.BAD_REQUEST,
-        );
+      if (
+        createSubscriptionDto?.trialType &&
+        createSubscriptionDto?.trialPeriodDays
+      ) {
+        const isTrialExhausted = userRecord.isUserTrialExhausted;
+        if (isTrialExhausted) {
+          throw new HttpException(
+            "User trial has already been exhausted.",
+            HttpStatus.BAD_REQUEST,
+          );
+        }
       }
-
       const salesEmailRecord =
         await this.salesEmailRepository.getSalesEmailRecordByCustomerEmail(
           currentUser.email,
@@ -248,10 +252,12 @@ export class StripeController {
       const salesTrialDays = salesEmailRecord?.trialPeriod;
       const configuredTrialDays =
         this.configService.get<number>("trial.trialPeriod");
-      if (createSubscriptionDto.trialType === TrialType.STANDARD) {
+      if (createSubscriptionDto?.trialType === TrialType.STANDARD) {
         createSubscriptionDto.trialPeriodDays = configuredTrialDays;
-      } else {
+      } else if (createSubscriptionDto?.trialType === TrialType.INVITED) {
         createSubscriptionDto.trialPeriodDays = salesTrialDays;
+      } else {
+        createSubscriptionDto.trialPeriodDays = 0;
       }
       // Validate promo code before creating subscription if provided
       if (createSubscriptionDto.promoCodeId) {
