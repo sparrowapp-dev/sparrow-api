@@ -133,7 +133,4 @@ export default () => ({
   admin: {
     baseURL: process.env.ADMIN_BASE_URL,
   },
-  trial: {
-    trialPeriod: 14,
-  },
 });

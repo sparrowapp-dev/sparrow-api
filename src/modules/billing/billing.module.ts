@@ -21,7 +21,6 @@ import { TeamRepository } from "@src/modules/identity/repositories/team.reposito
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { PricingService } from "@src/modules/workspace/services/pricing.repository";
 import { PricingRepository } from "@src/modules/workspace/repositories/pricing.repository";
-import { SalesEmailRepository } from "../workspace/repositories/sales-email.repository";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -63,7 +62,6 @@ export class BillingModule {
       UserRepository,
       EmailService,
       AdminHubsRepository,
-      SalesEmailRepository,
     ];
 
     const controllers = [];
