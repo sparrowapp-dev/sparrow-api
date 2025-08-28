@@ -248,21 +248,10 @@ export class StripeController {
       const salesTrialDays = salesEmailRecord.trialPeriod;
       const configuredTrialDays =
         this.configService.get<number>("trial.trialPeriod");
-      const days = Number(createSubscriptionDto.trialPeriodDays);
       if (createSubscriptionDto.trialType === TrialType.STANDARD) {
-        if (!Number.isInteger(days) || days !== configuredTrialDays) {
-          throw new HttpException(
-            `Invalid trialPeriod. For this trial the trialPeriod must be ${configuredTrialDays} days.`,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
+        createSubscriptionDto.trialPeriodDays = configuredTrialDays;
       } else {
-        if (!Number.isInteger(days) || days !== salesTrialDays) {
-          throw new HttpException(
-            `Invalid trialPeriod. For this trial the trialPeriod must be ${salesTrialDays} days.`,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
+        createSubscriptionDto.trialPeriodDays = salesTrialDays;
       }
       // Validate promo code before creating subscription if provided
       if (createSubscriptionDto.promoCodeId) {
