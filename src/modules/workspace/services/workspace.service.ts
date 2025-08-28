@@ -284,7 +284,6 @@ export class WorkspaceService {
     if(!res){
       throw new ForbiddenException("Plan limit reached");
     }
-    this.teamRepository
     const createEnvironmentDto: CreateEnvironmentDto = {
       name: DefaultEnvironment.GLOBAL,
       variable: [
