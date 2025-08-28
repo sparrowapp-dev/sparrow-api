@@ -112,17 +112,6 @@ export class CreateSubscriptionDto {
   trialPeriodDays?: number;
 
   @ApiPropertyOptional({
-    description: "Type of trial",
-    examples: {
-      standard: "standard",
-      invited: "invited",
-    },
-  })
-  @IsOptional()
-  @IsString()
-  trialType?: string;
-
-  @ApiPropertyOptional({
     description:
       "Number of seats/quantity for the subscription (optional, defaults to 1)",
     example: 5,
