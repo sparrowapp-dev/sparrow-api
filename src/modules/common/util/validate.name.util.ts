@@ -7,7 +7,7 @@
  */
 export function isValidName(value: unknown): boolean {
   const MAX_NAME_LENGTH = 100;
-  const SAFE_NAME_REGEX = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9 _\-\.@]+$/;
+  const SAFE_NAME_REGEX = /^(?!.*@{3,})(?=.*[A-Za-z0-9])[A-Za-z0-9 _\-\.\@']+$/;
 
   if (typeof value !== "string") return false;
   const trimmed = value.trim();
