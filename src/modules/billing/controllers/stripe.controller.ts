@@ -245,7 +245,7 @@ export class StripeController {
         await this.salesEmailRepository.getSalesEmailRecordByCustomerEmail(
           currentUser.email,
         );
-      const salesTrialDays = salesEmailRecord.trialPeriod;
+      const salesTrialDays = salesEmailRecord?.trialPeriod;
       const configuredTrialDays =
         this.configService.get<number>("trial.trialPeriod");
       if (createSubscriptionDto.trialType === TrialType.STANDARD) {
