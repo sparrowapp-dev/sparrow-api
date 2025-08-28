@@ -176,6 +176,27 @@ export class TeamRepository {
     return responseData.value;
   }
 
+
+  async updateTeamWorkspaceCountById(
+    id: ObjectId,
+    planData: PlanDto,
+    ws: WorkspaceDto,
+  ): Promise<WithId<Team>> {
+    const responseData = await this.db
+      .collection<Team>(Collections.TEAM)
+      .findOneAndUpdate(
+        { 
+          _id: id,   $expr: {
+          $lt: [{ $size: "$workspaces" }, planData.limits.workspacesPerHub.value],
+          } , 
+        },      
+        {
+          $push: { workspaces: ws },
+        },
+      );
+    return responseData.value;
+  }
+
   private async doesTeamExistsForUser(
     userId: ObjectId,
     teamName: string,

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -256,7 +257,7 @@ export class WorkspaceService {
     }
     throw new BadRequestException("You don't have access of this Workspace");
   }
-
+  
   /**
    * Creates a new workspace in the database
    * @param {CreateOrUpdateWorkspaceDto} workspaceData
@@ -273,6 +274,17 @@ export class WorkspaceService {
     } else {
       teamData = await this.teamService.isTeamOwnerOrAdmin(teamId, user._id);
     }
+    const planData = teamData?.plan;
+    const uuid = new ObjectId();
+    const  ws = {
+      id: uuid,
+      name: workspaceData.name,
+    };
+    const res = await this.teamRepository.updateTeamWorkspaceCountById(teamId, planData, ws);
+    if(!res){
+      throw new ForbiddenException("Plan limit reached");
+    }
+    this.teamRepository
     const createEnvironmentDto: CreateEnvironmentDto = {
       name: DefaultEnvironment.GLOBAL,
       variable: [
@@ -333,16 +345,7 @@ export class WorkspaceService {
       updatedAt: new Date(),
       updatedBy: user._id.toString(),
     };
-    const response = await this.workspaceRepository.addWorkspace(params);
-    const teamWorkspaces = [...teamData.workspaces];
-    teamWorkspaces.push({
-      id: response.insertedId,
-      name: workspaceData.name,
-    });
-    const updateTeamParams = {
-      workspaces: teamWorkspaces,
-    };
-    await this.teamRepository.updateTeamById(teamId, updateTeamParams);
+    const response = await this.workspaceRepository.addWorkspace(params, uuid);
     const userIdArray = [];
     for (const item of teamData.users) {
       if (item.role !== TeamRole.MEMBER) {
