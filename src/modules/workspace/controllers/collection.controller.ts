@@ -1390,9 +1390,42 @@ export class collectionController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
+    const collection = await this.collectionService.getCollection(collectionId);
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collection,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get(":collectionId/workspace/:workspaceId/variables")
+  @ApiOperation({
+    summary: "Get Collection By ID",
+    description:
+      "This will fetch a specific collection using collection ID and workspace ID along with Generate Variable property.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Collection fetched successfully with Generate Variable",
+  })
+  @ApiResponse({ status: 404, description: "Collection not found" })
+  async getCollectionByIdAndWorkspaceGenerateVariables(
+    @Param("collectionId") collectionId: string,
+    @Param("workspaceId") workspaceId: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
     await this.workSpaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
 
-    const collection = await this.collectionService.getCollection(collectionId);
+    const collection =
+      await this.collectionService.getCollectionWithGenerateVariable(
+        user.email,
+        collectionId,
+      );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -1604,11 +1637,10 @@ export class collectionController {
   /**
    * Endpoint to Generate the Variables of whole Collection using AI.
    */
-  @Post("generate-variables/:collectionId")
+  @Post(":collectionId/generate-variables")
   @ApiOperation({
     summary: "Generate Variables",
-    description:
-      "This will Generate Variables for the Collection using AI",
+    description: "This will Generate Variables for the Collection using AI",
   })
   @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Variables Generated Successfully" })
@@ -1620,8 +1652,9 @@ export class collectionController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request?.user;
-    const workspaceId = collectionDto?.workspaceId
-    const collectionVariables = await this.collectionRequestService.generateVariables(
+    const workspaceId = collectionDto?.workspaceId;
+    const collectionVariables =
+      await this.collectionRequestService.generateVariables(
         collectionId,
         workspaceId,
         user,
@@ -1640,7 +1673,7 @@ export class collectionController {
    * @param KeyValuePairs[] The collectionId.
    * @returns The response object with status and data.
    */
-  @Post("generate-variables/insert")
+  @Post(":collectionId/insert-variables")
   @ApiOperation({
     summary: "Insert Generated Variables into Collection",
     description:
@@ -1656,21 +1689,23 @@ export class collectionController {
     description: "Failed to add a Generate Variables.",
   })
   async addGeneratedVariables(
+    @Param("collectionId") collectionId: string,
     @Body() content: CollectionGeneratedVariableDto,
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    const response = await this.collectionService.insertGeneratedVariables(
-      content.collectionId,
+    await this.collectionService.insertGeneratedVariables(
+      collectionId,
       content.generatedeVariables,
       content.workspaceId,
       user,
     );
+    const collection = await this.collectionService.getCollection(collectionId);
     const responseData = new ApiResponseService(
       "Generated Variables Inserted Successfully",
       HttpStatusCode.OK,
-      response,
+      collection,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }

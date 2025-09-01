@@ -29,6 +29,8 @@ export default () => ({
     mailPort: process.env.SMTP_MAIL_PORT,
     mailSecure: process.env.SMTP_MAIL_SECURE,
     userName: process.env.SMTP_USER_NAME,
+    appEdition: process.env.APP_EDITION,
+    selfHostHubPlan: "SelfHost(Community)",
   },
   db: {
     url: process.env.DB_URL,
@@ -132,5 +134,9 @@ export default () => ({
   },
   admin: {
     baseURL: process.env.ADMIN_BASE_URL,
+  },
+  selfHost: {
+    adminEmail: process.env.SELF_HOST_ADMIN_EMAIL,
+    adminPassword: process.env.SELF_HOST_ADMIN_PASSWORD,
   },
 });

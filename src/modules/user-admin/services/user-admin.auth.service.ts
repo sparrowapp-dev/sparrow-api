@@ -7,6 +7,9 @@ import { AdminAuthRepository } from "../repositories/user-admin.auth.repository"
 import { createHmac } from "crypto";
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
 import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.repository";
+import { CreateUserPayload } from "../payloads/auth.payload";
+import { DecodedUserObject, ExtendedFastifyRequest } from "@src/types/fastify";
+import { UserService } from "@src/modules/identity/services/user.service";
 
 @Injectable()
 export class AdminAuthService {
@@ -16,6 +19,7 @@ export class AdminAuthService {
     private readonly configService: ConfigService,
     private readonly adminHubsRepository: AdminHubsRepository,
     private readonly adminWorkspaceRepository: AdminWorkspaceRepository,
+    private readonly userService: UserService,
   ) {}
 
   // Create access token
@@ -175,5 +179,13 @@ export class AdminAuthService {
       )?.role;
       return userRole;
     }
+  }
+
+  async createUser(payload: CreateUserPayload, user: DecodedUserObject) {
+    const data = await this.userService.createVerifiedUserFromAdmin(
+      payload,
+      user,
+    );
+    return data;
   }
 }

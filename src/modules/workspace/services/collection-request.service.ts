@@ -2232,7 +2232,7 @@ export class CollectionRequestService {
    * - Filters out headers/keys named "user-agent" or "accept-encoding" (case-insensitive).
    * @returns A new array containing only valid and allowed entries.
    */
-  private clean(arr: any[] = []): any[] {
+  public clean(arr: any[] = []): any[] {
     return Array.isArray(arr)
       ? arr.filter(entry => {
           const key = entry?.key?.trim().toLowerCase();
@@ -2266,7 +2266,7 @@ export class CollectionRequestService {
    *   - `bodies`: Array of body objects containing request payload data
    *   - `queryParams`: Array of arrays, each containing cleaned query parameter objects
    */
-  private extractFromItems(items: any[]) {
+  public extractFromItems(items: any[]) {
     const urls: string[] = [];
     const bodies: any[] = [];
     const queryParams: any[] = [];
@@ -2407,7 +2407,7 @@ export class CollectionRequestService {
    * @returns
    *   An object mapping generated variable names (e.g., `{{url_var1}}`) to their corresponding substring values.
    */
-  private generateUrlVariables(urls: string[]): Record<string, string> {
+  public generateUrlVariables(urls: string[]): Record<string, string> {
     if (urls.length === 0) return {};
 
     // Identify existing variables
@@ -2557,9 +2557,10 @@ export class CollectionRequestService {
    * @returns
    *   An object mapping generated variable names (e.g., `{{key_var1}}`) to their corresponding values.
    */
-  private generateBodyVariables(bodies: any[]): Record<string, string> {
+  public generateBodyVariables(bodies: any[]): Record<string, string> {
     if (bodies.length === 0) return {};
 
+    const existingVariablePattern = /\{\{?[^}]+\}?\}/; // pre-existing vars like {{VAR}} or {var}
     const valueFrequencyByKey = new Map<string, Map<string, number>>();
     const valueCountByKey: Record<string, number> = {};
 
@@ -2567,7 +2568,7 @@ export class CollectionRequestService {
       const pairs: Array<[string, string]> = [];
 
       if (typeof obj === 'string') {
-        if (obj.trim()) pairs.push([parentKey || 'body', obj.trim()]);
+        if (obj.trim() && !existingVariablePattern.test(obj.trim())) { pairs.push([parentKey || 'body', obj.trim()]); }
       } else if (Array.isArray(obj)) {
         obj.forEach((item) => pairs.push(...extractKeyValuePairs(item, parentKey)));
       } else if (typeof obj === 'object' && obj !== null) {
@@ -2584,7 +2585,7 @@ export class CollectionRequestService {
       // Process urlencoded
       if (body.urlencoded) {
         for (const item of body.urlencoded) {
-          if (item.checked !== false && item.value?.trim()) {
+          if (item.checked !== false && item.value?.trim() && !existingVariablePattern.test(item.value)) {
             const key = item.key.trim();
             const value = item.value.trim();
             this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
@@ -2595,7 +2596,7 @@ export class CollectionRequestService {
       // Process formdata
       if (body.formdata?.text) {
         for (const item of body.formdata.text) {
-          if (item.checked !== false && item.value?.trim()) {
+          if (item.checked !== false && item.value?.trim() && !existingVariablePattern.test(item.value)) {
             const key = item.key.trim();
             const value = item.value.trim();
             this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
@@ -2618,7 +2619,7 @@ export class CollectionRequestService {
 
       // Process other body types (websocket, socketio, graphql)
       ['message', 'event', 'query', 'mutation', 'variables'].forEach(field => {
-          if (body[field]?.trim()) {
+        if (body[field]?.trim() && !existingVariablePattern.test(body[field])) {
           this.addToFrequencyMap(field, body[field].trim(), valueFrequencyByKey, valueCountByKey);
           }
       });
@@ -2657,8 +2658,9 @@ export class CollectionRequestService {
    * @returns
    *   An object mapping generated variable names to their original string values.
    */
-  private generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
+  public generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
     if (paramGroups.length === 0) return {};
+    const existingVariablePattern = /\{\{?[^}]+\}?\}/; // Matches {{VAR}}, {VAR}
 
     const keyValueFrequency = new Map<string, Map<string, number>>();
     const keyValueCount: Record<string, number> = {};
@@ -2666,8 +2668,10 @@ export class CollectionRequestService {
     // Count frequencies per key
     for (const group of paramGroups) {
       for (const param of group) {
-        if (param.value?.trim()) {
-          const key = param.key;
+        if ( param.value?.trim() &&
+          !existingVariablePattern.test(param.value.trim()) // skip pre-existing vars
+        ) {
+          const key = param.key.trim();
           const value = param.value.trim();
           this.addToFrequencyMap(key, value, keyValueFrequency, keyValueCount);
         }
@@ -2698,10 +2702,12 @@ export class CollectionRequestService {
 
     * @returns A record mapping generated variable names to header values.
   */
-  private generateHeaderVariables(
+  public generateHeaderVariables(
     headerGroups: Array<Array<{ key: string; value: string; checked: boolean }>>
   ): Record<string, string> {
     if (headerGroups.length === 0) return {};
+
+    const existingVariablePattern = /\{\{?[^}]+\}?\}/; // Matches {{VAR}}, {VAR}
 
     const keyValueFrequency = new Map<string, Map<string, number>>();
     const keyValueCount: Record<string, number> = {};
@@ -2709,8 +2715,11 @@ export class CollectionRequestService {
     // Count frequencies per header key
     for (const group of headerGroups) {
       for (const header of group) {
-        if (header.value?.trim()) {
-          const key = header.key;
+        if (
+          header.value?.trim() &&
+          !existingVariablePattern.test(header.value.trim()) // skip pre-existing vars
+        ) {
+          const key = header.key.trim();
           const value = header.value.trim();
           this.addToFrequencyMap(key, value, keyValueFrequency, keyValueCount);
         }
@@ -2747,7 +2756,7 @@ export class CollectionRequestService {
    * If the key does not exist in `frequencyMap`, it is initialized with
    * an empty value map and a zero count in `countMap`.
    */
-  private addToFrequencyMap(
+  public addToFrequencyMap(
     key: string,
     value: string,
     frequencyMap: Map<string, Map<string, number>>,
@@ -2772,7 +2781,7 @@ export class CollectionRequestService {
    * @returns
    *   The minimum frequency threshold to qualify as significant.
    */
-  private getAdaptiveThreshold(count: number): number {
+  public getAdaptiveThreshold(count: number): number {
     return count <= 10 ? 3 : 5;
   }
 }

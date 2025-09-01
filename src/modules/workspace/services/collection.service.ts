@@ -50,6 +50,10 @@ import {
 import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { VariableDto } from "@src/modules/common/models/environment.model";
+import { RequestBodyDto } from "@src/modules/common/models/collection.model";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
+import { CollectionRequestService } from "./collection-request.service";
 
 @Injectable()
 export class CollectionService {
@@ -62,6 +66,8 @@ export class CollectionService {
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
     private readonly cryptoService: EncryptionService,
+    private readonly userRepository: UserRepository,
+    private readonly collectionRequestService:CollectionRequestService
   ) {}
 
   async createCollection(
@@ -220,6 +226,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -282,6 +289,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -344,6 +352,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
       {
@@ -406,6 +415,7 @@ export class CollectionService {
           },
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
+          selectedRequestAuthProfileId: "",
         },
       },
     ];
@@ -432,6 +442,28 @@ export class CollectionService {
 
   async getCollection(id: string): Promise<WithId<Collection>> {
     return await this.collectionRepository.get(id);
+  }
+
+  async getCollectionWithGenerateVariable(
+    email: string,
+    id: string,
+  ): Promise<WithId<CollectionGenerateVariableDto>> {
+    const collection = await this.collectionRepository.get(id);
+    const collectionId = collection._id.toString();
+    const userDetails = await this.userRepository.getUserByEmail(email);
+
+    // Case 1: Already processed → not allowed again
+    if (
+      userDetails.isGenerateVariableTrial.includes(collectionId) ||
+      userDetails?.isGenerateVariableDemoCompleted === true
+    ) {
+      collection.isGenerateVariableTrial = false;
+      return collection;
+    }
+    // Case 2: Not processed yet → check frequency
+    const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
+    collection.isGenerateVariableTrial = hasExceeded;
+    return collection;
   }
 
   async getAllCollections(
@@ -475,6 +507,22 @@ export class CollectionService {
     // Bulk fetch all collections
     const collections =
       await this.collectionRepository.getCollectionsByIds(collectionIds);
+
+    const userDetails = await this.userRepository.getUserByEmail(user.email);
+    for (let i = 0; i < collections.length; i++) {
+      const collectionId = collections[i]._id.toString();
+      // Case 1: Already processed
+      if (
+        userDetails.isGenerateVariableTrial.includes(collectionId) ||
+        userDetails?.isGenerateVariableDemoCompleted === true
+      ) {
+        collections[i].isGenerateVariableTrial = false;
+        continue;
+      }
+      // Case 2: Not processed yet → run frequency check
+      const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
+      collections[i].isGenerateVariableTrial = hasExceeded;
+    }
 
     const decryptedCollections = [];
     // 🔄 Only the minimum loop remains
@@ -594,6 +642,10 @@ export class CollectionService {
     updateCollectionDto: Partial<UpdateCollectionDto>,
     user: DecodedUserObject,
   ): Promise<AuthProfiles> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      updateCollectionDto?.workspaceId,
+      user._id,
+    );
     const collectionId = updateCollectionDto.collectionId;
     const authInput = updateCollectionDto.authProfiles?.[0];
     const collection = await this.collectionRepository.get(collectionId);
@@ -656,6 +708,10 @@ export class CollectionService {
     user: DecodedUserObject,
   ): Promise<AuthProfiles> {
     const { collectionId, authId, ...authUpdatePayload } = payload;
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload?.workspaceId,
+      user._id,
+    );
 
     if (!ObjectId.isValid(collectionId)) {
       throw new BadRequestException("Invalid collectionId");
@@ -737,6 +793,10 @@ export class CollectionService {
     user: DecodedUserObject,
   ): Promise<string> {
     const { collectionId, workspaceId, authId } = payload;
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload?.workspaceId,
+      user._id,
+    );
     const data = await this.collectionRepository.deleteAuth(
       collectionId,
       workspaceId,
@@ -1142,35 +1202,75 @@ export class CollectionService {
     generatedVariables: VariableDto[],
     requestItem: any,
   ): any {
-    // Recursive function to deeply replace matches
-    const replaceValues = (obj: any, path: string = ""): any => {
-      if (Array.isArray(obj)) {
-        return obj.map((item, index) =>
-          replaceValues(item, `${path}[${index}]`),
-        );
-      } else if (obj && typeof obj === "object") {
-        const newObj: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-          newObj[key] = replaceValues(value, `${path}.${key}`);
-        }
-        return newObj;
-      } else if (typeof obj === "string") {
-        for (const variable of generatedVariables) {
-          if (obj === variable.value) {
-            return `{{${variable.key}}}`;
+    // Helper: replace only outside {{ }} blocks
+    const replaceOutsideBraces = (text: string): string => {
+      return text.replace(
+        /(\{\{.*?\}\})|([^{}]+)/g,
+        (match, insideBraces, outside) => {
+          if (insideBraces) return insideBraces; // skip {{ }}
+          let updated = outside;
+          for (const variable of generatedVariables) {
+            if (updated === variable.value) {
+              updated = `{{${variable.key}}}`;
+            } else if (updated.includes(variable.value)) {
+              updated = updated.replace(
+                new RegExp(variable.value, "g"),
+                `{{${variable.key}}}`,
+              );
+            }
           }
-          if (obj.includes(variable.value)) {
-            obj = obj.replace(
-              new RegExp(variable.value, "g"),
-              `{{${variable.key}}}`,
-            );
-          }
-        }
-        return obj;
-      }
-      return obj;
+          return updated;
+        },
+      );
     };
-    return replaceValues(requestItem, "root");
+
+    // Special updater for array of key-value objects
+    const updateKeyValueArray = (arr: any[]) => {
+      return arr.map((entry) => ({
+        ...entry,
+        key:
+          typeof entry.key === "string"
+            ? replaceOutsideBraces(entry.key)
+            : entry.key,
+        value:
+          typeof entry.value === "string"
+            ? replaceOutsideBraces(entry.value)
+            : entry.value,
+      }));
+    };
+
+    const newRequest: any = { ...requestItem };
+    // url
+    if (typeof newRequest.url === "string") {
+      newRequest.url = replaceOutsideBraces(newRequest.url);
+    }
+    // headers
+    if (Array.isArray(newRequest.headers)) {
+      newRequest.headers = updateKeyValueArray(newRequest.headers);
+    }
+    // queryParams
+    if (Array.isArray(newRequest.queryParams)) {
+      newRequest.queryParams = updateKeyValueArray(newRequest.queryParams);
+    }
+    // body
+    if (typeof newRequest.body === "object" && newRequest.body !== null) {
+      const updatedBody = { ...newRequest.body };
+      if (typeof updatedBody.raw === "string") {
+        updatedBody.raw = replaceOutsideBraces(updatedBody.raw);
+      }
+      if (Array.isArray(updatedBody.urlencoded)) {
+        updatedBody.urlencoded = updateKeyValueArray(updatedBody.urlencoded);
+      }
+      if (updatedBody.formdata && typeof updatedBody.formdata === "object") {
+        if (Array.isArray(updatedBody.formdata.text)) {
+          updatedBody.formdata.text = updateKeyValueArray(
+            updatedBody.formdata.text,
+          );
+        }
+      }
+      newRequest.body = updatedBody;
+    }
+    return newRequest;
   }
 
   public async insertGeneratedVariables(
@@ -1190,15 +1290,28 @@ export class CollectionService {
     }
     const traverseAndUpdate = (items: any[]) => {
       for (const item of items) {
-        if (
-          item.type === ItemTypeEnum.REQUEST ||
-          item.type === ItemTypeEnum.GRAPHQL ||
-          item.type === ItemTypeEnum.SOCKETIO ||
-          item.type === ItemTypeEnum.WEBSOCKET
-        ) {
+        if (item.type === ItemTypeEnum.REQUEST) {
           item.request = this.updatedRequestInCollection(
             generatedPairs,
             item.request,
+          );
+        }
+        if (item.type === ItemTypeEnum.SOCKETIO) {
+          item.socketio = this.updatedRequestInCollection(
+            generatedPairs,
+            item.socketio,
+          );
+        }
+        if (item.type === ItemTypeEnum.WEBSOCKET) {
+          item.websocket = this.updatedRequestInCollection(
+            generatedPairs,
+            item.websocket,
+          );
+        }
+        if (item.type === ItemTypeEnum.GRAPHQL) {
+          item.graphql = this.updatedRequestInCollection(
+            generatedPairs,
+            item.graphql,
           );
         }
         // If folder or item has nested items
@@ -1215,5 +1328,61 @@ export class CollectionService {
       user,
     );
     return response;
+  }
+
+  public async hasVariableFrequencyExceeded(
+    collectionId: string,
+  ): Promise<boolean> {
+    const collection =
+      await this.collectionRepository.getCollection(collectionId);
+    if (!collection) {
+      throw new BadRequestException("Collection Not Found");
+    }
+    // Extract data from collection
+    const { urls, bodies, queryParams, headers } = this.collectionRequestService.extractFromItems(
+      collection.items,
+    );
+    // Generate variables for each type
+    const urlVariables = Object.entries(this.collectionRequestService.generateUrlVariables(urls)).map(
+      ([key, value]) => ({
+        key,
+        value,
+        checked: true,
+      }),
+    );
+    if (urlVariables.length > 0) {
+      return true;
+    }
+    const bodyVariables = Object.entries(
+      this.collectionRequestService.generateBodyVariables(bodies),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (bodyVariables.length > 0) {
+      return true;
+    }
+    const queryVariables = Object.entries(
+      this.collectionRequestService.generateQueryVariables(queryParams),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (queryVariables.length > 0) {
+      return true;
+    }
+    const headerVariables = Object.entries(
+      this.collectionRequestService.generateHeaderVariables(headers),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (headerVariables.length > 0) {
+      return true;
+    }
+    return false;
   }
 }

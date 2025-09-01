@@ -56,7 +56,7 @@ import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
-
+import { isValidName } from "@src/modules/common/util/validate.name.util";
 
 /**
  * Workspace Service
@@ -267,6 +267,11 @@ export class WorkspaceService {
     workspaceData: CreateWorkspaceDto,
     user: DecodedUserObject,
   ): Promise<InsertOneResult<Document>> {
+    if (!isValidName(workspaceData.name)) {
+      throw new BadRequestException(
+        "Workspace name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
     const teamId = new ObjectId(workspaceData.id);
     let teamData: WithId<Team>;
     if (workspaceData?.firstWorkspace) {
@@ -410,6 +415,11 @@ export class WorkspaceService {
     updates: Partial<UpdateWorkspaceDto>,
     user: DecodedUserObject,
   ): Promise<UpdateResult<Document>> {
+    if (updates.name !== undefined && !isValidName(updates.name)) {
+      throw new BadRequestException(
+        "Workspace name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
     const workspace = await this.IsWorkspaceAdminOrEditor(id, user._id);
     const updateNameMessage = `Workspace is renamed from "${workspace.name}" to "${updates.name}"`;
     const data = await this.workspaceRepository.update(id, updates, user._id);
