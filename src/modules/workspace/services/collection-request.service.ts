@@ -2232,7 +2232,7 @@ export class CollectionRequestService {
    * - Filters out headers/keys named "user-agent" or "accept-encoding" (case-insensitive).
    * @returns A new array containing only valid and allowed entries.
    */
-  private clean(arr: any[] = []): any[] {
+  public clean(arr: any[] = []): any[] {
     return Array.isArray(arr)
       ? arr.filter(entry => {
           const key = entry?.key?.trim().toLowerCase();
@@ -2266,7 +2266,7 @@ export class CollectionRequestService {
    *   - `bodies`: Array of body objects containing request payload data
    *   - `queryParams`: Array of arrays, each containing cleaned query parameter objects
    */
-  private extractFromItems(items: any[]) {
+  public extractFromItems(items: any[]) {
     const urls: string[] = [];
     const bodies: any[] = [];
     const queryParams: any[] = [];
@@ -2407,7 +2407,7 @@ export class CollectionRequestService {
    * @returns
    *   An object mapping generated variable names (e.g., `{{url_var1}}`) to their corresponding substring values.
    */
-  private generateUrlVariables(urls: string[]): Record<string, string> {
+  public generateUrlVariables(urls: string[]): Record<string, string> {
     if (urls.length === 0) return {};
 
     // Identify existing variables
@@ -2557,7 +2557,7 @@ export class CollectionRequestService {
    * @returns
    *   An object mapping generated variable names (e.g., `{{key_var1}}`) to their corresponding values.
    */
-  private generateBodyVariables(bodies: any[]): Record<string, string> {
+  public generateBodyVariables(bodies: any[]): Record<string, string> {
     if (bodies.length === 0) return {};
 
     const existingVariablePattern = /\{\{?[^}]+\}?\}/; // pre-existing vars like {{VAR}} or {var}
@@ -2658,7 +2658,7 @@ export class CollectionRequestService {
    * @returns
    *   An object mapping generated variable names to their original string values.
    */
-  private generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
+  public generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
     if (paramGroups.length === 0) return {};
     const existingVariablePattern = /\{\{?[^}]+\}?\}/; // Matches {{VAR}}, {VAR}
 
@@ -2702,7 +2702,7 @@ export class CollectionRequestService {
 
     * @returns A record mapping generated variable names to header values.
   */
-  private generateHeaderVariables(
+  public generateHeaderVariables(
     headerGroups: Array<Array<{ key: string; value: string; checked: boolean }>>
   ): Record<string, string> {
     if (headerGroups.length === 0) return {};
@@ -2756,7 +2756,7 @@ export class CollectionRequestService {
    * If the key does not exist in `frequencyMap`, it is initialized with
    * an empty value map and a zero count in `countMap`.
    */
-  private addToFrequencyMap(
+  public addToFrequencyMap(
     key: string,
     value: string,
     frequencyMap: Map<string, Map<string, number>>,
@@ -2781,7 +2781,7 @@ export class CollectionRequestService {
    * @returns
    *   The minimum frequency threshold to qualify as significant.
    */
-  private getAdaptiveThreshold(count: number): number {
+  public getAdaptiveThreshold(count: number): number {
     return count <= 10 ? 3 : 5;
   }
 }
