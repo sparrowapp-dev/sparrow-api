@@ -2367,21 +2367,15 @@ export class AiAssistantService {
       if (!properties) {
         throw new BadRequestException("Body request requires properties.");
       }
-
       if (properties.type === requestBodyType.NONE) {
         // No body required → skip LLM call
         return { result: {} };
       }
     }
-
     try {
       const systemInstructions = this.buildMockInstructions(
         requestType,
         properties,
-      );
-      console.log(
-        "-----------------this is the system instruction------>",
-        systemInstructions,
       );
       const response = await this.deepseekClient
         .path("/chat/completions")
@@ -2401,18 +2395,15 @@ export class AiAssistantService {
       const output = (
         response.body as any
       ).choices?.[0]?.message?.content?.trim();
-
       if (!output) {
         throw new BadRequestException("No mock data generated from the model.");
       }
-
       let parsedOutput: any;
       try {
         parsedOutput = JSON.parse(output);
       } catch {
         parsedOutput = output;
       }
-      console.log("------------------this output", output, parsedOutput);
       return { result: parsedOutput };
     } catch (error) {
       console.error("Error generating mock data:", error);
@@ -2433,19 +2424,20 @@ export class AiAssistantService {
     Generate ONLY realistic dummy ${requestType} content that can be directly used.
     STRICT RULES:
     - Do NOT include any explanations, markdown, comments, or code snippets.
-    - Output must be ONLY valid raw JSON, an array of key/value objects, or a plain string (depending on request type).
-    - No text outside of the JSON, array, or string is allowed.
+    - Do NOT wrap output in triple backticks or labels like "json", "xml", "html", etc.
+    - Output must be ONLY the raw valid JSON, an array of key/value objects, plain string, or markup depending on the request type.
+    - No text outside of the required output format is allowed.
     The dummy data must strictly match the provided API details.`;
 
     switch (requestType) {
       case MockDataRequestType.HEADERS:
       case MockDataRequestType.PARAMETERS:
         return `${base}
-      - Return an array of { "key": string, "value": string } objects.`;
+        - Return an array of { "key": string, "value": string } objects.`;
 
       case MockDataRequestType.AUTHORIZATION:
         return `${base}
-      - Return a JSON object with dummy tokens, usernames, and passwords.`;
+        - Return a JSON object with dummy tokens, usernames, and passwords.`;
 
       case MockDataRequestType.REQUEST_BODY:
         if (!properties) return base;
@@ -2453,11 +2445,11 @@ export class AiAssistantService {
         switch (properties.type) {
           case requestBodyType.FORMDATA:
             return `${base}
-      - Body type is form-data. Return an array of { "key": string, "value": string } objects.`;
+            - Body type is form-data. Return an array of { "key": string, "value": string } objects.`;
 
           case requestBodyType.URLENCODED:
             return `${base}
-        - Body type is url-encoded. Return an array of { "key": string, "value": string } objects.`;
+            - Body type is url-encoded. Return an array of { "key": string, "value": string } objects.`;
 
           case requestBodyType.RAW:
             if (
@@ -2465,45 +2457,44 @@ export class AiAssistantService {
               !properties.lang // default JSON
             ) {
               return `${base}
-            - Body type is raw. Language: JSON.
-            - Generate dummy structured content strictly as a valid JSON object.`;
+              - Body type is raw. Language: JSON.
+              - Generate strictly valid JSON object content (no wrapping text, no formatting instructions).
+                Here are the suggested changes for request body:
+                <!-- suggestion:Request Body;lang=JSON;type=Raw; -->
+                \`\`\`json
+                {
+                  "email": "user@example.com",
+                  "password": "password"
+                }
+                \`\`\`
+                This body structure improves **security** (clear separation of credentials) and **maintainability** (easy to extend with extra fields).`;
             }
-
             if (properties.lang === requestBodyLangType.JAVASCRIPT) {
               return `${base}
-            - Body type is raw. Language: JavaScript.
-            - Generate dummy content strictly as a valid JavaScript snippet, but wrap it inside a single string.
-            - Example format: "function test() { return 123; }"`;
+              - Body type is raw. Language: JavaScript.
+              - Generate a valid JavaScript snippet, but return it ONLY as a plain string (no formatting, no explanation).`;
             }
-
             if (properties.lang === requestBodyLangType.XML) {
               return `${base}
-            - Body type is raw. Language: XML.
-            - Generate dummy content strictly as valid XML, but return it as a plain string.
-            - Example format: "<note><to>User</to><message>Hello</message></note>"`;
+              - Body type is raw. Language: XML.
+              - Generate valid XML markup, but return it ONLY as a plain string (no extra formatting or explanations).`;
             }
-
             if (properties.lang === requestBodyLangType.HTML) {
               return `${base}
-              - Body type is raw. Language: HTML.
-              - Generate dummy content strictly as valid HTML markup, but return it as a plain string.
-              - Example format: "<div><p>Hello World</p></div>"`;
+            - Body type is raw. Language: HTML.
+            - Generate valid HTML markup, but return it ONLY as a plain string (no extra formatting or explanations).`;
             }
-
             if (properties.lang === requestBodyLangType.TEXT) {
               return `${base}
-              - Body type is raw. Language: TEXT.
-              - Generate dummy plain text content, returned as a string.
-              - Example format: "This is a sample text response."`;
+            - Body type is raw. Language: TEXT.
+            - Generate plain text content, returned ONLY as a string (no extra formatting).`;
             }
             break;
-
           case requestBodyType.NONE:
             return `${base}
-            - Body type is none. Return {} (empty JSON object). Do not add any other content.`;
+            - Body type is none. Return {} (an empty JSON object) with no other content.`;
         }
         break;
-
       default:
         return base;
     }
