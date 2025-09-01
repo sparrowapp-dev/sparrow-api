@@ -422,9 +422,11 @@ export class WorkSpaceController {
       },
       user._id,
     );
-    const collection = await this.collectionService.getCollection(
-      collectionObj.collection._id.toString(),
-    );
+    const collection =
+      await this.collectionService.getCollectionWithGenerateVariable(
+        user.email,
+        collectionObj.collection._id.toString(),
+      );
     const responseData = new ApiResponseService(
       "Collection Imported",
       HttpStatusCode.OK,
@@ -517,9 +519,11 @@ export class WorkSpaceController {
       user._id,
     );
 
-    const collection = await this.collectionService.getCollection(
-      collectionObj.collection._id.toString(),
-    );
+    const collection =
+      await this.collectionService.getCollectionWithGenerateVariable(
+        user.email,
+        collectionObj.collection._id.toString(),
+      );
     const responseData = new ApiResponseService(
       "Collection Imported",
       HttpStatusCode.OK,

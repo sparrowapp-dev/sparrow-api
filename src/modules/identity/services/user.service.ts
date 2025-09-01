@@ -736,4 +736,46 @@ export class UserService {
     }
     return user.isUserTrialExhausted ?? false;
   }
+
+  async insertGenerateVariableTrial(email: string, collectionId?: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    // Validate collectionId (must be a non-empty string)
+    if (
+      !collectionId ||
+      typeof collectionId !== "string" ||
+      collectionId.trim() === ""
+    ) {
+      throw new BadRequestException("Invalid collectionId");
+    }
+    const existingCollections = userDetails.isGenerateVariableTrial || [];
+    // Avoid duplicates
+    if (existingCollections.includes(collectionId)) {
+      return userDetails.email;
+    }
+    const updateGenerateTrialCollections = [
+      ...existingCollections,
+      collectionId,
+    ];
+    const updatedUser = await this.userRepository.updateUserById(
+      userDetails._id,
+      {
+        isGenerateVariableTrial: updateGenerateTrialCollections,
+      },
+    );
+    return updatedUser?.email;
+  }
+
+  async generateVariableDemoCompleted(email: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    const response = await this.userRepository.updateUserById(userDetails._id, {
+      isGenerateVariableDemoCompleted: true,
+    });
+    return response;
+  }
 }

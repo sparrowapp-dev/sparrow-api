@@ -31,6 +31,7 @@ import {
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { Workspace } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
 import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
@@ -43,7 +44,7 @@ export class CollectionRepository {
     return response;
   }
 
-  async get(id: string): Promise<WithId<Collection>> {
+  async get(id: string): Promise<WithId<CollectionGenerateVariableDto>> {
     const _id = new ObjectId(id);
     const data = await this.db
       .collection<Collection>(Collections.COLLECTION)
@@ -59,10 +60,13 @@ export class CollectionRepository {
    * @param {string[]} collectionIds
    * @returns {Promise<Team>} queried team data
    */
-  async getCollectionsByIds(collectionIds: string[]): Promise<WithId<Collection>[]> {
-    const collections = await this.db.collection<Collection>(Collections.COLLECTION)
-    .find({ _id: { $in: collectionIds.map(id => new ObjectId(id)) } })
-    .toArray();
+  async getCollectionsByIds(
+    collectionIds: string[],
+  ): Promise<WithId<CollectionGenerateVariableDto>[]> {
+    const collections = await this.db
+      .collection<Collection>(Collections.COLLECTION)
+      .find({ _id: { $in: collectionIds.map((id) => new ObjectId(id)) } })
+      .toArray();
     if (!collections) {
       throw new BadRequestException(
         "The collections with that ids could not be found.",
@@ -71,7 +75,7 @@ export class CollectionRepository {
     return collections;
   }
 
-  
+
   async update(
     id: string,
     updateCollectionDto: Partial<UpdateCollectionDto>,
@@ -96,10 +100,10 @@ export class CollectionRepository {
 
   async unsetDefaultAuth(collectionId: string): Promise<UpdateResult> {
     return this.db.collection(Collections.COLLECTION).updateOne(
-      { _id: new ObjectId(collectionId) },
-      { $set: { "authProfiles.$[elem].defaultKey": false } },
-      { arrayFilters: [{ "elem.defaultKey": true }] },
-    );
+        { _id: new ObjectId(collectionId) },
+        { $set: { "authProfiles.$[elem].defaultKey": false } },
+        { arrayFilters: [{ "elem.defaultKey": true }] },
+      );
   }
 
   async addAuth(
@@ -143,7 +147,7 @@ export class CollectionRepository {
 
 
   async updateAuth(
-    collectionId: string, 
+    collectionId: string,
     updateDoc: any
   ): Promise<UpdateResult> {
     return this.db

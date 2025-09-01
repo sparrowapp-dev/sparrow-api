@@ -1154,6 +1154,12 @@ export class Collection {
   syncedAt?: Date;
 }
 
+export class CollectionGenerateVariableDto extends Collection {
+  @IsOptional()
+  @IsBoolean()
+  isGenerateVariableTrial?: boolean;
+}
+
 export class CollectionDto {
   @IsMongoId()
   @IsNotEmpty()
