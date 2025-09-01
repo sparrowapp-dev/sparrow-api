@@ -134,6 +134,10 @@ export class User {
   @IsBoolean()
   @IsOptional()
   isUserTrialExhausted?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isSelfHostedVersionAdmin?: boolean;
 }
 
 export class UserDto {

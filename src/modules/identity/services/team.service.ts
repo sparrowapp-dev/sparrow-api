@@ -113,7 +113,11 @@ export class TeamService {
       );
     }
     let team;
-    const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
+    const appEdition = await this.configService.get("app.appEdition");
+    let defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
+    if (appEdition !== "MANAGED") {
+      defaultHubPlan = this.configService.get<string>("app.selfHostHubPlan");
+    }
 
     const dynamicUrl = await this.generateUniqueTeamUrl(teamData.name);
     if (image) {

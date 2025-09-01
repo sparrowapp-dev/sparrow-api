@@ -28,6 +28,7 @@ import { v4 as uuidv4 } from "uuid";
 import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
 import { InternalServerErrorException } from "@nestjs/common";
+import { AppEdition } from "@src/modules/common/config/env.validation";
 /**
  * Team User Service
  */
@@ -1119,15 +1120,18 @@ export class TeamUserService {
 
     // License-based seat management: Check available licenses and purchase additional seats if needed
     // The method will internally categorize users and handle license allocation appropriately
-    const licenseCheckResult =
-      await this.stripeSubscriptionService.checkAndManageLicenses(
-        team,
-        payload.users,
-        this.userRepository,
-      );
+    const appEdition = await this.configService.get("app.appEdition");
+    if (appEdition === AppEdition.MANAGED) {
+      const licenseCheckResult =
+        await this.stripeSubscriptionService.checkAndManageLicenses(
+          team,
+          payload.users,
+          this.userRepository,
+        );
 
-    if (!licenseCheckResult.success) {
-      throw new BadRequestException(licenseCheckResult.message);
+      if (!licenseCheckResult.success) {
+        throw new BadRequestException(licenseCheckResult.message);
+      }
     }
 
     for (const userEmail of payload.users) {
