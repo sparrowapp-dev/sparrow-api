@@ -34,7 +34,6 @@ import {
 } from "@blazity/nest-file-fastify";
 import { UserService } from "../services/user.service";
 import { PlanService } from "../services/plan.service";
-import { HubInviteGuard } from "@src/modules/identity/guards/hub-invite.guard";
 import { HubBulkInviteGuard } from "@src/modules/identity/guards/hub-bulk-invite-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 /**
@@ -232,7 +231,7 @@ export class TeamController {
   }
 
   @Post(":teamId/user")
-  @UseGuards(JwtAuthGuard, HubInviteGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: "Sends multiple invites to users within a team.",
     description: "This will add multiple users in your Team",

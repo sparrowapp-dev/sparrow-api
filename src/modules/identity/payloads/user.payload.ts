@@ -53,6 +53,17 @@ export class UserDto {
   workspaces?: UserWorkspaceDto[];
 }
 
+export class UserGenerateVariableDto extends UserDto {
+  @IsArray()
+  @IsString({ each: true })
+  @Type(() => String)
+  isGenerateVariableTrial?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  isGenerateVariableDemoCompleted?: boolean;
+}
+
 export class RegisteredWith {
   @IsString()
   registeredWith: string;

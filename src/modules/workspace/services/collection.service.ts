@@ -51,6 +51,9 @@ import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { VariableDto } from "@src/modules/common/models/environment.model";
 import { RequestBodyDto } from "@src/modules/common/models/collection.model";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
+import { CollectionRequestService } from "./collection-request.service";
 
 @Injectable()
 export class CollectionService {
@@ -63,6 +66,8 @@ export class CollectionService {
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
     private readonly cryptoService: EncryptionService,
+    private readonly userRepository: UserRepository,
+    private readonly collectionRequestService:CollectionRequestService
   ) {}
 
   async createCollection(
@@ -439,6 +444,28 @@ export class CollectionService {
     return await this.collectionRepository.get(id);
   }
 
+  async getCollectionWithGenerateVariable(
+    email: string,
+    id: string,
+  ): Promise<WithId<CollectionGenerateVariableDto>> {
+    const collection = await this.collectionRepository.get(id);
+    const collectionId = collection._id.toString();
+    const userDetails = await this.userRepository.getUserByEmail(email);
+
+    // Case 1: Already processed → not allowed again
+    if (
+      userDetails.isGenerateVariableTrial.includes(collectionId) ||
+      userDetails?.isGenerateVariableDemoCompleted === true
+    ) {
+      collection.isGenerateVariableTrial = false;
+      return collection;
+    }
+    // Case 2: Not processed yet → check frequency
+    const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
+    collection.isGenerateVariableTrial = hasExceeded;
+    return collection;
+  }
+
   async getAllCollections(
     id: string,
     user: DecodedUserObject,
@@ -480,6 +507,22 @@ export class CollectionService {
     // Bulk fetch all collections
     const collections =
       await this.collectionRepository.getCollectionsByIds(collectionIds);
+
+    const userDetails = await this.userRepository.getUserByEmail(user.email);
+    for (let i = 0; i < collections.length; i++) {
+      const collectionId = collections[i]._id.toString();
+      // Case 1: Already processed
+      if (
+        userDetails.isGenerateVariableTrial.includes(collectionId) ||
+        userDetails?.isGenerateVariableDemoCompleted === true
+      ) {
+        collections[i].isGenerateVariableTrial = false;
+        continue;
+      }
+      // Case 2: Not processed yet → run frequency check
+      const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
+      collections[i].isGenerateVariableTrial = hasExceeded;
+    }
 
     const decryptedCollections = [];
     // 🔄 Only the minimum loop remains
@@ -1285,5 +1328,61 @@ export class CollectionService {
       user,
     );
     return response;
+  }
+
+  public async hasVariableFrequencyExceeded(
+    collectionId: string,
+  ): Promise<boolean> {
+    const collection =
+      await this.collectionRepository.getCollection(collectionId);
+    if (!collection) {
+      throw new BadRequestException("Collection Not Found");
+    }
+    // Extract data from collection
+    const { urls, bodies, queryParams, headers } = this.collectionRequestService.extractFromItems(
+      collection.items,
+    );
+    // Generate variables for each type
+    const urlVariables = Object.entries(this.collectionRequestService.generateUrlVariables(urls)).map(
+      ([key, value]) => ({
+        key,
+        value,
+        checked: true,
+      }),
+    );
+    if (urlVariables.length > 0) {
+      return true;
+    }
+    const bodyVariables = Object.entries(
+      this.collectionRequestService.generateBodyVariables(bodies),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (bodyVariables.length > 0) {
+      return true;
+    }
+    const queryVariables = Object.entries(
+      this.collectionRequestService.generateQueryVariables(queryParams),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (queryVariables.length > 0) {
+      return true;
+    }
+    const headerVariables = Object.entries(
+      this.collectionRequestService.generateHeaderVariables(headers),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (headerVariables.length > 0) {
+      return true;
+    }
+    return false;
   }
 }

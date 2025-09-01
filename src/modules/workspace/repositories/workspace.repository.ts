@@ -76,10 +76,10 @@ export class WorkspaceRepository {
     };
   }
 
-  async addWorkspace(params: Workspace): Promise<InsertOneResult<Document>> {
+  async addWorkspace(params: Workspace, _uuid: ObjectId): Promise<InsertOneResult<Document>> {
     const response = await this.db
       .collection(Collections.WORKSPACE)
-      .insertOne(params);
+      .insertOne({...params, _id: _uuid || new ObjectId()});
     return response;
   }
 

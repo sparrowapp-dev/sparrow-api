@@ -1,9 +1,20 @@
 import { Type } from "class-transformer";
-import { IsEnum, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+} from "class-validator";
 
 export enum Env {
   DEV = "DEV",
   PROD = "PROD",
+}
+
+export enum AppEdition {
+  SELFHOSTED = "SELFHOSTED",
+  MANAGED = "MANAGED",
 }
 
 export class EnvironmentVariables {
@@ -44,4 +55,18 @@ export class EnvironmentVariables {
   @Type(() => Number)
   @IsNumber()
   REFRESH_TOKEN_MAX_LIMIT: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  SELF_HOST_ADMIN_EMAIL: string;
+
+  @IsString()
+  @IsNotEmpty()
+  SELF_HOST_ADMIN_PASSWORD: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsEnum(AppEdition)
+  APP_EDITION: string;
 }

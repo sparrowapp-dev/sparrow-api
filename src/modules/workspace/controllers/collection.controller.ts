@@ -1400,6 +1400,41 @@ export class collectionController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  @Get(":collectionId/workspace/:workspaceId/variables")
+  @ApiOperation({
+    summary: "Get Collection By ID",
+    description:
+      "This will fetch a specific collection using collection ID and workspace ID along with Generate Variable property.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Collection fetched successfully with Generate Variable",
+  })
+  @ApiResponse({ status: 404, description: "Collection not found" })
+  async getCollectionByIdAndWorkspaceGenerateVariables(
+    @Param("collectionId") collectionId: string,
+    @Param("workspaceId") workspaceId: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    await this.workSpaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
+
+    const collection =
+      await this.collectionService.getCollectionWithGenerateVariable(
+        user.email,
+        collectionId,
+      );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      collection,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   @Post(":collectionId/workspace/:workspaceId/create-mock")
   @ApiOperation({
     summary: "Create Mock Collection from Existing Collection",

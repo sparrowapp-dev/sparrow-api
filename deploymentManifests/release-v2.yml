@@ -355,6 +355,21 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: STAKEHOLDERS_EMAIL_LIST
+            - name: APP_EDITION
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: APP_EDITION
+            - name: SELF_HOST_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: SELF_HOST_ADMIN_EMAIL
+            - name: SELF_HOST_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: SELF_HOST_ADMIN_PASSWORD
 
 ---
 apiVersion: v1
