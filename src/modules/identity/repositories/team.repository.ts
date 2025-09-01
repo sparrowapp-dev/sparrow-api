@@ -250,7 +250,7 @@ export class TeamRepository {
       .updateOne({ _id }, { $set: { isHubTrialExhausted, plan } });
   }
 
-  async hubCollaboratorLimitCheck(teamId: string, users: Invite[]): Promise<any> {
+  async hubCollaboratorLimitCheck(teamId: string, users: Invite[]): Promise<WithId<Team>> {
     const teamObjectId = new ObjectId(teamId);
     const incomingEmails = users.map(u => u.email);
 
@@ -312,7 +312,7 @@ export class TeamRepository {
             }
           }
         }
-      ] as unknown as Document[],
+      ]  ,
       { returnDocument: "after" }
     );
 
