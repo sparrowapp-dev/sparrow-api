@@ -30,6 +30,7 @@ import {
   StreamPromptPayload,
   ChatBotPayload,
   ErrorResponsePayload,
+  RequestBodyTypePropertiesDto,
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
@@ -73,6 +74,7 @@ import * as Sentry from "@sentry/nestjs";
 
 import pdfParse from 'pdf-parse';
 import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
+import { MockDataRequestType, requestBodyLangType, requestBodyType } from "@src/modules/common/enum/collection.request.enum";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -2339,5 +2341,171 @@ export class AiAssistantService {
     //   return results;
     // }
     throw new BadRequestException(`Unsupported model: ${model}`);
+  }
+
+  /**
+   * Generates mock data for a request item within a collection, based on the specified type.
+   * @param user - The authenticated user requesting the data.
+   * @param prompt - API details or schema to guide mock generation.
+   * @param requestType - The request item type ("headers" | "queryParams" | "body").
+   * @returns Generated mock data as JSON.
+   */
+  public async generateMockData(
+    user: DecodedUserObject,
+    prompt: string,
+    requestType: MockDataRequestType,
+    properties?: RequestBodyTypePropertiesDto,
+  ) {
+    if (!prompt?.trim()) {
+      throw new BadRequestException("API details (prompt) must be provided.");
+    }
+    if (!requestType) {
+      throw new BadRequestException("Request type must be provided.");
+    }
+    // Special handling for BODY
+    if (requestType === "Request Body") {
+      if (!properties) {
+        throw new BadRequestException("Body request requires properties.");
+      }
+
+      if (properties.type === requestBodyType.NONE) {
+        // No body required → skip LLM call
+        return { result: {} };
+      }
+    }
+
+    try {
+      const systemInstructions = this.buildMockInstructions(
+        requestType,
+        properties,
+      );
+      console.log(
+        "-----------------this is the system instruction------>",
+        systemInstructions,
+      );
+      const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            model: this.deepseekModel,
+            messages: [
+              { role: "system", content: systemInstructions },
+              {
+                role: "user",
+                content: `API Details:\n${prompt}\n\nRequest Type: ${requestType}`,
+              },
+            ],
+          },
+        });
+
+      const output = (
+        response.body as any
+      ).choices?.[0]?.message?.content?.trim();
+
+      if (!output) {
+        throw new BadRequestException("No mock data generated from the model.");
+      }
+
+      let parsedOutput: any;
+      try {
+        parsedOutput = JSON.parse(output);
+      } catch {
+        parsedOutput = output;
+      }
+      console.log("------------------this output", output, parsedOutput);
+      return { result: parsedOutput };
+    } catch (error) {
+      console.error("Error generating mock data:", error);
+      throw new BadRequestException(
+        error?.message || "Failed to generate mock data. Please try again.",
+      );
+    }
+  }
+
+  /**
+   * Builds system prompt instructions for mock data generation.
+   */
+  private buildMockInstructions(
+    requestType: MockDataRequestType,
+    properties?: RequestBodyTypePropertiesDto,
+  ): string {
+    const base = `You are an assistant specialized in creating mock API data for testing.
+    Generate ONLY realistic dummy ${requestType} content that can be directly used.
+    STRICT RULES:
+    - Do NOT include any explanations, markdown, comments, or code snippets.
+    - Output must be ONLY valid raw JSON, an array of key/value objects, or a plain string (depending on request type).
+    - No text outside of the JSON, array, or string is allowed.
+    The dummy data must strictly match the provided API details.`;
+
+    switch (requestType) {
+      case MockDataRequestType.HEADERS:
+      case MockDataRequestType.PARAMETERS:
+        return `${base}
+      - Return an array of { "key": string, "value": string } objects.`;
+
+      case MockDataRequestType.AUTHORIZATION:
+        return `${base}
+      - Return a JSON object with dummy tokens, usernames, and passwords.`;
+
+      case MockDataRequestType.REQUEST_BODY:
+        if (!properties) return base;
+
+        switch (properties.type) {
+          case requestBodyType.FORMDATA:
+            return `${base}
+      - Body type is form-data. Return an array of { "key": string, "value": string } objects.`;
+
+          case requestBodyType.URLENCODED:
+            return `${base}
+        - Body type is url-encoded. Return an array of { "key": string, "value": string } objects.`;
+
+          case requestBodyType.RAW:
+            if (
+              properties.lang === requestBodyLangType.JSON ||
+              !properties.lang // default JSON
+            ) {
+              return `${base}
+            - Body type is raw. Language: JSON.
+            - Generate dummy structured content strictly as a valid JSON object.`;
+            }
+
+            if (properties.lang === requestBodyLangType.JAVASCRIPT) {
+              return `${base}
+            - Body type is raw. Language: JavaScript.
+            - Generate dummy content strictly as a valid JavaScript snippet, but wrap it inside a single string.
+            - Example format: "function test() { return 123; }"`;
+            }
+
+            if (properties.lang === requestBodyLangType.XML) {
+              return `${base}
+            - Body type is raw. Language: XML.
+            - Generate dummy content strictly as valid XML, but return it as a plain string.
+            - Example format: "<note><to>User</to><message>Hello</message></note>"`;
+            }
+
+            if (properties.lang === requestBodyLangType.HTML) {
+              return `${base}
+              - Body type is raw. Language: HTML.
+              - Generate dummy content strictly as valid HTML markup, but return it as a plain string.
+              - Example format: "<div><p>Hello World</p></div>"`;
+            }
+
+            if (properties.lang === requestBodyLangType.TEXT) {
+              return `${base}
+              - Body type is raw. Language: TEXT.
+              - Generate dummy plain text content, returned as a string.
+              - Example format: "This is a sample text response."`;
+            }
+            break;
+
+          case requestBodyType.NONE:
+            return `${base}
+            - Body type is none. Return {} (empty JSON object). Do not add any other content.`;
+        }
+        break;
+
+      default:
+        return base;
+    }
   }
 }
