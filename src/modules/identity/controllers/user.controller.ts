@@ -456,7 +456,7 @@ export class UserController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Post(":collectionId/trial-generate-variable/:email")
+  @Post(":collectionId/trial-generate-variable")
   @ApiOperation({
     summary: "Insert Generate Variable Trial",
     description:
@@ -466,26 +466,28 @@ export class UserController {
   @ApiResponse({ status: 200, description: "Trial inserted successfully" })
   @ApiResponse({ status: 400, description: "Bad Request" })
   async generateVariableTrialInsert(
-    @Param("email") email: string,
     @Param("collectionId") collectionId: string,
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
   ) {
+    const user = request.user;
     const result = await this.userService.insertGenerateVariableTrial(
-      email,
+      user.email,
       collectionId,
     );
-
-    return new ApiResponseService(
+    const responseData = new ApiResponseService(
       "Trial Generate Variable inserted successfully",
       HttpStatusCode.OK,
       result,
     );
+    return res.status(HttpStatusCode.OK).send(responseData);
   }
 
-  @Post(":email/generate-variable-demo")
+  @Post("/generate-variable-demo")
   @ApiOperation({
     summary: "When the User has completed the Generate variable Demo.",
     description:
-      "we will make a property true when user has completed generate variable demo.",
+      "We will make a property true when user has completed generate variable demo.",
   })
   @UseGuards(JwtAuthGuard)
   @ApiResponse({
@@ -493,12 +495,19 @@ export class UserController {
     description: "Generate Variable Demo completed successfully",
   })
   @ApiResponse({ status: 400, description: "Bad Request" })
-  async generateVariableTrialCompleted(@Param("email") email: string) {
-    const result = await this.userService.generateVariableDemoCompleted(email);
-    return new ApiResponseService(
+  async generateVariableTrialCompleted(
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.userService.generateVariableDemoCompleted(
+      user.email,
+    );
+    const responseData = new ApiResponseService(
       "Generate Variable Demo completed successfully",
       HttpStatusCode.OK,
       result,
     );
+    return res.status(HttpStatusCode.OK).send(responseData);
   }
 }
