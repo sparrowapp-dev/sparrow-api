@@ -1179,7 +1179,6 @@ export class TeamUserService {
         );
 
         if (emailAlreadyInvited) {
-            // await this.resendInvite(payload.teamId, sanitizedEmail, sender);
             resentInvites.push({
               email: sanitizedEmail,
             });
