@@ -1193,7 +1193,7 @@ export class TeamUserService {
       });
     }
 
-    const res = await this.teamRepository.inviteUsers(payload.teamId, usersToBeInvited);
+    const res = await this.teamRepository.hubCollaboratorLimitCheck(payload.teamId, usersToBeInvited);
     if (!res) {
       throw new ForbiddenException("Plan limit reached");
     }

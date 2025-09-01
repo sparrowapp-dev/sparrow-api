@@ -250,79 +250,73 @@ export class TeamRepository {
       .updateOne({ _id }, { $set: { isHubTrialExhausted, plan } });
   }
 
+  async hubCollaboratorLimitCheck(teamId: string, users: Invite[]): Promise<any> {
+    const teamObjectId = new ObjectId(teamId);
+    const incomingEmails = users.map(u => u.email);
 
-
-
-  
-  // import { ObjectId, Document } from "mongodb";
-
-async inviteUsers(teamId: string, users: Invite[]): Promise<any> {
-  const teamObjectId = new ObjectId(teamId);
-  const incomingEmails = users.map(u => u.email);
-
-  const result = await this.db.collection<Team>(Collections.TEAM).findOneAndUpdate(
-    {
-      _id: teamObjectId,
-      // Ensure limit not exceeded
-      $expr: {
-        $lte: [
-          {
-            $add: [
-              { $size: { $ifNull: ["$users", []] } },
-              { $size: { $ifNull: ["$invites", []] } },
-              {
-                $size: {
-                  $setDifference: [
-                    incomingEmails,
-                    {
-                      $concatArrays: [
-                        { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
-                        { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
-                      ]
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          { $add: ["$plan.limits.usersPerHub.value", 1] }
-        ]
-      }
-    },
-    [
+    const result = await this.db.collection<Team>(Collections.TEAM).findOneAndUpdate(
       {
-          $set: {
-          invites: {
-            $setUnion: [
-              { $ifNull: ["$invites", []] }, // 👈 fallback to []
-              {
-                $filter: {
-                  input: users, // 👈 inject your payload as a constant
-                  as: "newInvite",
-                  cond: {
-                    $not: {
-                      $in: [
-                        "$$newInvite.email",
-                        {
-                          $concatArrays: [
-                             { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
-                             { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
-                          ]
-                        }
-                      ]
+        _id: teamObjectId,
+        // Ensure limit not exceeded
+        $expr: {
+          $lte: [
+            {
+              $add: [
+                { $size: { $ifNull: ["$users", []] } },
+                { $size: { $ifNull: ["$invites", []] } },
+                {
+                  $size: {
+                    $setDifference: [
+                      incomingEmails,
+                      {
+                        $concatArrays: [
+                          { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
+                          { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            { $add: ["$plan.limits.usersPerHub.value", 1] }
+          ]
+        }
+      },
+      [
+        {
+            $set: {
+            invites: {
+              $setUnion: [
+                { $ifNull: ["$invites", []] }, // 👈 fallback to []
+                {
+                  $filter: {
+                    input: users, // 👈 inject your payload as a constant
+                    as: "newInvite",
+                    cond: {
+                      $not: {
+                        $in: [
+                          "$$newInvite.email",
+                          {
+                            $concatArrays: [
+                              { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
+                              { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
+                            ]
+                          }
+                        ]
+                      }
                     }
                   }
                 }
-              }
-            ]
+              ]
+            }
           }
         }
-      }
-    ] as unknown as Document[],
-    { returnDocument: "after" }
-  );
+      ] as unknown as Document[],
+      { returnDocument: "after" }
+    );
 
-  return result.value;
-}
+    return result.value;
+  }
 
 }
