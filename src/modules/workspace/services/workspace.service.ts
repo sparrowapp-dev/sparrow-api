@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -55,7 +56,7 @@ import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
-
+import { isValidName } from "@src/modules/common/util/validate.name.util";
 
 /**
  * Workspace Service
@@ -256,7 +257,7 @@ export class WorkspaceService {
     }
     throw new BadRequestException("You don't have access of this Workspace");
   }
-
+  
   /**
    * Creates a new workspace in the database
    * @param {CreateOrUpdateWorkspaceDto} workspaceData
@@ -266,12 +267,27 @@ export class WorkspaceService {
     workspaceData: CreateWorkspaceDto,
     user: DecodedUserObject,
   ): Promise<InsertOneResult<Document>> {
+    if (!isValidName(workspaceData.name)) {
+      throw new BadRequestException(
+        "Workspace name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
     const teamId = new ObjectId(workspaceData.id);
     let teamData: WithId<Team>;
     if (workspaceData?.firstWorkspace) {
       teamData = await this.teamRepository.findTeamByTeamId(teamId);
     } else {
       teamData = await this.teamService.isTeamOwnerOrAdmin(teamId, user._id);
+    }
+    const planData = teamData?.plan;
+    const uuid = new ObjectId();
+    const  ws = {
+      id: uuid,
+      name: workspaceData.name,
+    };
+    const res = await this.teamRepository.updateTeamWorkspaceCountById(teamId, planData, ws);
+    if(!res){
+      throw new ForbiddenException("Plan limit reached");
     }
     const createEnvironmentDto: CreateEnvironmentDto = {
       name: DefaultEnvironment.GLOBAL,
@@ -333,16 +349,7 @@ export class WorkspaceService {
       updatedAt: new Date(),
       updatedBy: user._id.toString(),
     };
-    const response = await this.workspaceRepository.addWorkspace(params);
-    const teamWorkspaces = [...teamData.workspaces];
-    teamWorkspaces.push({
-      id: response.insertedId,
-      name: workspaceData.name,
-    });
-    const updateTeamParams = {
-      workspaces: teamWorkspaces,
-    };
-    await this.teamRepository.updateTeamById(teamId, updateTeamParams);
+    const response = await this.workspaceRepository.addWorkspace(params, uuid);
     const userIdArray = [];
     for (const item of teamData.users) {
       if (item.role !== TeamRole.MEMBER) {
@@ -408,6 +415,11 @@ export class WorkspaceService {
     updates: Partial<UpdateWorkspaceDto>,
     user: DecodedUserObject,
   ): Promise<UpdateResult<Document>> {
+    if (updates.name !== undefined && !isValidName(updates.name)) {
+      throw new BadRequestException(
+        "Workspace name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
     const workspace = await this.IsWorkspaceAdminOrEditor(id, user._id);
     const updateNameMessage = `Workspace is renamed from "${workspace.name}" to "${updates.name}"`;
     const data = await this.workspaceRepository.update(id, updates, user._id);

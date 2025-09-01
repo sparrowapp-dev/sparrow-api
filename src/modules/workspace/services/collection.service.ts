@@ -642,6 +642,10 @@ export class CollectionService {
     updateCollectionDto: Partial<UpdateCollectionDto>,
     user: DecodedUserObject,
   ): Promise<AuthProfiles> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      updateCollectionDto?.workspaceId,
+      user._id,
+    );
     const collectionId = updateCollectionDto.collectionId;
     const authInput = updateCollectionDto.authProfiles?.[0];
     const collection = await this.collectionRepository.get(collectionId);
@@ -704,6 +708,10 @@ export class CollectionService {
     user: DecodedUserObject,
   ): Promise<AuthProfiles> {
     const { collectionId, authId, ...authUpdatePayload } = payload;
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload?.workspaceId,
+      user._id,
+    );
 
     if (!ObjectId.isValid(collectionId)) {
       throw new BadRequestException("Invalid collectionId");
@@ -785,6 +793,10 @@ export class CollectionService {
     user: DecodedUserObject,
   ): Promise<string> {
     const { collectionId, workspaceId, authId } = payload;
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload?.workspaceId,
+      user._id,
+    );
     const data = await this.collectionRepository.deleteAuth(
       collectionId,
       workspaceId,

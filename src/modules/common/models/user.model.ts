@@ -143,6 +143,10 @@ export class User {
   @IsBoolean()
   @IsOptional()
   isGenerateVariableDemoCompleted?: boolean;
+  
+  @IsBoolean()
+  @IsOptional()
+  isSelfHostedVersionAdmin?: boolean;
 }
 
 export class UserDto {

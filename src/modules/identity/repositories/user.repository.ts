@@ -77,6 +77,7 @@ export class UserRepository {
       workspaces: data?.workspaces,
       emailVerificationCodeTimeStamp: data?.emailVerificationCodeTimeStamp,
       lastActive: data?.lastActive,
+      isSelfHostedVersionAdmin: data?.isSelfHostedVersionAdmin || false,
     };
     return userObj;
   }
@@ -137,6 +138,27 @@ export class UserRepository {
       .insertOne({
         ...payload,
         isEmailVerified: true,
+        password: createHmac("sha256", payload.password).digest("hex"),
+        teams: [],
+        workspaces: [],
+      });
+    return createdUser;
+  }
+
+  /**
+   * Create a verified user with RegisterPayload fields
+   * @param {RegisterPayload} payload user payload
+   * @returns {Promise<IUser>} created user data
+   */
+  async createVerifiedUserAdmin(
+    payload: RegisterPayload,
+  ): Promise<InsertOneResult<User>> {
+    const createdUser = await this.db
+      .collection<User>(Collections.USER)
+      .insertOne({
+        ...payload,
+        isEmailVerified: true,
+        isUserTrialExhausted: true,
         password: createHmac("sha256", payload.password).digest("hex"),
         teams: [],
         workspaces: [],

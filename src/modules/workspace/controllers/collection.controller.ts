@@ -1390,8 +1390,6 @@ export class collectionController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    await this.workSpaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
-
     const collection = await this.collectionService.getCollection(collectionId);
     const responseData = new ApiResponseService(
       "Success",
