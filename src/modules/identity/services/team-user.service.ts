@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -905,9 +906,9 @@ export class TeamUserService {
   async createInvite(
     email: string,
     role: string,
-    workspaces: SelectedWorkspaces[],
     teamId: string,
     sender: DecodedUserObject,
+    inviteId: string
   ) {
     const teamFilter = new ObjectId(teamId);
     const userData = await this.userRepository.getUserByEmail(email);
@@ -916,65 +917,65 @@ export class TeamUserService {
     if (!team) {
       throw new NotFoundException("Hub not Found");
     }
-    const now = new Date();
-    const inviteId = uuidv4();
-    const expiresAt = new Date(now);
-    expiresAt.setDate(now.getDate() + 7);
+    // const now = new Date();
+    // const inviteId = uuidv4();
+    // const expiresAt = new Date(now);
+    // expiresAt.setDate(now.getDate() + 7);
 
     // need to check, if user already exist in the team
     // add your code here
-    const teamMember = team.users.some((user) => {
-      if (user.email === email.toLowerCase()) {
-        return true;
-      }
-      return false;
-    });
-    if (teamMember) {
-      return;
-    }
+    // const teamMember = team.users.some((user) => {
+    //   if (user.email === email.toLowerCase()) {
+    //     return true;
+    //   }
+    //   return false;
+    // });
+    // if (teamMember) {
+    //   return;
+    // }
 
-    // need to check, if user already exist in the invites array
-    if (team.invites) {
-      const emailAlreadyInvited = team.invites.some(
-        (invite) => invite.email === email,
-      );
+    // // need to check, if user already exist in the invites array
+    // if (team.invites) {
+    //   const emailAlreadyInvited = team.invites.some(
+    //     (invite) => invite.email === email,
+    //   );
 
-      if (emailAlreadyInvited) {
-        try {
-          await this.resendInvite(teamId, email, sender);
-          return;
-        } catch (error) {
-          return;
-        }
-      }
-    }
+    //   if (emailAlreadyInvited) {
+    //     try {
+    //       await this.resendInvite(teamId, email, sender);
+    //       return;
+    //     } catch (error) {
+    //       return;
+    //     }
+    //   }
+    // }
 
-    const userInvite = {
-      inviteId,
-      email: email,
-      name: userData?.name || email,
-      role,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: sender._id,
-      updatedBy: sender._id,
-      workspaces,
-      expiresAt,
-      isAccepted: false, // used for non registered user
-    };
+    // const userInvite = {
+    //   inviteId,
+    //   email: email,
+    //   name: userData?.name || email,
+    //   role,
+    //   createdAt: now,
+    //   updatedAt: now,
+    //   createdBy: sender._id,
+    //   updatedBy: sender._id,
+    //   workspaces,
+    //   expiresAt,
+    //   isAccepted: false, // used for non registered user
+    // };
 
     // update user model with teamId
     // add your code here
 
-    const updatedInvites = [...(team.invites || []), userInvite];
-    const updatedData: Partial<TeamDto> = {
-      invites: updatedInvites,
-    };
-    await this.addInvite(email, teamId);
-    const response = await this.teamRepository.updateTeamById(
-      teamFilter,
-      updatedData,
-    );
+    // const updatedInvites = [...(team.invites || []), userInvite];
+    // const updatedData: Partial<TeamDto> = {
+    //   invites: updatedInvites,
+    // };
+    // await this.addInvite(email, teamId);
+    // const response = await this.teamRepository.updateTeamById(
+    //   teamFilter,
+    //   updatedData,
+    // );
 
     // send a mail with teamId and inviteId
     // add your code here
@@ -1036,7 +1037,7 @@ export class TeamUserService {
       await Promise.all(promise);
     }
 
-    return response;
+    return;
   }
 
   async removeTeamInvite(teamId: string, email: string) {
@@ -1117,6 +1118,9 @@ export class TeamUserService {
     const team = await this.teamRepository.findTeamByTeamId(
       new ObjectId(payload.teamId),
     );
+    if (!team) {
+      throw new NotFoundException("Hub not Found");
+    }
 
     // License-based seat management: Check available licenses and purchase additional seats if needed
     // The method will internally categorize users and handle license allocation appropriately
@@ -1134,17 +1138,84 @@ export class TeamUserService {
       }
     }
 
+   
+    const usersToBeInvited = [];
+    const newInvites = [];
+    const resentInvites = [];
     for (const userEmail of payload.users) {
-      // Trim spaces and convert the email to lowercase
       const sanitizedEmail = userEmail.trim().toLowerCase();
+      
+      // Trim spaces and convert the email to lowercase
+      const now = new Date();
+      const inviteId = uuidv4();
+      const expiresAt = new Date(now);
+      const userData = await this.userRepository.getUserByEmail(sanitizedEmail);
+      expiresAt.setDate(now.getDate() + 7);
+
+      usersToBeInvited.push({
+        inviteId,
+        email: sanitizedEmail,
+        name: userData?.name || sanitizedEmail,
+        role: payload.role,
+        createdAt: now,
+        updatedAt: now,
+        createdBy: sender._id,
+        updatedBy: sender._id,
+        workspaces: payload.workspaces,
+        expiresAt,
+        isAccepted: false, // used for non registered user
+      });
+    
+      const teamMember = team.users.some((user) => {
+        if (user.email === sanitizedEmail.toLowerCase()) {
+          return true;
+        }
+        return false;
+      });
+      if (teamMember) {
+        continue;
+      }
+
+      // need to check, if user already exist in the invites array
+      if (team.invites) {
+        const emailAlreadyInvited = team.invites.some(
+          (invite) => invite.email === sanitizedEmail,
+        );
+
+        if (emailAlreadyInvited) {
+            resentInvites.push({
+              email: sanitizedEmail,
+            });
+            continue;
+        }
+      }
+
+      newInvites.push({
+        email: sanitizedEmail,
+        inviteId,
+      });
+    }
+
+    const res = await this.teamRepository.hubCollaboratorLimitCheck(payload.teamId, usersToBeInvited);
+    if (!res) {
+      throw new ForbiddenException("Plan limit reached");
+    }
+    // send emails here, user added to the teams model
+    for (const newInvite of newInvites) {
       await this.createInvite(
-        sanitizedEmail,
+        newInvite.email,
         payload.role,
-        payload.workspaces,
         teamFilter,
         sender,
+        newInvite.inviteId
       );
     }
+
+    for (const resentInvite of resentInvites) {
+      const sanitizedEmail = resentInvite.email.trim().toLowerCase();
+       await this.resendInvite(payload.teamId, sanitizedEmail, sender);
+    }
+
     return;
   }
 

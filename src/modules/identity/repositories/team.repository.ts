@@ -15,7 +15,7 @@ import {
 } from "../payloads/team.payload";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { User } from "@src/modules/common/models/user.model";
-import { Team } from "@src/modules/common/models/team.model";
+import { Invite, Team } from "@src/modules/common/models/team.model";
 import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { PlanDto } from "../payloads/plan.payload";
@@ -249,4 +249,74 @@ export class TeamRepository {
       .collection<Team>(Collections.TEAM)
       .updateOne({ _id }, { $set: { isHubTrialExhausted, plan } });
   }
+
+  async hubCollaboratorLimitCheck(teamId: string, users: Invite[]): Promise<WithId<Team>> {
+    const teamObjectId = new ObjectId(teamId);
+    const incomingEmails = users.map(u => u.email);
+
+    const result = await this.db.collection<Team>(Collections.TEAM).findOneAndUpdate(
+      {
+        _id: teamObjectId,
+        // Ensure limit not exceeded
+        $expr: {
+          $lte: [
+            {
+              $add: [
+                { $size: { $ifNull: ["$users", []] } },
+                { $size: { $ifNull: ["$invites", []] } },
+                {
+                  $size: {
+                    $setDifference: [
+                      incomingEmails,
+                      {
+                        $concatArrays: [
+                          { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
+                          { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            { $add: ["$plan.limits.usersPerHub.value", 1] }
+          ]
+        }
+      },
+      [
+        {
+            $set: {
+            invites: {
+              $setUnion: [
+                { $ifNull: ["$invites", []] }, // 👈 fallback to []
+                {
+                  $filter: {
+                    input: users, // 👈 inject your payload as a constant
+                    as: "newInvite",
+                    cond: {
+                      $not: {
+                        $in: [
+                          "$$newInvite.email",
+                          {
+                            $concatArrays: [
+                              { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
+                              { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]  ,
+      { returnDocument: "after" }
+    );
+
+    return result.value;
+  }
+
 }
