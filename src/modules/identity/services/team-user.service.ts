@@ -1136,8 +1136,8 @@ export class TeamUserService {
 
    
     const usersToBeInvited = [];
-    const newInvites : any = [];
-    const resentInvites: any = [];
+    const newInvites = [];
+    const resentInvites = [];
     for (const userEmail of payload.users) {
       const sanitizedEmail = userEmail.trim().toLowerCase();
       
