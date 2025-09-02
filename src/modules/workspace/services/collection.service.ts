@@ -963,7 +963,8 @@ export class CollectionService {
     const updatedCollection =
       await this.postmanParserService.parsePostmanCollection(jsonObj, user);
     const newCollection = await this.importCollection(updatedCollection);
-    const collectionDetails = await this.getCollection(
+    const collectionDetails = await this.getCollectionWithGenerateVariable(
+      user.email,
       newCollection.insertedId.toString(),
     );
     await this.workspaceService.addCollectionInWorkSpace(
