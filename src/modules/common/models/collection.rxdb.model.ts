@@ -5,6 +5,7 @@ import {
   SourceTypeEnum,
   PostmanBodyModeEnum,
   CollectionAuthModeEnum,
+  RequestTestCases,
 } from "./collection.model";
 
 export enum AddTo {
@@ -39,6 +40,7 @@ export interface SparrowRequest {
   headers?: KeyValue[];
   queryParams?: KeyValue[];
   auth?: Auth;
+  tests?: RequestTestCases;
 }
 
 // Define the RequestBody type
