@@ -195,7 +195,7 @@ export class Events {
   listen: boolean;
 }
 
-export enum testCaseModeEnum {
+export enum TestCaseModeEnum {
   NO_CODE = "no-code",
   SCRIPT = "script",
 }
@@ -249,10 +249,10 @@ export class NoCodeTestCaseDto {
   testTarget: TestCaseSelectionTypeEnum;
 }
 
-export class RequestMetaDataTestsDto {
-  @ApiProperty({ enum: testCaseModeEnum })
-  @IsEnum(testCaseModeEnum)
-  testCaseMode: testCaseModeEnum;
+export class RequestTestCases {
+  @ApiProperty({ enum: TestCaseModeEnum })
+  @IsEnum(TestCaseModeEnum)
+  testCaseMode: TestCaseModeEnum;
 
   @ApiProperty({ type: [NoCodeTestCaseDto], required: false })
   @IsOptional()
@@ -371,11 +371,11 @@ export class RequestMetaData {
   @IsOptional()
   auth?: Auth;
 
-  @ApiProperty({ type: RequestMetaDataTestsDto })
+  @ApiProperty({ type: RequestTestCases })
   @IsOptional()
   @ValidateNested()
-  @Type(() => RequestMetaDataTestsDto)
-  tests?: RequestMetaDataTestsDto;
+  @Type(() => RequestTestCases)
+  tests?: RequestTestCases;
 }
 
 export class RequestResponseMetaData {
