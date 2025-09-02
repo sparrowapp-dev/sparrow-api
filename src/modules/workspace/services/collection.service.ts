@@ -67,7 +67,7 @@ export class CollectionService {
     private readonly postmanParserService: PostmanParserService,
     private readonly cryptoService: EncryptionService,
     private readonly userRepository: UserRepository,
-    private readonly collectionRequestService:CollectionRequestService
+    private readonly collectionRequestService: CollectionRequestService,
   ) {}
 
   async createCollection(
@@ -452,15 +452,23 @@ export class CollectionService {
     const collectionId = collection._id.toString();
     const userDetails = await this.userRepository.getUserByEmail(email);
 
-    // Case 1: Already processed → not allowed again
+    let alreadyProcessed = false;
     if (
-      userDetails.isGenerateVariableTrial.includes(collectionId) ||
-      userDetails?.isGenerateVariableDemoCompleted === true
+      userDetails?.isGenerateVariableTrial && 
+      Array.isArray(userDetails?.isGenerateVariableTrial) &&
+      userDetails.isGenerateVariableTrial.includes(collectionId)
     ) {
+      alreadyProcessed = true;
+    }
+    // Case 2: DemoCompleted property exists and is true
+    else if (userDetails?.isGenerateVariableDemoCompleted) {
+      alreadyProcessed = true;
+    }
+    if (alreadyProcessed) {
       collection.isGenerateVariableTrial = false;
       return collection;
     }
-    // Case 2: Not processed yet → check frequency
+    // Case 3: Not processed yet → run frequency check
     const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
     collection.isGenerateVariableTrial = hasExceeded;
     return collection;
@@ -511,15 +519,24 @@ export class CollectionService {
     const userDetails = await this.userRepository.getUserByEmail(user.email);
     for (let i = 0; i < collections.length; i++) {
       const collectionId = collections[i]._id.toString();
-      // Case 1: Already processed
+      let alreadyProcessed = false;
+      // Case 1: Trial array exists and contains collectionId
       if (
-        userDetails.isGenerateVariableTrial.includes(collectionId) ||
-        userDetails?.isGenerateVariableDemoCompleted === true
+        userDetails?.isGenerateVariableTrial && 
+        Array.isArray(userDetails?.isGenerateVariableTrial) &&
+        userDetails.isGenerateVariableTrial.includes(collectionId)
       ) {
+        alreadyProcessed = true;
+      }
+      // Case 2: DemoCompleted property exists and is true
+      else if (userDetails?.isGenerateVariableDemoCompleted) {
+        alreadyProcessed = true;
+      }
+      if (alreadyProcessed) {
         collections[i].isGenerateVariableTrial = false;
         continue;
       }
-      // Case 2: Not processed yet → run frequency check
+      // Case 3: Not processed yet → run frequency check
       const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
       collections[i].isGenerateVariableTrial = hasExceeded;
     }
@@ -940,7 +957,8 @@ export class CollectionService {
     const updatedCollection =
       await this.postmanParserService.parsePostmanCollection(jsonObj, user);
     const newCollection = await this.importCollection(updatedCollection);
-    const collectionDetails = await this.getCollection(
+    const collectionDetails = await this.getCollectionWithGenerateVariable(
+      user.email,
       newCollection.insertedId.toString(),
     );
     await this.workspaceService.addCollectionInWorkSpace(
@@ -1339,17 +1357,16 @@ export class CollectionService {
       throw new BadRequestException("Collection Not Found");
     }
     // Extract data from collection
-    const { urls, bodies, queryParams, headers } = this.collectionRequestService.extractFromItems(
-      collection.items,
-    );
+    const { urls, bodies, queryParams, headers } =
+      this.collectionRequestService.extractFromItems(collection.items);
     // Generate variables for each type
-    const urlVariables = Object.entries(this.collectionRequestService.generateUrlVariables(urls)).map(
-      ([key, value]) => ({
-        key,
-        value,
-        checked: true,
-      }),
-    );
+    const urlVariables = Object.entries(
+      this.collectionRequestService.generateUrlVariables(urls),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
     if (urlVariables.length > 0) {
       return true;
     }
