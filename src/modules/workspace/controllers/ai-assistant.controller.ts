@@ -151,7 +151,7 @@ export class AiAssistantController {
     description:
       "Generates mock data for a specific request type (headers, params, or body) based on the request definition.",
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard,UserLimitGuard)
   @ApiResponse({
     status: 200,
     description: "Generated Mock Data Successfully",
