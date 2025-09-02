@@ -454,19 +454,15 @@ export class CollectionService {
 
     let alreadyProcessed = false;
     if (
-      typeof userDetails?.isGenerateVariableTrial !== "undefined" &&
       Array.isArray(userDetails?.isGenerateVariableTrial) &&
       userDetails.isGenerateVariableTrial.includes(collectionId)
     ) {
       alreadyProcessed = true;
     }
     // Case 2: DemoCompleted property exists and is true
-    else if (
-      typeof userDetails?.isGenerateVariableDemoCompleted !== "undefined" &&
-      userDetails.isGenerateVariableDemoCompleted === true
-    ) {
+    else if (userDetails.isGenerateVariableDemoCompleted === true) {
       alreadyProcessed = true;
-    } 
+    }
     if (alreadyProcessed) {
       collection.isGenerateVariableTrial = false;
       return collection;
@@ -525,17 +521,13 @@ export class CollectionService {
       let alreadyProcessed = false;
       // Case 1: Trial array exists and contains collectionId
       if (
-        typeof userDetails?.isGenerateVariableTrial !== "undefined" &&
         Array.isArray(userDetails?.isGenerateVariableTrial) &&
         userDetails.isGenerateVariableTrial.includes(collectionId)
       ) {
         alreadyProcessed = true;
       }
       // Case 2: DemoCompleted property exists and is true
-      else if (
-        typeof userDetails?.isGenerateVariableDemoCompleted !== "undefined" &&
-        userDetails.isGenerateVariableDemoCompleted === true
-      ) {
+      else if (userDetails.isGenerateVariableDemoCompleted === true) {
         alreadyProcessed = true;
       }
       if (alreadyProcessed) {
