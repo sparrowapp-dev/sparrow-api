@@ -139,4 +139,7 @@ export default () => ({
     adminEmail: process.env.SELF_HOST_ADMIN_EMAIL,
     adminPassword: process.env.SELF_HOST_ADMIN_PASSWORD,
   },
+  trial: {
+    trialPeriod: 14,
+  },
 });
