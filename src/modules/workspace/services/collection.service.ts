@@ -468,6 +468,7 @@ export class CollectionService {
       alreadyProcessed = true;
     } 
     if (alreadyProcessed) {
+      collection.isGenerateVariableTrial = false;
       return collection;
     }
     // Case 3: Not processed yet → run frequency check
