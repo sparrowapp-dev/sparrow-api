@@ -1358,7 +1358,6 @@ export class CollectionService {
   ): Promise<boolean> {
     const collection =
       await this.collectionRepository.getCollection(collectionId);
-    console.log("-----------this is collection id---->", collection);
     if (!collection) {
       throw new BadRequestException("Collection Not Found");
     }
@@ -1373,7 +1372,6 @@ export class CollectionService {
       value,
       checked: true,
     }));
-    console.log("-------------this isthe url variable------->", urlVariables);
     if (urlVariables.length > 0) {
       return true;
     }
