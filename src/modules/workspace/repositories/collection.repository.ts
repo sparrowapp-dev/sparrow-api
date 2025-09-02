@@ -34,6 +34,7 @@ import {
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
 import { Workspace } from "@src/modules/common/models/workspace.model";
 import { DecodedUserObject } from "@src/types/fastify";
+import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
 import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
@@ -46,7 +47,7 @@ export class CollectionRepository {
     return response;
   }
 
-  async get(id: string): Promise<WithId<Collection>> {
+  async get(id: string): Promise<WithId<CollectionGenerateVariableDto>> {
     const _id = new ObjectId(id);
     const data = await this.db
       .collection<Collection>(Collections.COLLECTION)
@@ -64,7 +65,7 @@ export class CollectionRepository {
    */
   async getCollectionsByIds(
     collectionIds: string[],
-  ): Promise<WithId<Collection>[]> {
+  ): Promise<WithId<CollectionGenerateVariableDto>[]> {
     const collections = await this.db
       .collection<Collection>(Collections.COLLECTION)
       .find({ _id: { $in: collectionIds.map((id) => new ObjectId(id)) } })
