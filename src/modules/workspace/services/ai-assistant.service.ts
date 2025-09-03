@@ -2352,6 +2352,7 @@ export class AiAssistantService {
    * @returns Generated mock data as JSON.
    */
   public async generateMockData(
+    user: DecodedUserObject,
     content:RequestGenerateMockDataDto
   ) {
     if (!content.text?.trim()) {
@@ -2405,6 +2406,11 @@ export class AiAssistantService {
       return { result: parsedOutput };
     } catch (error) {
       console.error("Error generating mock data:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", user.email);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
+      });
       throw new BadRequestException(
         error?.message || "Failed to generate mock data. Please try again.",
       );
