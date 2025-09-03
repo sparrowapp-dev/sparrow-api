@@ -27,7 +27,6 @@ import {
 @ApiBearerAuth()
 @ApiTags("AI Support")
 @Controller("api/assistant")
-@UseGuards(JwtAuthGuard)
 export class AiAssistantController {
   /**
    * Constructor to initialize AiAssistantController with the required service.
@@ -46,7 +45,7 @@ export class AiAssistantController {
   })
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
   @Post("prompt")
-  @UseGuards(UserLimitGuard)
+  @UseGuards(JwtAuthGuard,UserLimitGuard)
   async generate(
     @Body() prompt: PromptPayload,
     @Res() res: FastifyReply,
@@ -63,6 +62,7 @@ export class AiAssistantController {
   }
 
   @Post("specific-error")
+  @UseGuards(JwtAuthGuard)
   async CurlError(
     @Body() errorResponse: ErrorResponsePayload,
     @Res() res: FastifyReply,
@@ -77,7 +77,7 @@ export class AiAssistantController {
   }
 
   @Post("generate-prompt")
-  @UseGuards(UserLimitGuard)
+  @UseGuards(JwtAuthGuard,UserLimitGuard)
   async GeneratePrompt(
     @Body() payload: ChatBotPayload,
     @Res() res: FastifyReply,
@@ -92,7 +92,6 @@ export class AiAssistantController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Upload multiple documents with model name',
     description: 'Uploads multiple document files and model name',
