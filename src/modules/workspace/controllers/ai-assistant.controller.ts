@@ -170,12 +170,7 @@ export class AiAssistantController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    const mockData = await this.aiAssistantService.generateMockData(
-      user,
-      content.text,
-      content.requestType,
-      content?.properties || {}
-    );
+    const mockData = await this.aiAssistantService.generateMockData(content);
     const responseData = new ApiResponseService(
       "Generated Mock Data Successfully",
       HttpStatusCode.OK,

@@ -31,6 +31,7 @@ import {
   ChatBotPayload,
   ErrorResponsePayload,
   RequestBodyTypePropertiesDto,
+  RequestGenerateMockDataDto,
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
@@ -2351,31 +2352,28 @@ export class AiAssistantService {
    * @returns Generated mock data as JSON.
    */
   public async generateMockData(
-    user: DecodedUserObject,
-    prompt: string,
-    requestType: MockDataRequestType,
-    properties?: RequestBodyTypePropertiesDto,
+    content:RequestGenerateMockDataDto
   ) {
-    if (!prompt?.trim()) {
+    if (!content.text?.trim()) {
       throw new BadRequestException("API details (prompt) must be provided.");
     }
-    if (!requestType) {
+    if (!content.requestType) {
       throw new BadRequestException("Request type must be provided.");
     }
     // Special handling for BODY
-    if (requestType === "Request Body") {
-      if (!properties) {
+    if (content?.requestType === "Request Body") {
+      if (!content?.properties) {
         throw new BadRequestException("Body request requires properties.");
       }
-      if (properties.type === requestBodyType.NONE) {
+      if (content?.properties.type === requestBodyType.NONE) {
         // No body required → skip LLM call
         return { result: {} };
       }
     }
     try {
       const systemInstructions = this.buildMockInstructions(
-        requestType,
-        properties,
+        content.requestType,
+        content.properties,
       );
       const response = await this.deepseekClient
         .path("/chat/completions")
@@ -2386,7 +2384,7 @@ export class AiAssistantService {
               { role: "system", content: systemInstructions },
               {
                 role: "user",
-                content: `API Details:\n${prompt}\n\nRequest Type: ${requestType}`,
+                content: `API Details:\n${content.text}\n\nRequest Type: ${content?.requestType}`,
               },
             ],
           },
