@@ -58,15 +58,27 @@ export class TeamService {
     }
     throw new BadRequestException("Image size should be less than 2MB");
   }
-  async isImageDimensionValid(buffer: any) {
+  /**
+   * Validates the dimensions of an image buffer.
+   *
+   * - Extracts the `width` and `height` of the given image.
+   * - Ensures the image has valid dimensions.
+   * - Compares the dimensions against configured maximum width and height limits.
+   * - Throws a `BadRequestException` if the image is invalid or exceeds limits.
+   *
+   * @param {Uint8Array} buffer - The image data as a Node.js Buffer.
+   * @returns {Promise<boolean>} - Resolves to `true` if the image dimensions are valid.
+   * @throws {BadRequestException} - If the image is invalid or too large.
+   */
+  async isImageDimensionValid(buffer: Uint8Array): Promise<boolean> {
     const { width, height } = await imageSize(buffer);
 
     if (!width || !height) {
       throw new BadRequestException("Invalid image file");
     }
 
-    const maxWidth = this.configService.get("app.imageDimensionLimit");
-    const maxHeight = this.configService.get("app.imageDimensionLimit");
+    const maxWidth = this.configService.get<number>("app.imageDimensionLimit");
+    const maxHeight = this.configService.get<number>("app.imageDimensionLimit");
 
     if (width > maxWidth || height > maxHeight) {
       throw new BadRequestException(
