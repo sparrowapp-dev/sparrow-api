@@ -2403,6 +2403,19 @@ export class AiAssistantService {
       } catch {
         parsedOutput = output;
       }
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: user.email,
+        activity: "generate-mock-data",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null"
+      };
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_MOCK_DATA, {
+        value: JSON.stringify(activityLog),
+      });
       return { result: parsedOutput };
     } catch (error) {
       console.error("Error generating mock data:", error);
