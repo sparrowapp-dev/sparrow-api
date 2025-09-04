@@ -30,6 +30,8 @@ import {
   StreamPromptPayload,
   ChatBotPayload,
   ErrorResponsePayload,
+  RequestBodyTypePropertiesDto,
+  RequestGenerateMockDataDto,
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
@@ -73,6 +75,7 @@ import * as Sentry from "@sentry/nestjs";
 
 import pdfParse from 'pdf-parse';
 import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
+import { MockDataRequestType, requestBodyLangType, requestBodyType } from "@src/modules/common/enum/collection.request.enum";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -242,36 +245,36 @@ export class AiAssistantService {
 
     try {
       const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`;
-      
+
       const { text: prompt } = data;
-      
+
       const response = await this.deepseekClient
-      .path("/chat/completions")
-      .post({
-        body: {
-          messages: [
-            { role: "system", content: instructions },
-            { role: "user", content: prompt },
-          ],
-          model: this.deepseekModel,
-        },
-      });
+        .path("/chat/completions")
+        .post({
+          body: {
+            messages: [
+              { role: "system", content: instructions },
+              { role: "user", content: prompt },
+            ],
+            model: this.deepseekModel,
+          },
+        });
 
       if (response.status !== "200") {
         const data =
-        "Some Issue Occurred in Processing your Request. Please try again";
+          "Some Issue Occurred in Processing your Request. Please try again";
         return { result: data };
       }
-      
+
       const body = response.body as any;
       const tokens = body?.usage?.total_tokens;
-      
+
       const eventMessage = {
         userId: user._id,
         tokenCount: tokens,
         model: "deepseek",
       };
-      
+
       await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
         value: JSON.stringify(eventMessage),
       });
@@ -289,7 +292,7 @@ export class AiAssistantService {
       await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
         value: JSON.stringify(activityLog),
       });
-      
+
       const output = (response.body as any).choices?.[0]?.message?.content;
       return { result: output };
     } catch (error) {
@@ -518,124 +521,124 @@ export class AiAssistantService {
     activity?: string,
   ): Promise<void> {
     try {
-    // Fetch user details
-    const user = await this.userService.getUserByEmail(emailId);
+      // Fetch user details
+      const user = await this.userService.getUserByEmail(emailId);
 
-    // Validate input
-    if (!text) {
+      // Validate input
+      if (!text) {
       throw new BadRequestException("Invalid input: 'text' field is required.");
-    }
+      }
 
-    if (!this.gptAssistantsClient) {
-      throw new InternalServerErrorException(
-        "AI assistant client is not initialized.",
-      );
-    }
-
-    if (!threadId) {
-      const assistantThread =
-        await this.gptAssistantsClient.beta.threads.create({});
-      threadId = assistantThread.id;
-    }
-
-    await this.gptAssistantsClient.beta.threads.messages.create(threadId, {
-      role: "user",
-      content: `{Text: ${text}, API data: ${apiData}}`,
-    });
-
-    client.send(
-      JSON.stringify({
-        messages: "",
-        thread_Id: threadId,
-        tab_id: tabId,
-        stream_status: "start",
-      }),
-    );
-
-    this.gptAssistantsClient.beta.threads.runs
-      .stream(threadId, {
-        assistant_id: this.assistantId,
-      })
-      .on("textDelta", (textDelta) => {
-        const chunk = textDelta.value;
-        client.send(
-          JSON.stringify({
-            messages: chunk,
-            thread_Id: threadId,
-            tab_id: tabId,
-            stream_status: "streaming",
-          }),
+      if (!this.gptAssistantsClient) {
+        throw new InternalServerErrorException(
+          "AI assistant client is not initialized.",
         );
-      })
-      .on("end", async () => {
-        try {
+      }
+
+      if (!threadId) {
+        const assistantThread =
+          await this.gptAssistantsClient.beta.threads.create({});
+        threadId = assistantThread.id;
+      }
+
+      await this.gptAssistantsClient.beta.threads.messages.create(threadId, {
+        role: "user",
+        content: `{Text: ${text}, API data: ${apiData}}`,
+      });
+
+      client.send(
+        JSON.stringify({
+          messages: "",
+          thread_Id: threadId,
+          tab_id: tabId,
+          stream_status: "start",
+        }),
+      );
+
+      this.gptAssistantsClient.beta.threads.runs
+        .stream(threadId, {
+          assistant_id: this.assistantId,
+        })
+        .on("textDelta", (textDelta) => {
+          const chunk = textDelta.value;
           client.send(
             JSON.stringify({
-              messages: "",
+              messages: chunk,
               thread_Id: threadId,
               tab_id: tabId,
-              stream_status: "end",
+              stream_status: "streaming",
             }),
           );
-
-          const runsList =
-            await this.gptAssistantsClient.beta.threads.runs.list(threadId);
-          const latestRun = runsList.data[0];
-
-          if (latestRun?.usage) {
-            const tokenUsage = latestRun.usage.total_tokens;
-
-            const eventMessage = {
-              userId: user._id.toString(),
-              tokenCount: tokenUsage,
-              model: model,
-            };
-
-            await this.producerService.produce(
-              TOPIC.AI_RESPONSE_GENERATED_TOPIC,
-              {
-                value: JSON.stringify(eventMessage),
-              },
+        })
+        .on("end", async () => {
+          try {
+            client.send(
+              JSON.stringify({
+                messages: "",
+                thread_Id: threadId,
+                tab_id: tabId,
+                stream_status: "end",
+              }),
             );
 
-            // Update the actvity log in the database
-            const activityLog = {
-              userId: user._id.toString(),
-              userEmail: emailId,
-              activity: activity,
-              model: model,
-              tokenConsumed: tokenUsage,
-              threadId: threadId,
-            };
+            const runsList =
+              await this.gptAssistantsClient.beta.threads.runs.list(threadId);
+            const latestRun = runsList.data[0];
 
-            // Send activity log to Kafka topic
-            await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
-              value: JSON.stringify(activityLog),
-            });
-          } else {
-            console.warn("Run usage not yet available.");
+            if (latestRun?.usage) {
+              const tokenUsage = latestRun.usage.total_tokens;
+
+              const eventMessage = {
+                userId: user._id.toString(),
+                tokenCount: tokenUsage,
+                model: model,
+              };
+
+              await this.producerService.produce(
+                TOPIC.AI_RESPONSE_GENERATED_TOPIC,
+                {
+                  value: JSON.stringify(eventMessage),
+                },
+              );
+
+              // Update the actvity log in the database
+              const activityLog = {
+                userId: user._id.toString(),
+                userEmail: emailId,
+                activity: activity,
+                model: model,
+                tokenConsumed: tokenUsage,
+                threadId: threadId,
+              };
+
+              // Send activity log to Kafka topic
+              await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+                value: JSON.stringify(activityLog),
+              });
+            } else {
+              console.warn("Run usage not yet available.");
+            }
+          } catch (err) {
+            console.error("Error handling usage after stream:", err);
           }
-        } catch (err) {
-          console.error("Error handling usage after stream:", err);
-        }
-      })
-      .on("error", () => {
-        client.send(
-          JSON.stringify({
-            messages:
-              "Some issue occurred while processing your request. Please try again.",
-            thread_Id: threadId,
-            tab_id: tabId,
-          }),
-        );
-      });
+        })
+        .on("error", () => {
+          client.send(
+            JSON.stringify({
+              messages:
+                "Some issue occurred while processing your request. Please try again.",
+              thread_Id: threadId,
+              tab_id: tabId,
+            }),
+          );
+        });
     } catch (error) {
       console.error("OpenAI error:", error);
       Sentry.withScope((scope) => {
-          scope.setTag("emailId", emailId);
-          scope.setTag("errorType", "AI");
-          Sentry.captureException(error.message);
-        });
+        scope.setTag("emailId", emailId);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error.message);
+      });
       client.send(
         JSON.stringify({
           messages:
@@ -681,10 +684,10 @@ export class AiAssistantService {
 
     if (!this.deepseekClient) {
       Sentry.withScope((scope) => {
-          scope.setTag("emailId", emailId);
-          scope.setTag("errorType", "AI");
-          Sentry.captureException("DeepSeek Initialization Failed.");
-        });
+        scope.setTag("emailId", emailId);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException("DeepSeek Initialization Failed.");
+      });
       throw new InternalServerErrorException(
         "DeepSeek AI client is not initialized.",
       );
@@ -795,11 +798,11 @@ export class AiAssistantService {
             } catch (e) {
               console.warn("Kafka logging failed", e);
               Sentry.withScope((scope) => {
-                  scope.setTag("emailId", emailId);
-                  scope.setTag("errorType", "AI");
-                  Sentry.captureException(e);
-                });
-              }
+                scope.setTag("emailId", emailId);
+                scope.setTag("errorType", "AI");
+                Sentry.captureException(e);
+              });
+            }
 
             const activityLog = {
               userId: user._id.toString(),
@@ -817,11 +820,11 @@ export class AiAssistantService {
             } catch (e) {
               console.warn("Kafka logging failed", e);
               Sentry.withScope((scope) => {
-                  scope.setTag("emailId", emailId);
-                  scope.setTag("errorType", "AI");
-                  Sentry.captureException(e);
-                });
-              }
+                scope.setTag("emailId", emailId);
+                scope.setTag("errorType", "AI");
+                Sentry.captureException(e);
+              });
+            }
 
             // Send activity log to Kafka topic
           } else {
@@ -839,9 +842,9 @@ export class AiAssistantService {
     } catch (error) {
       console.error("DeepSeek error:", error);
       Sentry.withScope((scope) => {
-          scope.setTag("emailId", emailId);
-          scope.setTag("errorType", "AI");
-          Sentry.captureException(error);
+        scope.setTag("emailId", emailId);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
       });
       client.send(
         JSON.stringify({
@@ -1338,7 +1341,7 @@ export class AiAssistantService {
             max_tokens: maxTokens > -1 ? maxTokens : 1024,
           });
         }
-        
+
 
         const data = response.content
           .map((block) => ("text" in block ? block.text : ""))
@@ -2216,15 +2219,15 @@ export class AiAssistantService {
 
       throw new BadRequestException(`Unsupported file type: ${mimetype}`);
     }
-    
+
     if (model === Models.OpenAI) {
       const OpenAIclient = await this.createOpenAIClient(authKey);
       const { writeFile, unlink } = fs.promises;
-      
+
       const results: { fileId: string; fileUrl: string; }[] = [];
       let totalTokenCount = 0;
       const acceptedFiles: string[] = [];
-      
+
       for (const doc of docs) {
 
         // Check the tokens of the File user has uploaded
@@ -2246,7 +2249,7 @@ export class AiAssistantService {
         totalTokenCount += tokens.length;
         acceptedFiles.push(doc.fieldname);
 
-        // Upload document to azure blob 
+        // Upload document to azure blob
         const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
 
         const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
@@ -2282,7 +2285,7 @@ export class AiAssistantService {
 
     //   for (const doc of docs) {
 
-    //     // Upload document to azure blob 
+    //     // Upload document to azure blob
     //     const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
     //     console.log(doc)
 
@@ -2316,7 +2319,7 @@ export class AiAssistantService {
 
     //   for (const doc of docs) {
 
-    //     // Upload document to azure blob 
+    //     // Upload document to azure blob
     //     const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
 
     //     const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
@@ -2339,5 +2342,191 @@ export class AiAssistantService {
     //   return results;
     // }
     throw new BadRequestException(`Unsupported model: ${model}`);
+  }
+
+  /**
+   * Generates mock data for a request item within a collection, based on the specified type.
+   * @param user - The authenticated user requesting the data.
+   * @param prompt - API details or schema to guide mock generation.
+   * @param requestType - The request item type ("headers" | "queryParams" | "body").
+   * @returns Generated mock data as JSON.
+   */
+  public async generateMockData(
+    user: DecodedUserObject,
+    content:RequestGenerateMockDataDto
+  ) {
+    if (!content.text?.trim()) {
+      throw new BadRequestException("API details (prompt) must be provided.");
+    }
+    if (!content.requestType) {
+      throw new BadRequestException("Request type must be provided.");
+    }
+    // Special handling for BODY
+    if (content?.requestType === "Request Body") {
+      if (!content?.properties) {
+        throw new BadRequestException("Body request requires properties.");
+      }
+      if (content?.properties.type === requestBodyType.NONE) {
+        // No body required → skip LLM call
+        return { result: {} };
+      }
+    }
+    try {
+      const systemInstructions = this.buildMockInstructions(
+        content.requestType,
+        content.properties,
+      );
+      const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            model: this.deepseekModel,
+            messages: [
+              { role: "system", content: systemInstructions },
+              {
+                role: "user",
+                content: `API Details:\n${content.text}\n\nRequest Type: ${content?.requestType}`,
+              },
+            ],
+          },
+        });
+
+      const output = (
+        response.body as any
+      ).choices?.[0]?.message?.content?.trim();
+      if (!output) {
+        throw new BadRequestException("No mock data generated from the model.");
+      }
+      let parsedOutput: any;
+      try {
+        parsedOutput = JSON.parse(output);
+      } catch {
+        parsedOutput = output;
+      }
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: user.email,
+        activity: "generate-mock-data",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null"
+      };
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_MOCK_DATA, {
+        value: JSON.stringify(activityLog),
+      });
+      return { result: parsedOutput };
+    } catch (error) {
+      console.error("Error generating mock data:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", user.email);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException(
+        error?.message || "Failed to generate mock data. Please try again.",
+      );
+    }
+  }
+
+  /**
+   * Builds system prompt instructions for mock data generation.
+   */
+  private buildMockInstructions(
+    requestType: MockDataRequestType,
+    properties?: RequestBodyTypePropertiesDto,
+  ): string {
+    const base = `You are an assistant specialized in creating mock API data for testing.
+    Generate ONLY realistic dummy ${requestType} content that can be directly used.
+    STRICT RULES:
+    - Do NOT include any explanations, markdown, comments, or code snippets.
+    - Do NOT wrap output in triple backticks or labels like "json", "xml", "html", etc.
+    - Output must be ONLY the raw content in the specified format.
+    - No text outside of the required output format is allowed.
+    The dummy data must be realistic and usable for API testing.`;
+
+    switch (requestType) {
+      case MockDataRequestType.HEADERS:
+      case MockDataRequestType.PARAMETERS:
+        return `${base}
+        - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+        - Example format: [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer token123"}]
+        - Generate 2-4 realistic ${requestType.toLowerCase()} entries.`;
+
+      case MockDataRequestType.AUTHORIZATION:
+        return `${base}
+        - Return ONLY a valid JSON object with realistic authentication data.
+        - Include properties like: token, username, password, apiKey, etc.
+        - Example format: {"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "username": "testuser", "password": "testpass123"}`;
+
+      case MockDataRequestType.REQUEST_BODY:
+        if (!properties) return base;
+
+        switch (properties.type) {
+          case requestBodyType.FORMDATA:
+            return `${base}
+            - Body type is form-data.
+            - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+            - Example format: [{"key": "username", "value": "john_doe"}, {"key": "email", "value": "john@example.com"}]
+            - Generate 3-5 realistic form field entries.`;
+
+          case requestBodyType.URLENCODED:
+            return `${base}
+            - Body type is url-encoded.
+            - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+            - Example format: [{"key": "grant_type", "value": "password"}, {"key": "username", "value": "testuser"}]
+            - Generate 3-5 realistic URL-encoded parameter entries.`;
+
+          case requestBodyType.RAW:
+            if (
+              properties.lang === requestBodyLangType.JSON ||
+              !properties.lang // default JSON
+            ) {
+              return `${base}
+              - Body type is raw JSON.
+              - Return ONLY valid JSON object or array content (no surrounding text).
+              - Generate realistic user/entity data with properties like: id, name, email, timestamps, etc.
+              - Example: {"id": 12345, "name": "John Doe", "email": "john@example.com", "createdAt": "2025-09-02T10:15:00Z"}`;
+            }
+            if (properties.lang === requestBodyLangType.JAVASCRIPT) {
+              return `${base}
+              - Body type is raw JavaScript.
+              - Return ONLY valid JavaScript code as plain text (no formatting or explanations).
+              - Generate realistic variable declarations, object definitions, or simple functions.
+              - Example: const user = {id: 123, name: "John Doe", active: true};`;
+            }
+            if (properties.lang === requestBodyLangType.XML) {
+              return `${base}
+              - Body type is raw XML.
+              - Return ONLY valid XML markup as plain text (no formatting or explanations).
+              - Generate realistic XML structure with appropriate tags and attributes.
+              - Example: <user><id>123</id><name>John Doe</name><email>john@example.com</email></user>`;
+            }
+            if (properties.lang === requestBodyLangType.HTML) {
+              return `${base}
+              - Body type is raw HTML.
+              - Return ONLY valid HTML markup as plain text (no formatting or explanations).
+              - Generate realistic HTML content with proper structure and semantics.
+              - Example: <div class="user-card"><h2>John Doe</h2><p>Email: john@example.com</p></div>`;
+            }
+            if (properties.lang === requestBodyLangType.TEXT) {
+              return `${base}
+              - Body type is raw text.
+              - Return ONLY plain text content (no formatting or explanations).
+              - Generate realistic text data such as names, messages, descriptions, etc.
+              - Example: Welcome to our API! This is a sample text message for testing purposes.`;
+            }
+            break;
+          case requestBodyType.NONE:
+            return `${base}
+            - Body type is none.
+            - Return ONLY an empty JSON object: {}`;
+        }
+        break;
+      default:
+        return base;
+    }
+    return base;
   }
 }
