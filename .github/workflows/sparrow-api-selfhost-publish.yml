@@ -14,15 +14,11 @@ jobs:
     environment: self-host
 
     env:
-      BUILD_BRANCH: ${{ inputs.branch }}
       DOCKER_IMAGE_NAME: sparrowapi/sparrow-api
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ env.BUILD_BRANCH }}
-          fetch-depth: 0
 
       - name: Read version from package.json
         id: version
