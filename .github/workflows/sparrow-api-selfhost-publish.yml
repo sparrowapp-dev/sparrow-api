@@ -3,6 +3,11 @@ on:
 
   workflow_dispatch:
     inputs:
+      branch:
+        description: "Git branch to build"
+        required: true
+        default: release-v2
+        type: string
       image_version:
         description: "Docker image version (e.g. 1.2.3)"
         required: true
@@ -18,11 +23,15 @@ jobs:
 
     env:
       DOCKER_IMAGE_VERSION: ${{ inputs.image_version }}
+      BUILD_BRANCH: ${{ inputs.branch }}
+      DOCKER_IMAGE_NAME: sparrowapi/sparrow-api
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ env.BUILD_BRANCH }}
+          fetch-depth: 0
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -37,9 +46,10 @@ jobs:
 
       - name: Build and push (multi-arch)
         run: |
+          set -euo pipefail
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             --build-arg GITHUB_TOKEN=${{ secrets.SPARROW_GITHUB_TOKEN }} \
-            -t sparrowapi/sparrow-api:${DOCKER_IMAGE_VERSION} \
-            -t sparrowapi/sparrow-api:latest \
+            -t $DOCKER_IMAGE_NAME:${DOCKER_IMAGE_VERSION} \
+            -t $DOCKER_IMAGE_NAME:latest \
             --push .
