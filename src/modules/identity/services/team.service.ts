@@ -34,6 +34,7 @@ import {
   BillingSource,
 } from "@src/modules/common/enum/billing.enum";
 import { isValidName } from "@src/modules/common/util/validate.name.util";
+import { imageSize } from "image-size";
 
 /**
  * Team Service
@@ -57,7 +58,24 @@ export class TeamService {
     }
     throw new BadRequestException("Image size should be less than 2MB");
   }
+  async isImageDimensionValid(buffer: any) {
+    const { width, height } = await imageSize(buffer);
 
+    if (!width || !height) {
+      throw new BadRequestException("Invalid image file");
+    }
+
+    const maxWidth = this.configService.get("app.imageDimensionLimit");
+    const maxHeight = this.configService.get("app.imageDimensionLimit");
+
+    if (width > maxWidth || height > maxHeight) {
+      throw new BadRequestException(
+        `Image dimensions too large (max ${maxWidth}x${maxHeight})`,
+      );
+    }
+
+    return true;
+  }
   private sanitizeName(name: string): string {
     return name
       .trim()
@@ -119,6 +137,7 @@ export class TeamService {
     if (image) {
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
+      await this.isImageDimensionValid(dataBuffer);
       const dataString = dataBuffer.toString("base64");
       const logo = {
         bufferString: dataString,
@@ -291,6 +310,7 @@ export class TeamService {
     if (image) {
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
+      await this.isImageDimensionValid(dataBuffer);
       const dataString = dataBuffer.toString("base64");
       const logo = {
         bufferString: dataString,
