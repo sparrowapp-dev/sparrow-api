@@ -70,8 +70,12 @@ export class TeamService {
    * @returns {Promise<boolean>} - Resolves to `true` if the image dimensions are valid.
    * @throws {BadRequestException} - If the image is invalid or too large.
    */
-  async isImageDimensionValid(buffer: Uint8Array): Promise<boolean> {
-    const { width, height } = await imageSize(buffer);
+  async isImageDimensionValid(buffer: any): Promise<boolean> {
+    // Using `any` for `buffer` because `image-size` typings expect `Uint8Array<ArrayBufferLike>`,
+    // while in practice we mostly pass Node.js `Buffer`. Since `Buffer` extends `Uint8Array` at runtime,
+    // this works fine, but TypeScript complains. Casting inside (`as Uint8Array`) avoids type errors.
+
+    const { width, height } = await imageSize(buffer as unknown as Uint8Array);
 
     if (!width || !height) {
       throw new BadRequestException("Invalid image file");
