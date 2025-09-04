@@ -2,14 +2,8 @@ name: Self-host Docker Image
 on:
   push:
     branches:
-      - build/selfhost-image
+      - release-v2
   workflow_dispatch:
-    # inputs:
-    #   branch:
-    #     description: "Git branch to build"
-    #     required: true
-    #     default: build/selfhost-image
-    #     type: string
 
 permissions:
   contents: read
