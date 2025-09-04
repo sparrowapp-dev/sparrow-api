@@ -64,4 +64,5 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --build-arg GITHUB_TOKEN=${{ secrets.SPARROW_GITHUB_TOKEN }} \
             -t $DOCKER_IMAGE_NAME:$VERSION \
+            -t $DOCKER_IMAGE_NAME:latest \
             --push .
