@@ -452,7 +452,10 @@ export class CollectionService {
     const collection = await this.collectionRepository.get(id);
     const collectionId = collection._id.toString();
     const userDetails = await this.userRepository.getUserByEmail(email);
-
+    collection.isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
+      ?.isRequestTestsNoCodeDemoCompleted
+      ? false
+      : true;
     let alreadyProcessed = false;
     if (
       userDetails?.isGenerateVariableTrial &&
@@ -472,8 +475,6 @@ export class CollectionService {
     // Case 3: Not processed yet → run frequency check
     const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
     collection.isGenerateVariableTrial = hasExceeded;
-    collection.isRequestTestsNoCodeDemoCompleted =
-      userDetails?.tourGuide?.isRequestTestsNoCodeDemoCompleted ? false : true;
     return collection;
   }
 
@@ -522,6 +523,10 @@ export class CollectionService {
     const userDetails = await this.userRepository.getUserByEmail(user.email);
     for (let i = 0; i < collections.length; i++) {
       const collectionId = collections[i]._id.toString();
+      collections[i].isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
+        ?.isRequestTestsNoCodeDemoCompleted
+        ? false
+        : true;
       let alreadyProcessed = false;
       // Case 1: Trial array exists and contains collectionId
       if (
@@ -542,8 +547,6 @@ export class CollectionService {
       // Case 3: Not processed yet → run frequency check
       const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
       collections[i].isGenerateVariableTrial = hasExceeded;
-      collections[i].isRequestTestsNoCodeDemoCompleted =
-        userDetails?.tourGuide?.isRequestTestsNoCodeDemoCompleted ? false : true;
     }
 
     const decryptedCollections = [];
