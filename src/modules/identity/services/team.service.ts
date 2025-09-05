@@ -34,6 +34,7 @@ import {
   BillingSource,
 } from "@src/modules/common/enum/billing.enum";
 import { isValidName } from "@src/modules/common/util/validate.name.util";
+import { isImageBuffer } from "@src/modules/common/util/isImageBuffer.util";
 
 /**
  * Team Service
@@ -121,6 +122,9 @@ export class TeamService {
 
     const dynamicUrl = await this.generateUniqueTeamUrl(teamData.name);
     if (image) {
+      if (!isImageBuffer(image.buffer)) {
+        throw new BadRequestException("Uploaded file is not a valid image");
+      }
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
       const dataString = dataBuffer.toString("base64");
@@ -293,6 +297,9 @@ export class TeamService {
 
     let team;
     if (image) {
+      if (!isImageBuffer(image.buffer)) {
+        throw new BadRequestException("Uploaded file is not a valid image");
+      }
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
       const dataString = dataBuffer.toString("base64");
