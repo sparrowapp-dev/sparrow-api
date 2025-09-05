@@ -20,6 +20,7 @@ import {
   CollectionItem,
   ItemTypeEnum,
   CollectionTypeEnum,
+  CollectionWithRequestTestsOption,
 } from "@src/modules/common/models/collection.model";
 import {
   CollectionGraphQLDto,
@@ -47,7 +48,7 @@ export class CollectionRepository {
     return response;
   }
 
-  async get(id: string): Promise<WithId<CollectionGenerateVariableDto>> {
+  async get(id: string): Promise<WithId<CollectionWithRequestTestsOption>> {
     const _id = new ObjectId(id);
     const data = await this.db
       .collection<Collection>(Collections.COLLECTION)
@@ -65,7 +66,7 @@ export class CollectionRepository {
    */
   async getCollectionsByIds(
     collectionIds: string[],
-  ): Promise<WithId<CollectionGenerateVariableDto>[]> {
+  ): Promise<WithId<CollectionWithRequestTestsOption>[]> {
     const collections = await this.db
       .collection<Collection>(Collections.COLLECTION)
       .find({ _id: { $in: collectionIds.map((id) => new ObjectId(id)) } })

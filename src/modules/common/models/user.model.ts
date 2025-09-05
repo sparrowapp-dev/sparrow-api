@@ -147,6 +147,10 @@ export class User {
   @IsBoolean()
   @IsOptional()
   isSelfHostedVersionAdmin?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isRequestTestsNoCodeDemoCompleted?: boolean;
 }
 
 export class UserDto {

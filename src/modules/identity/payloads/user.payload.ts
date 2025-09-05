@@ -64,6 +64,12 @@ export class UserGenerateVariableDto extends UserDto {
   isGenerateVariableDemoCompleted?: boolean;
 }
 
+export class UserRequestTestsNoCodeDto extends UserGenerateVariableDto{
+  @IsBoolean()
+  @IsOptional()
+  isRequestTestsNoCodeDemoCompleted?: boolean;
+}
+
 export class RegisteredWith {
   @IsString()
   registeredWith: string;

@@ -778,4 +778,15 @@ export class UserService {
     });
     return response;
   }
+
+  async requestTestsNoCodeDemoCompleted(email:string){
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if(!userDetails){
+      throw new BadRequestException("User does not exist");
+    }
+    const response = await this.userRepository.updateUserById(userDetails._id,{
+      isRequestTestsNoCodeDemoCompleted:true,
+    })
+    return response;
+  }
 }

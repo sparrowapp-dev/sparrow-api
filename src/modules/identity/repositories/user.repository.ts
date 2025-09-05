@@ -3,7 +3,7 @@ import { Db, InsertOneResult, ModifyResult, ObjectId, WithId } from "mongodb";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { createHmac } from "crypto";
 import { RegisterPayload } from "../payloads/register.payload";
-import { UpdateUserDto, UserDto } from "../payloads/user.payload";
+import { UpdateUserDto, UserDto, UserRequestTestsNoCodeDto } from "../payloads/user.payload";
 import {
   EarlyAccessEmail,
   EmailServiceProvider,
@@ -219,7 +219,7 @@ export class UserRepository {
 
   async updateUserById(
     id: ObjectId,
-    updateParams: Partial<UserGenerateVariableDto>,
+    updateParams: Partial<UserRequestTestsNoCodeDto>,
   ): Promise<WithId<User>> {
     const updatedUserParams = {
       $set: updateParams,

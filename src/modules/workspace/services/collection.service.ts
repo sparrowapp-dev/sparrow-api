@@ -28,6 +28,7 @@ import {
   CollectionBranch,
   CollectionItem,
   CollectionTypeEnum,
+  CollectionWithRequestTestsOption,
   ItemTypeEnum,
   ResponseBodyModeEnum,
 } from "@src/modules/common/models/collection.model";
@@ -447,14 +448,14 @@ export class CollectionService {
   async getCollectionWithGenerateVariable(
     email: string,
     id: string,
-  ): Promise<WithId<CollectionGenerateVariableDto>> {
+  ): Promise<WithId<CollectionWithRequestTestsOption>> {
     const collection = await this.collectionRepository.get(id);
     const collectionId = collection._id.toString();
     const userDetails = await this.userRepository.getUserByEmail(email);
 
     let alreadyProcessed = false;
     if (
-      userDetails?.isGenerateVariableTrial && 
+      userDetails?.isGenerateVariableTrial &&
       Array.isArray(userDetails?.isGenerateVariableTrial) &&
       userDetails.isGenerateVariableTrial.includes(collectionId)
     ) {
@@ -471,6 +472,8 @@ export class CollectionService {
     // Case 3: Not processed yet → run frequency check
     const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
     collection.isGenerateVariableTrial = hasExceeded;
+    collection.isRequestTestsNoCodeDemoCompleted =
+      userDetails?.isRequestTestsNoCodeDemoCompleted ? false : true;
     return collection;
   }
 
@@ -522,7 +525,7 @@ export class CollectionService {
       let alreadyProcessed = false;
       // Case 1: Trial array exists and contains collectionId
       if (
-        userDetails?.isGenerateVariableTrial && 
+        userDetails?.isGenerateVariableTrial &&
         Array.isArray(userDetails?.isGenerateVariableTrial) &&
         userDetails.isGenerateVariableTrial.includes(collectionId)
       ) {
@@ -539,6 +542,8 @@ export class CollectionService {
       // Case 3: Not processed yet → run frequency check
       const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
       collections[i].isGenerateVariableTrial = hasExceeded;
+      collections[i].isRequestTestsNoCodeDemoCompleted =
+        userDetails?.isRequestTestsNoCodeDemoCompleted ? false : true;
     }
 
     const decryptedCollections = [];
