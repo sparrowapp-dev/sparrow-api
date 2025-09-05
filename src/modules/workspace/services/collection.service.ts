@@ -462,7 +462,7 @@ export class CollectionService {
       alreadyProcessed = true;
     }
     // Case 2: DemoCompleted property exists and is true
-    else if (userDetails?.isGenerateVariableDemoCompleted) {
+    else if (userDetails?.tourGuide?.isGenerateVariableDemoCompleted) {
       alreadyProcessed = true;
     }
     if (alreadyProcessed) {
@@ -473,7 +473,7 @@ export class CollectionService {
     const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
     collection.isGenerateVariableTrial = hasExceeded;
     collection.isRequestTestsNoCodeDemoCompleted =
-      userDetails?.isRequestTestsNoCodeDemoCompleted ? false : true;
+      userDetails?.tourGuide?.isRequestTestsNoCodeDemoCompleted ? false : true;
     return collection;
   }
 
@@ -532,7 +532,7 @@ export class CollectionService {
         alreadyProcessed = true;
       }
       // Case 2: DemoCompleted property exists and is true
-      else if (userDetails?.isGenerateVariableDemoCompleted) {
+      else if (userDetails?.tourGuide?.isGenerateVariableDemoCompleted) {
         alreadyProcessed = true;
       }
       if (alreadyProcessed) {
@@ -543,7 +543,7 @@ export class CollectionService {
       const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
       collections[i].isGenerateVariableTrial = hasExceeded;
       collections[i].isRequestTestsNoCodeDemoCompleted =
-        userDetails?.isRequestTestsNoCodeDemoCompleted ? false : true;
+        userDetails?.tourGuide?.isRequestTestsNoCodeDemoCompleted ? false : true;
     }
 
     const decryptedCollections = [];
