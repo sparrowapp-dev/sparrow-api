@@ -48,6 +48,7 @@ import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { SalesEmailRepository } from "@src/modules/workspace/repositories/sales-email.repository";
 import { ConfigService } from "@nestjs/config";
 import { TrialType } from "@src/modules/common/enum/trial.enum";
+import { PricingPlan } from "@src/modules/common/models/pricing.model";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -286,6 +287,27 @@ export class StripeController {
         }
       }
 
+      // Validate the plan name using the associated priceId, then update or assign the plan_name in the metadata object.
+      const priceDetails = await this.pricingService.getpricingDetails();
+      const currentPlans = priceDetails.plans;
+      let selectedPlan: PricingPlan;
+      for (const currentPlan of currentPlans) {
+        for (const planBilling of currentPlan.billing) {
+          if (planBilling.providers?.stripe === createSubscriptionDto.priceId) {
+            selectedPlan = currentPlan;
+            break; 
+          }
+        }
+        if (selectedPlan) break; 
+      }
+      if (selectedPlan) {
+        // Replace or set planName
+        if ("planName" in createSubscriptionDto.metadata) {
+          createSubscriptionDto.metadata.planName = selectedPlan.plan_name;
+        } else {
+          createSubscriptionDto.metadata["planName"] = selectedPlan.plan_name;
+        }
+      }
       const subscription = await this.stripeService.createSubscription(
         createSubscriptionDto.customerId,
         createSubscriptionDto.priceId,
