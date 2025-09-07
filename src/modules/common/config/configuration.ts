@@ -14,6 +14,7 @@ export default () => ({
     imageSizeLimit: 2097152, // value in byte
     deletedAPILimitInDays: 7,
     timeToDaysDivisor: 86400000,
+    imageDimensionLimit: 4096, // value in px
     refreshTokenSecretKey: process.env.REFRESH_TOKEN_SECRET_KEY,
     emailValidationCodeExpirationTime: parseInt(
       process.env.EMAIL_VALIDATION_CODE_EXPIRY_TIME,
