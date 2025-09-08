@@ -1238,6 +1238,12 @@ export class CollectionGenerateVariableDto extends Collection {
   isGenerateVariableTrial?: boolean;
 }
 
+export class CollectionWithRequestTestsOption extends CollectionGenerateVariableDto{
+  @IsOptional()
+  @IsBoolean()
+  isRequestTestsNoCodeDemoCompleted?: boolean;
+}
+
 export class CollectionDto {
   @IsMongoId()
   @IsNotEmpty()
