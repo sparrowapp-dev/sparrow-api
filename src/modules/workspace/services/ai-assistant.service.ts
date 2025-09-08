@@ -2448,11 +2448,24 @@ export class AiAssistantService {
 
     switch (requestType) {
       case MockDataRequestType.HEADERS:
+        return `${base}
+        - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+        - Example format: [
+            {"key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"},
+            {"key": "Content-Type", "value": "application/json"},
+            {"key": "X-Request-ID", "value": "req_9f8a7b6c"}
+          ]
+        - Generate 3-4 realistic header entries commonly used in authenticated API requests.`;
+
       case MockDataRequestType.PARAMETERS:
         return `${base}
         - Return ONLY a valid JSON array of objects with "key" and "value" properties.
-        - Example format: [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer token123"}]
-        - Generate 2-4 realistic ${requestType.toLowerCase()} entries.`;
+        - Example format: [
+            {"key": "userId", "value": "2323432"},
+            {"key": "includeMetadata", "value": "true"},
+            {"key": "limit", "value": "50"}
+          ]
+        - Generate 3-4 realistic query parameter entries used in typical GET or POST requests.`;
 
       case MockDataRequestType.AUTHORIZATION:
         return `${base}
