@@ -44,7 +44,7 @@ export class AddTestsToRootRequestItemsMigration implements OnModuleInit {
                 updated = true;
               }
               // Add selectedRequestAuthProfileId if missing
-              if (typeof !item?.request?.selectedRequestAuthProfileId) {
+              if (!item?.request?.selectedRequestAuthProfileId) {
                 item.request.selectedRequestAuthProfileId = "";
                 updated = true;
               }
