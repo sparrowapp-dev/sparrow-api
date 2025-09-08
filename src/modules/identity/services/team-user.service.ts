@@ -971,7 +971,7 @@ export class TeamUserService {
     // const updatedData: Partial<TeamDto> = {
     //   invites: updatedInvites,
     // };
-    // await this.addInvite(email, teamId);
+    await this.addInvite(email, teamId);
     // const response = await this.teamRepository.updateTeamById(
     //   teamFilter,
     //   updatedData,
