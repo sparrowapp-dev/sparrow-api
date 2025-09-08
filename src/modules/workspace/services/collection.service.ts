@@ -28,6 +28,7 @@ import {
   CollectionBranch,
   CollectionItem,
   CollectionTypeEnum,
+  CollectionWithRequestTestsOption,
   ItemTypeEnum,
   ResponseBodyModeEnum,
 } from "@src/modules/common/models/collection.model";
@@ -447,21 +448,24 @@ export class CollectionService {
   async getCollectionWithGenerateVariable(
     email: string,
     id: string,
-  ): Promise<WithId<CollectionGenerateVariableDto>> {
+  ): Promise<WithId<CollectionWithRequestTestsOption>> {
     const collection = await this.collectionRepository.get(id);
     const collectionId = collection._id.toString();
     const userDetails = await this.userRepository.getUserByEmail(email);
-
+    collection.isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
+      ?.isRequestTestsNoCodeDemoCompleted
+      ? false
+      : true;
     let alreadyProcessed = false;
     if (
-      userDetails?.isGenerateVariableTrial && 
+      userDetails?.isGenerateVariableTrial &&
       Array.isArray(userDetails?.isGenerateVariableTrial) &&
       userDetails.isGenerateVariableTrial.includes(collectionId)
     ) {
       alreadyProcessed = true;
     }
     // Case 2: DemoCompleted property exists and is true
-    else if (userDetails?.isGenerateVariableDemoCompleted) {
+    else if (userDetails?.tourGuide?.isGenerateVariableDemoCompleted) {
       alreadyProcessed = true;
     }
     if (alreadyProcessed) {
@@ -519,17 +523,21 @@ export class CollectionService {
     const userDetails = await this.userRepository.getUserByEmail(user.email);
     for (let i = 0; i < collections.length; i++) {
       const collectionId = collections[i]._id.toString();
+      collections[i].isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
+        ?.isRequestTestsNoCodeDemoCompleted
+        ? false
+        : true;
       let alreadyProcessed = false;
       // Case 1: Trial array exists and contains collectionId
       if (
-        userDetails?.isGenerateVariableTrial && 
+        userDetails?.isGenerateVariableTrial &&
         Array.isArray(userDetails?.isGenerateVariableTrial) &&
         userDetails.isGenerateVariableTrial.includes(collectionId)
       ) {
         alreadyProcessed = true;
       }
       // Case 2: DemoCompleted property exists and is true
-      else if (userDetails?.isGenerateVariableDemoCompleted) {
+      else if (userDetails?.tourGuide?.isGenerateVariableDemoCompleted) {
         alreadyProcessed = true;
       }
       if (alreadyProcessed) {

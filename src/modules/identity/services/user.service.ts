@@ -773,8 +773,27 @@ export class UserService {
     if (!userDetails) {
       throw new BadRequestException("User does not exist");
     }
-    const response = await this.userRepository.updateUserById(userDetails._id, {
+    const updatedTourGuide = {
+      ...userDetails.tourGuide,
       isGenerateVariableDemoCompleted: true,
+    };
+    const response = await this.userRepository.updateUserById(userDetails._id, {
+      tourGuide: updatedTourGuide,
+    });
+    return response;
+  }
+
+  async requestTestsNoCodeDemoCompleted(email: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    const updatedTourGuide = {
+      ...userDetails.tourGuide,
+      isRequestTestsNoCodeDemoCompleted: true,
+    };
+    const response = await this.userRepository.updateUserById(userDetails._id, {
+      tourGuide: updatedTourGuide,
     });
     return response;
   }
