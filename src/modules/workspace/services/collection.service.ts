@@ -31,6 +31,7 @@ import {
   CollectionWithRequestTestsOption,
   ItemTypeEnum,
   ResponseBodyModeEnum,
+  TestCaseModeEnum,
 } from "@src/modules/common/models/collection.model";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
@@ -228,6 +229,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
       {
@@ -291,6 +307,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
       {
@@ -354,6 +385,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
       {
@@ -417,6 +463,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
     ];
@@ -1310,7 +1371,7 @@ export class CollectionService {
         "Please provide collectionId and Generated Variables.",
       );
     }
-    let collectionDocument = await this.getCollection(collectionId);
+    const collectionDocument = await this.getCollection(collectionId);
     if (!collectionDocument) {
       throw new NotFoundException("Collection is not Found.");
     }

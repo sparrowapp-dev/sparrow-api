@@ -152,7 +152,17 @@ function transformPathV3(
         },
         tests: {
           testCaseMode: TestCaseModeEnum.NO_CODE,
-          noCode: [],
+          noCode: [
+            {
+              id: "case-1",
+              name: "New Test",
+              condition: "",
+              expectedResult: "",
+              testPath: "",
+              testTarget: "",
+            },
+          ],
+
           script: "",
         },
         selectedRequestBodyType: BodyModeEnum["none"],

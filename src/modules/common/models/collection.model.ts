@@ -234,7 +234,7 @@ export class NoCodeTestCaseDto {
 
   @ApiProperty({ enum: TestCaseConditionOperatorEnum })
   @IsEnum(TestCaseConditionOperatorEnum)
-  condition: TestCaseConditionOperatorEnum;
+  condition: TestCaseConditionOperatorEnum | "";
 
   @ApiProperty()
   @IsString()
@@ -246,7 +246,7 @@ export class NoCodeTestCaseDto {
 
   @ApiProperty({ enum: TestCaseSelectionTypeEnum })
   @IsEnum(TestCaseSelectionTypeEnum)
-  testTarget: TestCaseSelectionTypeEnum;
+  testTarget: TestCaseSelectionTypeEnum | "";
 }
 
 export class RequestTestCases {
@@ -1238,7 +1238,7 @@ export class CollectionGenerateVariableDto extends Collection {
   isGenerateVariableTrial?: boolean;
 }
 
-export class CollectionWithRequestTestsOption extends CollectionGenerateVariableDto{
+export class CollectionWithRequestTestsOption extends CollectionGenerateVariableDto {
   @IsOptional()
   @IsBoolean()
   isRequestTestsNoCodeDemoCompleted?: boolean;

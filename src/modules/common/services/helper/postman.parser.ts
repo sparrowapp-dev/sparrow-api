@@ -13,6 +13,7 @@ import {
   CollectionItem,
   RequestMetaData,
   PostmanAuthModeEnum,
+  TestCaseModeEnum,
 } from "@common/models/collection.model";
 import {
   AddTo,
@@ -180,6 +181,21 @@ function convertRequest(request: any): RequestMetaData {
       // @ts-ignore
       PostmanAuthModeEnum[request?.auth?.type || "noauth"],
     selectedRequestAuthProfileId: "",
+    tests: {
+      testCaseMode: TestCaseModeEnum.NO_CODE,
+      noCode: [
+        {
+          id: "case-1",
+          name: "New Test",
+          condition: "",
+          expectedResult: "",
+          testPath: "",
+          testTarget: "",
+        },
+      ],
+
+      script: "",
+    },
   };
 }
 
