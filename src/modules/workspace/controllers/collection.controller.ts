@@ -91,7 +91,8 @@ export class collectionController {
         data.insertedId.toString(),
       );
     }
-    const collection = await this.collectionService.getCollection(
+    const collection = await this.collectionService.getCollectionWithGenerateVariable(
+      user.email,
       data.insertedId.toString(),
     );
     await this.workSpaceService.addCollectionInWorkSpace(
