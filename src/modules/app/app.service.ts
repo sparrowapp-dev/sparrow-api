@@ -11,6 +11,7 @@ import {
   BodyModeEnum,
   ItemTypeEnum,
   SourceTypeEnum,
+  TestCaseModeEnum,
 } from "../common/models/collection.model";
 import {
   AddTo,
@@ -231,6 +232,20 @@ export class AppService {
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],
         selectedRequestAuthProfileId: "",
+        tests: {
+          testCaseMode: TestCaseModeEnum.NO_CODE,
+          noCode: [
+            {
+              id: "case-1",
+              name: "New Test",
+              condition: "",
+              expectedResult: "",
+              testPath: "",
+              testTarget: "",
+            },
+          ],
+          script: "",
+        },
       },
       createdBy: username,
       updatedBy: username,
