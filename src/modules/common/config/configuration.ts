@@ -32,6 +32,7 @@ export default () => ({
     userName: process.env.SMTP_USER_NAME,
     appEdition: process.env.APP_EDITION,
     selfHostHubPlan: "SelfHost(Community)",
+    hubBaseDomain: process.env.HUB_BASE_DOMAIN || "sparrowhub.net",
   },
   db: {
     url: process.env.DB_URL,

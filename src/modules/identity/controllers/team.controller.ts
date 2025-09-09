@@ -709,4 +709,22 @@ export class TeamController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Get("config")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Retrieve Backend Config",
+    description: "This will retrieve backend config like appUrl",
+  })
+  @ApiResponse({ status: 200, description: "Recieved Backend Cnfig" })
+  @ApiResponse({ status: 400, description: "Failed to recieved config" })
+  async getConfig(@Res() res: FastifyReply) {
+    const data = await this.teamService.getConfig();
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      data,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }
