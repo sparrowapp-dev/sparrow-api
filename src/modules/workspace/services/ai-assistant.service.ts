@@ -2511,6 +2511,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw JSON.
               - Return ONLY valid JSON object or array content (no surrounding text).
+              - If existing Body type raw JSON are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic user/entity data with properties like: id, name, email, timestamps, etc.
               - Example: {"id": 12345, "name": "John Doe", "email": "john@example.com", "createdAt": "2025-09-02T10:15:00Z"}`;
             }
@@ -2518,6 +2519,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw JavaScript.
               - Return ONLY valid JavaScript code as plain text (no formatting or explanations).
+              - If existing Body type raw JavaScript are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic variable declarations, object definitions, or simple functions.
               - Example: const user = {id: 123, name: "John Doe", active: true};`;
             }
@@ -2525,6 +2527,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw XML.
               - Return ONLY valid XML markup as plain text (no formatting or explanations).
+              - If existing Body type raw XML are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic XML structure with appropriate tags and attributes.
               - Example: <user><id>123</id><name>John Doe</name><email>john@example.com</email></user>`;
             }
@@ -2532,6 +2535,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw HTML.
               - Return ONLY valid HTML markup as plain text (no formatting or explanations).
+              - If existing Body type raw HTML are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic HTML content with proper structure and semantics.
               - Example: <div class="user-card"><h2>John Doe</h2><p>Email: john@example.com</p></div>`;
             }
@@ -2539,6 +2543,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw text.
               - Return ONLY plain text content (no formatting or explanations).
+              - If existing Body type raw text are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic text data such as names, messages, descriptions, etc.
               - Example: Welcome to our API! This is a sample text message for testing purposes.`;
             }
