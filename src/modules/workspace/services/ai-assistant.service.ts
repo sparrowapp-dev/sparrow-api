@@ -2450,22 +2450,28 @@ export class AiAssistantService {
       case MockDataRequestType.HEADERS:
         return `${base}
         - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+        - If existing headers are provided in the API details text, update their values with new realistic mock values.
+        - Add 2-3 additional realistic URL-encoded parameter entries only if existing parameters are less than 5.
         - Example format: [
             {"key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"},
             {"key": "Content-Type", "value": "application/json"},
             {"key": "X-Request-ID", "value": "req_9f8a7b6c"}
           ]
-        - Generate 3-4 realistic header entries commonly used in authenticated API requests.`;
+        - For existing headers, generate fresh realistic values (e.g., new tokens, UUIDs, timestamps).
+        - Common additional headers to include: User-Agent, Accept, X-API-Key, X-Correlation-ID, Cache-Control.`;
 
       case MockDataRequestType.PARAMETERS:
         return `${base}
         - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+        - If existing parameters are provided in the API details text, update their values with new realistic mock values.
+        - Add 2-3 additional realistic URL-encoded parameter entries only if existing parameters are less than 5.
         - Example format: [
             {"key": "userId", "value": "2323432"},
             {"key": "includeMetadata", "value": "true"},
             {"key": "limit", "value": "50"}
           ]
-        - Generate 3-4 realistic query parameter entries used in typical GET or POST requests.`;
+        - For existing parameters, generate fresh realistic values while keeping the same keys (e.g., new IDs, different page numbers, updated filters).
+        - Common additional parameters to include: page, limit, offset, sort, filter, search, include, format.`;
 
       case MockDataRequestType.AUTHORIZATION:
         return `${base}
@@ -2481,15 +2487,21 @@ export class AiAssistantService {
             return `${base}
             - Body type is form-data.
             - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+            - If existing form-data parameters are provided in the API details text, update their values with new realistic mock values.
             - Example format: [{"key": "username", "value": "john_doe"}, {"key": "email", "value": "john@example.com"}]
-            - Generate 3-5 realistic form field entries.`;
+            - Add 2-3 additional realistic form-data parameter entries only if existing parameters are less than 5.
+            - For existing parameters, generate fresh realistic values while keeping the same keys (e.g., new usernames, different client IDs, updated scope values).
+            - Common additional form-data parameters to include:state, code, refresh_token.`;
 
           case requestBodyType.URLENCODED:
             return `${base}
             - Body type is url-encoded.
             - Return ONLY a valid JSON array of objects with "key" and "value" properties.
+            - If existing url-encoded parameters are provided in the API details text, update their values with new realistic mock values.
+            - Add 2-3 additional realistic URL-encoded parameter entries if required.
             - Example format: [{"key": "grant_type", "value": "password"}, {"key": "username", "value": "testuser"}]
-            - Generate 3-5 realistic URL-encoded parameter entries.`;
+            - For existing parameters, generate fresh realistic values while keeping the same keys (e.g., new usernames, different client IDs, updated scope values).
+            - Common additional URL-encoded parameters to include: client_id, client_secret, scope, redirect_uri, state, code, refresh_token.`;
 
           case requestBodyType.RAW:
             if (
@@ -2499,6 +2511,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw JSON.
               - Return ONLY valid JSON object or array content (no surrounding text).
+              - If existing Body type raw JSON are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic user/entity data with properties like: id, name, email, timestamps, etc.
               - Example: {"id": 12345, "name": "John Doe", "email": "john@example.com", "createdAt": "2025-09-02T10:15:00Z"}`;
             }
@@ -2506,6 +2519,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw JavaScript.
               - Return ONLY valid JavaScript code as plain text (no formatting or explanations).
+              - If existing Body type raw JavaScript are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic variable declarations, object definitions, or simple functions.
               - Example: const user = {id: 123, name: "John Doe", active: true};`;
             }
@@ -2513,6 +2527,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw XML.
               - Return ONLY valid XML markup as plain text (no formatting or explanations).
+              - If existing Body type raw XML are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic XML structure with appropriate tags and attributes.
               - Example: <user><id>123</id><name>John Doe</name><email>john@example.com</email></user>`;
             }
@@ -2520,6 +2535,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw HTML.
               - Return ONLY valid HTML markup as plain text (no formatting or explanations).
+              - If existing Body type raw HTML are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic HTML content with proper structure and semantics.
               - Example: <div class="user-card"><h2>John Doe</h2><p>Email: john@example.com</p></div>`;
             }
@@ -2527,6 +2543,7 @@ export class AiAssistantService {
               return `${base}
               - Body type is raw text.
               - Return ONLY plain text content (no formatting or explanations).
+              - If existing Body type raw text are provided in the API details text, update their values with new realistic mock values.
               - Generate realistic text data such as names, messages, descriptions, etc.
               - Example: Welcome to our API! This is a sample text message for testing purposes.`;
             }
