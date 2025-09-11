@@ -282,8 +282,10 @@ export class TeamService {
    */
   async getConfig(): Promise<{ appUrl: string }> {
     const url: string = this.configService.get("app.url");
+    const adminUrl: string = this.configService.get("admin.baseURL");
     const data = {
       appUrl: url,
+      adminUrl: adminUrl,
     };
     return data;
   }

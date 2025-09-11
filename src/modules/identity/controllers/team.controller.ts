@@ -711,7 +711,6 @@ export class TeamController {
   }
 
   @Get("config")
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: "Retrieve Backend Config",
     description: "This will retrieve backend config like appUrl",
