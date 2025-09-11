@@ -28,8 +28,10 @@ import {
   CollectionBranch,
   CollectionItem,
   CollectionTypeEnum,
+  CollectionWithRequestTestsOption,
   ItemTypeEnum,
   ResponseBodyModeEnum,
+  TestCaseModeEnum,
 } from "@src/modules/common/models/collection.model";
 import { WorkspaceService } from "./workspace.service";
 import { BranchRepository } from "../repositories/branch.repository";
@@ -51,6 +53,9 @@ import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { VariableDto } from "@src/modules/common/models/environment.model";
 import { RequestBodyDto } from "@src/modules/common/models/collection.model";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
+import { CollectionRequestService } from "./collection-request.service";
 
 @Injectable()
 export class CollectionService {
@@ -63,6 +68,8 @@ export class CollectionService {
     private readonly producerService: ProducerService,
     private readonly postmanParserService: PostmanParserService,
     private readonly cryptoService: EncryptionService,
+    private readonly userRepository: UserRepository,
+    private readonly collectionRequestService: CollectionRequestService,
   ) {}
 
   async createCollection(
@@ -222,6 +229,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
       {
@@ -285,6 +307,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
       {
@@ -348,6 +385,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["application/json"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
       {
@@ -411,6 +463,21 @@ export class CollectionService {
           selectedRequestBodyType: BodyModeEnum["text/plain"],
           selectedRequestAuthType: AuthModeEnum["No Auth"],
           selectedRequestAuthProfileId: "",
+          tests: {
+            testCaseMode: TestCaseModeEnum.NO_CODE,
+            noCode: [
+              {
+                id: "case-1",
+                name: "New Test",
+                condition: "",
+                expectedResult: "",
+                testPath: "",
+                testTarget: "",
+              },
+            ],
+
+            script: "",
+          },
         },
       },
     ];
@@ -437,6 +504,39 @@ export class CollectionService {
 
   async getCollection(id: string): Promise<WithId<Collection>> {
     return await this.collectionRepository.get(id);
+  }
+
+  async getCollectionWithGenerateVariable(
+    email: string,
+    id: string,
+  ): Promise<WithId<CollectionWithRequestTestsOption>> {
+    const collection = await this.collectionRepository.get(id);
+    const collectionId = collection._id.toString();
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    collection.isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
+      ?.isRequestTestsNoCodeDemoCompleted
+      ? false
+      : true;
+    let alreadyProcessed = false;
+    if (
+      userDetails?.isGenerateVariableTrial &&
+      Array.isArray(userDetails?.isGenerateVariableTrial) &&
+      userDetails.isGenerateVariableTrial.includes(collectionId)
+    ) {
+      alreadyProcessed = true;
+    }
+    // Case 2: DemoCompleted property exists and is true
+    else if (userDetails?.tourGuide?.isGenerateVariableDemoCompleted) {
+      alreadyProcessed = true;
+    }
+    if (alreadyProcessed) {
+      collection.isGenerateVariableTrial = false;
+      return collection;
+    }
+    // Case 3: Not processed yet → run frequency check
+    const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
+    collection.isGenerateVariableTrial = hasExceeded;
+    return collection;
   }
 
   async getAllCollections(
@@ -480,6 +580,35 @@ export class CollectionService {
     // Bulk fetch all collections
     const collections =
       await this.collectionRepository.getCollectionsByIds(collectionIds);
+
+    const userDetails = await this.userRepository.getUserByEmail(user.email);
+    for (let i = 0; i < collections.length; i++) {
+      const collectionId = collections[i]._id.toString();
+      collections[i].isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
+        ?.isRequestTestsNoCodeDemoCompleted
+        ? false
+        : true;
+      let alreadyProcessed = false;
+      // Case 1: Trial array exists and contains collectionId
+      if (
+        userDetails?.isGenerateVariableTrial &&
+        Array.isArray(userDetails?.isGenerateVariableTrial) &&
+        userDetails.isGenerateVariableTrial.includes(collectionId)
+      ) {
+        alreadyProcessed = true;
+      }
+      // Case 2: DemoCompleted property exists and is true
+      else if (userDetails?.tourGuide?.isGenerateVariableDemoCompleted) {
+        alreadyProcessed = true;
+      }
+      if (alreadyProcessed) {
+        collections[i].isGenerateVariableTrial = false;
+        continue;
+      }
+      // Case 3: Not processed yet → run frequency check
+      const hasExceeded = await this.hasVariableFrequencyExceeded(collectionId);
+      collections[i].isGenerateVariableTrial = hasExceeded;
+    }
 
     const decryptedCollections = [];
     // 🔄 Only the minimum loop remains
@@ -599,6 +728,10 @@ export class CollectionService {
     updateCollectionDto: Partial<UpdateCollectionDto>,
     user: DecodedUserObject,
   ): Promise<AuthProfiles> {
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      updateCollectionDto?.workspaceId,
+      user._id,
+    );
     const collectionId = updateCollectionDto.collectionId;
     const authInput = updateCollectionDto.authProfiles?.[0];
     const collection = await this.collectionRepository.get(collectionId);
@@ -661,6 +794,10 @@ export class CollectionService {
     user: DecodedUserObject,
   ): Promise<AuthProfiles> {
     const { collectionId, authId, ...authUpdatePayload } = payload;
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload?.workspaceId,
+      user._id,
+    );
 
     if (!ObjectId.isValid(collectionId)) {
       throw new BadRequestException("Invalid collectionId");
@@ -742,6 +879,10 @@ export class CollectionService {
     user: DecodedUserObject,
   ): Promise<string> {
     const { collectionId, workspaceId, authId } = payload;
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      payload?.workspaceId,
+      user._id,
+    );
     const data = await this.collectionRepository.deleteAuth(
       collectionId,
       workspaceId,
@@ -885,7 +1026,8 @@ export class CollectionService {
     const updatedCollection =
       await this.postmanParserService.parsePostmanCollection(jsonObj, user);
     const newCollection = await this.importCollection(updatedCollection);
-    const collectionDetails = await this.getCollection(
+    const collectionDetails = await this.getCollectionWithGenerateVariable(
+      user.email,
       newCollection.insertedId.toString(),
     );
     await this.workspaceService.addCollectionInWorkSpace(
@@ -1229,7 +1371,7 @@ export class CollectionService {
         "Please provide collectionId and Generated Variables.",
       );
     }
-    let collectionDocument = await this.getCollection(collectionId);
+    const collectionDocument = await this.getCollection(collectionId);
     if (!collectionDocument) {
       throw new NotFoundException("Collection is not Found.");
     }
@@ -1273,5 +1415,60 @@ export class CollectionService {
       user,
     );
     return response;
+  }
+
+  public async hasVariableFrequencyExceeded(
+    collectionId: string,
+  ): Promise<boolean> {
+    const collection =
+      await this.collectionRepository.getCollection(collectionId);
+    if (!collection) {
+      throw new BadRequestException("Collection Not Found");
+    }
+    // Extract data from collection
+    const { urls, bodies, queryParams, headers } =
+      this.collectionRequestService.extractFromItems(collection.items);
+    // Generate variables for each type
+    const urlVariables = Object.entries(
+      this.collectionRequestService.generateUrlVariables(urls),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (urlVariables.length > 0) {
+      return true;
+    }
+    const bodyVariables = Object.entries(
+      this.collectionRequestService.generateBodyVariables(bodies),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (bodyVariables.length > 0) {
+      return true;
+    }
+    const queryVariables = Object.entries(
+      this.collectionRequestService.generateQueryVariables(queryParams),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (queryVariables.length > 0) {
+      return true;
+    }
+    const headerVariables = Object.entries(
+      this.collectionRequestService.generateHeaderVariables(headers),
+    ).map(([key, value]) => ({
+      key,
+      value,
+      checked: true,
+    }));
+    if (headerVariables.length > 0) {
+      return true;
+    }
+    return false;
   }
 }

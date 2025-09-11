@@ -33,6 +33,17 @@ export class EarlyAccessEmail {
   updatedAt?: Date;
 }
 
+export class TourGuideDto {
+  @IsBoolean()
+  @IsOptional()
+  isRequestTestsNoCodeDemoCompleted?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isGenerateVariableDemoCompleted?: boolean;
+}
+
+
 export class User {
   @IsString()
   @IsNotEmpty()
@@ -134,6 +145,20 @@ export class User {
   @IsBoolean()
   @IsOptional()
   isUserTrialExhausted?: boolean;
+
+  @IsArray()
+  @IsString({ each: true })
+  @Type(() => String)
+  isGenerateVariableTrial?: string[];
+  
+  @IsBoolean()
+  @IsOptional()
+  isSelfHostedVersionAdmin?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TourGuideDto)
+  tourGuide?: TourGuideDto;
 }
 
 export class UserDto {

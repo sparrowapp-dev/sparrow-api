@@ -185,6 +185,66 @@ export class UserService {
   }
 
   /**
+   * Create a verified user with RegisterPayload fields
+   * @param {RegisterPayload} payload user payload
+   * @returns {Promise<IUser>} tokens
+   */
+  async createVerifiedUserFromAdmin(
+    payload: RegisterPayload,
+    userPayload: DecodedUserObject,
+  ) {
+    const currentUser = await this.userRepository.getUserById(
+      userPayload._id.toString(),
+    );
+    if (!currentUser?.isSelfHostedVersionAdmin) {
+      throw new BadRequestException(
+        "Only self-hosted version admin can create users from admin panel",
+      );
+    }
+    payload.email = payload.email.toLowerCase();
+    const userExist = await this.getUserByEmail(payload.email);
+    if (userExist) {
+      throw new BadRequestException(
+        "The account with the provided email currently exists. Please choose another one.",
+      );
+    }
+    const user = await this.userRepository.createVerifiedUserAdmin(payload);
+
+    const userData = {
+      _id: user.insertedId,
+      name: payload.name,
+      email: payload.email,
+      role: "",
+    };
+
+    const firstName = await this.getFirstName(payload.name);
+    const teamName = {
+      name: firstName + this.configService.get("app.defaultTeamNameSuffix"),
+      firstTeam: true,
+    };
+    await this.teamService.create(teamName, userData);
+    const tokenPromises = [
+      this.authService.createToken(userData._id),
+      this.authService.createRefreshToken(userData._id),
+    ];
+    const [accessToken, refreshToken] = await Promise.all(tokenPromises);
+    const tokenData = {
+      accessToken,
+      refreshToken,
+    };
+    // Disabling the welcome email due to hubspot integration
+    await this.sendVerifiedAdminSignUpEmail(
+      firstName,
+      payload.email,
+      payload.password,
+    );
+    // if (!payload?.isUserAlreadyVerified) {
+    //   await this.sendUserVerificationEmail({ email: payload.email });
+    // }
+    return payload;
+  }
+
+  /**
    * Edit User data
    * @param {userId} payload
    * @param {UpdateUserDto} payload
@@ -581,6 +641,30 @@ export class UserService {
     await Promise.all(promise);
   }
 
+  async sendVerifiedAdminSignUpEmail(
+    name: string,
+    email: string,
+    userPassword?: string,
+  ): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+    const authBaseUrl = this.configService.get("auth.baseURL");
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      text: "Sparrow Welcome",
+      template: "signUpVerifiedUserEmail",
+      context: {
+        userName: name,
+        userEmail: email,
+        userPassword: userPassword,
+        sparrowAuthWebsite: authBaseUrl + "/init?source=web",
+      },
+      subject: `Welcome to Sparrow - Elevate Your REST API Management Effortlessly!`,
+    };
+    const promise = [this.emailService.sendEmail(transporter, mailOptions)];
+    await Promise.all(promise);
+  }
+
   /**
    * Verifies the user's magic code and updates the user's email magic code status.
    * If the code is valid and not expired, generates and returns access and refresh tokens.
@@ -651,5 +735,66 @@ export class UserService {
       throw new BadRequestException("User does not exist");
     }
     return user.isUserTrialExhausted ?? false;
+  }
+
+  async insertGenerateVariableTrial(email: string, collectionId?: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    // Validate collectionId (must be a non-empty string)
+    if (
+      !collectionId ||
+      typeof collectionId !== "string" ||
+      collectionId.trim() === ""
+    ) {
+      throw new BadRequestException("Invalid collectionId");
+    }
+    const existingCollections = userDetails.isGenerateVariableTrial || [];
+    // Avoid duplicates
+    if (existingCollections.includes(collectionId)) {
+      return userDetails.email;
+    }
+    const updateGenerateTrialCollections = [
+      ...existingCollections,
+      collectionId,
+    ];
+    const updatedUser = await this.userRepository.updateUserById(
+      userDetails._id,
+      {
+        isGenerateVariableTrial: updateGenerateTrialCollections,
+      },
+    );
+    return updatedUser?.email;
+  }
+
+  async generateVariableDemoCompleted(email: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    const updatedTourGuide = {
+      ...userDetails.tourGuide,
+      isGenerateVariableDemoCompleted: true,
+    };
+    const response = await this.userRepository.updateUserById(userDetails._id, {
+      tourGuide: updatedTourGuide,
+    });
+    return response;
+  }
+
+  async requestTestsNoCodeDemoCompleted(email: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    const updatedTourGuide = {
+      ...userDetails.tourGuide,
+      isRequestTestsNoCodeDemoCompleted: true,
+    };
+    const response = await this.userRepository.updateUserById(userDetails._id, {
+      tourGuide: updatedTourGuide,
+    });
+    return response;
   }
 }

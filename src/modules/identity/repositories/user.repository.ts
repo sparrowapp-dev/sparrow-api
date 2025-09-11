@@ -3,7 +3,7 @@ import { Db, InsertOneResult, ModifyResult, ObjectId, WithId } from "mongodb";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { createHmac } from "crypto";
 import { RegisterPayload } from "../payloads/register.payload";
-import { UpdateUserDto, UserDto } from "../payloads/user.payload";
+import { UpdateUserDto, UserDto, UserTourGuideDto } from "../payloads/user.payload";
 import {
   EarlyAccessEmail,
   EmailServiceProvider,
@@ -11,6 +11,7 @@ import {
 } from "@src/modules/common/models/user.model";
 
 import { DecodedUserObject } from "@src/types/fastify";
+import { UserGenerateVariableDto } from "../payloads/user.payload";
 
 export interface IGenericMessageBody {
   message: string;
@@ -76,6 +77,7 @@ export class UserRepository {
       workspaces: data?.workspaces,
       emailVerificationCodeTimeStamp: data?.emailVerificationCodeTimeStamp,
       lastActive: data?.lastActive,
+      isSelfHostedVersionAdmin: data?.isSelfHostedVersionAdmin || false,
     };
     return userObj;
   }
@@ -144,6 +146,27 @@ export class UserRepository {
   }
 
   /**
+   * Create a verified user with RegisterPayload fields
+   * @param {RegisterPayload} payload user payload
+   * @returns {Promise<IUser>} created user data
+   */
+  async createVerifiedUserAdmin(
+    payload: RegisterPayload,
+  ): Promise<InsertOneResult<User>> {
+    const createdUser = await this.db
+      .collection<User>(Collections.USER)
+      .insertOne({
+        ...payload,
+        isEmailVerified: true,
+        isUserTrialExhausted: true,
+        password: createHmac("sha256", payload.password).digest("hex"),
+        teams: [],
+        workspaces: [],
+      });
+    return createdUser;
+  }
+
+  /**
    * Edit User data
    * @param {userId} payload
    * @param {UpdateUserDto} payload
@@ -196,7 +219,7 @@ export class UserRepository {
 
   async updateUserById(
     id: ObjectId,
-    updateParams: Partial<UserDto>,
+    updateParams: Partial<UserTourGuideDto>,
   ): Promise<WithId<User>> {
     const updatedUserParams = {
       $set: updateParams,

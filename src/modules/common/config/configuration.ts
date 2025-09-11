@@ -14,6 +14,7 @@ export default () => ({
     imageSizeLimit: 2097152, // value in byte
     deletedAPILimitInDays: 7,
     timeToDaysDivisor: 86400000,
+    imageDimensionLimit: 4096, // value in px
     refreshTokenSecretKey: process.env.REFRESH_TOKEN_SECRET_KEY,
     emailValidationCodeExpirationTime: parseInt(
       process.env.EMAIL_VALIDATION_CODE_EXPIRY_TIME,
@@ -29,6 +30,8 @@ export default () => ({
     mailPort: process.env.SMTP_MAIL_PORT,
     mailSecure: process.env.SMTP_MAIL_SECURE,
     userName: process.env.SMTP_USER_NAME,
+    appEdition: process.env.APP_EDITION,
+    selfHostHubPlan: "SelfHost(Community)",
   },
   db: {
     url: process.env.DB_URL,
@@ -132,5 +135,12 @@ export default () => ({
   },
   admin: {
     baseURL: process.env.ADMIN_BASE_URL,
+  },
+  selfHost: {
+    adminEmail: process.env.SELF_HOST_ADMIN_EMAIL,
+    adminPassword: process.env.SELF_HOST_ADMIN_PASSWORD,
+  },
+  trial: {
+    trialPeriod: 14,
   },
 });

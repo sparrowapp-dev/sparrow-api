@@ -15,6 +15,7 @@ import {
   PromptPayload,
   ErrorResponsePayload,
   ChatBotPayload,
+  RequestGenerateMockDataDto,
 } from "../payloads/ai-assistant.payload";
 import { UserLimitGuard } from "@src/modules/identity/guards/user-limt-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
@@ -27,7 +28,6 @@ import {
 @ApiBearerAuth()
 @ApiTags("AI Support")
 @Controller("api/assistant")
-@UseGuards(JwtAuthGuard)
 export class AiAssistantController {
   /**
    * Constructor to initialize AiAssistantController with the required service.
@@ -46,7 +46,7 @@ export class AiAssistantController {
   })
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
   @Post("prompt")
-  @UseGuards(UserLimitGuard)
+  @UseGuards(JwtAuthGuard,UserLimitGuard)
   async generate(
     @Body() prompt: PromptPayload,
     @Res() res: FastifyReply,
@@ -63,6 +63,7 @@ export class AiAssistantController {
   }
 
   @Post("specific-error")
+  @UseGuards(JwtAuthGuard)
   async CurlError(
     @Body() errorResponse: ErrorResponsePayload,
     @Res() res: FastifyReply,
@@ -77,7 +78,7 @@ export class AiAssistantController {
   }
 
   @Post("generate-prompt")
-  @UseGuards(UserLimitGuard)
+  @UseGuards(JwtAuthGuard,UserLimitGuard)
   async GeneratePrompt(
     @Body() payload: ChatBotPayload,
     @Res() res: FastifyReply,
@@ -92,7 +93,6 @@ export class AiAssistantController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Upload multiple documents with model name',
     description: 'Uploads multiple document files and model name',
@@ -135,5 +135,46 @@ export class AiAssistantController {
       data,
     );
     return res.status(response.httpStatusCode).send(response);
+  }
+
+  /**
+   * Generate Mock data for Request API for a specific type (headers, params, or body).
+   *
+   * @param requestData The request data which contains all the API request Details.
+   * @param requestType The type of mock data to generate (e.g., headers, params, or body).
+   * @returns The response object with status and generated mock data.
+   */
+  @Post("/generate-mock-data")
+  @ApiOperation({
+    summary: "Generate Mock Data for API request",
+    description:
+      "Generates mock data for a specific request type (headers, params, or body) based on the request definition.",
+  })
+  @UseGuards(JwtAuthGuard,UserLimitGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Generated Mock Data Successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to generate mock data.",
+  })
+  @ApiResponse({
+    status: 500,
+    description: "Server failed to generate mock data.",
+  })
+  async generateMockDataForRequest(
+    @Body() content: RequestGenerateMockDataDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const mockData = await this.aiAssistantService.generateMockData(user,content);
+    const responseData = new ApiResponseService(
+      "Generated Mock Data Successfully",
+      HttpStatusCode.OK,
+      mockData,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
   }
 }

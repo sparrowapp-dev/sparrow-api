@@ -6,6 +6,7 @@ import {
   BodyModeEnum,
   ItemTypeEnum,
   SourceTypeEnum,
+  TestCaseModeEnum,
 } from "../../models/collection.model";
 import { OpenAPI20, SchemaRefObject } from "../../models/openapi20.model";
 import {
@@ -148,6 +149,21 @@ function transformPathV3(
             authValue: "",
             addTo: AddTo.Header,
           },
+        },
+        tests: {
+          testCaseMode: TestCaseModeEnum.NO_CODE,
+          noCode: [
+            {
+              id: "case-1",
+              name: "New Test",
+              condition: "",
+              expectedResult: "",
+              testPath: "",
+              testTarget: "",
+            },
+          ],
+
+          script: "",
         },
         selectedRequestBodyType: BodyModeEnum["none"],
         selectedRequestAuthType: AuthModeEnum["No Auth"],

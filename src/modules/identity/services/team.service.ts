@@ -33,6 +33,9 @@ import {
   BillingActorType,
   BillingSource,
 } from "@src/modules/common/enum/billing.enum";
+import { isValidName } from "@src/modules/common/util/validate.name.util";
+import { isImageBuffer } from "@src/modules/common/util/isImageBuffer.util";
+import { imageSize } from "image-size";
 
 /**
  * Team Service
@@ -56,7 +59,40 @@ export class TeamService {
     }
     throw new BadRequestException("Image size should be less than 2MB");
   }
+  /**
+   * Validates the dimensions of an image buffer.
+   *
+   * - Extracts the `width` and `height` of the given image.
+   * - Ensures the image has valid dimensions.
+   * - Compares the dimensions against configured maximum width and height limits.
+   * - Throws a `BadRequestException` if the image is invalid or exceeds limits.
+   *
+   * @param {Uint8Array} buffer - The image data as a Node.js Buffer.
+   * @returns {Promise<boolean>} - Resolves to `true` if the image dimensions are valid.
+   * @throws {BadRequestException} - If the image is invalid or too large.
+   */
+  async isImageDimensionValid(buffer: any): Promise<boolean> {
+    // Using `any` for `buffer` because `image-size` typings expect `Uint8Array<ArrayBufferLike>`,
+    // while in practice we mostly pass Node.js `Buffer`. Since `Buffer` extends `Uint8Array` at runtime,
+    // this works fine, but TypeScript complains. Casting inside (`as Uint8Array`) avoids type errors.
 
+    const { width, height } = await imageSize(buffer as unknown as Uint8Array);
+
+    if (!width || !height) {
+      throw new BadRequestException("Invalid image file");
+    }
+
+    const maxWidth = this.configService.get<number>("app.imageDimensionLimit");
+    const maxHeight = this.configService.get<number>("app.imageDimensionLimit");
+
+    if (width > maxWidth || height > maxHeight) {
+      throw new BadRequestException(
+        `Image dimensions too large (max ${maxWidth}x${maxHeight})`,
+      );
+    }
+
+    return true;
+  }
   private sanitizeName(name: string): string {
     return name
       .trim()
@@ -106,13 +142,26 @@ export class TeamService {
     user: DecodedUserObject,
     image?: MemoryStorageFile,
   ): Promise<InsertOneResult<Team>> {
+    if (!isValidName(teamData.name)) {
+      throw new BadRequestException(
+        "Team name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
     let team;
-    const defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
+    const appEdition = await this.configService.get("app.appEdition");
+    let defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
+    if (appEdition !== "MANAGED") {
+      defaultHubPlan = this.configService.get<string>("app.selfHostHubPlan");
+    }
 
     const dynamicUrl = await this.generateUniqueTeamUrl(teamData.name);
     if (image) {
+      if (!isImageBuffer(image.buffer)) {
+        throw new BadRequestException("Uploaded file is not a valid image");
+      }
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
+      await this.isImageDimensionValid(dataBuffer);
       const dataString = dataBuffer.toString("base64");
       const logo = {
         bufferString: dataString,
@@ -275,10 +324,20 @@ export class TeamService {
         "The teams with that id does not exist in the system.",
       );
     }
+    if (teamData.name !== undefined && !isValidName(teamData.name)) {
+      throw new BadRequestException(
+        "Team name must be 1-100 characters, contain at least one letter or number, and only use spaces, dashes, underscores, dots, or @.",
+      );
+    }
+
     let team;
     if (image) {
+      if (!isImageBuffer(image.buffer)) {
+        throw new BadRequestException("Uploaded file is not a valid image");
+      }
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
+      await this.isImageDimensionValid(dataBuffer);
       const dataString = dataBuffer.toString("base64");
       const logo = {
         bufferString: dataString,

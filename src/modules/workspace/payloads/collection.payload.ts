@@ -41,7 +41,7 @@ export class ApiKeyDto {
   authValue?: string | unknown;
 
   @IsString()
-  addTo: AddTo; 
+  addTo: AddTo;
 }
 
 export class AuthContent {
@@ -230,6 +230,10 @@ export class UpdateCollectionDto {
   @IsOptional()
   collectionId?: string;
 
+  @ApiProperty({ example: "6544cdea4b3d3b043a96c307" })
+  @IsString()
+  @IsOptional()
+  workspaceId?: string;
 }
 
 export class UpdateMockCollectionStatusDto {
@@ -281,7 +285,6 @@ export class SwitchCollectionBranchDto {
   @IsNotEmpty()
   currentBranch: string;
 }
-
 
 export class AuthCollection {
   @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })

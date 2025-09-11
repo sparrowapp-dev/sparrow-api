@@ -18,6 +18,8 @@ import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuthService } from "../services/user-admin.auth.service";
 import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { RolesGuard } from "@src/modules/common/guards/roles.guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { CreateUserPayload } from "../payloads/auth.payload";
 
 /**
  * Interface for refresh token request
@@ -137,6 +139,29 @@ export class AdminAuthController {
 
     const responseData = new ApiResponseService(
       "Roles fetched succesfully",
+      HttpStatusCode.OK,
+      data,
+    );
+
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post("create-user")
+  @ApiOperation({ summary: "Create User from admin" })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "User created successful" })
+  @ApiResponse({ status: 400, description: "Failed to create user" })
+  async handleCreateUser(
+    @Body() payload: CreateUserPayload,
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+
+    const data = await this.adminAuthService.createUser(payload, user);
+
+    const responseData = new ApiResponseService(
+      "User created successful",
       HttpStatusCode.OK,
       data,
     );

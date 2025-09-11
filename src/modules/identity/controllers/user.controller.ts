@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -102,6 +103,11 @@ export class UserController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const currentUser = request.user;
+    if (currentUser && !currentUser.isSuperAdmin) {
+      throw new BadRequestException(
+        "You do not have permission to access this user.",
+      );
+    }
     const data = await this.userService.getUserById(id, currentUser);
     const responseData = new ApiResponseService(
       "Success",
@@ -144,6 +150,11 @@ export class UserController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const currentUser = request.user;
+    if (currentUser && !currentUser.isSuperAdmin) {
+      throw new BadRequestException(
+        "You do not have permission to access this user.",
+      );
+    }
     const user = await this.userService.updateUser(
       id,
       updateUserDto,
@@ -163,7 +174,17 @@ export class UserController {
     description: "This will delete a User Account",
   })
   @UseGuards(JwtAuthGuard)
-  async deleteUser(@Param("userId") id: string, @Res() res: FastifyReply) {
+  async deleteUser(
+    @Param("userId") id: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const currentUser = request.user;
+    if (currentUser && !currentUser.isSuperAdmin) {
+      throw new BadRequestException(
+        "You do not have permission to access this user.",
+      );
+    }
     const data = await this.userService.deleteUser(id);
     const responseData = new ApiResponseService(
       "User Deleted",
@@ -454,5 +475,88 @@ export class UserController {
       { email: email, isUserTrialExhausted: isExhausted },
     );
     return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post(":collectionId/trial-generate-variable")
+  @ApiOperation({
+    summary: "Insert Generate Variable Trial",
+    description:
+      "Insert a trial generate-variable flag for a user and collection.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Trial inserted successfully" })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async generateVariableTrialInsert(
+    @Param("collectionId") collectionId: string,
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.userService.insertGenerateVariableTrial(
+      user.email,
+      collectionId,
+    );
+    const responseData = new ApiResponseService(
+      "Trial Generate Variable inserted successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(HttpStatusCode.OK).send(responseData);
+  }
+
+  @Post("/generate-variable-demo")
+  @ApiOperation({
+    summary: "When the User has completed the Generate variable Demo.",
+    description:
+      "We will make a property true when user has completed generate variable demo.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Generate Variable Demo completed successfully",
+  })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async generateVariableTrialCompleted(
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.userService.generateVariableDemoCompleted(
+      user.email,
+    );
+    const responseData = new ApiResponseService(
+      "Generate Variable Demo completed successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(HttpStatusCode.OK).send(responseData);
+  }
+
+  @Post("/request-tests-nocode-demo")
+  @ApiOperation({
+    summary: "When the User has completed the Request Tests feature Demo.",
+    description:
+      "Marks the property as true when the user has completed the request test feature demo.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Request Test Demo completed successfully",
+  })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async requestTestsNoCodeDemoCompleted(
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.userService.requestTestsNoCodeDemoCompleted(
+      user.email,
+    );
+    const responseData = new ApiResponseService(
+      "Request Test Demo completed successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(HttpStatusCode.OK).send(responseData);
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "project-sparrow-api",
-  "version": "0.0.1",
+  "version": "2.31.0",
   "description": "Backend APIs for Project Sparrow.",
   "author": "techdome",
   "license": "",
@@ -34,7 +34,8 @@
     "start:migration-mock-url": "ts-node -r tsconfig-paths/register src/migrationMockRequestUrl.ts",
     "start:migration-hub-billing": "ts-node -r tsconfig-paths/register src/migrationHubBilling.ts",
     "start:migration-superadmin": "ts-node -r tsconfig-paths/register src/migration-superadmin.ts",
-    "start:migration-email": "ts-node -r tsconfig-paths/register src/migration-emailId.ts"
+    "start:migration-email": "ts-node -r tsconfig-paths/register src/migration-emailId.ts",
+    "start:add-test-request": "ts-node -r tsconfig-paths/register src/add-tests-to-request.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
@@ -83,6 +84,7 @@
     "form-data": "^4.0.1",
     "gravatar": "1.8.2",
     "husky": "^8.0.3",
+    "image-size": "^2.0.2",
     "install": "^0.13.0",
     "js-yaml": "^4.1.0",
     "json2csv": "6.0.0-alpha.2",

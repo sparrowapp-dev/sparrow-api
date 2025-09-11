@@ -1,5 +1,16 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import {
+  MockDataRequestType,
+  requestBodyLangType,
+  requestBodyType,
+} from "@src/modules/common/enum/collection.request.enum";
+import { Type } from "class-transformer";
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from "class-validator";
 
 /**
  * Data Transfer Object for AI response.
@@ -315,4 +326,34 @@ export class GeneratePromptPayload {
   @ApiProperty({ required: true, example: "error" })
   @IsNotEmpty()
   error: string;
+}
+
+export class RequestBodyTypePropertiesDto {
+  @IsString()
+  @ApiProperty({ required: true, example: "raw" })
+  @IsNotEmpty()
+  type?: requestBodyType;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "json" })
+  @IsNotEmpty()
+  lang?: requestBodyLangType;
+}
+
+export class RequestGenerateMockDataDto {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "prompt" })
+  text: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "headers" })
+  requestType: MockDataRequestType;
+
+  @ValidateNested()
+  @Type(() => RequestBodyTypePropertiesDto)
+  @ApiProperty({ required: true, type: () => RequestBodyTypePropertiesDto })
+  @IsOptional()
+  properties?: RequestBodyTypePropertiesDto;
 }

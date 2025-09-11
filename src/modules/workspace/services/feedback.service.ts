@@ -20,6 +20,7 @@ import {
   ErrorMessages,
   FeedbackErrorMessages,
 } from "@src/modules/common/enum/error-messages.enum";
+import { isImageBuffer } from "@src/modules/common/util/isImageBuffer.util";
 
 /**
  * Feedback Service
@@ -125,6 +126,10 @@ export class FeedbackService {
     }
 
     files.forEach((file) => {
+      if (!isImageBuffer(file.buffer)) {
+        throw new BadRequestException("Uploaded file is not a valid image");
+      }
+
       if (mimeToExtension[file.mimetype] && file.size > 2097152) {
         throw new BadRequestException(FeedbackErrorMessages.ImageSizeLimit);
       } else if (!mimeToExtension[file.mimetype]) {

@@ -68,7 +68,7 @@ export class WorkSpaceController {
     summary: "Create a new User Workspace",
     description: "This will create a new Workspace for User",
   })
-  @UseGuards(JwtAuthGuard, CreateWorkspaceGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 201, description: "Workspace Created Successfully" })
   @ApiResponse({ status: 400, description: "Create Workspace Failed" })
   async createWorkspace(
@@ -422,9 +422,11 @@ export class WorkSpaceController {
       },
       user._id,
     );
-    const collection = await this.collectionService.getCollection(
-      collectionObj.collection._id.toString(),
-    );
+    const collection =
+      await this.collectionService.getCollectionWithGenerateVariable(
+        user.email,
+        collectionObj.collection._id.toString(),
+      );
     const responseData = new ApiResponseService(
       "Collection Imported",
       HttpStatusCode.OK,
@@ -517,9 +519,11 @@ export class WorkSpaceController {
       user._id,
     );
 
-    const collection = await this.collectionService.getCollection(
-      collectionObj.collection._id.toString(),
-    );
+    const collection =
+      await this.collectionService.getCollectionWithGenerateVariable(
+        user.email,
+        collectionObj.collection._id.toString(),
+      );
     const responseData = new ApiResponseService(
       "Collection Imported",
       HttpStatusCode.OK,
