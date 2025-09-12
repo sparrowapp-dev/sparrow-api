@@ -94,7 +94,6 @@ export class WorkspaceService {
     userId: string,
     currentUser: DecodedUserObject,
   ): Promise<Workspace[]> {
-    console.log(currentUser._id.toString());
     if (currentUser?._id.toString() !== userId.toString()) {
       throw new BadRequestException(
         "You are not authorised to fetch the workspace details of this particular user",
