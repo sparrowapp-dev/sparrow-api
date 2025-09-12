@@ -148,6 +148,17 @@ export class TeamService {
       );
     }
     let team;
+    if (teamData?.hubUrl && teamData.hubUrl.trim().length > 0) {
+      const existingTeamURL = await this.teamRepository.doesHubUrlExist(
+        teamData.hubUrl.trim(),
+      );
+      if (existingTeamURL) {
+        throw new BadRequestException(
+          "Team URL already exists. Please select a different HUB URL",
+        );
+      }
+    }
+
     const appEdition = await this.configService.get("app.appEdition");
     let defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
     if (appEdition !== "MANAGED") {
