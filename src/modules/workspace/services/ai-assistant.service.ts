@@ -77,6 +77,7 @@ import * as Sentry from "@sentry/nestjs";
 import pdfParse from 'pdf-parse';
 import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
 import { MockDataRequestType, requestBodyLangType, requestBodyType } from "@src/modules/common/enum/collection.request.enum";
+import { fixTestScriptInstructions } from "@src/modules/common/instructions/fix-test-script";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -2459,117 +2460,13 @@ export class AiAssistantService {
     }
   
     try {
-      const systemInstructions = `
-           const expect = (actual: any) => ({
-              to: {
-                equal: (expected: any) => {
-
-                },
-                notEqual: (expected: any) => {
-                },
-                exist: () => {
-                
-                },
-                notExist: () => {
-                
-                },
-                be: {
-                  a: (type: string) => {
-                  },
-                  true: () => {
-                  },
-                  false: () => {
-                
-                  
-                  },
-                  within: (min: number, max: number) => {
-                
-                  },
-                  lessThan: (expected: number) => {
-                  },
-                  greaterThan: (expected: number) => {
-
-                  },
-                  empty: () => {
-                
-                  },
-                  notEmpty: () => {
-                  
-                  },
-                },
-                contain: (expected: any) => {
-                  
-                },
-                notContain: (expected: any) => {
-                
-                },
-                beInList: (list: any[]) => {
-              
-                },
-                notBeInList: (list: any[]) => {
-                
-                },
-                have: {
-                  all: {
-                    keys: (...keys: string[]) => {
-                  
-                    },
-                  },
-                },
-              },
-            });
-
-            const sp = {
-                  response: {
-                    statusCode: number ,
-                    body: {
-                      text: () => {
-                        try {
-                          return string;
-                        } catch {
-                          return {};
-                        }
-                      },  
-                      json: () => {
-                        try {
-                          return JSON.parse(string);
-                        } catch {
-                          return {};
-                        }
-                      },  
-                    },
-                    headers: object,
-                    size: number,
-                    time: number,
-                  },
-                  test: (name: string, fn: Function) => {
-                    try {
-                      fn();
-                    } catch (err: any) {
-                    }
-                  },
-                  expect,
-                };
-
-                - fix testcases using above syntax, 
-                - ensure all test cases are valid syntactically,
-                - dont use any other syntax or return any other text outside of the test cases.
-                - dont use any markdown or code snippet
-                - dont wrap output in triple backticks or labels like "javascript", "js", etc.
-                - Output must be ONLY the raw test cases in javascript format.
-                - Example format:  '
-                    sp.test("userId is a number", function () {
-                      sp.expect(jsonBody.userId).to.be.a("number");
-                    });
-                '
-      `;
       const response = await this.deepseekClient
         .path("/chat/completions")
         .post({
           body: {
             model: this.deepseekModel,
             messages: [
-              { role: "system", content: systemInstructions },
+              { role: "system", content: fixTestScriptInstructions },
               {
                 role: "user",
                 content: `Test Script:\n${content.testScript}\n\n`,
