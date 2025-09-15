@@ -41,6 +41,10 @@ export class TourGuideDto {
   @IsBoolean()
   @IsOptional()
   isGenerateVariableDemoCompleted?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isRequestTestsScriptDemoCompleted?: boolean;
 }
 
 
@@ -150,7 +154,7 @@ export class User {
   @IsString({ each: true })
   @Type(() => String)
   isGenerateVariableTrial?: string[];
-  
+
   @IsBoolean()
   @IsOptional()
   isSelfHostedVersionAdmin?: boolean;
