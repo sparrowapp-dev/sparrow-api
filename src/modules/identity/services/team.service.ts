@@ -103,7 +103,7 @@ export class TeamService {
 
   async generateUniqueTeamUrl(name: string): Promise<string> {
     const prefix = "https://";
-    const suffix = ".sparrowhub.net";
+    const suffix = "." + this.configService.get("app.hubBaseDomain");
     // const envPath =
     //   this.configService.get("app.env") === Env.PROD ? "/release/v1" : "/dev";
     let base = this.sanitizeName(name);
@@ -285,6 +285,19 @@ export class TeamService {
       delete invite.isAccepted;
       delete invite.workspaces;
     });
+    return data;
+  }
+
+  /**
+   * Return the backend config like appUrl
+   */
+  async getConfig(): Promise<{ appUrl: string }> {
+    const url: string = this.configService.get("app.url");
+    const adminUrl: string = this.configService.get("admin.baseURL");
+    const data = {
+      appUrl: url,
+      adminUrl: adminUrl,
+    };
     return data;
   }
 
