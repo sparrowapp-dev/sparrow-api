@@ -32,6 +32,7 @@ import {
   ErrorResponsePayload,
   RequestBodyTypePropertiesDto,
   RequestGenerateMockDataDto,
+  RequestTestScriptDataDto,
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
@@ -2405,6 +2406,17 @@ export class AiAssistantService {
       }
       const body = response.body as any;
       const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+      
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
       const activityLog = {
         userId: user._id.toString(),
         userEmail: user.email,
@@ -2413,7 +2425,8 @@ export class AiAssistantService {
         tokenConsumed: tokens,
         threadId: "null"
       };
-      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_MOCK_DATA, {
+      
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
         value: JSON.stringify(activityLog),
       });
       return { result: parsedOutput };
@@ -2426,6 +2439,194 @@ export class AiAssistantService {
       });
       throw new BadRequestException(
         error?.message || "Failed to generate mock data. Please try again.",
+      );
+    }
+  }
+
+
+    /**
+   * Generates mock data for a request item within a collection, based on the specified type.
+   * @param user - The authenticated user requesting the data.
+   * @param content - The request testscript content.
+   * @returns Generated mock data as JSON.
+   */
+  public async fixTestScript(
+    user: DecodedUserObject,
+    content: RequestTestScriptDataDto
+  ) {
+    if (!content.testScript?.trim()) {
+      throw new BadRequestException("Test script must be provided.");
+    }
+  
+    try {
+      const systemInstructions = `
+           const expect = (actual: any) => ({
+              to: {
+                equal: (expected: any) => {
+
+                },
+                notEqual: (expected: any) => {
+                },
+                exist: () => {
+                
+                },
+                notExist: () => {
+                
+                },
+                be: {
+                  a: (type: string) => {
+                  },
+                  true: () => {
+                  },
+                  false: () => {
+                
+                  
+                  },
+                  within: (min: number, max: number) => {
+                
+                  },
+                  lessThan: (expected: number) => {
+                  },
+                  greaterThan: (expected: number) => {
+
+                  },
+                  empty: () => {
+                
+                  },
+                  notEmpty: () => {
+                  
+                  },
+                },
+                contain: (expected: any) => {
+                  
+                },
+                notContain: (expected: any) => {
+                
+                },
+                beInList: (list: any[]) => {
+              
+                },
+                notBeInList: (list: any[]) => {
+                
+                },
+                have: {
+                  all: {
+                    keys: (...keys: string[]) => {
+                  
+                    },
+                  },
+                },
+              },
+            });
+
+            const sp = {
+                  response: {
+                    statusCode: number ,
+                    body: {
+                      text: () => {
+                        try {
+                          return string;
+                        } catch {
+                          return {};
+                        }
+                      },  
+                      json: () => {
+                        try {
+                          return JSON.parse(string);
+                        } catch {
+                          return {};
+                        }
+                      },  
+                    },
+                    headers: object,
+                    size: number,
+                    time: number,
+                  },
+                  test: (name: string, fn: Function) => {
+                    try {
+                      fn();
+                    } catch (err: any) {
+                    }
+                  },
+                  expect,
+                };
+
+                - fix testcases using above syntax, 
+                - ensure all test cases are valid syntactically,
+                - dont use any other syntax or return any other text outside of the test cases.
+                - dont use any markdown or code snippet
+                - dont wrap output in triple backticks or labels like "javascript", "js", etc.
+                - Output must be ONLY the raw test cases in javascript format.
+                - Example format:  '
+                    sp.test("userId is a number", function () {
+                      sp.expect(jsonBody.userId).to.be.a("number");
+                    });
+                '
+      `;
+      const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            model: this.deepseekModel,
+            messages: [
+              { role: "system", content: systemInstructions },
+              {
+                role: "user",
+                content: `Test Script:\n${content.testScript}\n\n`,
+              },
+            ],
+          },
+        });
+
+      const output = (
+        response.body as any
+      ).choices?.[0]?.message?.content?.trim();
+      if (!output) {
+        throw new BadRequestException("No test script generated from the model.");
+      }
+      let parsedOutput: any;
+      try {
+        parsedOutput = JSON.parse(output);
+      } catch {
+        parsedOutput = output;
+      }
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: user.email,
+        activity: "fix-test-script",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null"
+      };
+
+      // Send activity log to Kafka topic
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+        value: JSON.stringify(activityLog),
+      });
+
+      return { result: parsedOutput };
+    } catch (error) {
+      console.error("Error fixing test script:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", user.email);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException(
+        error?.message || "Failed to fix test script. Please try again.",
       );
     }
   }
