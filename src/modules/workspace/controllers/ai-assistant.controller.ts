@@ -16,6 +16,7 @@ import {
   ErrorResponsePayload,
   ChatBotPayload,
   RequestGenerateMockDataDto,
+  RequestTestScriptDataDto,
 } from "../payloads/ai-assistant.payload";
 import { UserLimitGuard } from "@src/modules/identity/guards/user-limt-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
@@ -172,6 +173,40 @@ export class AiAssistantController {
     const mockData = await this.aiAssistantService.generateMockData(user,content);
     const responseData = new ApiResponseService(
       "Generated Mock Data Successfully",
+      HttpStatusCode.OK,
+      mockData,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post("/fix-test-script")
+  @ApiOperation({
+    summary: "Fix Test Script for API request",
+    description:
+      "Fixes the test script for a specific request type (headers, params, or body) based on the request definition.",
+  })
+  @UseGuards(JwtAuthGuard,UserLimitGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Fixed Test Script Successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to fix test script.",
+  })
+  @ApiResponse({
+    status: 500,
+    description: "Server failed to fix test script.",
+  })
+  async fixTestScriptForRequest(
+    @Body() content: RequestTestScriptDataDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const mockData = await this.aiAssistantService.fixTestScript(user, content);
+    const responseData = new ApiResponseService(
+      "Fixed Test Script Successfully",
       HttpStatusCode.OK,
       mockData,
     );

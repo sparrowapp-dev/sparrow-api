@@ -32,6 +32,7 @@ import {
   ErrorResponsePayload,
   RequestBodyTypePropertiesDto,
   RequestGenerateMockDataDto,
+  RequestTestScriptDataDto,
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
@@ -76,6 +77,7 @@ import * as Sentry from "@sentry/nestjs";
 import pdfParse from 'pdf-parse';
 import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
 import { MockDataRequestType, requestBodyLangType, requestBodyType } from "@src/modules/common/enum/collection.request.enum";
+import { fixTestScriptInstructions } from "@src/modules/common/instructions/fix-test-script";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -2405,6 +2407,17 @@ export class AiAssistantService {
       }
       const body = response.body as any;
       const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+      
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
       const activityLog = {
         userId: user._id.toString(),
         userEmail: user.email,
@@ -2413,7 +2426,8 @@ export class AiAssistantService {
         tokenConsumed: tokens,
         threadId: "null"
       };
-      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_MOCK_DATA, {
+      
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
         value: JSON.stringify(activityLog),
       });
       return { result: parsedOutput };
@@ -2426,6 +2440,90 @@ export class AiAssistantService {
       });
       throw new BadRequestException(
         error?.message || "Failed to generate mock data. Please try again.",
+      );
+    }
+  }
+
+
+    /**
+   * Generates mock data for a request item within a collection, based on the specified type.
+   * @param user - The authenticated user requesting the data.
+   * @param content - The request testscript content.
+   * @returns Generated mock data as JSON.
+   */
+  public async fixTestScript(
+    user: DecodedUserObject,
+    content: RequestTestScriptDataDto
+  ) {
+    if (!content.testScript?.trim()) {
+      throw new BadRequestException("Test script must be provided.");
+    }
+  
+    try {
+      const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            model: this.deepseekModel,
+            messages: [
+              { role: "system", content: fixTestScriptInstructions },
+              {
+                role: "user",
+                content: `Test Script:\n${content.testScript}\n\n`,
+              },
+            ],
+          },
+        });
+
+      const output = (
+        response.body as any
+      ).choices?.[0]?.message?.content?.trim();
+      if (!output) {
+        throw new BadRequestException("No test script generated from the model.");
+      }
+      let parsedOutput: any;
+      try {
+        parsedOutput = JSON.parse(output);
+      } catch {
+        parsedOutput = output;
+      }
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: user.email,
+        activity: "fix-test-script",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null"
+      };
+
+      // Send activity log to Kafka topic
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+        value: JSON.stringify(activityLog),
+      });
+
+      return { result: parsedOutput };
+    } catch (error) {
+      console.error("Error fixing test script:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", user.email);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException(
+        error?.message || "Failed to fix test script. Please try again.",
       );
     }
   }

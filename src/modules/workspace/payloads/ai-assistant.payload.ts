@@ -357,3 +357,10 @@ export class RequestGenerateMockDataDto {
   @IsOptional()
   properties?: RequestBodyTypePropertiesDto;
 }
+
+export class RequestTestScriptDataDto {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ required: true, example: "test()" })
+  testScript: string;
+}

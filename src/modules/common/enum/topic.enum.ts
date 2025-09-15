@@ -8,5 +8,4 @@ export enum TOPIC {
   AI_RESPONSE_GENERATED_TOPIC = "ai_response_generated_topic",
   TEAM_DETAILS_UPDATED_TOPIC = "team_details_updated_topic",
   AI_ACTIVITY_LOG_TOPIC = "ai_activity_log_topic",
-  AI_RESPONSE_GENERATED_MOCK_DATA="ai_response_generated_mock_data"
 }
