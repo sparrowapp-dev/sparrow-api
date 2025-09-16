@@ -907,7 +907,7 @@ export class WorkspaceService {
 
     if (
       !workspaceUsers.some(
-        (u: any) => u._id.toString() === currentUser._id.toString(),
+        (u: any) => u.id.toString() === currentUser._id.toString(),
       )
     ) {
       throw new BadRequestException(
