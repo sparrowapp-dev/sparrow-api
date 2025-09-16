@@ -559,4 +559,32 @@ export class UserController {
     );
     return res.status(HttpStatusCode.OK).send(responseData);
   }
+
+  @Post("/request-tests-script-demo")
+  @ApiOperation({
+    summary: "When the User has completed the Request Tests feature Demo.",
+    description:
+      "Marks the property as true when the user has completed the request test feature demo.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Request Test Script Demo completed successfully",
+  })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async requestTestsScriptDemoCompleted(
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.userService.requestTestsScriptDemoCompleted(
+      user.email,
+    );
+    const responseData = new ApiResponseService(
+      "Request Test Script Demo completed successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(HttpStatusCode.OK).send(responseData);
+  }
 }

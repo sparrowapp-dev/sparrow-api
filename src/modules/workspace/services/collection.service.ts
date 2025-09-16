@@ -517,6 +517,10 @@ export class CollectionService {
       ?.isRequestTestsNoCodeDemoCompleted
       ? false
       : true;
+    collection.isRequestTestsScriptDemoCompleted = userDetails?.tourGuide
+      ?.isRequestTestsScriptDemoCompleted
+      ? false
+      : true;
     let alreadyProcessed = false;
     if (
       userDetails?.isGenerateVariableTrial &&
@@ -584,6 +588,10 @@ export class CollectionService {
     const userDetails = await this.userRepository.getUserByEmail(user.email);
     for (let i = 0; i < collections.length; i++) {
       const collectionId = collections[i]._id.toString();
+      collections[i].isRequestTestsScriptDemoCompleted = userDetails?.tourGuide
+        ?.isRequestTestsScriptDemoCompleted
+        ? false
+        : true;
       collections[i].isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
         ?.isRequestTestsNoCodeDemoCompleted
         ? false
