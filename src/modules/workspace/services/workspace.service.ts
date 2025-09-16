@@ -257,7 +257,7 @@ export class WorkspaceService {
     }
     throw new BadRequestException("You don't have access of this Workspace");
   }
-  
+
   /**
    * Creates a new workspace in the database
    * @param {CreateOrUpdateWorkspaceDto} workspaceData
@@ -281,12 +281,16 @@ export class WorkspaceService {
     }
     const planData = teamData?.plan;
     const uuid = new ObjectId();
-    const  ws = {
+    const ws = {
       id: uuid,
       name: workspaceData.name,
     };
-    const res = await this.teamRepository.updateTeamWorkspaceCountById(teamId, planData, ws);
-    if(!res){
+    const res = await this.teamRepository.updateTeamWorkspaceCountById(
+      teamId,
+      planData,
+      ws,
+    );
+    if (!res) {
       throw new ForbiddenException("Plan limit reached");
     }
     const createEnvironmentDto: CreateEnvironmentDto = {
@@ -896,9 +900,20 @@ export class WorkspaceService {
 
   async getAllWorkspaceUsers(
     workspaceId: string,
+    currentUser: DecodedUserObject,
   ): Promise<workspaceUsersResponseDto[]> {
     const workspaceData = await this.workspaceRepository.get(workspaceId);
     const workspaceUsers = [...workspaceData.users];
+
+    if (
+      !workspaceUsers.some(
+        (u: any) => u._id.toString() === currentUser._id.toString(),
+      )
+    ) {
+      throw new BadRequestException(
+        "You are not authorised to access this Api",
+      );
+    }
     const updatedIdArray = [];
     for (const item of workspaceUsers) {
       if (!isString(item.id)) {

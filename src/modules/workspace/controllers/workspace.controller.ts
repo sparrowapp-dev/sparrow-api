@@ -160,8 +160,13 @@ export class WorkSpaceController {
   async getAllWorkspaceUsers(
     @Param("workspaceId") workspaceId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const data = await this.workspaceService.getAllWorkspaceUsers(workspaceId);
+    const currentUser = request.user;
+    const data = await this.workspaceService.getAllWorkspaceUsers(
+      workspaceId,
+      currentUser,
+    );
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
