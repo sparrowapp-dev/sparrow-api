@@ -401,6 +401,11 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: SELF_HOST_ADMIN_PASSWORD
+            - name: HUB_BASE_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: HUB_BASE_DOMAIN
 
 ---
 apiVersion: v1
