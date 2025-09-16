@@ -281,6 +281,10 @@ export class TeamService {
    * Return the backend config like appUrl
    */
   async getConfig(): Promise<{ appUrl: string }> {
+    const appEdition: string = this.configService.get("app.appEdition");
+    if (appEdition !== "SELFHOSTED") {
+      throw new BadRequestException("No Self Hosted Serivce available.");
+    }
     const url: string = this.configService.get("app.url");
     const adminUrl: string = this.configService.get("admin.baseURL");
     const data = {

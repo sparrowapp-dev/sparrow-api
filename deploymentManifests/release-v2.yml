@@ -370,6 +370,11 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: SELF_HOST_ADMIN_PASSWORD
+            - name: HUB_BASE_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: HUB_BASE_DOMAIN
 
 ---
 apiVersion: v1
