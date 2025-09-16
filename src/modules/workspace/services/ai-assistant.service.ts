@@ -2560,15 +2560,6 @@ export class AiAssistantService {
     if (!content.text?.trim()) {
       throw new BadRequestException("prompt must be provided.");
     }
-    const userId = user._id.toString();
-    // Check user limit before proceeding
-    const limitStatus = await this.userLimitService.checkLimitAndLogRequest(
-      userId,
-      content.teamId,
-    );
-    if (limitStatus === LimitCheckResult.LIMIT_REACHED) {
-      throw new BadRequestException("Limit Reached. Please try again later.");
-    }
 
     try {
       const response = await this.deepseekClient
@@ -2583,7 +2574,7 @@ export class AiAssistantService {
               },
               {
                 role: "user",
-                content: `Test Script:\n${content.text}\n\n`,
+                content: `Test Prompt:\n${content.text}\n\n`,
               },
             ],
           },

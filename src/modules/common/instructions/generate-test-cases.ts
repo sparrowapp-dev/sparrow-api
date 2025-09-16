@@ -87,6 +87,11 @@ export const generateTestCasesInstructions = `
                     } catch (err: any) {
                     }
                   },
+                  xmlToJSON: (xml: string) => {
+                    const json = {};
+                    // Convert XML to JSON logic here
+                    return json;
+                  },
                   expect,
                 };
 
