@@ -910,9 +910,7 @@ export class WorkspaceService {
         (u: any) => u.id.toString() === currentUser._id.toString(),
       )
     ) {
-      throw new BadRequestException(
-        "You are not authorised to access this Api",
-      );
+      throw new ForbiddenException("You are not authorized to access this API");
     }
     const updatedIdArray = [];
     for (const item of workspaceUsers) {
