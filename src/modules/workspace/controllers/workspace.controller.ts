@@ -143,20 +143,20 @@ export class WorkSpaceController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Get(":workspaceId/users")
-  @ApiOperation({
-    summary: "Retreive all workspace users",
-    description: "This will retrieve all the User's of a single Workspace",
-  })
-  @UseGuards(JwtAuthGuard)
-  @ApiResponse({
-    status: 200,
-    description: "All Users of a workspace fetched Successfully",
-  })
-  @ApiResponse({
-    status: 400,
-    description: "Failed to fetch all users of a workspace",
-  })
+  // @Get(":workspaceId/users")
+  // @ApiOperation({
+  //   summary: "Retreive all workspace users",
+  //   description: "This will retrieve all the User's of a single Workspace",
+  // })
+  // @UseGuards(JwtAuthGuard)
+  // @ApiResponse({
+  //   status: 200,
+  //   description: "All Users of a workspace fetched Successfully",
+  // })
+  // @ApiResponse({
+  //   status: 400,
+  //   description: "Failed to fetch all users of a workspace",
+  // })
   // async getAllWorkspaceUsers(
   //   @Param("workspaceId") workspaceId: string,
   //   @Res() res: FastifyReply,
