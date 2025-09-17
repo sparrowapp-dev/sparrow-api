@@ -905,9 +905,18 @@ export class WorkspaceService {
 
   async getAllWorkspaceUsers(
     workspaceId: string,
+    currentUser: DecodedUserObject,
   ): Promise<workspaceUsersResponseDto[]> {
     const workspaceData = await this.workspaceRepository.get(workspaceId);
     const workspaceUsers = [...workspaceData.users];
+
+    if (
+      !workspaceUsers.some(
+        (u: any) => u.id.toString() === currentUser._id.toString(),
+      )
+    ) {
+      throw new ForbiddenException("You are not authorized to access this API");
+    }
     const updatedIdArray = [];
     for (const item of workspaceUsers) {
       if (!isString(item.id)) {

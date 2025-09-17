@@ -364,3 +364,21 @@ export class RequestTestScriptDataDto {
   @ApiProperty({ required: true, example: "test()" })
   testScript: string;
 }
+
+export class generateTestCasesDto {
+  /**
+   * The prompt or command.
+   */
+  @IsString()
+  @ApiProperty({ required: true, example: "prompt" })
+  @IsNotEmpty()
+  text: string;
+
+  /**
+   * Team Id
+   */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "683ff7a8a30481c5901fc386" })
+  teamId?: string;
+}

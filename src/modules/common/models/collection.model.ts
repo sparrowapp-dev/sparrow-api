@@ -1242,6 +1242,10 @@ export class CollectionWithRequestTestsOption extends CollectionGenerateVariable
   @IsOptional()
   @IsBoolean()
   isRequestTestsNoCodeDemoCompleted?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isRequestTestsScriptDemoCompleted?: boolean;
 }
 
 export class CollectionDto {

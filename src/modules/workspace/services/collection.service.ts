@@ -517,6 +517,10 @@ export class CollectionService {
       ?.isRequestTestsNoCodeDemoCompleted
       ? false
       : true;
+    collection.isRequestTestsScriptDemoCompleted = userDetails?.tourGuide
+      ?.isRequestTestsScriptDemoCompleted
+      ? false
+      : true;
     let alreadyProcessed = false;
     if (
       userDetails?.isGenerateVariableTrial &&
@@ -584,6 +588,10 @@ export class CollectionService {
     const userDetails = await this.userRepository.getUserByEmail(user.email);
     for (let i = 0; i < collections.length; i++) {
       const collectionId = collections[i]._id.toString();
+      collections[i].isRequestTestsScriptDemoCompleted = userDetails?.tourGuide
+        ?.isRequestTestsScriptDemoCompleted
+        ? false
+        : true;
       collections[i].isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
         ?.isRequestTestsNoCodeDemoCompleted
         ? false
@@ -1375,29 +1383,38 @@ export class CollectionService {
     if (!collectionDocument) {
       throw new NotFoundException("Collection is not Found.");
     }
+    // ✅ Filter out empty key/value pairs
+    const validGeneratedPairs = generatedPairs.filter(
+      (pair) => pair.key?.trim() && pair.value?.trim(),
+    );
+    if(validGeneratedPairs.length < 1){
+      throw new BadRequestException(
+        "Please provide Vaild Generated Variables.",
+      );
+    }
     const traverseAndUpdate = (items: any[]) => {
       for (const item of items) {
         if (item.type === ItemTypeEnum.REQUEST) {
           item.request = this.updatedRequestInCollection(
-            generatedPairs,
+            validGeneratedPairs,
             item.request,
           );
         }
         if (item.type === ItemTypeEnum.SOCKETIO) {
           item.socketio = this.updatedRequestInCollection(
-            generatedPairs,
+            validGeneratedPairs,
             item.socketio,
           );
         }
         if (item.type === ItemTypeEnum.WEBSOCKET) {
           item.websocket = this.updatedRequestInCollection(
-            generatedPairs,
+            validGeneratedPairs,
             item.websocket,
           );
         }
         if (item.type === ItemTypeEnum.GRAPHQL) {
           item.graphql = this.updatedRequestInCollection(
-            generatedPairs,
+            validGeneratedPairs,
             item.graphql,
           );
         }

@@ -1,6 +1,14 @@
-import { Body, Controller, Post, Req, Res, UseGuards, UseInterceptors } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
 import { AiAssistantService } from "../services/ai-assistant.service";
-import { ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiConsumes, ApiBody } from "@nestjs/swagger";
 import { FastifyReply } from "fastify";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -17,6 +25,7 @@ import {
   ChatBotPayload,
   RequestGenerateMockDataDto,
   RequestTestScriptDataDto,
+  generateTestCasesDto,
 } from "../payloads/ai-assistant.payload";
 import { UserLimitGuard } from "@src/modules/identity/guards/user-limt-guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
@@ -47,7 +56,7 @@ export class AiAssistantController {
   })
   @ApiResponse({ status: 400, description: "Generate AI Response Failed" })
   @Post("prompt")
-  @UseGuards(JwtAuthGuard,UserLimitGuard)
+  @UseGuards(JwtAuthGuard, UserLimitGuard)
   async generate(
     @Body() prompt: PromptPayload,
     @Res() res: FastifyReply,
@@ -79,7 +88,7 @@ export class AiAssistantController {
   }
 
   @Post("generate-prompt")
-  @UseGuards(JwtAuthGuard,UserLimitGuard)
+  @UseGuards(JwtAuthGuard, UserLimitGuard)
   async GeneratePrompt(
     @Body() payload: ChatBotPayload,
     @Res() res: FastifyReply,
@@ -95,41 +104,46 @@ export class AiAssistantController {
 
   @Post()
   @ApiOperation({
-    summary: 'Upload multiple documents with model name',
-    description: 'Uploads multiple document files and model name',
+    summary: "Upload multiple documents with model name",
+    description: "Uploads multiple document files and model name",
   })
-  @ApiConsumes('multipart/form-data')
+  @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         docs: {
-          type: 'array',
-          items: { type: 'string', format: 'binary' },
+          type: "array",
+          items: { type: "string", format: "binary" },
         },
         model: {
-          type: 'string',
+          type: "string",
         },
         authKey: {
-          type: 'string',
+          type: "string",
         },
         modelVersion: {
-          type: 'string',
+          type: "string",
         },
       },
     },
   })
-  @UseInterceptors(FilesInterceptor('docs', 5))
-  @ApiResponse({ status: 201, description: 'Documents uploaded successfully' })
-  @ApiResponse({ status: 400, description: 'Upload failed' })
+  @UseInterceptors(FilesInterceptor("docs", 5))
+  @ApiResponse({ status: 201, description: "Documents uploaded successfully" })
+  @ApiResponse({ status: 400, description: "Upload failed" })
   async uploadDocWithModel(
     @UploadedFiles() docs: MemoryStorageFile[],
-    @Body('model') model: string,
-    @Body('authKey') authKey: string,
-    @Body('modelVersion') modelVersion: string,
+    @Body("model") model: string,
+    @Body("authKey") authKey: string,
+    @Body("modelVersion") modelVersion: string,
     @Res() res: FastifyReply,
   ) {
-    const data = await this.aiAssistantService.uploadDocumentWithModel(docs, model, authKey, modelVersion);
+    const data = await this.aiAssistantService.uploadDocumentWithModel(
+      docs,
+      model,
+      authKey,
+      modelVersion,
+    );
     const response = new ApiResponseService(
       "Documents Uploaded Successfully",
       HttpStatusCode.CREATED,
@@ -151,7 +165,7 @@ export class AiAssistantController {
     description:
       "Generates mock data for a specific request type (headers, params, or body) based on the request definition.",
   })
-  @UseGuards(JwtAuthGuard,UserLimitGuard)
+  @UseGuards(JwtAuthGuard, UserLimitGuard)
   @ApiResponse({
     status: 200,
     description: "Generated Mock Data Successfully",
@@ -170,7 +184,10 @@ export class AiAssistantController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    const mockData = await this.aiAssistantService.generateMockData(user,content);
+    const mockData = await this.aiAssistantService.generateMockData(
+      user,
+      content,
+    );
     const responseData = new ApiResponseService(
       "Generated Mock Data Successfully",
       HttpStatusCode.OK,
@@ -185,7 +202,7 @@ export class AiAssistantController {
     description:
       "Fixes the test script for a specific request type (headers, params, or body) based on the request definition.",
   })
-  @UseGuards(JwtAuthGuard,UserLimitGuard)
+  @UseGuards(JwtAuthGuard, UserLimitGuard)
   @ApiResponse({
     status: 200,
     description: "Fixed Test Script Successfully",
@@ -209,6 +226,43 @@ export class AiAssistantController {
       "Fixed Test Script Successfully",
       HttpStatusCode.OK,
       mockData,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post("/generate-test-cases")
+  @ApiOperation({
+    summary: "Generate Test Cases for API request",
+    description:
+      "Generates test cases for a specific request type (headers, params, or body) based on the request definition.",
+  })
+  @UseGuards(JwtAuthGuard, UserLimitGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Generated Test Cases Successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to generate test cases.",
+  })
+  @ApiResponse({
+    status: 500,
+    description: "Server failed to generate test cases.",
+  })
+  async generateTestCasesForRequest(
+    @Body() prompt: generateTestCasesDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const testCases = await this.aiAssistantService.generateTestCases(
+      user,
+      prompt,
+    );
+    const responseData = new ApiResponseService(
+      "Generated Test Cases Successfully",
+      HttpStatusCode.OK,
+      testCases,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }

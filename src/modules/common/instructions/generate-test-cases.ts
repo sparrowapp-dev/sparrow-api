@@ -1,4 +1,4 @@
-export const fixTestScriptInstructions = `
+export const generateTestCasesInstructions = `
            const expect = (actual: any) => ({
               to: {
                 equal: (expected: any) => {
@@ -95,12 +95,13 @@ export const fixTestScriptInstructions = `
                   expect,
                 };
 
-                - fix testcases using above syntax, 
+                - create testcases using above syntax, 
                 - ensure all test cases are valid syntactically,
                 - dont use any other syntax or return any other text outside of the test cases.
                 - dont use any markdown or code snippet
                 - dont wrap output in triple backticks or labels like "javascript", "js", etc.
                 - Output must be ONLY the raw test cases in javascript format.
+                - if user prompt is not valid then return 
                 - Example format:  '
                     sp.test("userId is a number", function () {
                       sp.expect(jsonBody.userId).to.be.a("number");
