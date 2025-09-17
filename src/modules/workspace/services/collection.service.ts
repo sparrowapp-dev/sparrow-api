@@ -1395,7 +1395,7 @@ export class CollectionService {
       matchingUser.role !== WorkspaceRole.EDITOR
     ) {
       throw new ForbiddenException(
-        "You do not have permission to modify generated variables. Only Admin or Editor can perform this action.",
+        "You do not have permission to modify generated variables.",
       );
     }
     const collectionDocument = await this.getCollection(collectionId);
