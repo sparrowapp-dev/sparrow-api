@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -56,6 +57,7 @@ import { RequestBodyDto } from "@src/modules/common/models/collection.model";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
 import { CollectionRequestService } from "./collection-request.service";
+import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
 
 @Injectable()
 export class CollectionService {
@@ -1379,6 +1381,23 @@ export class CollectionService {
         "Please provide collectionId and Generated Variables.",
       );
     }
+    const workspaceDetails = await this.workspaceRepository.get(workspaceId);
+    const matchingUser = workspaceDetails.users?.find(
+      (currentUser) => currentUser.id === user._id.toString(),
+    );
+    if (!matchingUser) {
+      throw new NotFoundException(
+        `User with ${user.email} not found in workspace.`,
+      );
+    }
+    if (
+      matchingUser.role !== WorkspaceRole.ADMIN &&
+      matchingUser.role !== WorkspaceRole.EDITOR
+    ) {
+      throw new ForbiddenException(
+        "You do not have permission to modify generated variables. Only Admin or Editor can perform this action.",
+      );
+    }
     const collectionDocument = await this.getCollection(collectionId);
     if (!collectionDocument) {
       throw new NotFoundException("Collection is not Found.");
@@ -1387,7 +1406,7 @@ export class CollectionService {
     const validGeneratedPairs = generatedPairs.filter(
       (pair) => pair.key?.trim() && pair.value?.trim(),
     );
-    if(validGeneratedPairs.length < 1){
+    if (validGeneratedPairs.length < 1) {
       throw new BadRequestException(
         "Please provide Vaild Generated Variables.",
       );
