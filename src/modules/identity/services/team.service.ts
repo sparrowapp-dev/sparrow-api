@@ -332,12 +332,16 @@ export class TeamService {
 
     let team;
     if (image) {
-      if (!isImageBuffer(image.buffer)) {
-        throw new BadRequestException("Uploaded file is not a valid image");
+      if (image.size > 0) {
+        if (!isImageBuffer(image.buffer)) {
+          throw new BadRequestException("Uploaded file is not a valid image");
+        }
       }
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
-      await this.isImageDimensionValid(dataBuffer);
+      if (image.size > 0) {
+        await this.isImageDimensionValid(dataBuffer);
+      }
       const dataString = dataBuffer.toString("base64");
       const logo = {
         bufferString: dataString,
