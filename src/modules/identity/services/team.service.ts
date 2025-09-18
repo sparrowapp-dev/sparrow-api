@@ -298,9 +298,11 @@ export class TeamService {
     }
     const url: string = this.configService.get("app.url");
     const adminUrl: string = this.configService.get("admin.baseURL");
+    const identityUrl: string = this.configService.get("auth.baseURL");
     const data = {
       appUrl: url,
       adminUrl: adminUrl,
+      identityUrl: identityUrl,
     };
     return data;
   }
