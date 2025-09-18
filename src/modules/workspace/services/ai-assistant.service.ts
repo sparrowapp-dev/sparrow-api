@@ -2486,12 +2486,12 @@ export class AiAssistantService {
               { role: "system", content: fixTestScriptInstructions },
               {
                 role: "user",
-                content: `Test Script:\n${content.testScript}\n\n`,
+                content: `${content.testScript}`,
               },
             ],
           },
         });
-
+        
       const output = (
         response.body as any
       ).choices?.[0]?.message?.content?.trim();
