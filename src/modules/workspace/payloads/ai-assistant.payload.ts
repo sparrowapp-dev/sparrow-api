@@ -290,6 +290,15 @@ export class ChatBotPayload {
   @IsOptional()
   @ApiProperty({ required: false, example: "true or false" })
   fileSearch?: boolean;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    required: false,
+    example:
+      "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2ODliMGIyNzQ3MDhlNDk3MjljZjMwOGMiLCJlbWFpbCI6ImxvdmV1bWVhcm5hYi4yODEyMDAwQGdtYWlsLmNvbSIsIm5hbWUiOiJhcm5hYklJIHNzIiwiZXhwIjoxNzU4Mjg0OTIyLjU0NSwiaWF0IjoxNzU4MjYwOTIyfQ.SCzFde3fe-6hSwfyD6nzGQKCXFSmzmdc_Wt46afVRRY",
+  })
+  auth?: string;
 }
 
 export class ErrorResponsePayload {

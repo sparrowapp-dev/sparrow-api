@@ -19,6 +19,7 @@ import {
 import { MessagesPage } from "openai/resources/beta/threads/messages";
 import { Thread } from "openai/resources/beta/threads/threads";
 import type { IncomingMessage } from "node:http";
+import * as jwt from "jsonwebtoken";
 
 // import { GoogleGenAI } from "@google/genai";
 import { Anthropic, toFile } from "@anthropic-ai/sdk";
@@ -121,6 +122,7 @@ export class AiAssistantService {
   private deepseekApiVersion: string;
   private deepseekurl: string;
   private deepseekModel: string;
+  private jwtAccessSecretKey: string;
   // Default assistant configuration
   private assistant = {
     name: "API Instructor",
@@ -155,6 +157,7 @@ export class AiAssistantService {
     this.deepseekApiVersion = this.configService.get("ai.deepseekApiVersion");
     this.deepseekurl = this.configService.get("ai.deepseekURL");
     this.deepseekModel = this.configService.get("ai.deepseekModel");
+    this.jwtAccessSecretKey = this.configService.get("app.jwtSecretKey");
 
     // Initialize the AzureOpenAI client
     try {
@@ -1853,10 +1856,7 @@ export class AiAssistantService {
    * @throws BadRequestException if the assistant cannot be created.
    */
 
-  public async generateTextChatBot(
-    client: WebSocket,
-    decoded: any,
-  ): Promise<void> {
+  public async generateTextChatBot(client: WebSocket): Promise<void> {
     try {
       while (client.readyState === WebSocket.OPEN) {
         // Receive message from the client
@@ -1910,6 +1910,10 @@ export class AiAssistantService {
             );
             continue;
           }
+          const decoded: any = jwt.verify(
+            parsedData.auth.slice(7),
+            this.jwtAccessSecretKey,
+          );
           const verifiedUser = teamData.users.some(
             (u: any) => u.id.toString() === decoded._id.toString(),
           );

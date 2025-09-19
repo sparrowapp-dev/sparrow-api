@@ -9,8 +9,10 @@ import { Server, WebSocket } from "ws";
 import { AiAssistantService } from "../services/ai-assistant.service";
 import * as url from "url";
 import * as jwt from "jsonwebtoken";
-import { UnauthorizedException } from "@nestjs/common";
+import { BadGatewayException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { ObjectId } from "mongodb";
 
 /**
  * WebSocket Gateway for AI Assistant.
@@ -28,6 +30,7 @@ export class AiAssistantGateway
   constructor(
     private readonly aiAssistantService: AiAssistantService,
     private readonly configService: ConfigService,
+    private readonly userService: UserRepository,
   ) {}
 
   afterInit(server: Server) {
@@ -43,12 +46,29 @@ export class AiAssistantGateway
       client.close();
       return;
     }
+
+    // Remove "Bearer " prefix if present
     if (token.startsWith("Bearer ")) {
       token = token.slice(7);
     }
+
     try {
       const secret = this.configService.get<string>("JWT_SECRET_KEY");
-      const decoded = jwt.verify(token, secret);
+      const decoded: any = jwt.verify(token, secret);
+
+      const user = await this.userService.findUserByUserId(
+        new ObjectId(decoded._id),
+      );
+      if (!user) {
+        client.send(
+          JSON.stringify({
+            event: "error",
+            message: "User not found.",
+          }),
+        );
+        client.close();
+        throw new BadGatewayException("User not found");
+      }
 
       if (client.readyState === WebSocket.OPEN) {
         client.send(
@@ -57,8 +77,7 @@ export class AiAssistantGateway
             message: "Welcome to AI Assistant!",
           }),
         );
-        // Pass decoded user info
-        this.aiAssistantService.generateTextChatBot(client, decoded);
+        this.aiAssistantService.generateTextChatBot(client);
       }
     } catch (err: any) {
       client.send(
