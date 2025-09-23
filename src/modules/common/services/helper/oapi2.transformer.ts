@@ -269,69 +269,155 @@ function transformPath(
     for (const param of Object.values(parameters) as ParameterObject[]) {
       const paramIn = param.in;
       const paramName = param.name;
-      const paramValue = param.example || getExampleValue(param.type); // Assuming example value is representative
-
-      switch (paramIn) {
-        case "body":
-          if (consumes && consumes.includes("application/json")) {
-            const schema = param.schema;
-            if (schema && schema.type === "object") {
-              const properties = schema.properties || {};
-              const bodyObject: any = {};
-              for (const [propertyName, property] of Object.entries(
-                properties,
-              )) {
-                const exampleType = property.type;
-                const exampleValue = property.example;
-                bodyObject[propertyName] =
-                  exampleValue ||
-                  buildExampleValue(property) ||
-                  getExampleValue(exampleType);
-              }
-              transformedObject.request.body.raw = JSON.stringify(bodyObject);
-            }
-          }
-          break;
-        case "header":
-          transformedObject.request.headers.push({
-            key: paramName,
-            value: paramValue.toString(),
-            checked: true,
-          });
-          break;
-        case "query":
-          transformedObject.request.queryParams.push({
-            key: paramName,
-            value: paramValue.toString(),
-            checked: false,
-          });
-          break;
-        case "formData":
-          if (
-            consumes &&
-            consumes.includes("application/x-www-form-urlencoded")
-          ) {
-            transformedObject.request.body.urlencoded.push({
+      const paramValue = param.example || getExampleValue(param.type);
+      // Handle array type parameters with collectionFormat: 'multi'
+      if (
+        param.type === "array" &&
+        param.collectionFormat === "multi" &&
+        param.items
+      ) {
+        const defaultValue = param.items.default || "";
+        // Check if paramValue is an array and has items
+        if (Array.isArray(paramValue) && paramValue.length > 0) {
+          // Create entries based on array values
+          paramValue.forEach((value, index) => {
+            const paramEntry = {
               key: paramName,
-              value: paramValue,
+              value: value.toString(),
+              checked: false,
+            };
+
+            switch (paramIn) {
+              case "query":
+                transformedObject.request.queryParams.push(paramEntry);
+                break;
+              case "header":
+                transformedObject.request.headers.push(paramEntry);
+                break;
+              case "formData":
+                if (
+                  consumes &&
+                  consumes.includes("application/x-www-form-urlencoded")
+                ) {
+                  transformedObject.request.body.urlencoded.push(paramEntry);
+                } else if (
+                  consumes &&
+                  consumes.includes("multipart/form-data")
+                ) {
+                  transformedObject.request.body.formdata.text.push(paramEntry);
+                }
+                break;
+            }
+          });
+        } else {
+          // Create two entries with default value if paramValue is empty or not an array
+          const valueToUse = defaultValue;
+          const firstParamEntry = {
+            key: paramName,
+            value: valueToUse.toString(),
+            checked: false,
+          };
+
+          const secondParamEntry = {
+            key: paramName,
+            value: valueToUse.toString(),
+            checked: false,
+          };
+
+          switch (paramIn) {
+            case "query":
+              transformedObject.request.queryParams.push(firstParamEntry);
+              transformedObject.request.queryParams.push(secondParamEntry);
+              break;
+            case "header":
+              transformedObject.request.headers.push(firstParamEntry);
+              transformedObject.request.headers.push(secondParamEntry);
+              break;
+            case "formData":
+              if (
+                consumes &&
+                consumes.includes("application/x-www-form-urlencoded")
+              ) {
+                transformedObject.request.body.urlencoded.push(firstParamEntry);
+                transformedObject.request.body.urlencoded.push(
+                  secondParamEntry,
+                );
+              } else if (consumes && consumes.includes("multipart/form-data")) {
+                transformedObject.request.body.formdata.text.push(
+                  firstParamEntry,
+                );
+                transformedObject.request.body.formdata.text.push(
+                  secondParamEntry,
+                );
+              }
+              break;
+          }
+        }
+      } else {
+        // Handle non-array parameters
+        switch (paramIn) {
+          case "body":
+            if (consumes && consumes.includes("application/json")) {
+              const schema = param.schema;
+              if (schema && schema.type === "object") {
+                const properties = schema.properties || {};
+                const bodyObject: any = {};
+                for (const [propertyName, property] of Object.entries(
+                  properties,
+                )) {
+                  const exampleType = property.type;
+                  const exampleValue = property.example;
+                  bodyObject[propertyName] =
+                    exampleValue ||
+                    buildExampleValue(property) ||
+                    getExampleValue(exampleType);
+                }
+                transformedObject.request.body.raw = JSON.stringify(bodyObject);
+              }
+            }
+            break;
+          case "header":
+            transformedObject.request.headers.push({
+              key: paramName,
+              value: paramValue.toString(),
+              checked: true,
+            });
+            break;
+          case "query":
+            transformedObject.request.queryParams.push({
+              key: paramName,
+              value: paramValue.toString(),
               checked: false,
             });
-          } else if (consumes && consumes.includes("multipart/form-data")) {
-            if (param.type === "file") {
-              transformedObject.request.body.formdata.file.push({
-                key: paramName,
-                value: paramValue,
-                checked: false,
-                base: "" + paramValue,
-              });
-            } else {
-              transformedObject.request.body.formdata.text.push({
+            break;
+          case "formData":
+            if (
+              consumes &&
+              consumes.includes("application/x-www-form-urlencoded")
+            ) {
+              transformedObject.request.body.urlencoded.push({
                 key: paramName,
                 value: paramValue,
                 checked: false,
               });
+            } else if (consumes && consumes.includes("multipart/form-data")) {
+              if (param.type === "file") {
+                transformedObject.request.body.formdata.file.push({
+                  key: paramName,
+                  value: paramValue,
+                  checked: false,
+                  base: "" + paramValue,
+                });
+              } else {
+                transformedObject.request.body.formdata.text.push({
+                  key: paramName,
+                  value: paramValue,
+                  checked: false,
+                });
+              }
             }
-          }
+            break;
+        }
       }
     }
 

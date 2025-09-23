@@ -75,6 +75,8 @@ export interface ParameterObject {
   description?: string;
   required?: boolean;
   schema?: SchemaObject;
+  items?:any,
+  collectionFormat?:string
 }
 
 interface ReferenceObject {
