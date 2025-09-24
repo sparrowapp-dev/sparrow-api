@@ -550,7 +550,7 @@ export class TestflowService {
   ) {
     try {
       const executionResult = {
-        failedRequests: "2",
+        failedRequests: 2,
         requests: [
           {
             method: "POST",

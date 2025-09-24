@@ -290,7 +290,7 @@ export class TestflowSchedularHistoryRequest {
 export class TestFlowSchedularRunHistory {
   @IsString()
   @IsNotEmpty()
-  failedRequests: string;
+  failedRequests: number;
 
   @IsArray()
   @IsOptional()

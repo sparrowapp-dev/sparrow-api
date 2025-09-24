@@ -79,6 +79,7 @@ import { EncryptionService } from "../common/services/encryption.service";
 // ---- Schedulers
 import { AiConsumptionScheduler } from "./schedulers/ai-consumption.scheduler";
 import { TestflowSchedulerService } from "./services/testflow-schedular.service";
+import { TestflowRunService } from "./services/testflow-run.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -118,6 +119,7 @@ import { TestflowSchedulerService } from "./services/testflow-schedular.service"
     AiAssistantGateway,
     // DummyGateway,
     TeamUpdatedHandler,
+    TestflowRunService,
     TestflowService,
     TestflowSchedulerService,
     TestflowRepository,

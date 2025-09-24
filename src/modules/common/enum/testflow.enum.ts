@@ -54,3 +54,14 @@ export type RunCycleConfig =
   | DailyConfig
   | HourlyConfig
   | WeeklyConfig;
+
+export interface TFAPIResponseType {
+  body: string;
+  headers: object;
+  status: string;
+}
+
+export type TFKeyValueStoreType = {
+  key: string;
+  value: string;
+};

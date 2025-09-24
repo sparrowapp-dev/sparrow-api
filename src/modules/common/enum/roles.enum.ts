@@ -22,3 +22,8 @@ export enum Permission {
   DeleteTeam = "deleteTeam",
   // Define other permissions
 }
+
+export enum WorkspaceUserAgentBaseEnum {
+  BROWSER_AGENT= "Browser Agent",
+  CLOUD_AGENT= "Cloud Agent"
+}

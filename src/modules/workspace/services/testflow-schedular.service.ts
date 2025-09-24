@@ -1,17 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import { CronJob } from "cron";
-import { v4 as uuidv4 } from "uuid";
-import { TestflowRepository } from "../repositories/testflow.repository";
-import { CreateTestflowSchedularDto } from "../payloads/testflow.payload";
-import { DecodedUserObject } from "@src/types/fastify";
-import { TestflowSchedular } from "@src/modules/common/models/testflow.model";
 import {
-  DailyConfig,
-  HourlyConfig,
-  OnceConfig,
   RunCycleEnum,
-  WeeklyConfig,
 } from "@src/modules/common/enum/testflow.enum";
 import { RunCycleConfig } from "@src/modules/common/enum/testflow.enum";
 
@@ -21,7 +12,6 @@ export class TestflowSchedulerService {
 
   constructor(
     private schedulerRegistry: SchedulerRegistry,
-    private readonly testflowRepository: TestflowRepository,
   ) {}
 
   /**
