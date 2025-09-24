@@ -14,7 +14,14 @@ import { TestflowRunHistory } from "@src/modules/common/models/plan.model";
 import { DecodedUserObject } from "@src/types/fastify";
 import { ParseTime } from "@src/modules/common/util/parse-time";
 import { ResponseStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
-import { TFAPIResponseType, TFKeyValueStoreType } from "@src/modules/common/enum/testflow.enum";
+import {
+  TFAPIResponseType,
+  TFKeyValueStoreType,
+} from "@src/modules/common/enum/testflow.enum";
+import {
+  DecodeTestflow,
+  RequestData,
+} from "@src/modules/common/util/decode-testflow";
 
 @Injectable()
 export class TestflowRunService {
@@ -23,6 +30,7 @@ export class TestflowRunService {
     private readonly environmentReposistory: EnvironmentRepository,
   ) {}
   private readonly logger = new Logger(TestflowRunService.name);
+  private _decodeRequest = new DecodeTestflow();
 
   /**
    * Wrapper to handle HTTP requests (Cloud Agent + Browser Agent).
@@ -214,200 +222,244 @@ export class TestflowRunService {
     testflowId: string,
     environmentId: string,
     user: DecodedUserObject,
-    selectedAgent?:WorkspaceUserAgentBaseEnum
+    selectedAgent?: WorkspaceUserAgentBaseEnum,
   ) => {
-    // if(!selectedAgent){
-    //     selectedAgent = WorkspaceUserAgentBaseEnum.BROWSER_AGENT
-    // }
-    // const testflowData = await this.testflowRepository.get(testflowId);
-    // const environmentData =
-    //   await this.environmentReposistory.get(environmentId);
-    // if (!testflowData) {
-    //   throw new NotFoundException("Testflow not Found.");
-    // }
-    // if (!environmentData) {
-    //   throw new NotFoundException("Environment not Found.");
-    // }
-    // const nodes = testflowData?.nodes || [];
-    // const abortController = new AbortController();
-    // const { signal } = abortController;
-    // let successRequests = 0;
-    // let failedRequests = 0;
-    // let totalTime = 0;
-    // const history: TestFlowSchedularRunHistory = {
-    //   status: "fail",
-    //   successRequests: 0,
-    //   failedRequests: 0,
-    //   totalTime: "",
-    //   createdAt: new Date(),
-    //   createdBy: user._id.toString(),
-    //   requests: [],
-    // };
-    // let requestChainResponse: Record<string, any> = {};
-    // const executedNodes: any[] = [];
-    // for (const element of nodes) {
-    //   if (element?.type !== "requestBlock" || !element?.data?.requestId)
-    //     continue;
-    //   const requestData = element.data.requestData;
-    //   const decodeData = this._decodeRequest.init(
-    //     adaptedRequest.property.request,
-    //     environments?.filtered || [],
-    //     requestChainResponse,
-    //   );
-    //   const start = Date.now();
-    //   let resData: any;
-    //   try {
-    //     const response = await this.makeHttpRequestV2(
-    //       decodeData[0],
-    //       decodeData[1],
-    //       decodeData[2],
-    //       decodeData[3],
-    //       decodeData[4],
-    //       selectedAgent,
-    //       signal,
-    //     );
-    //     const duration = Date.now() - start;
-    //     if (response.isSuccessful) {
-    //       const byteLength = new TextEncoder().encode(
-    //         JSON.stringify(response),
-    //       ).length;
-    //       const responseSizeKB = byteLength / 1024;
-    //       const responseData: TFAPIResponseType = response.data;
-    //       const responseBody = responseData.body;
-    //       const formattedHeaders = Object.entries(
-    //         response?.data?.headers || {},
-    //       ).map(([key, value]) => ({ key, value })) as TFKeyValueStoreType[];
-    //       const responseStatus = response?.data?.status;
-    //       resData = {
-    //         body: responseBody,
-    //         headers: formattedHeaders,
-    //         status: responseStatus,
-    //         time: duration,
-    //         size: responseSizeKB,
-    //         responseContentType:
-    //           this._decodeRequest.setResponseContentType(formattedHeaders),
-    //       };
-    //       if (
-    //         Number(resData.status.split(" ")[0]) >= 200 &&
-    //         Number(resData.status.split(" ")[0]) < 300
-    //       ) {
-    //         successRequests++;
-    //       } else {
-    //         failedRequests++;
-    //       }
+    if (!selectedAgent) {
+      selectedAgent = WorkspaceUserAgentBaseEnum.BROWSER_AGENT;
+    }
+    const testflowData = await this.testflowRepository.get(testflowId);
+    const environmentData =
+      await this.environmentReposistory.get(environmentId);
 
-    //       totalTime += duration;
-    //       history.requests.push({
-    //         method: request?.request?.method as string,
-    //         name: request?.name as string,
-    //         status: resData.status,
-    //         time: new ParseTime().convertMilliseconds(duration),
-    //       });
-    //       // Build request/response for chaining
-    //       const responseHeader =
-    //         this._decodeRequest.setResponseContentType(formattedHeaders);
-    //       const reqParam: Record<string, string> = {};
-    //       const params = new URL(decodeData[0]).searchParams;
-    //       for (const [key, value] of params.entries()) reqParam[key] = value;
+    if (!testflowData) {
+      throw new NotFoundException("Testflow not Found.");
+    }
+    if (!environmentData) {
+      throw new NotFoundException("Environment not Found.");
+    }
+    const nodes = testflowData?.nodes || [];
+    const abortController = new AbortController();
+    const { signal } = abortController;
+    let successRequests = 0;
+    let failedRequests = 0;
+    let totalTime = 0;
+    const history: TestFlowSchedularRunHistory = {
+      status: "fail",
+      successRequests: 0,
+      failedRequests: 0,
+      totalTime: "",
+      createdAt: new Date(),
+      createdBy: user._id.toString(),
+      requests: [],
+    };
+    let requestChainResponse: Record<string, any> = {};
+    const executedNodes: any[] = []; // Get environment variables from environmentData
+    const environmentVariables = environmentData.variable || [];
+    for (const element of nodes) {
+      // Only process request blocks that have request data
+      if (element?.type !== "requestBlock" || !element?.data?.requestData) {
+        continue;
+      }
+      const requestData: RequestData = element.data.requestData as RequestData;
+      try {
+        // Decode the request using the DecodeTestflow utility
+        const decodeData = this._decodeRequest.init(
+          requestData,
+          environmentVariables,
+          requestChainResponse,
+        );
+        const [url, method, headers, body, contentType] = decodeData;
+        const start = Date.now();
+        let resData: any;
+        try {
+          const response: any = await this.makeHttpRequestV2(
+            url,
+            method,
+            headers,
+            body,
+            contentType,
+            selectedAgent,
+            signal,
+          );
+          const duration = Date.now() - start;
+          if (response.isSuccessful) {
+            const byteLength = new TextEncoder().encode(
+              JSON.stringify(response),
+            ).length;
+            const responseSizeKB = byteLength / 1024;
+            const responseData: TFAPIResponseType = response.data;
+            const responseBody = responseData.body;
+            const formattedHeaders = Object.entries(
+              response?.data?.headers || {},
+            ).map(([key, value]) => ({
+              key,
+              value: String(value),
+            })) as TFKeyValueStoreType[];
+            const responseStatus = response?.data?.status;
+            resData = {
+              body: responseBody,
+              headers: formattedHeaders,
+              status: responseStatus,
+              time: duration,
+              size: responseSizeKB,
+              responseContentType:
+                this._decodeRequest.setResponseContentType(formattedHeaders),
+            };
+            // Check if request was successful (2xx status codes)
+            const statusCode = Number(resData.status.split(" ")[0]);
+            if (statusCode >= 200 && statusCode < 300) {
+              successRequests++;
+            } else {
+              failedRequests++;
+            }
+            totalTime += duration;
+            history.requests.push({
+              method: requestData.method as string,
+              name: requestData.name as string,
+              status: resData.status,
+              time: new ParseTime().convertMilliseconds(duration),
+            });
+            // Build request/response for chaining
+            const responseHeader =
+              this._decodeRequest.setResponseContentType(formattedHeaders);
+            const reqParam: Record<string, string> = {};
+            const params = new URL(url).searchParams;
+            for (const [key, value] of params.entries()) {
+              reqParam[key] = value;
+            }
+            const parsedHeaders = JSON.parse(headers) as {
+              key: string;
+              value: string;
+            }[];
+            const headersObject = Object.fromEntries(
+              parsedHeaders.map(({ key, value }) => [key, value]),
+            );
 
-    //       const headersObject = Object.fromEntries(
-    //         JSON.parse(decodeData[2]).map(({ key, value }) => [key, value]),
-    //       );
+            let reqBody: any;
+            if (contentType === "application/json") {
+              try {
+                reqBody = JSON.parse(body);
+              } catch {
+                reqBody = {};
+              }
+            } else if (
+              contentType === "multipart/form-data" ||
+              contentType === "application/x-www-form-urlencoded"
+            ) {
+              try {
+                const parsedBody = JSON.parse(body) as {
+                  key: string;
+                  value: string;
+                }[];
+                reqBody = Object.fromEntries(
+                  parsedBody.map(({ key, value }) => [key, value]),
+                );
+              } catch {
+                reqBody = {};
+              }
+            } else {
+              reqBody = body;
+            }
+            const responseObject = {
+              response: {
+                body:
+                  responseHeader === "JSON"
+                    ? JSON.parse(resData.body)
+                    : resData.body,
+                headers: response?.data?.headers,
+              },
+              request: {
+                headers: headersObject || {},
+                body: reqBody,
+                parameters: reqParam || {},
+              },
+            };
+            // Store response for request chaining using sanitized names
+            const sanitizedRequestName = requestData.name.replace(
+              /[^a-zA-Z0-9_]/g,
+              "_",
+            );
+            const sanitizedBlockName = (
+              element.data.blockName || element.id
+            ).replace(/[^a-zA-Z0-9_]/g, "_");
 
-    //       let reqBody: any;
-    //       if (decodeData[4] === "application/json") {
-    //         try {
-    //           reqBody = JSON.parse(decodeData[3]);
-    //         } catch {
-    //           reqBody = {};
-    //         }
-    //       } else if (
-    //         decodeData[4] === "multipart/form-data" ||
-    //         decodeData[4] === "application/x-www-form-urlencoded"
-    //       ) {
-    //         reqBody = Object.fromEntries(
-    //           JSON.parse(decodeData[3]).map(({ key, value }) => [key, value]),
-    //         );
-    //       } else {
-    //         reqBody = decodeData[3];
-    //       }
-
-    //       const responseObject = {
-    //         response: {
-    //           body:
-    //             responseHeader === "JSON"
-    //               ? JSON.parse(resData.body)
-    //               : resData.body,
-    //           headers: response?.data?.headers,
-    //         },
-    //         request: {
-    //           headers: headersObject || {},
-    //           body: reqBody,
-    //           parameters: reqParam || {},
-    //         },
-    //       };
-
-    //       requestChainResponse[
-    //         "$$" + element.data.requestData.name.replace(/[^a-zA-Z0-9_]/g, "_")
-    //       ] = responseObject;
-    //       requestChainResponse[
-    //         "$$" + element.data.blockName.replace(/[^a-zA-Z0-9_]/g, "_")
-    //       ] = responseObject;
-    //     } else {
-    //       resData = {
-    //         body: response.message,
-    //         headers: [],
-    //         status: ResponseStatusCode.ERROR,
-    //         time: duration,
-    //         size: 0,
-    //       };
-    //       failedRequests++;
-    //       totalTime += duration;
-
-    //       history.requests.push({
-    //         method: request?.request?.method as string,
-    //         name: request?.name as string,
-    //         status: ResponseStatusCode.ERROR,
-    //         time: new ParseTime().convertMilliseconds(duration),
-    //       });
-    //     }
-    //   } catch (error) {
-    //     console.error(error);
-    //     if (error?.name === "AbortError") break;
-
-    //     resData = {
-    //       body: "",
-    //       headers: [],
-    //       status: ResponseStatusCode.ERROR,
-    //       time: 0,
-    //       size: 0,
-    //     };
-
-    //     failedRequests++;
-    //     history.requests.push({
-    //       method: request?.request?.method as string,
-    //       name: request?.name as string,
-    //       status: ResponseStatusCode.ERROR,
-    //       time: "0 ms",
-    //     });
-    //   }
-
-    //   executedNodes.push({
-    //     id: element.id,
-    //     response: resData,
-    //     request: adaptedRequest,
-    //   });
-    // }
-
-    // // Finalize history
-    // history.totalTime = new ParseTime().convertMilliseconds(totalTime);
-    // history.successRequests = successRequests;
-    // history.failedRequests = failedRequests;
-    // history.status = failedRequests === 0 ? "pass" : "fail";
-    // return {
-    //   history,
-    //   requestChainResponse,
-    //   nodes: executedNodes,
-    // };
+            requestChainResponse[`$$${sanitizedRequestName}`] = responseObject;
+            requestChainResponse[`$$${sanitizedBlockName}`] = responseObject;
+          } else {
+            resData = {
+              body: response.message || "Request failed",
+              headers: [],
+              status: ResponseStatusCode.ERROR,
+              time: duration,
+              size: 0,
+            };
+            failedRequests++;
+            totalTime += duration;
+            history.requests.push({
+              method: requestData.method as string,
+              name: requestData.name as string,
+              status: ResponseStatusCode.ERROR,
+              time: new ParseTime().convertMilliseconds(duration),
+            });
+          }
+        } catch (error) {
+          console.error("Request execution error:", error);
+          const duration = Date.now() - start;
+          if (error?.name === "AbortError") {
+            break;
+          }
+          resData = {
+            body: error?.message || "Request failed",
+            headers: [],
+            status: ResponseStatusCode.ERROR,
+            time: duration,
+            size: 0,
+          };
+          failedRequests++;
+          totalTime += duration;
+          history.requests.push({
+            method: requestData.method as string,
+            name: requestData.name as string,
+            status: ResponseStatusCode.ERROR,
+            time: new ParseTime().convertMilliseconds(duration),
+          });
+        }
+        executedNodes.push({
+          id: element.id,
+          response: resData,
+          request: requestData,
+        });
+      } catch (error) {
+        console.error("Error processing node:", element.id, error);
+        failedRequests++;
+        history.requests.push({
+          method: requestData?.method || "UNKNOWN",
+          name: requestData?.name || "Unknown Request",
+          status: ResponseStatusCode.ERROR,
+          time: "0 ms",
+        });
+        executedNodes.push({
+          id: element.id,
+          response: {
+            body: error?.message || "Processing failed",
+            headers: [],
+            status: ResponseStatusCode.ERROR,
+            time: 0,
+            size: 0,
+          },
+          request: requestData,
+        });
+      }
+    }
+    // Finalize history
+    history.totalTime = new ParseTime().convertMilliseconds(totalTime);
+    history.successRequests = successRequests;
+    history.failedRequests = failedRequests;
+    history.status = failedRequests === 0 ? "pass" : "fail";
+    return {
+      history,
+      requestChainResponse,
+      nodes: executedNodes,
+    };
   };
 }

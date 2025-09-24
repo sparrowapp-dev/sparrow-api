@@ -56,12 +56,13 @@ export type RunCycleConfig =
   | WeeklyConfig;
 
 export interface TFAPIResponseType {
-  body: string;
-  headers: object;
-  status: string;
+  body?: string;
+  headers?: object;
+  status?: string;
 }
 
 export type TFKeyValueStoreType = {
   key: string;
   value: string;
+  checked?: boolean;
 };

@@ -164,6 +164,9 @@ importers:
       json2csv:
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2
+      json5:
+        specifier: ^2.2.3
+        version: 2.2.3
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
@@ -268,6 +271,9 @@ importers:
       '@types/json2csv':
         specifier: ^5.0.7
         version: 5.0.7
+      '@types/json5':
+        specifier: ^2.2.0
+        version: 2.2.0
       '@types/jsonwebtoken':
         specifier: ^9.0.9
         version: 9.0.10
@@ -2531,6 +2537,10 @@ packages:
 
   '@types/json2csv@5.0.7':
     resolution: {integrity: sha512-Ma25zw9G9GEBnX8b12R4EYvnFT6dBh8L3jwsN5EUFXa+fl2dqmbLDbNWN0XuQU3rSXdsbBeCYjI9uHU2PUBxhA==}
+
+  '@types/json5@2.2.0':
+    resolution: {integrity: sha512-NrVug5woqbvNZ0WX+Gv4R+L4TGddtmFek2u8RtccAgFZWtS9QXF2xCXY22/M4nzkaKF0q9Fc6M/5rxLDhfwc/A==}
+    deprecated: This is a stub types definition. json5 provides its own type definitions, so you do not need this installed.
 
   '@types/jsonwebtoken@9.0.10':
     resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
@@ -9669,6 +9679,10 @@ snapshots:
   '@types/json2csv@5.0.7':
     dependencies:
       '@types/node': 16.11.56
+
+  '@types/json5@2.2.0':
+    dependencies:
+      json5: 2.2.3
 
   '@types/jsonwebtoken@9.0.10':
     dependencies:
