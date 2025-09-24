@@ -103,7 +103,7 @@ export class TeamService {
 
   async generateUniqueTeamUrl(name: string): Promise<string> {
     const prefix = "https://";
-    const suffix = ".sparrowhub.net";
+    const suffix = "." + this.configService.get("app.hubBaseDomain");
     // const envPath =
     //   this.configService.get("app.env") === Env.PROD ? "/release/v1" : "/dev";
     let base = this.sanitizeName(name);
@@ -148,6 +148,17 @@ export class TeamService {
       );
     }
     let team;
+    if (teamData?.hubUrl && teamData.hubUrl.trim().length > 0) {
+      const existingTeamURL = await this.teamRepository.doesHubUrlExist(
+        teamData.hubUrl.trim(),
+      );
+      if (existingTeamURL) {
+        throw new BadRequestException(
+          "Team URL already exists. Please select a different HUB URL",
+        );
+      }
+    }
+
     const appEdition = await this.configService.get("app.appEdition");
     let defaultHubPlan = this.configService.get<string>("app.defaultHubPlan");
     if (appEdition !== "MANAGED") {
@@ -278,6 +289,25 @@ export class TeamService {
   }
 
   /**
+   * Return the backend config like appUrl
+   */
+  async getConfig(): Promise<{ appUrl: string }> {
+    const appEdition: string = this.configService.get("app.appEdition");
+    if (appEdition !== "SELFHOSTED") {
+      throw new BadRequestException("No Self Hosted Serivce available.");
+    }
+    const url: string = this.configService.get("app.url");
+    const adminUrl: string = this.configService.get("admin.baseURL");
+    const identityUrl: string = this.configService.get("auth.baseURL");
+    const data = {
+      appUrl: url,
+      adminUrl: adminUrl,
+      identityUrl: identityUrl,
+    };
+    return data;
+  }
+
+  /**
    * Fetches a public team from database by UUID
    * @param {string} id
    * @returns {Promise<Team>} queried team data
@@ -332,12 +362,16 @@ export class TeamService {
 
     let team;
     if (image) {
-      if (!isImageBuffer(image.buffer)) {
-        throw new BadRequestException("Uploaded file is not a valid image");
+      if (image.size > 0) {
+        if (!isImageBuffer(image.buffer)) {
+          throw new BadRequestException("Uploaded file is not a valid image");
+        }
       }
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
-      await this.isImageDimensionValid(dataBuffer);
+      if (image.size > 0) {
+        await this.isImageDimensionValid(dataBuffer);
+      }
       const dataString = dataBuffer.toString("base64");
       const logo = {
         bufferString: dataString,

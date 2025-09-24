@@ -21,7 +21,7 @@ import { Thread } from "openai/resources/beta/threads/threads";
 import type { IncomingMessage } from "node:http";
 
 // import { GoogleGenAI } from "@google/genai";
-import  { Anthropic , toFile } from '@anthropic-ai/sdk';
+import { Anthropic, toFile } from "@anthropic-ai/sdk";
 
 // ---- Payload
 import {
@@ -32,6 +32,8 @@ import {
   ErrorResponsePayload,
   RequestBodyTypePropertiesDto,
   RequestGenerateMockDataDto,
+  RequestTestScriptDataDto,
+  generateTestCasesDto,
 } from "../payloads/ai-assistant.payload";
 
 // ---- Services
@@ -62,20 +64,26 @@ import { LimitCheckResult } from "@src/modules/common/enum/user-limit-enum";
 import { ProducerService } from "@src/modules/common/services/event-producer.service";
 import { DecodedUserObject } from "@src/types/fastify";
 import { MemoryStorageFile } from "@blazity/nest-file-fastify";
-import fs from "fs"
-import * as path from 'path';
-import { tmpdir } from 'os';
-import { v4 as uuidv4 } from 'uuid';
+import fs from "fs";
+import * as path from "path";
+import { tmpdir } from "os";
+import { v4 as uuidv4 } from "uuid";
 import { BlobStorageService } from "@src/modules/common/services/blobStorage.service";
 import { ChatCompletionMessageParam } from "openai/resources/chat";
-import { MessageParam } from '@anthropic-ai/sdk/resources/messages';
+import { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import * as Sentry from "@sentry/nestjs";
 
 // import { GoogleGenAI } from "@google/genai";
 
-import pdfParse from 'pdf-parse';
-import { encoding_for_model, TiktokenModel } from '@dqbd/tiktoken';
-import { MockDataRequestType, requestBodyLangType, requestBodyType } from "@src/modules/common/enum/collection.request.enum";
+import pdfParse from "pdf-parse";
+import { encoding_for_model, TiktokenModel } from "@dqbd/tiktoken";
+import {
+  MockDataRequestType,
+  requestBodyLangType,
+  requestBodyType,
+} from "@src/modules/common/enum/collection.request.enum";
+import { fixTestScriptInstructions } from "@src/modules/common/instructions/fix-test-script";
+import { generateTestCasesInstructions } from "@src/modules/common/instructions/generate-test-cases";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -150,7 +158,7 @@ export class AiAssistantService {
     this.deepseekApiKey = this.configService.get("ai.deepseekApiKey");
     this.deepseekApiVersion = this.configService.get("ai.deepseekApiVersion");
     this.deepseekurl = this.configService.get("ai.deepseekURL");
-    this.deepseekModel = this.configService.get("ai.deepseekModel")
+    this.deepseekModel = this.configService.get("ai.deepseekModel");
 
     // Initialize the AzureOpenAI client
     try {
@@ -239,9 +247,8 @@ export class AiAssistantService {
     data: PromptPayload,
     user: DecodedUserObject,
   ): Promise<AIResponseDto> {
-
-    const userId = user?._id.toString() ?? ""
-    const id = await this.userService.getUserById(userId)
+    const userId = user?._id.toString() ?? "";
+    const id = await this.userService.getUserById(userId);
 
     try {
       const instructions = `You are an assistant specialized in transforming API data into clear, well-structured, and optimized documentation. Given API specifications, your task is to generate high-quality documentation in plain text format—concise, professional, and easy to understand. Do not include markdown formatting, explanations, or any additional output beyond the finalized documentation.`;
@@ -285,7 +292,7 @@ export class AiAssistantService {
         activity: "generate-doc",
         model: "deepseek",
         tokenConsumed: tokens,
-        threadId: "null"
+        threadId: "null",
       };
 
       // Send activity log to Kafka topic
@@ -526,7 +533,9 @@ export class AiAssistantService {
 
       // Validate input
       if (!text) {
-      throw new BadRequestException("Invalid input: 'text' field is required.");
+        throw new BadRequestException(
+          "Invalid input: 'text' field is required.",
+        );
       }
 
       if (!this.gptAssistantsClient) {
@@ -970,7 +979,7 @@ export class AiAssistantService {
     temperature: number,
     topP: number,
     maxTokens: number,
-    emailId: string
+    emailId: string,
   ): Promise<void> {
     // Return early if Google client creation failed
     if (!GoogleClient) return;
@@ -1203,7 +1212,7 @@ export class AiAssistantService {
     topP: number,
     maxTokens: number,
     fileSearch: boolean,
-    emailId: string
+    emailId: string,
   ): Promise<void> {
     // Return early if Anthropic client creation failed
     if (!Anthropicclient) return;
@@ -1221,11 +1230,11 @@ export class AiAssistantService {
     //   content: string;
     // };
 
-    let messages: MessageParam [];
+    let messages: MessageParam[];
 
     if (typeof userInput === "string") {
       try {
-        messages = JSON.parse(userInput) as MessageParam [];
+        messages = JSON.parse(userInput) as MessageParam[];
       } catch (err) {
         if (client.readyState === WebSocket.OPEN) {
           client.send(
@@ -1239,7 +1248,7 @@ export class AiAssistantService {
         return;
       }
     } else {
-      messages = userInput as MessageParam [];
+      messages = userInput as MessageParam[];
     }
 
     try {
@@ -1257,8 +1266,7 @@ export class AiAssistantService {
             betas: ["files-api-2025-04-14"],
             stream: true,
           });
-        }
-        else {
+        } else {
           stream = await Anthropicclient.messages.create({
             messages: messages,
             model: modelVersion,
@@ -1331,8 +1339,7 @@ export class AiAssistantService {
             max_tokens: maxTokens > -1 ? maxTokens : 1024,
             betas: ["files-api-2025-04-14"],
           });
-        }
-        else {
+        } else {
           response = await Anthropicclient.messages.create({
             model: modelVersion,
             messages: messages,
@@ -1341,7 +1348,6 @@ export class AiAssistantService {
             max_tokens: maxTokens > -1 ? maxTokens : 1024,
           });
         }
-
 
         const data = response.content
           .map((block) => ("text" in block ? block.text : ""))
@@ -1388,9 +1394,13 @@ export class AiAssistantService {
           Sentry.captureException(error.message);
         });
         const timeTaken = Math.round(endTime - startTime);
-        const authErrorMessage = "Could not resolve authentication method. Expected either apiKey or authToken to be set.";
-        const errorMessage = error?.error?.error?.message || error?.message ||  "";
-        const statusCode = errorMessage.includes(authErrorMessage) ? 401 : error?.status || 500;
+        const authErrorMessage =
+          "Could not resolve authentication method. Expected either apiKey or authToken to be set.";
+        const errorMessage =
+          error?.error?.error?.message || error?.message || "";
+        const statusCode = errorMessage.includes(authErrorMessage)
+          ? 401
+          : error?.status || 500;
         client.send(
           JSON.stringify({
             timeTaken: `${timeTaken}ms`,
@@ -1420,7 +1430,7 @@ export class AiAssistantService {
     presencePenalty: number,
     frequencePenalty: number,
     maxTokens: number,
-    emailId: string
+    emailId: string,
   ): Promise<void> {
     // Return early if DeepSeek client creation failed
     if (!DeepSeekClinet) return;
@@ -1609,7 +1619,7 @@ export class AiAssistantService {
     presencePenalty: number,
     frequencePenalty: number,
     maxTokens: number,
-    emailId: string
+    emailId: string,
   ): Promise<void> {
     // Return early if OpenAI client creation failed
     if (!OpenAIclient) return;
@@ -1966,7 +1976,7 @@ export class AiAssistantService {
             maxTokens,
             topP,
             fileSearch,
-            emailId
+            emailId,
           } = parsedData;
 
           // Only support OpenAI model currently
@@ -1987,7 +1997,7 @@ export class AiAssistantService {
               presencePenalty,
               frequencePenalty,
               maxTokens,
-              emailId
+              emailId,
             );
             continue;
           }
@@ -2011,7 +2021,7 @@ export class AiAssistantService {
               topP,
               maxTokens,
               fileSearch,
-              emailId
+              emailId,
             );
             continue;
           }
@@ -2036,7 +2046,7 @@ export class AiAssistantService {
               presencePenalty,
               frequencePenalty,
               maxTokens,
-              emailId
+              emailId,
             );
             continue;
           }
@@ -2058,7 +2068,7 @@ export class AiAssistantService {
               temperature,
               topP,
               maxTokens,
-              emailId
+              emailId,
             );
             continue;
           } else {
@@ -2179,7 +2189,7 @@ export class AiAssistantService {
         activity: "generate-prompt",
         model: "deepseek",
         tokenConsumed: tokens,
-        threadId: "null"
+        threadId: "null",
       };
 
       // Send activity log to Kafka topic
@@ -2202,19 +2212,27 @@ export class AiAssistantService {
     }
   }
 
-  public async uploadDocumentWithModel(docs: MemoryStorageFile[], model: string, authKey: string, modelVersion: string): Promise<{ fileId: string; fileUrl: string }[]> {
+  public async uploadDocumentWithModel(
+    docs: MemoryStorageFile[],
+    model: string,
+    authKey: string,
+    modelVersion: string,
+  ): Promise<{ fileId: string; fileUrl: string }[]> {
     if (!docs?.length || !model || !authKey) {
-      throw new BadRequestException('Missing required fields');
+      throw new BadRequestException("Missing required fields");
     }
 
-    async function extractTextFromBuffer(buffer: Buffer, mimetype: string): Promise<string> {
-      if (mimetype === 'application/pdf') {
+    async function extractTextFromBuffer(
+      buffer: Buffer,
+      mimetype: string,
+    ): Promise<string> {
+      if (mimetype === "application/pdf") {
         const result = await pdfParse(buffer);
         return result.text;
       }
 
-      if (mimetype === 'text/plain') {
-        return buffer.toString('utf8');
+      if (mimetype === "text/plain") {
+        return buffer.toString("utf8");
       }
 
       throw new BadRequestException(`Unsupported file type: ${mimetype}`);
@@ -2224,52 +2242,54 @@ export class AiAssistantService {
       const OpenAIclient = await this.createOpenAIClient(authKey);
       const { writeFile, unlink } = fs.promises;
 
-      const results: { fileId: string; fileUrl: string; }[] = [];
+      const results: { fileId: string; fileUrl: string }[] = [];
       let totalTokenCount = 0;
       const acceptedFiles: string[] = [];
 
       for (const doc of docs) {
-
         // Check the tokens of the File user has uploaded
         const text = await extractTextFromBuffer(doc.buffer, doc.mimetype);
-        const model = modelVersion as TiktokenModel
+        const model = modelVersion as TiktokenModel;
         const enc = encoding_for_model(model);
         const tokens = enc.encode(text);
 
         // Token limit exceeded check
         if (totalTokenCount + tokens.length > 120000) {
           const acceptedMsg = acceptedFiles.length
-            ? `Try uploading only the first ${acceptedFiles.length} file${acceptedFiles.length > 1 ? 's' : ''}.`
-            : 'Try with a file that contains less content.';
+            ? `Try uploading only the first ${acceptedFiles.length} file${acceptedFiles.length > 1 ? "s" : ""}.`
+            : "Try with a file that contains less content.";
 
           throw new BadRequestException(
-            `The uploaded content exceeds the model’s token limit of 128k. ${acceptedMsg}`
+            `The uploaded content exceeds the model’s token limit of 128k. ${acceptedMsg}`,
           );
         }
         totalTokenCount += tokens.length;
         acceptedFiles.push(doc.fieldname);
 
         // Upload document to azure blob
-        const uploadFile = await this.blobStorageService.uploadAiDoc(doc)
+        const uploadFile = await this.blobStorageService.uploadAiDoc(doc);
 
-        const tempFilePath = path.join(tmpdir(), `${uuidv4()}-${doc.fieldname}.pdf`);
+        const tempFilePath = path.join(
+          tmpdir(),
+          `${uuidv4()}-${doc.fieldname}.pdf`,
+        );
         try {
           await writeFile(tempFilePath, new Uint8Array(doc.buffer));
 
           const file = await OpenAIclient.files.create({
             file: fs.createReadStream(tempFilePath),
-            purpose: 'assistants',
+            purpose: "assistants",
           });
 
           results.push({ fileId: file.id, fileUrl: uploadFile });
         } catch (err) {
           const statusCode = err?.status || err?.response?.status || err?.code;
-          if (statusCode === 401 || err?.code === 'invalid_api_key') {
+          if (statusCode === 401 || err?.code === "invalid_api_key") {
             throw new BadRequestException(err?.error?.message);
           }
         } finally {
           unlink(tempFilePath).catch(() =>
-            console.warn(`Failed to delete temp file: ${tempFilePath}`)
+            console.warn(`Failed to delete temp file: ${tempFilePath}`),
           );
         }
       }
@@ -2353,7 +2373,7 @@ export class AiAssistantService {
    */
   public async generateMockData(
     user: DecodedUserObject,
-    content:RequestGenerateMockDataDto
+    content: RequestGenerateMockDataDto,
   ) {
     if (!content.text?.trim()) {
       throw new BadRequestException("API details (prompt) must be provided.");
@@ -2405,15 +2425,27 @@ export class AiAssistantService {
       }
       const body = response.body as any;
       const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
       const activityLog = {
         userId: user._id.toString(),
         userEmail: user.email,
         activity: "generate-mock-data",
         model: "deepseek",
         tokenConsumed: tokens,
-        threadId: "null"
+        threadId: "null",
       };
-      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_MOCK_DATA, {
+
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
         value: JSON.stringify(activityLog),
       });
       return { result: parsedOutput };
@@ -2426,6 +2458,179 @@ export class AiAssistantService {
       });
       throw new BadRequestException(
         error?.message || "Failed to generate mock data. Please try again.",
+      );
+    }
+  }
+
+  /**
+   * Generates mock data for a request item within a collection, based on the specified type.
+   * @param user - The authenticated user requesting the data.
+   * @param content - The request testscript content.
+   * @returns Generated mock data as JSON.
+   */
+  public async fixTestScript(
+    user: DecodedUserObject,
+    content: RequestTestScriptDataDto,
+  ) {
+    if (!content.testScript?.trim()) {
+      throw new BadRequestException("Test script must be provided.");
+    }
+
+    try {
+      const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            model: this.deepseekModel,
+            messages: [
+              { role: "system", content: fixTestScriptInstructions },
+              {
+                role: "user",
+                content: `${content.testScript}`,
+              },
+            ],
+          },
+        });
+        
+      const output = (
+        response.body as any
+      ).choices?.[0]?.message?.content?.trim();
+      if (!output) {
+        throw new BadRequestException(
+          "No test script generated from the model.",
+        );
+      }
+      let parsedOutput: any;
+      try {
+        parsedOutput = JSON.parse(output);
+      } catch {
+        parsedOutput = output;
+      }
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: user.email,
+        activity: "fix-test-script",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null",
+      };
+
+      // Send activity log to Kafka topic
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+        value: JSON.stringify(activityLog),
+      });
+
+      return { result: parsedOutput };
+    } catch (error) {
+      console.error("Error fixing test script:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", user.email);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException(
+        error?.message || "Failed to fix test script. Please try again.",
+      );
+    }
+  }
+
+  /**
+   * Generates test cases for a request item within a collection, based on the specified type.
+   * @param user - The authenticated user requesting the data.
+   * @param content - The request testscript content.
+   * @returns Generated test cases as JSON.
+   */
+  public async generateTestCases(
+    user: DecodedUserObject,
+    content: generateTestCasesDto,
+  ) {
+    if (!content.text?.trim()) {
+      throw new BadRequestException("prompt must be provided.");
+    }
+
+    try {
+      const response = await this.deepseekClient
+        .path("/chat/completions")
+        .post({
+          body: {
+            model: this.deepseekModel,
+            messages: [
+              {
+                role: "system",
+                content: generateTestCasesInstructions,
+              },
+              {
+                role: "user",
+                content: `Test Prompt:\n${content.text}\n\n`,
+              },
+            ],
+          },
+        });
+
+      const output = (
+        response.body as any
+      ).choices?.[0]?.message?.content?.trim();
+      if (!output) {
+        throw new BadRequestException(
+          "No test cases generated from the model.",
+        );
+      }
+      let parsedOutput: any;
+      try {
+        parsedOutput = JSON.parse(output);
+      } catch {
+        parsedOutput = output;
+      }
+      const body = response.body as any;
+      const tokens = body?.usage?.total_tokens;
+
+      const eventMessage = {
+        userId: user._id,
+        tokenCount: tokens,
+        model: "deepseek",
+      };
+
+      await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+        value: JSON.stringify(eventMessage),
+      });
+
+      const activityLog = {
+        userId: user._id.toString(),
+        userEmail: user.email,
+        activity: "generate-test-cases",
+        model: "deepseek",
+        tokenConsumed: tokens,
+        threadId: "null",
+      };
+
+      // Send activity log to Kafka topic
+      await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+        value: JSON.stringify(activityLog),
+      });
+
+      return { result: parsedOutput };
+    } catch (error) {
+      console.error("Error generating test cases:", error);
+      Sentry.withScope((scope) => {
+        scope.setTag("emailId", user.email);
+        scope.setTag("errorType", "AI");
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException(
+        error?.message || "Failed to generate test cases. Please try again.",
       );
     }
   }

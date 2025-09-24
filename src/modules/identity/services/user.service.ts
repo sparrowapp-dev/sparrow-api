@@ -25,6 +25,7 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { VerificationPayload } from "../payloads/verification.payload";
 import { HubSpotService } from "./hubspot.service";
 import { DecodedUserObject } from "@src/types/fastify";
+import { parseWhitelistedEmailList } from "@src/modules/common/util/email.parser.util";
 export interface IGenericMessageBody {
   message: string;
 }
@@ -332,7 +333,19 @@ export class UserService {
     // Create an email transporter using the email service
     const transporter = this.emailService.createTransporter();
 
-    const verificationCode = this.generateEmailVerificationCode().toUpperCase();
+    let verificationCode = this.generateEmailVerificationCode().toUpperCase();
+
+    const whitelistEmails = await this.configService.get(
+      "testing.whitelistEmail",
+    );
+    let parsedWhiteListEmails: string[] = [];
+    if (whitelistEmails) {
+      parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
+    }
+
+    if (parsedWhiteListEmails.includes(verificationPayload.email)) {
+      verificationCode = "000000";
+    }
 
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
@@ -791,6 +804,21 @@ export class UserService {
     const updatedTourGuide = {
       ...userDetails.tourGuide,
       isRequestTestsNoCodeDemoCompleted: true,
+    };
+    const response = await this.userRepository.updateUserById(userDetails._id, {
+      tourGuide: updatedTourGuide,
+    });
+    return response;
+  }
+
+  async requestTestsScriptDemoCompleted(email: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    const updatedTourGuide = {
+      ...userDetails.tourGuide,
+      isRequestTestsScriptDemoCompleted: true,
     };
     const response = await this.userRepository.updateUserById(userDetails._id, {
       tourGuide: updatedTourGuide,

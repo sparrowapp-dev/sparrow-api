@@ -4,6 +4,7 @@ import * as path from "path";
 import { ConfigService } from "@nestjs/config";
 import { Injectable } from "@nestjs/common";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
+import { parseWhitelistedEmailList } from "../util/email.parser.util";
 
 interface MailOptions {
   from: string;
@@ -67,6 +68,17 @@ export class EmailService {
   ): Promise<any> {
     const smtpEnabled = this.configService.get("app.smtpEnabled");
 
+    const whitelistEmails = await this.configService.get(
+      "testing.whitelistEmail",
+    );
+    let parsedWhiteListEmails: string[] = [];
+    if (whitelistEmails) {
+      parsedWhiteListEmails = parseWhitelistedEmailList(whitelistEmails) || [];
+    }
+    if (parsedWhiteListEmails.includes(mailOptions.to)) {
+      console.warn("SMTP is disabled for this email. Email not sent.");
+      return;
+    }
     // Exit early if SMTP is disabled
     if (smtpEnabled !== "true") {
       console.warn("SMTP is disabled. Email not sent.");
