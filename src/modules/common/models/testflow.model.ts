@@ -236,7 +236,7 @@ export class Testflow {
   @Type(() => TestflowSchedular)
   @ValidateNested({ each: true })
   @IsOptional()
-  schedulars?: TestflowSchedular[];
+  schedules?: TestflowSchedular[];
 
   @IsDate()
   @IsOptional()

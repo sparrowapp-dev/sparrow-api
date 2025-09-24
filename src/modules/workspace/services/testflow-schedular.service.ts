@@ -29,7 +29,7 @@ export class TestflowSchedulerService {
    */
   async addSchedulerJob(
     runCycle: RunCycleConfig,
-    callback?: () => void,
+    runApis?: () => void,
     schedularData?: CreateTestflowSchedularDto,
     user?: DecodedUserObject,
   ): Promise<void> {
@@ -47,8 +47,8 @@ export class TestflowSchedulerService {
       return;
     }
     const job = new CronJob(cronExpression, async () => {
-      if (callback) {
-        callback();
+      if (runApis) {
+        runApis();
       }
       console.log("Updating scheduler execution in DB with:", {
         testflowId,
@@ -121,7 +121,6 @@ export class TestflowSchedulerService {
     await this.testflowRepository.addSchedular(testflowId, newSchedular);
     // Register and start the job
     this.schedulerRegistry.addCronJob(jobName, job);
-    console.log("CronJob registered in schedulerRegistry:", jobName);
     job.start();
     console.log(
       `Scheduler job ${jobName} (ID: ${schedulerId}) added with cycle: ${runCycle.type}`,
@@ -131,11 +130,7 @@ export class TestflowSchedulerService {
   /**
    * Remove a scheduler job (from registry + MongoDB)
    */
-  async removeSchedulerJob(
-    schedulerId: string,
-    testflowId: string,
-    user: DecodedUserObject,
-  ): Promise<boolean> {
+  async removeSchedulerJob(schedulerId: string): Promise<boolean> {
     const jobName = this.generateJobName(schedulerId);
     try {
       if (this.schedulerRegistry.doesExist("cron", jobName)) {
@@ -143,11 +138,6 @@ export class TestflowSchedulerService {
         job.stop();
         this.schedulerRegistry.deleteCronJob(jobName);
       }
-      await this.testflowRepository.removeSchedular(
-        testflowId,
-        schedulerId,
-        user._id,
-      );
       this.logger.log(
         `Scheduler job ${jobName} (ID: ${schedulerId}) removed from DB + registry`,
       );
@@ -163,21 +153,11 @@ export class TestflowSchedulerService {
   /**
    * Pause a scheduler job
    */
-  async pauseSchedulerJob(
-    schedulerId: string,
-    testflowId: string,
-    user: DecodedUserObject,
-  ): Promise<void> {
+  async pauseSchedulerJob(schedulerId: string): Promise<void> {
     const jobName = this.generateJobName(schedulerId);
     if (this.schedulerRegistry.doesExist("cron", jobName)) {
       const job = this.schedulerRegistry.getCronJob(jobName);
       job.stop();
-      await this.testflowRepository.updateSchedularStatus(
-        testflowId,
-        schedulerId,
-        user._id,
-        false,
-      );
       this.logger.log(`Scheduler job ${jobName} paused`);
     }
   }
@@ -185,21 +165,11 @@ export class TestflowSchedulerService {
   /**
    * Resume a scheduler job
    */
-  async resumeSchedulerJob(
-    schedulerId: string,
-    testflowId: string,
-    user: DecodedUserObject,
-  ): Promise<void> {
+  async resumeSchedulerJob(schedulerId: string): Promise<void> {
     const jobName = this.generateJobName(schedulerId);
     if (this.schedulerRegistry.doesExist("cron", jobName)) {
       const job = this.schedulerRegistry.getCronJob(jobName);
       job.start();
-      await this.testflowRepository.updateSchedularStatus(
-        testflowId,
-        schedulerId,
-        user._id,
-        true,
-      );
       this.logger.log(`Scheduler job ${jobName} resumed`);
     }
   }

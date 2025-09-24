@@ -47,8 +47,6 @@ import {
   RunCycleEnum,
 } from "@src/modules/common/enum/testflow.enum";
 import { EnvironmentRepository } from "../repositories/environment.repository";
-import { HttpService } from "@nestjs/axios";
-import { lastValueFrom } from "rxjs";
 
 /**
  * Testflow Service
@@ -62,7 +60,6 @@ export class TestflowService {
     private readonly workspaceService: WorkspaceService,
     private readonly testflowSchedulerService: TestflowSchedulerService,
     private readonly environmentReposistory: EnvironmentRepository,
-    private readonly httpService: HttpService,
   ) {}
 
   /**
@@ -310,7 +307,7 @@ export class TestflowService {
             schedularData.testflowId,
             schedularData.environmentId,
             user,
-            token
+            token,
           );
         },
         schedularData,
@@ -427,6 +424,5 @@ export class TestflowService {
     environmentId: string,
     user: DecodedUserObject,
     token: string,
-  ) {
-  }
+  ) {}
 }

@@ -138,7 +138,7 @@ export class TestflowRepository {
     return this.db.collection(Collections.TESTFLOW).updateOne(
       { _id: new ObjectId(testflowId) },
       {
-        $push: { schedulars: schedularData },
+        $push: { schedules: schedularData },
         $set: { updatedAt: new Date() },
       },
     );
@@ -156,7 +156,7 @@ export class TestflowRepository {
       .collection(Collections.TESTFLOW)
       .updateOne(
         { _id: new ObjectId(testflowId) },
-        { $set: { "schedulars.$[elem]": updatedSchedular } },
+        { $set: { "schedules.$[elem]": updatedSchedular } },
         { arrayFilters: [{ "elem.id": schedularId }] },
       );
   }
@@ -170,7 +170,7 @@ export class TestflowRepository {
     return this.db.collection(Collections.TESTFLOW).updateOne(
       { _id: new ObjectId(testflowId) },
       {
-        $pull: { schedulars: { id: schedularId } },
+        $pull: { schedules: { id: schedularId } },
         $set: { updatedAt: new Date(), updatedBy: userId.toString() },
       },
     );
@@ -189,15 +189,15 @@ export class TestflowRepository {
     return this.db.collection(Collections.TESTFLOW).updateOne(
       { _id: new ObjectId(testflowId) },
       {
-        $inc: { "schedulars.$[elem].executedCount": 1 },
+        $inc: { "schedules.$[elem].executedCount": 1 },
         $set: {
-          "schedulars.$[elem].lastExecuted": now,
+          "schedules.$[elem].lastExecuted": now,
           updatedAt: now,
           updatedBy: userId?.toString() ?? null,
         },
         ...(runHistoryItem && {
           $push: {
-            "schedulars.$[elem].schedularRunHistory": runHistoryItem,
+            "schedules.$[elem].schedularRunHistory": runHistoryItem,
           },
         }),
       },
@@ -221,7 +221,7 @@ export class TestflowRepository {
       { _id: new ObjectId(testflowId) },
       {
         $set: {
-          "schedulars.$[elem].isActive": isActive,
+          "schedules.$[elem].isActive": isActive,
           updatedAt: now,
           updatedBy: userId?.toString() ?? null,
         },
