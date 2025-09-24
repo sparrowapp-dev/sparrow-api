@@ -430,11 +430,6 @@ export class TeamService {
     userId: string,
     currentUser: DecodedUserObject,
   ): Promise<WithId<Team>[]> {
-    if (currentUser?._id.toString() !== userId.toString()) {
-      throw new BadRequestException(
-        "You are not authorised to fetch the team details of this particular user",
-      );
-    }
     const user = await this.userRepository.getUserById(userId, currentUser);
     if (!user) {
       throw new BadRequestException(
