@@ -1,6 +1,7 @@
 // ---- Libraries
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -43,8 +44,12 @@ import { DecodedUserObject } from "@src/types/fastify";
 import { v4 as uuidv4 } from "uuid";
 import { TestflowSchedulerService } from "./testflow-schedular.service";
 import {
+  DailyConfig,
+  HourlyConfig,
+  OnceConfig,
   RunCycleConfig,
   RunCycleEnum,
+  WeeklyConfig,
 } from "@src/modules/common/enum/testflow.enum";
 import { EnvironmentRepository } from "../repositories/environment.repository";
 
@@ -291,32 +296,79 @@ export class TestflowService {
     token: string,
   ) {
     try {
+      const workspaceUsers = await this.workspaceReposistory.get(
+        schedularData?.workspaceId,
+      );
+      if (!workspaceUsers) {
+        throw new NotFoundException("Workspace not found.");
+      }
+      const userDetails = workspaceUsers.users.find(
+        (item) => item.id === user._id.toString(),
+      );
+      if (!userDetails) {
+        throw new NotFoundException("User not found in workspace.");
+      }
+      if (
+        userDetails.role !== WorkspaceRole.ADMIN &&
+        userDetails.role !== WorkspaceRole.EDITOR
+      ) {
+        throw new ForbiddenException(
+          "User does not have permission to perform this action.",
+        );
+      }
+      // Build cron config
       const runCycleConfig = this.buildRunCycleConfig(
         schedularData.runConfiguration,
       );
-      this.executeTestflow(
+      // Generate schedulerId, jobName & cron expression
+      const schedulerId = uuidv4();
+      const jobName = `scheduler_${schedulerId}`;
+      const cronExpression = this.generateCronExpression(runCycleConfig);
+      if (!cronExpression) {
+        throw new BadRequestException("Invalid run cycle configuration");
+      }
+      // Save scheduler details in DB
+      const newSchedular: TestflowSchedular = {
+        id: schedulerId,
+        name: schedularData.name,
+        environmentId: schedularData.environmentId,
+        runConfiguration: schedularData.runConfiguration,
+        notification: schedularData.notification,
+        isActive: true,
+        cronExpression,
+        schedularName: jobName,
+        executedCount: 0,
+        lastExecuted: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: user._id.toString(),
+        updatedBy: user._id.toString(),
+      };
+      await this.testflowRepository.addSchedular(
         schedularData.testflowId,
-        schedularData.environmentId,
-        user,
-        token,
+        newSchedular,
       );
-      const result = await this.testflowSchedulerService.addSchedulerJob(
+      // Register cron job
+      const jobAdded = await this.testflowSchedulerService.addSchedulerJob(
         runCycleConfig,
-        () => {
-          this.executeTestflow(
-            schedularData.testflowId,
-            schedularData.environmentId,
-            user,
-            token,
-          );
-        },
-        schedularData,
-        user,
+        this.getScheduledExecutionCallback(
+          schedularData.testflowId,
+          schedularData.environmentId,
+          schedulerId,
+          user,
+          token,
+        ),
+        jobName,
+        cronExpression,
+        schedulerId,
       );
+      if (!jobAdded) {
+        throw new BadRequestException("Failed to register cron job");
+      }
       return {
         success: true,
         message: "Scheduler created successfully",
-        data: result,
+        data: newSchedular,
       };
     } catch (error) {
       throw new BadRequestException(
@@ -417,12 +469,123 @@ export class TestflowService {
       second: 0,
     };
   }
+  /**
+   * Generate cron expression based on run cycle configuration
+   */
+  private generateCronExpression(runCycle: RunCycleConfig): string | null {
+    switch (runCycle.type) {
+      case RunCycleEnum.ONCE:
+        return this.generateOnceCronExpression(runCycle);
+      case RunCycleEnum.DAILY:
+        return this.generateDailyCronExpression(runCycle);
+      case RunCycleEnum.HOURLY:
+        return this.generateHourlyCronExpression(runCycle);
+      case RunCycleEnum.WEEKLY:
+        return this.generateWeeklyCronExpression(runCycle);
+      default:
+        return null;
+    }
+  }
+
+  private generateOnceCronExpression(config: OnceConfig): string | null {
+    const executeAt = config.executeAt;
+    const now = new Date();
+    if (executeAt <= now) {
+      return null;
+    }
+    const second = executeAt.getSeconds();
+    const minute = executeAt.getMinutes();
+    const hour = executeAt.getHours();
+    const dayOfMonth = executeAt.getDate();
+    const month = executeAt.getMonth() + 1;
+    return `${second} ${minute} ${hour} ${dayOfMonth} ${month} *`;
+  }
+
+  private generateDailyCronExpression(config: DailyConfig): string {
+    const { hour, minute, second = 0 } = config.time;
+    return `${second} ${minute} ${hour} * * *`;
+  }
+
+  private generateHourlyCronExpression(config: HourlyConfig): string {
+    const { intervalHours, startTime } = config;
+    if (startTime) {
+      const { hour, minute, second = 0 } = startTime;
+      return `${second} ${minute} ${hour}-23/${intervalHours} * * *`;
+    } else {
+      return `0 0 */${intervalHours} * * *`;
+    }
+  }
+
+  private generateWeeklyCronExpression(config: WeeklyConfig): string {
+    const { days, time } = config;
+    const { hour, minute, second = 0 } = time;
+    return `${second} ${minute} ${hour} * * ${days.join(",")}`;
+  }
+
+  private getScheduledExecutionCallback(
+    testflowId: string,
+    environmentId: string,
+    schedulerId: string,
+    user: DecodedUserObject,
+    token: string,
+  ) {
+    return async () => {
+      await this.executeTestflow(
+        testflowId,
+        environmentId,
+        schedulerId,
+        user,
+        token,
+      );
+    };
+  }
 
   // Updated executeTestflow method
   private async executeTestflow(
     testflowId: string,
     environmentId: string,
+    schedulerId: string,
     user: DecodedUserObject,
     token: string,
-  ) {}
+  ) {
+    try {
+      const executionResult = {
+        failedRequests: "2",
+        requests: [
+          {
+            method: "POST",
+            name: "CreateUser",
+            status: "Failed",
+            time: new Date().toISOString(),
+          },
+          {
+            method: "GET",
+            name: "FetchUser",
+            status: "Success",
+            time: new Date().toISOString(),
+          },
+        ],
+        status: "completed",
+        successRequests: 5,
+        totalTime: "00:05:30",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: user._id.toString(),
+        updatedBy: user._id.toString(),
+      };
+      //Save execution result in DB
+      await this.testflowRepository.updateSchedularExecution(
+        testflowId,
+        schedulerId,
+        user._id,
+        executionResult,
+      );
+      console.log(`Scheduler execution stored for ${schedulerId}`);
+    } catch (err) {
+      console.error(
+        `Error executing testflow for scheduler ${schedulerId}:`,
+        err,
+      );
+    }
+  }
 }

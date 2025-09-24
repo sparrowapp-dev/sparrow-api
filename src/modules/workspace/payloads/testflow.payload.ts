@@ -139,6 +139,11 @@ export class CreateTestflowSchedularDto {
   @IsNotEmpty()
   testflowId: string;
 
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  workspaceId: string;
+
   @IsString()
   @ApiProperty({ required: true, example: "New Testflow Schedular Name" })
   @IsOptional()
