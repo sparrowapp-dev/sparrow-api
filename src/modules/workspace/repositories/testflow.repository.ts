@@ -17,7 +17,11 @@ import { Collections } from "@src/modules/common/enum/database.collection.enum";
 // ---- Services
 
 // ---- Payload & model
-import { Testflow } from "@src/modules/common/models/testflow.model";
+import {
+  Testflow,
+  TestflowSchedular,
+  TestFlowSchedularRunHistory,
+} from "@src/modules/common/models/testflow.model";
 import { UpdateTestflowDto } from "../payloads/testflow.payload";
 
 @Injectable()
@@ -72,7 +76,7 @@ export class TestflowRepository {
   async getTestflowsByIds(testflowIds: string[]): Promise<WithId<Testflow>[]> {
     const testflows = await this.db.collection<Testflow>(Collections.TESTFLOW)
     .find({ _id: { $in: testflowIds.map(id => new ObjectId(id)) } })
-    .toArray();
+      .toArray();
     if (!testflows) {
       throw new BadRequestException(
         "The testflows with that ids could not be found.",
@@ -124,5 +128,107 @@ export class TestflowRepository {
         { $set: { ...updateTestflowDto, ...defaultParams } },
       );
     return data;
+  }
+
+  // Add new schedular to Testflow by _id
+  async addSchedular(
+    testflowId: string,
+    schedularData: TestflowSchedular,
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $push: { schedules: schedularData },
+        $set: { updatedAt: new Date() },
+      },
+    );
+  }
+
+  // Update schedular details by schedular id within a Testflow document
+  async updateSchedular(
+    testflowId: string,
+    schedularId: string,
+    updatedSchedular: TestflowSchedular,
+  ): Promise<UpdateResult> {
+    // Ensure updatedAt is set
+    updatedSchedular.updatedAt = new Date();
+    return this.db
+      .collection(Collections.TESTFLOW)
+      .updateOne(
+        { _id: new ObjectId(testflowId) },
+        { $set: { "schedules.$[elem]": updatedSchedular } },
+        { arrayFilters: [{ "elem.id": schedularId }] },
+      );
+  }
+
+  // Remove schedular by schedular id inside Testflow document
+  async removeSchedular(
+    testflowId: string,
+    schedularId: string,
+    userId: ObjectId,
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $pull: { schedules: { id: schedularId } },
+        $set: { updatedAt: new Date(), updatedBy: userId.toString() },
+      },
+    );
+  }
+
+  async updateSchedularExecution(
+    testflowId: string,
+    schedularId: string,
+    userId: ObjectId,
+    runHistoryItem: TestFlowSchedularRunHistory,
+  ): Promise<UpdateResult> {
+    const now = new Date();
+    if (!testflowId || !schedularId) {
+      throw new Error("Both testflowId and schedularId are required");
+    }
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $inc: { "schedules.$[elem].executedCount": 1 },
+        $set: {
+          "schedules.$[elem].lastExecuted": now,
+          updatedAt: now,
+          updatedBy: userId?.toString() ?? null,
+        },
+        ...(runHistoryItem && {
+          $push: {
+            "schedules.$[elem].schedularRunHistory": runHistoryItem,
+          },
+        }),
+      },
+      {
+        arrayFilters: [{ "elem.id": schedularId }],
+      },
+    );
+  }
+
+  async updateSchedularStatus(
+    testflowId: string,
+    schedularId: string,
+    userId: ObjectId,
+    isActive = false,
+  ): Promise<UpdateResult> {
+    const now = new Date();
+    if (!testflowId || !schedularId) {
+      throw new Error("Both testflowId and schedularId are required");
+    }
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $set: {
+          "schedules.$[elem].isActive": isActive,
+          updatedAt: now,
+          updatedBy: userId?.toString() ?? null,
+        },
+      },
+      {
+        arrayFilters: [{ "elem.id": schedularId }],
+      },
+    );
   }
 }
