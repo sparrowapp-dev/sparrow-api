@@ -17,5 +17,4 @@ export type DecodedUserObject = {
 
 export interface ExtendedFastifyRequest extends FastifyRequest {
   user: DecodedUserObject;
-  headers: any;
 }
