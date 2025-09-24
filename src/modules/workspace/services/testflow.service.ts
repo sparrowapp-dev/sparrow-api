@@ -293,7 +293,6 @@ export class TestflowService {
   async createTestflowSchedular(
     schedularData: CreateTestflowSchedularDto,
     user: DecodedUserObject,
-    token: string,
   ) {
     try {
       const workspaceUsers = await this.workspaceReposistory.get(
@@ -356,7 +355,6 @@ export class TestflowService {
           schedularData.environmentId,
           schedulerId,
           user,
-          token,
         ),
         jobName,
         cronExpression,
@@ -527,7 +525,6 @@ export class TestflowService {
     environmentId: string,
     schedulerId: string,
     user: DecodedUserObject,
-    token: string,
   ) {
     return async () => {
       await this.executeTestflow(
@@ -535,7 +532,6 @@ export class TestflowService {
         environmentId,
         schedulerId,
         user,
-        token,
       );
     };
   }
@@ -546,7 +542,6 @@ export class TestflowService {
     environmentId: string,
     schedulerId: string,
     user: DecodedUserObject,
-    token: string,
   ) {
     try {
       const executionResult = {

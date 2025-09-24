@@ -316,11 +316,9 @@ export class TestflowController {
     @Req() request: ExtendedFastifyRequest,
   ) {
     const user = request.user;
-    const token = request?.headers["authorization"];
     const response = await this.testflowService.createTestflowSchedular(
       createTestflowSchedularDto,
       user,
-      token
     );
     const responseData = new ApiResponseService(
       "Success",
