@@ -30,11 +30,25 @@ import {
 } from "@src/modules/common/models/workspace.model";
 import {
   CreateTestflowDto,
+  CreateTestflowSchedularDto,
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
-import { Testflow } from "@src/modules/common/models/testflow.model";
+import {
+  RunConfigurationDto,
+  Testflow,
+  TestflowSchedular,
+} from "@src/modules/common/models/testflow.model";
 import { WorkspaceDtoForIdDocument } from "../payloads/workspace.payload";
 import { DecodedUserObject } from "@src/types/fastify";
+import { v4 as uuidv4 } from "uuid";
+import { TestflowSchedulerService } from "./testflow-schedular.service";
+import {
+  RunCycleConfig,
+  RunCycleEnum,
+} from "@src/modules/common/enum/testflow.enum";
+import { EnvironmentRepository } from "../repositories/environment.repository";
+import { HttpService } from "@nestjs/axios";
+import { lastValueFrom } from "rxjs";
 
 /**
  * Testflow Service
@@ -46,6 +60,9 @@ export class TestflowService {
     private readonly workspaceReposistory: WorkspaceRepository,
     private readonly producerService: ProducerService,
     private readonly workspaceService: WorkspaceService,
+    private readonly testflowSchedulerService: TestflowSchedulerService,
+    private readonly environmentReposistory: EnvironmentRepository,
+    private readonly httpService: HttpService,
   ) {}
 
   /**
@@ -269,5 +286,147 @@ export class TestflowService {
       throw new BadRequestException("You don't have access for this Workspace");
     }
     throw new NotFoundException("Workspace doesn't exist");
+  }
+
+  async createTestflowSchedular(
+    schedularData: CreateTestflowSchedularDto,
+    user: DecodedUserObject,
+    token: string,
+  ) {
+    try {
+      const runCycleConfig = this.buildRunCycleConfig(
+        schedularData.runConfiguration,
+      );
+      this.executeTestflow(
+        schedularData.testflowId,
+        schedularData.environmentId,
+        user,
+        token,
+      );
+      const result = await this.testflowSchedulerService.addSchedulerJob(
+        runCycleConfig,
+        () => {
+          this.executeTestflow(
+            schedularData.testflowId,
+            schedularData.environmentId,
+            user,
+            token
+          );
+        },
+        schedularData,
+        user,
+      );
+      return {
+        success: true,
+        message: "Scheduler created successfully",
+        data: result,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to create scheduler: ${error.message}`,
+      );
+    }
+  }
+
+  private buildRunCycleConfig(runConfig: RunConfigurationDto): RunCycleConfig {
+    switch (runConfig.runCycle) {
+      case RunCycleEnum.ONCE:
+        if (!runConfig.executeAt) {
+          throw new BadRequestException(
+            "executeAt is required for ONCE run cycle",
+          );
+        }
+        return {
+          type: RunCycleEnum.ONCE,
+          executeAt: new Date(runConfig.executeAt),
+        };
+
+      case RunCycleEnum.DAILY:
+        if (!runConfig.time) {
+          throw new BadRequestException("time is required for DAILY run cycle");
+        }
+        const dailyTime = this.parseTime(runConfig.time);
+        return {
+          type: RunCycleEnum.DAILY,
+          time: dailyTime,
+        };
+
+      case RunCycleEnum.HOURLY:
+        if (!runConfig.intervalHours) {
+          throw new BadRequestException(
+            "intervalHours is required for HOURLY run cycle",
+          );
+        }
+        return {
+          type: RunCycleEnum.HOURLY,
+          intervalHours: runConfig.intervalHours,
+          startTime: runConfig.time
+            ? this.parseTime(runConfig.time)
+            : undefined,
+        };
+
+      case RunCycleEnum.WEEKLY:
+        if (!runConfig.days || runConfig.days.length === 0) {
+          throw new BadRequestException(
+            "days array is required for WEEKLY run cycle",
+          );
+        }
+        if (!runConfig.time) {
+          throw new BadRequestException(
+            "time is required for WEEKLY run cycle",
+          );
+        }
+        const weeklyTime = this.parseTime(runConfig.time);
+        return {
+          type: RunCycleEnum.WEEKLY,
+          days: runConfig.days,
+          time: weeklyTime,
+        };
+
+      default:
+        throw new BadRequestException(
+          `Unsupported run cycle type: ${runConfig.runCycle}`,
+        );
+    }
+  }
+
+  private parseTime(timeString: string): {
+    hour: number;
+    minute: number;
+    second: number;
+  } {
+    const timeRegex = /^(\d{2}):(\d{2})$/;
+    const match = timeString.match(timeRegex);
+    if (!match) {
+      throw new BadRequestException(
+        `Invalid time format: ${timeString}. Expected HH:mm format.`,
+      );
+    }
+    const hour = parseInt(match[1], 10);
+    const minute = parseInt(match[2], 10);
+    if (hour < 0 || hour > 23) {
+      throw new BadRequestException(
+        `Invalid hour: ${hour}. Must be between 0-23.`,
+      );
+    }
+    if (minute < 0 || minute > 59) {
+      throw new BadRequestException(
+        `Invalid minute: ${minute}. Must be between 0-59.`,
+      );
+    }
+    return {
+      hour,
+      minute,
+      second: 0,
+    };
+  }
+
+  // Updated executeTestflow method
+  private async executeTestflow(
+    testflowId: string,
+    environmentId: string,
+    user: DecodedUserObject,
+    token: string,
+  ) {
   }
 }

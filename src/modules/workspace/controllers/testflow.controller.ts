@@ -32,6 +32,7 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 // ---- Payload
 import {
   CreateTestflowDto,
+  CreateTestflowSchedularDto,
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
 import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
@@ -279,6 +280,52 @@ export class TestflowController {
       "Success",
       HttpStatusCode.OK,
       testflow,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Create a new Testflow Schedular for a specific Testflow in a Workspace.
+   *
+   * @param {CreateTestflowSchedularDto} createTestflowSchedularDto - The schedular data to create.
+   * @param {FastifyReply} res - Fastify reply object used to send the response.
+   * @param {ExtendedFastifyRequest} request - The Fastify request object containing authenticated user info.
+   * @returns A response indicating success or failure of the schedular creation.
+   *
+   * @description
+   * This endpoint creates a test flow schedular associated with a specific testflow within a workspace.
+   */
+  @Post("/create-testflow-schedule")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Create a test flow schedular",
+    description:
+      "Creates a new test flow schedular for a specific testflow in a workspace",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Testflow schedular created successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to create a schedular",
+  })
+  async createTestflowSchedule(
+    @Body() createTestflowSchedularDto: CreateTestflowSchedularDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const token = request?.headers["authorization"];
+    const response = await this.testflowService.createTestflowSchedular(
+      createTestflowSchedularDto,
+      user,
+      token
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      response,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
