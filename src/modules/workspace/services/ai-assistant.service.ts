@@ -183,7 +183,6 @@ export class AiAssistantService {
         );
       }else{
         this.deepseekClient = this.getDeepSeekClient();
-        console.log("DeepSeek Client Initialized Successfully");
       }
 
     } catch (e) {
