@@ -1,32 +1,32 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import { CronJob } from "cron";
-import {
-  RunCycleEnum,
-} from "@src/modules/common/enum/testflow.enum";
+import { RunCycleEnum } from "@src/modules/common/enum/testflow.enum";
 import { RunCycleConfig } from "@src/modules/common/enum/testflow.enum";
 
 @Injectable()
 export class TestflowSchedulerService {
   private readonly logger = new Logger(TestflowSchedulerService.name);
 
-  constructor(
-    private schedulerRegistry: SchedulerRegistry,
-  ) {}
+  constructor(private schedulerRegistry: SchedulerRegistry) {}
 
   /**
    * Add a cron job
    */
   async addSchedulerJob(
     runCycle: RunCycleConfig,
-    runApis: (schedularId: string) => Promise<void>,
+    runApis: (
+      schedularId: string,
+    ) => Promise<void>,
     jobName: string,
     cronExpression: string,
     schedularId: string,
   ): Promise<boolean> {
-    console.log("Generated cronExpression:", cronExpression);
     if (!cronExpression) {
       console.error(`Invalid run cycle configuration for job ${jobName}`);
+      this.logger.log(
+        `Invalid run cycle configuration for job ${jobName}`,
+      );
       return false;
     }
     const job = new CronJob(cronExpression, async () => {
@@ -37,13 +37,13 @@ export class TestflowSchedulerService {
       if (runCycle.type === RunCycleEnum.ONCE) {
         job.stop();
         this.schedulerRegistry.deleteCronJob(jobName);
-        console.log(`One-time scheduler ${jobName} completed and removed`);
+        this.logger.log(`One-time scheduler ${jobName} completed and removed`);
       }
     });
     this.schedulerRegistry.addCronJob(jobName, job);
     job.start();
-    console.log(
-      `Scheduler job ${jobName} registered with cycle: ${runCycle.type}`,
+    this.logger.log(
+        `Scheduler job ${jobName} registered with cycle: ${runCycle.type}`,
     );
     return true;
   }

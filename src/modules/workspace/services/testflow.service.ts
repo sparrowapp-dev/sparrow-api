@@ -16,7 +16,9 @@ import { WorkspaceService } from "./workspace.service";
 
 // ---- Enum
 import { ErrorMessages } from "@src/modules/common/enum/error-messages.enum";
-import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
+import {
+  WorkspaceRole,
+} from "@src/modules/common/enum/roles.enum";
 import { TOPIC } from "@src/modules/common/enum/topic.enum";
 import { UpdatesType } from "@src/modules/common/enum/updates.enum";
 
@@ -349,7 +351,7 @@ export class TestflowService {
         schedularData.testflowId,
         newSchedular,
       );
-      // Register cron job
+      //Register cron job
       const jobAdded = await this.testflowSchedulerService.addSchedulerJob(
         runCycleConfig,
         this.getScheduledExecutionCallback(
@@ -550,10 +552,6 @@ export class TestflowService {
         testflowId,
         environmentId,
         user,
-      );
-      console.log(
-        "-----------this is the response we are getting----->",
-        response.history,
       );
       //Save execution result in DB
       await this.testflowRepository.updateSchedularExecution(

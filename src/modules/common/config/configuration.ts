@@ -137,6 +137,9 @@ export default () => ({
   admin: {
     baseURL: process.env.ADMIN_BASE_URL,
   },
+  sparrowProxy:{
+    baseUrl: process.env.SPARROW_PROXY_BASE_URL
+  },
   selfHost: {
     adminEmail: process.env.SELF_HOST_ADMIN_EMAIL,
     adminPassword: process.env.SELF_HOST_ADMIN_PASSWORD,
