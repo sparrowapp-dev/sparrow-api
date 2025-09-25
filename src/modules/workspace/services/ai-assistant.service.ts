@@ -164,9 +164,9 @@ export class AiAssistantService {
     try {
       if (!this.endpoint || !this.apiKey || !this.apiVersion) {
         console.warn("GPT Client is disabled. Missing configuration values");
-        return;
+      }else{
+        this.gptAssistantsClient = this.getGPTClient();
       }
-      this.gptAssistantsClient = this.getGPTClient();
     } catch (e) {
       console.error(e);
     }
@@ -181,9 +181,11 @@ export class AiAssistantService {
         console.warn(
           "Deepseek Client is disabled. Missing configuration values",
         );
-        return;
+      }else{
+        this.deepseekClient = this.getDeepSeekClient();
+        console.log("DeepSeek Client Initialized Successfully");
       }
-      this.deepseekClient = this.getDeepSeekClient();
+
     } catch (e) {
       console.error(e);
     }
