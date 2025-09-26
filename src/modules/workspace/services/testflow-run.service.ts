@@ -19,6 +19,7 @@ export class TestflowRunService {
 
   /**
    * Combines global environment variables with current environment variables
+   * Current environment variables take precedence over global ones
    * @param globalVariables - Global environment variables array
    * @param currentVariables - Current environment variables array
    * @returns Combined environment variables with type indicators
@@ -31,24 +32,15 @@ export class TestflowRunService {
     value: string;
     type: "G" | "E";
   }> {
-    // Initialize result structure
-    const result = {
-      filtered: [] as Array<{
-        key: string;
-        value: string;
-        type: "G" | "E";
-      }>,
-    };
-    const combinedVariables: Array<{
-      key: string;
-      value: string;
-      type: "G" | "E";
-    }> = [];
-    // Process global environment variables
-    if (globalVariables) {
+    const variableMap = new Map<
+      string,
+      { key: string; value: string; type: "G" | "E" }
+    >();
+    // Add global environment variables first
+    if (globalVariables?.length) {
       globalVariables.forEach((variable) => {
         if (variable.key && variable.checked) {
-          combinedVariables.unshift({
+          variableMap.set(variable.key, {
             key: variable.key,
             value: variable.value,
             type: "G",
@@ -56,11 +48,11 @@ export class TestflowRunService {
         }
       });
     }
-    // Process current environment variables
-    if (currentVariables) {
+    // Add current environment variables (override global if same key exists)
+    if (currentVariables?.length) {
       currentVariables.forEach((variable) => {
         if (variable.key && variable.checked) {
-          combinedVariables.unshift({
+          variableMap.set(variable.key, {
             key: variable.key,
             value: variable.value,
             type: "E",
@@ -68,7 +60,9 @@ export class TestflowRunService {
         }
       });
     }
-    return combinedVariables;
+
+    // Convert map back to array
+    return Array.from(variableMap.values());
   }
 
   public handleTestFlowRun = async (
