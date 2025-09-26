@@ -1,28 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import { CronJob } from "cron";
-import { v4 as uuidv4 } from "uuid";
-import { TestflowRepository } from "../repositories/testflow.repository";
-import { CreateTestflowSchedularDto } from "../payloads/testflow.payload";
-import { DecodedUserObject } from "@src/types/fastify";
-import { TestflowSchedular } from "@src/modules/common/models/testflow.model";
-import {
-  DailyConfig,
-  HourlyConfig,
-  OnceConfig,
-  RunCycleEnum,
-  WeeklyConfig,
-} from "@src/modules/common/enum/testflow.enum";
+import { RunCycleEnum } from "@src/modules/common/enum/testflow.enum";
 import { RunCycleConfig } from "@src/modules/common/enum/testflow.enum";
 
 @Injectable()
 export class TestflowSchedulerService {
   private readonly logger = new Logger(TestflowSchedulerService.name);
 
-  constructor(
-    private schedulerRegistry: SchedulerRegistry,
-    private readonly testflowRepository: TestflowRepository,
-  ) {}
+  constructor(private schedulerRegistry: SchedulerRegistry) {}
 
   /**
    * Add a cron job
@@ -34,9 +20,9 @@ export class TestflowSchedulerService {
     cronExpression: string,
     schedularId: string,
   ): Promise<boolean> {
-    console.log("Generated cronExpression:", cronExpression);
     if (!cronExpression) {
       console.error(`Invalid run cycle configuration for job ${jobName}`);
+      this.logger.log(`Invalid run cycle configuration for job ${jobName}`);
       return false;
     }
     const job = new CronJob(cronExpression, async () => {
@@ -47,12 +33,12 @@ export class TestflowSchedulerService {
       if (runCycle.type === RunCycleEnum.ONCE) {
         job.stop();
         this.schedulerRegistry.deleteCronJob(jobName);
-        console.log(`One-time scheduler ${jobName} completed and removed`);
+        this.logger.log(`One-time scheduler ${jobName} completed and removed`);
       }
     });
     this.schedulerRegistry.addCronJob(jobName, job);
     job.start();
-    console.log(
+    this.logger.log(
       `Scheduler job ${jobName} registered with cycle: ${runCycle.type}`,
     );
     return true;
