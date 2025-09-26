@@ -355,6 +355,7 @@ export class TestflowService {
         this.getScheduledExecutionCallback(
           schedularData.testflowId,
           schedularData.environmentId,
+          schedularData.workspaceId,
           schedulerId,
           user,
         ),
@@ -525,11 +526,18 @@ export class TestflowService {
   private getScheduledExecutionCallback(
     testflowId: string,
     environmentId: string,
+    workspaceId: string,
     schedulerId: string,
     user: DecodedUserObject,
   ) {
     return async () => {
-      await this.executeTestflow(testflowId, environmentId, schedulerId, user);
+      await this.executeTestflow(
+        testflowId,
+        environmentId,
+        workspaceId,
+        schedulerId,
+        user,
+      );
     };
   }
 
@@ -537,6 +545,7 @@ export class TestflowService {
   private async executeTestflow(
     testflowId: string,
     environmentId: string,
+    workspaceId: string,
     schedulerId: string,
     user: DecodedUserObject,
   ) {
@@ -544,6 +553,7 @@ export class TestflowService {
       const response = await this.testflowRunService.handleTestFlowRun(
         testflowId,
         environmentId,
+        workspaceId,
         user,
       );
       //Save execution result in DB
