@@ -36,6 +36,7 @@ export class TestflowRunService {
     const body = {
       nodes: testflowData.nodes || [],
       variables: environmentData.variable || [],
+      edges:testflowData.edges,
       userId: user._id,
     };
     try {

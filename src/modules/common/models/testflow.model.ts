@@ -285,6 +285,14 @@ export class TestflowSchedularHistoryRequest {
   @IsString()
   @IsOptional()
   time: string;
+
+  @IsString()
+  @IsOptional()
+  errorMessage?: string;
+
+  @IsString()
+  @IsOptional()
+  error?: string;
 }
 
 export class TestFlowSchedularRunHistory {
