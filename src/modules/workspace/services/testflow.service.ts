@@ -52,6 +52,7 @@ import {
   WeeklyConfig,
 } from "@src/modules/common/enum/testflow.enum";
 import { EnvironmentRepository } from "../repositories/environment.repository";
+import { TestflowRunService } from "./testflow-run.service";
 
 /**
  * Testflow Service
@@ -65,6 +66,7 @@ export class TestflowService {
     private readonly workspaceService: WorkspaceService,
     private readonly testflowSchedulerService: TestflowSchedulerService,
     private readonly environmentReposistory: EnvironmentRepository,
+    private readonly testflowRunService: TestflowRunService,
   ) {}
 
   /**
@@ -347,7 +349,7 @@ export class TestflowService {
         schedularData.testflowId,
         newSchedular,
       );
-      // Register cron job
+      //Register cron job
       const jobAdded = await this.testflowSchedulerService.addSchedulerJob(
         runCycleConfig,
         this.getScheduledExecutionCallback(
@@ -527,12 +529,7 @@ export class TestflowService {
     user: DecodedUserObject,
   ) {
     return async () => {
-      await this.executeTestflow(
-        testflowId,
-        environmentId,
-        schedulerId,
-        user,
-      );
+      await this.executeTestflow(testflowId, environmentId, schedulerId, user);
     };
   }
 
@@ -544,37 +541,30 @@ export class TestflowService {
     user: DecodedUserObject,
   ) {
     try {
-      const executionResult = {
-        failedRequests: "2",
-        requests: [
-          {
-            method: "POST",
-            name: "CreateUser",
-            status: "Failed",
-            time: new Date().toISOString(),
-          },
-          {
-            method: "GET",
-            name: "FetchUser",
-            status: "Success",
-            time: new Date().toISOString(),
-          },
-        ],
-        status: "completed",
-        successRequests: 5,
-        totalTime: "00:05:30",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: user._id.toString(),
-        updatedBy: user._id.toString(),
-      };
+      const response = await this.testflowRunService.handleTestFlowRun(
+        testflowId,
+        environmentId,
+        user,
+      );
       //Save execution result in DB
       await this.testflowRepository.updateSchedularExecution(
         testflowId,
         schedulerId,
         user._id,
-        executionResult,
+        response.history,
       );
+      const getSchedular = await this.testflowRepository.getSchedularById(
+        testflowId,
+        schedulerId,
+      );
+      if (getSchedular.runConfiguration.runCycle === RunCycleEnum.ONCE) {
+        await this.testflowRepository.updateSchedularStatus(
+          testflowId,
+          schedulerId,
+          user._id,
+          false,
+        );
+      }
       console.log(`Scheduler execution stored for ${schedulerId}`);
     } catch (err) {
       console.error(
