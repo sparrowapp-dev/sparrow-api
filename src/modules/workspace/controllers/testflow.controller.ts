@@ -295,7 +295,7 @@ export class TestflowController {
    * @description
    * This endpoint creates a test flow schedular associated with a specific testflow within a workspace.
    */
-  @Post("/create-testflow-schedule")
+  @Post("create-testflow-schedule")
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: "Create a test flow schedular",
@@ -315,15 +315,16 @@ export class TestflowController {
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
   ) {
-    const user = request.user;
-    const response = await this.testflowService.createTestflowSchedular(
+   const user = request.user;
+    await this.testflowService.createTestflowSchedular(
       createTestflowSchedularDto,
       user,
-    );
+    );  
+    const testflow = await this.testflowService.getTestflow(createTestflowSchedularDto.testflowId);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
-      response,
+      testflow,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
