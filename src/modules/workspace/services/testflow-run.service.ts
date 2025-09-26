@@ -32,15 +32,13 @@ export class TestflowRunService {
     value: string;
     type: "G" | "E";
   }> {
-    const variableMap = new Map<
-      string,
-      { key: string; value: string; type: "G" | "E" }
-    >();
+    const combined: Array<{ key: string; value: string; type: "G" | "E" }> = [];
+
     // Add global environment variables first
     if (globalVariables?.length) {
       globalVariables.forEach((variable) => {
         if (variable.key && variable.checked) {
-          variableMap.set(variable.key, {
+          combined.push({
             key: variable.key,
             value: variable.value,
             type: "G",
@@ -48,11 +46,12 @@ export class TestflowRunService {
         }
       });
     }
-    // Add current environment variables (override global if same key exists)
+
+    // Add current environment variables (these should override)
     if (currentVariables?.length) {
       currentVariables.forEach((variable) => {
         if (variable.key && variable.checked) {
-          variableMap.set(variable.key, {
+          combined.push({
             key: variable.key,
             value: variable.value,
             type: "E",
@@ -60,9 +59,12 @@ export class TestflowRunService {
         }
       });
     }
-
-    // Convert map back to array
-    return Array.from(variableMap.values());
+    // Deduplicate by key, keeping the last (so current overrides global)
+    const deduped = combined.filter(
+      (item, index, self) =>
+        index === self.findLastIndex((v) => v.key === item.key),
+    );
+    return deduped;
   }
 
   public handleTestFlowRun = async (
