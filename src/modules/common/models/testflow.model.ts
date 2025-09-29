@@ -297,6 +297,10 @@ export class TestflowSchedularHistoryRequest {
 
 export class TestFlowSchedularRunHistory {
   @IsString()
+  @ApiProperty({ required: true, example: "uuid" })
+  id: string;
+
+  @IsString()
   @IsNotEmpty()
   failedRequests: number;
 

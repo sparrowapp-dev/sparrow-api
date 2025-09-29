@@ -597,6 +597,7 @@ export class TestflowService implements OnModuleInit {
         user,
       );
       const scheduleHistory = {
+        id:uuidv4(),
         nodes: response.nodes,
         edges: response.edges,
         ...response.result.history,
