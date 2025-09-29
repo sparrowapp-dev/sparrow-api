@@ -328,4 +328,89 @@ export class TestflowController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+   /**
+     * Update a specific schedule for a testflow.
+     */
+    @Put(':workspaceId/testflow/:testflowId/schedule/:scheduleId')
+    @ApiOperation({ summary: 'Update Testflow Schedule', description: 'Update a specific schedule for a testflow.' })
+    @ApiResponse({ status: 200, description: 'Schedule updated successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to update schedule' })
+    @UseGuards(JwtAuthGuard)
+    async updateTestflowSchedule(
+      @Param('workspaceId') workspaceId: string,
+      @Param('testflowId') testflowId: string,
+      @Param('scheduleId') scheduleId: string,
+      @Body() updateScheduleDto: any,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      const result = await this.testflowService.updateTestflowSchedule(
+        testflowId,
+        scheduleId,
+        updateScheduleDto,
+        workspaceId,
+        user,
+      );
+      const responseData = new ApiResponseService('Schedule Updated', HttpStatusCode.OK, result);
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
+
+    /**
+     * Delete a specific schedule from a testflow.
+     */
+    @Delete(':workspaceId/testflow/:testflowId/schedule/:scheduleId')
+    @ApiOperation({ summary: 'Delete Testflow Schedule', description: 'Delete a specific schedule from a testflow.' })
+    @ApiResponse({ status: 200, description: 'Schedule deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to delete schedule' })
+    @UseGuards(JwtAuthGuard)
+    async deleteTestflowSchedule(
+      @Param('workspaceId') workspaceId: string,
+      @Param('testflowId') testflowId: string,
+      @Param('scheduleId') scheduleId: string,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      const result = await this.testflowService.deleteTestflowSchedule(
+        testflowId,
+        scheduleId,
+        workspaceId,
+        user,
+      );
+      const responseData = new ApiResponseService('Schedule Deleted', HttpStatusCode.OK, result);
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
+
+    /**
+     * Manually run a testflow schedule.
+     */
+    @Post(':workspaceId/testflow/:testflowId/schedule/:scheduleId/run')
+    @ApiOperation({ summary: 'Run Testflow Schedule', description: 'Manually run a testflow schedule.' })
+    @ApiResponse({ status: 200, description: 'Schedule run triggered successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to run schedule' })
+    @UseGuards(JwtAuthGuard)
+    async runTestflowSchedule(
+      @Param('workspaceId') workspaceId: string,
+      @Param('testflowId') testflowId: string,
+      @Param('scheduleId') scheduleId: string,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      const result = await this.testflowService.runTestflowSchedule(
+        testflowId,
+        scheduleId,
+        workspaceId,
+        user,
+      );
+      const testflow = await this.testflowService.getTestflow(testflowId);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
 }
