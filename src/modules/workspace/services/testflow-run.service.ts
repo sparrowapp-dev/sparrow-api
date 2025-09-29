@@ -83,15 +83,15 @@ export class TestflowRunService {
     const globalEnvDetails = await this.environmentReposistory.get(
       globalEnvironment.id.toString(),
     );
-    const environmentData =
-      await this.environmentReposistory.get(environmentId);
-    const activeVariables = this.combineEnvironmentData(
-      globalEnvDetails.variable,
-      environmentData.variable,
-    );
-    if (!environmentData) {
-      throw new NotFoundException("Environment not found.");
+    let environmentData;
+    if (environmentId) {
+      environmentData =
+        await this.environmentReposistory.get(environmentId);
     }
+    const activeVariables = this.combineEnvironmentData(
+      globalEnvDetails?.variable || [],
+      environmentData?.variable || [],
+    );
     // Build proxy URL
     const sparrowProxy = this.configService.get<string>("sparrowProxy.baseUrl");
     const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
