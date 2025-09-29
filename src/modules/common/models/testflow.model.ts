@@ -485,6 +485,18 @@ export class TestflowSchedular {
   schedularName?:string;
 
   @IsArray()
+  @Type(() => TestflowEdges)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  edges: TestflowEdges[];
+
+  @IsArray()
+  @Type(() => TestflowNodes)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  nodes: TestflowNodes[];
+
+  @IsArray()
   @Type(() => TestFlowSchedularRunHistory)
   @ValidateNested({ each: true })
   @IsOptional()

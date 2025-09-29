@@ -67,15 +67,16 @@ export class TestflowRunService {
   }
 
   public handleTestFlowRun = async (
-    testflowId: string,
+    testflowId:string,
+    schedularId: string,
     environmentId: string,
     workspaceId: string,
     user?: DecodedUserObject,
   ): Promise<any> => {
     // Fetch testflow and environment data
-    const testflowData = await this.testflowRepository.get(testflowId);
-    if (!testflowData) {
-      throw new NotFoundException("Testflow not found.");
+    const schedularData = await this.testflowRepository.getSchedularById(testflowId,schedularId);
+    if (!schedularData) {
+      throw new NotFoundException("Schedular not found.");
     }
     const workspaceID = await this.workspaceReposistory.get(workspaceId);
     const globalEnvironment = workspaceID.environments[0];
@@ -96,9 +97,9 @@ export class TestflowRunService {
     const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
     // Prepare request body for proxy API
     const body = {
-      nodes: testflowData.nodes || [],
+      nodes: schedularData.nodes || [],
       variables: activeVariables || [],
-      edges: testflowData.edges,
+      edges: schedularData.edges,
       userId: user?._id || new ObjectId("000000000000000000000000"),
     };
     try {
