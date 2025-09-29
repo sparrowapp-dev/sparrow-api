@@ -304,6 +304,18 @@ export class TestFlowSchedularRunHistory {
   @IsOptional()
   requests?: TestflowSchedularHistoryRequest[];
 
+  @IsArray()
+  @Type(() => TestflowEdges)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  edges: TestflowEdges[];
+
+  @IsArray()
+  @Type(() => TestflowNodes)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  nodes: TestflowNodes[];
+
   @IsString()
   @IsNotEmpty()
   status: string;
@@ -483,18 +495,6 @@ export class TestflowSchedular {
   @ApiProperty({ required: true, example: "test" })
   @IsOptional()
   schedularName?:string;
-
-  @IsArray()
-  @Type(() => TestflowEdges)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  edges: TestflowEdges[];
-
-  @IsArray()
-  @Type(() => TestflowNodes)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  nodes: TestflowNodes[];
 
   @IsArray()
   @Type(() => TestFlowSchedularRunHistory)

@@ -7,6 +7,7 @@ import { ConfigService } from "@nestjs/config";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { VariableDto } from "@src/modules/common/models/environment.model";
 import { ObjectId } from "mongodb";
+import { TestflowEdges, TestflowNodes } from "@src/modules/common/models/testflow.model";
 
 @Injectable()
 export class TestflowRunService {
@@ -67,17 +68,13 @@ export class TestflowRunService {
   }
 
   public handleTestFlowRun = async (
-    testflowId:string,
-    schedularId: string,
     environmentId: string,
     workspaceId: string,
+    testflowNodes:TestflowNodes[],
+    testflowEdges:TestflowEdges[],
     user?: DecodedUserObject,
   ): Promise<any> => {
     // Fetch testflow and environment data
-    const schedularData = await this.testflowRepository.getSchedularById(testflowId,schedularId);
-    if (!schedularData) {
-      throw new NotFoundException("Schedular not found.");
-    }
     const workspaceID = await this.workspaceReposistory.get(workspaceId);
     const globalEnvironment = workspaceID.environments[0];
     const globalEnvDetails = await this.environmentReposistory.get(
@@ -97,9 +94,9 @@ export class TestflowRunService {
     const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
     // Prepare request body for proxy API
     const body = {
-      nodes: schedularData.nodes || [],
+      nodes: testflowNodes || [],
       variables: activeVariables || [],
-      edges: schedularData.edges,
+      edges: testflowEdges,
       userId: user?._id || new ObjectId("000000000000000000000000"),
     };
     try {

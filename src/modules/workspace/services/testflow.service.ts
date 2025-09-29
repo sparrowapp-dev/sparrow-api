@@ -37,6 +37,8 @@ import {
 import {
   RunConfigurationDto,
   Testflow,
+  TestflowEdges,
+  TestflowNodes,
   TestflowSchedular,
 } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
@@ -63,7 +65,7 @@ import { UserRepository } from "@src/modules/identity/repositories/user.reposito
  * Testflow Service
  */
 @Injectable()
-export class TestflowService implements OnModuleInit  {
+export class TestflowService implements OnModuleInit {
   private readonly logger = new Logger(TestflowService.name);
   constructor(
     private readonly testflowRepository: TestflowRepository,
@@ -74,10 +76,10 @@ export class TestflowService implements OnModuleInit  {
     private readonly testflowRunService: TestflowRunService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-    private readonly userReposistory:UserRepository
+    private readonly userReposistory: UserRepository,
   ) {}
 
-   async onModuleInit() {
+  async onModuleInit() {
     this.logger.log("Bootstrapping schedulers from DB...");
     const testflows = await this.testflowRepository.getAll();
     for (const tf of testflows) {
@@ -93,7 +95,9 @@ export class TestflowService implements OnModuleInit  {
               tf._id.toString(),
               schedule.environmentId,
               tf.workspaceId,
-              schedule.id
+              schedule.id,
+              tf.nodes,
+              tf.edges,
             ),
             schedule.schedularName,
             schedule.cronExpression,
@@ -102,7 +106,7 @@ export class TestflowService implements OnModuleInit  {
         }
       }
     }
-   }
+  }
 
   /**
    * Creates new testflow.
@@ -352,7 +356,9 @@ export class TestflowService implements OnModuleInit  {
           "User does not have permission to perform this action.",
         );
       }
-      const testflowDetails = await this.testflowRepository.get(schedularData.testflowId);
+      const testflowDetails = await this.testflowRepository.get(
+        schedularData.testflowId,
+      );
       // Build cron config
       const runCycleConfig = this.buildRunCycleConfig(
         schedularData.runConfiguration,
@@ -373,8 +379,6 @@ export class TestflowService implements OnModuleInit  {
         notification: schedularData.notification,
         isActive: true,
         cronExpression,
-        nodes:testflowDetails?.nodes,
-        edges:testflowDetails?.edges,
         schedularName: jobName,
         executedCount: 0,
         lastExecuted: undefined,
@@ -395,6 +399,8 @@ export class TestflowService implements OnModuleInit  {
           schedularData.environmentId,
           schedularData.workspaceId,
           schedulerId,
+          testflowDetails.nodes,
+          testflowDetails.edges,
           user,
         ),
         jobName,
@@ -566,6 +572,8 @@ export class TestflowService implements OnModuleInit  {
     environmentId: string,
     workspaceId: string,
     schedulerId: string,
+    nodes: TestflowNodes[],
+    edges: TestflowEdges[],
     user?: DecodedUserObject,
   ) {
     return async () => {
@@ -574,6 +582,8 @@ export class TestflowService implements OnModuleInit  {
         environmentId,
         workspaceId,
         schedulerId,
+        nodes,
+        edges,
         user,
       );
     };
@@ -585,21 +595,28 @@ export class TestflowService implements OnModuleInit  {
     environmentId: string,
     workspaceId: string,
     schedulerId: string,
+    nodes: TestflowNodes[],
+    edges: TestflowEdges[],
     user?: DecodedUserObject,
   ) {
     try {
       const response = await this.testflowRunService.handleTestFlowRun(
-        testflowId,
-        schedulerId,
         environmentId,
         workspaceId,
+        nodes,
+        edges,
         user,
       );
+      const scheduleHistory = {
+        nodes,
+        edges,
+        ...response.result.history,
+      };
       //Save execution result in DB
       await this.testflowRepository.updateSchedularExecution(
         testflowId,
         schedulerId,
-        response.result.history,
+        scheduleHistory,
       );
       const getSchedular = await this.testflowRepository.getSchedularById(
         testflowId,
@@ -622,7 +639,9 @@ export class TestflowService implements OnModuleInit  {
         scheduleRunResult = "partial";
       }
       const totalRequestCount = data.successRequests + data.failedRequests;
-      const userDetails = await this.userReposistory.getUserById(data.createdBy);
+      const userDetails = await this.userReposistory.getUserById(
+        data.createdBy,
+      );
       const successPercentage =
         (data.successRequests / totalRequestCount) * 100;
       const emailData: EmailData = {
@@ -638,7 +657,8 @@ export class TestflowService implements OnModuleInit  {
         scheduleRunEnvName: response.environmentName,
         isSuccess: data.successRequests === totalRequestCount,
         isFailed: data.successRequests === 0,
-        isPartial: data.successRequests > 0 && data.successRequests < totalRequestCount
+        isPartial:
+          data.successRequests > 0 && data.successRequests < totalRequestCount,
       };
       if (
         getSchedular.notification.receiveNotifications ===
