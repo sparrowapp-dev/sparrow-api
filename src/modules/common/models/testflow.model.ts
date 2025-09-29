@@ -21,7 +21,7 @@ import {
 import { Auth, KeyValue, SparrowRequestBody } from "./collection.rxdb.model";
 import { AuthModeEnum, BodyModeEnum } from "./collection.model";
 import { HTTPMethods } from "fastify";
-import { DayOfWeek, RunCycleEnum } from "../enum/testflow.enum";
+import { DayOfWeek, NotificationReceiveType, RunCycleEnum } from "../enum/testflow.enum";
 
 export class RequestMetaData {
   @ApiProperty({ example: "put" })
@@ -304,6 +304,18 @@ export class TestFlowSchedularRunHistory {
   @IsOptional()
   requests?: TestflowSchedularHistoryRequest[];
 
+  @IsArray()
+  @Type(() => TestflowEdges)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  edges: TestflowEdges[];
+
+  @IsArray()
+  @Type(() => TestflowNodes)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  nodes: TestflowNodes[];
+
   @IsString()
   @IsNotEmpty()
   status: string;
@@ -348,7 +360,7 @@ export class NotificationDto {
     description: "NotificationType",
   })
   @IsString()
-  receiveNotifications: string;
+  receiveNotifications: NotificationReceiveType;
 }
 
 export class RunConfigurationDto {

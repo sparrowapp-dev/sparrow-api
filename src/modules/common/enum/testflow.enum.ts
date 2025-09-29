@@ -15,6 +15,27 @@ export enum DayOfWeek {
   SATURDAY = 6,
 }
 
+export enum NotificationReceiveType {
+  FAILURE = "failure",
+  EVERY_TIME = "every_time",
+}
+
+export interface EmailData {
+  userName: string;
+  scheduleName: string;
+  scheduleLastestRun: Date;
+  scheduleRunResult: string;
+  scheduleRunPassedCount: number;
+  scheduleRunFailedCount: number;
+  scheduleRunTotalRequest: number;
+  scheduleRunPassPercentage: number; 
+  scheduleTotalTime: string | number;
+  scheduleRunEnvName: string;
+  isSuccess: boolean;
+  isFailed: boolean;
+  isPartial: boolean;
+}
+
 export interface OnceConfig {
   type: RunCycleEnum.ONCE;
   executeAt: Date;
