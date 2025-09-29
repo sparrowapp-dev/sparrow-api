@@ -1,0 +1,380 @@
+{{!< layoutName}} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sparrow Test Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #101318;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            margin: 0 auto;
+            background-color: #101318;
+            padding-left: 24px;
+            padding-right: 24px;
+            color: #FFFFFF;
+        }
+
+        .report-header {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;  
+            align-items: center;
+            gap: 12px;
+            text-align: center;
+            padding: 24px 0;
+            background: linear-gradient(124.46deg, #11ADF0 0%, #316CF6 50.69%, #6147FF 101.37%);
+        }
+
+        .report-title {
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;            
+            font-style: normal;          
+            font-size: 20px;
+            line-height: 1.2;
+            display: block;             
+            letter-spacing: 0;           
+            text-align: center;
+            color: #FFFFFF;
+         }
+
+        .report-subtitle {
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            font-size: 14px;
+            display: block; 
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: center;
+            color: #FFFFFF;
+        }
+
+        .greeting-section {
+            margin-top: 10px;
+            padding: 0px 20px;
+            margin-bottom: 10px;
+        }
+
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: left;
+        }
+
+        .test-info {
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: left;
+            color: #D8D8D9;
+        }
+
+         .run-summary {
+            margin-bottom: 20px;
+          }
+                
+         .summary-title {
+            font-size: 18px;
+            font-weight: 600;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #31353F;
+            color: #D8D8D9;
+         }
+                
+                .summary-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0;
+                }
+                
+                .summary-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid #181C26;
+                    padding: 18px 8px;
+                }
+                
+                .summary-item:last-child {
+                    border-bottom: none;
+                }
+                
+                .summary-label {
+                    font-size: 14px;
+                    color: #D8D8D9;
+                    opacity: 0.7;
+                }
+                
+                .summary-value {
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #D8D8D9;
+                }
+                
+                .summary-value.passed {
+                    color: #4caf50;
+                }
+                
+                .summary-value.failed {
+                    color: #f44336;
+                }
+                
+                .summary-value.pass-rate {
+                    color: #03a9f4;
+                }
+
+        .passed { color: #10B981; }
+        .failed { color: #EF4444; }
+        .skipped { color: #F59E0B; }
+
+        .run-result {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: left;
+            color: #D8D8D9;
+        }
+
+        .status-badge {
+            background: #EF4444;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .user-badge {
+            background: #8B5CF6;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        .run-details {
+            margin-bottom: 16px;
+        }
+
+        .details-title {
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: left;
+            color: #D8D8D9;
+            margin-bottom: 10px;
+        }
+
+        .details-list {
+            list-style-type: disc; 
+            padding-left: 20px;
+        }
+
+        .details-list li {
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: left;
+            color: #D8D8D9;
+        }
+
+        .avatar {
+            width: 60px;
+            height: 60px;
+            background: #3B82F6;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin: 20px auto;
+        }
+
+        .view-report-btn {
+            background: #316CF6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .view-report-btn:hover {
+            background: #2563EB;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: left;
+        }
+
+        .footer p {
+            font-size: 14px;
+            line-height: 1.6;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .footer a {
+            color: #60A5FA;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .pass-rate {
+            color: #F59E0B;
+            font-weight: 600;
+        }
+        .status-color{
+          font-family: 'Inter', sans-serif;
+          font-weight: 700;           
+          font-style: normal;          
+          font-size: 16px;
+          line-height: 1.5;            
+          letter-spacing: 0;
+        }
+        .label-text{
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            font-size: 16px;
+            line-height: 1.5;
+            letter-spacing: 0;
+        }
+    </style>
+</head>
+<body>
+    <section style="width: 100%;">
+        {{> headerV2}}
+        <div class="report-header">
+            <div class="" style="text-align: center;">
+                <h1 class="report-title">Sparrow Test Report</h1>
+            </div>
+            <div style="text-align: center;">
+                <p class="report-subtitle">Scheduled Run Completed</p>
+            </div>
+        </div>
+        <div class="container">
+            <!-- Greeting Section -->
+            <div class="greeting-section">
+                <p class="greeting">Hi {{userName}}, 👋</p>
+                <p class="test-info">
+                    Your scheduled run for "{{scheduleName}}" completed at {{scheduleLastestRun}}. Here's the overview of the results:
+                </p>
+                <div class="run-result">
+                    Run Result: 
+                    {{#if isSuccess}}
+                        ✅️ <span class="status-color" style="color:#D8D8D9;"> Success</span> (All Passed)
+                    {{else if isFailed}}
+                        ❌️ <span class="status-color" style="color:#D8D8D9;"> Failed</span>
+                    {{else if isPartial}}
+                        ⚠️ <span class="status-color" style="color:#D8D8D9;"> Partially Failed</span><span>({{scheduleRunPassedCount}}/{{scheduleRunTotalRequest}} Requests Failed)</span>
+                    {{/if}}
+                </div>
+            </div>
+
+            <!-- Run Summary -->
+            <div class="run-summary">
+                <h2 class="summary-title">Run Summary</h2>
+                <div class="summary-container">
+                    <div class="summary-item">
+                        <span class="summary-label">Total Requests</span>
+                        <span class="summary-value">{{scheduleRunTotalRequest}}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Passed</span>
+                        <span class="summary-value passed">{{scheduleRunPassedCount}}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Failed</span>
+                        <span class="summary-value failed">{{scheduleRunFailedCount}}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Pass Rate</span>
+                        <span class="summary-value pass-rate">{{scheduleRunPassPercentage}}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Duration</span>
+                        <span class="summary-value">{{scheduleTotalTime}}</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Run Details -->
+            <div class="run-details">
+                <h3 class="details-title">Run Details:</h3>
+                <ul class="details-list">
+                    <li><strong>Schedule Name: </strong>{{scheduleName}}</li>
+                    <li><strong>Executed On: </strong>{{scheduleLastestRun}}</li>
+                    <li><strong>Environment: </strong>{{scheduleRunEnvName}}</li>
+                </ul>
+            </div>
+
+            <!-- View Report Button -->
+            <div style="margin-bottom: 20px; margin-top:16px;">
+                <p class="label-text" style="margin-bottom: 10px; color:#D8D8D9;!important">Click below to view full detailed report in Sparrow:</p>
+                <button class="view-report-btn">View Report</button>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer" style="color:#D8D8D9;!important">
+                <p>If you have any questions or need a quick walkthrough, we're here to help, reach out to us at <a href="mailto:contactus@sparrowapp.dev">contactus@sparrowapp.dev</a></p>
+                <p>Warm Regards,<br>
+                The Sparrow Team<br>
+                <a href="https://sparrowapp.dev/">https://sparrowapp.dev/</a></p>
+            </div>
+        </div>
+        {{> footerV2}}
+    </section>
+</body>
+</html>

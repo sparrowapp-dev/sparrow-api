@@ -180,7 +180,6 @@ export class TestflowRepository {
   async updateSchedularExecution(
     testflowId: string,
     schedularId: string,
-    userId: ObjectId,
     runHistoryItem: TestFlowSchedularRunHistory,
   ): Promise<UpdateResult> {
     const now = new Date();
@@ -194,7 +193,6 @@ export class TestflowRepository {
         $set: {
           "schedules.$[elem].lastExecuted": now,
           updatedAt: now,
-          updatedBy: userId?.toString() ?? null,
         },
         $push: {
           "schedules.$[elem].schedularRunHistory": {
@@ -212,7 +210,6 @@ export class TestflowRepository {
   async updateSchedularStatus(
     testflowId: string,
     schedularId: string,
-    userId: ObjectId,
     isActive = false,
   ): Promise<UpdateResult> {
     const now = new Date();
@@ -225,7 +222,6 @@ export class TestflowRepository {
         $set: {
           "schedules.$[elem].isActive": isActive,
           updatedAt: now,
-          updatedBy: userId?.toString() ?? null,
         },
       },
       {
@@ -259,5 +255,16 @@ export class TestflowRepository {
       return null;
     }
     return result.schedules[0];
+  }
+
+  async getAll(): Promise<WithId<Testflow>[]> {
+    const data = await this.db
+      .collection<Testflow>(Collections.TESTFLOW)
+      .find({})
+      .toArray();
+    if (!data || data.length === 0) {
+      throw new BadRequestException("No Testflow data found");
+    }
+    return data;
   }
 }

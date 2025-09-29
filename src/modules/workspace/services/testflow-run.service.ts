@@ -6,6 +6,7 @@ import { DecodedUserObject } from "@src/types/fastify";
 import { ConfigService } from "@nestjs/config";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { VariableDto } from "@src/modules/common/models/environment.model";
+import { ObjectId } from "mongodb";
 
 @Injectable()
 export class TestflowRunService {
@@ -22,17 +23,13 @@ export class TestflowRunService {
    * Current environment variables take precedence over global ones
    * @param globalVariables - Global environment variables array
    * @param currentVariables - Current environment variables array
-   * @returns Combined environment variables with type indicators
+   * @returns Combined environment variables.
    */
   private combineEnvironmentData(
     globalVariables: VariableDto[],
     currentVariables: VariableDto[],
-  ): Array<{
-    key: string;
-    value: string;
-    type: "G" | "E";
-  }> {
-    const combined: Array<{ key: string; value: string; type: "G" | "E" }> = [];
+  ): VariableDto[] {
+    const combined: Array<{ key: string; value: string; checked: boolean; type: "G" | "E" }> = [];
 
     // Add global environment variables first
     if (globalVariables?.length) {
@@ -41,6 +38,7 @@ export class TestflowRunService {
           combined.push({
             key: variable.key,
             value: variable.value,
+            checked: variable.checked,
             type: "G",
           });
         }
@@ -54,6 +52,7 @@ export class TestflowRunService {
           combined.push({
             key: variable.key,
             value: variable.value,
+            checked:variable.checked,
             type: "E",
           });
         }
@@ -64,14 +63,14 @@ export class TestflowRunService {
       (item, index, self) =>
         index === self.findLastIndex((v) => v.key === item.key),
     );
-    return deduped;
+    return deduped.map(({ type, ...rest }) => rest);
   }
 
   public handleTestFlowRun = async (
     testflowId: string,
     environmentId: string,
     workspaceId: string,
-    user: DecodedUserObject,
+    user?: DecodedUserObject,
   ): Promise<any> => {
     // Fetch testflow and environment data
     const testflowData = await this.testflowRepository.get(testflowId);
@@ -100,7 +99,7 @@ export class TestflowRunService {
       nodes: testflowData.nodes || [],
       variables: activeVariables || [],
       edges: testflowData.edges,
-      userId: user._id,
+      userId: user?._id || new ObjectId("000000000000000000000000"),
     };
     try {
       const response = await axios.post(proxyUrl, body, {
@@ -108,8 +107,12 @@ export class TestflowRunService {
           "Content-Type": "application/json",
         },
       });
+      const finalResult = {
+        result:response.data,
+        environmentName:environmentData.name
+      }
       // Return only history or any relevant part
-      return response.data;
+      return finalResult;
     } catch (error: any) {
       console.error("Testflow proxy execution failed:", error.message || error);
       throw new Error(error?.message || "Testflow execution failed.");
