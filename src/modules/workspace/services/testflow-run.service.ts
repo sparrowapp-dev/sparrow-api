@@ -70,11 +70,11 @@ export class TestflowRunService {
   public handleTestFlowRun = async (
     environmentId: string,
     workspaceId: string,
-    testflowNodes:TestflowNodes[],
-    testflowEdges:TestflowEdges[],
+    testflowId:string,
     user?: DecodedUserObject,
   ): Promise<any> => {
     // Fetch testflow and environment data
+    const testflowDetails = await this.testflowRepository.get(testflowId);
     const workspaceID = await this.workspaceReposistory.get(workspaceId);
     const globalEnvironment = workspaceID.environments[0];
     const globalEnvDetails = await this.environmentReposistory.get(
@@ -94,9 +94,9 @@ export class TestflowRunService {
     const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
     // Prepare request body for proxy API
     const body = {
-      nodes: testflowNodes || [],
+      nodes: testflowDetails.nodes || [],
       variables: activeVariables || [],
-      edges: testflowEdges,
+      edges: testflowDetails.edges,
       userId: user?._id || new ObjectId("000000000000000000000000"),
     };
     try {
@@ -107,7 +107,9 @@ export class TestflowRunService {
       });
       const finalResult = {
         result:response.data,
-        environmentName:environmentData.name
+        environmentName:environmentData.name,
+        nodes:testflowDetails.edges,
+        edges:testflowDetails.edges,
       }
       // Return only history or any relevant part
       return finalResult;
