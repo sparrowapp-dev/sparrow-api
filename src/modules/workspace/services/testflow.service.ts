@@ -107,110 +107,127 @@ export class TestflowService implements OnModuleInit {
   }
 
   /**
-     * Update a specific schedule for a testflow.
-     */
-    async updateTestflowSchedule(
-      testflowId: string,
-      scheduleId: string,
-      updateScheduleDto: Partial<TestflowSchedular>,
-      workspaceId: string,
-      user: DecodedUserObject,
-    ) {
-      // Permission check
-      await this.isWorkspaceAdminorEditor(workspaceId, user._id);
-      // Fetch existing schedule
-      const existingSchedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
-      if (!existingSchedular) {
-        throw new NotFoundException('Schedule not found');
-      }
-      // Merge update fields, ensure id is present
-      const updatedSchedular: TestflowSchedular = {
-        ...existingSchedular,
-        ...updateScheduleDto,
-        id: existingSchedular.id,
-        updatedAt: new Date(),
-        updatedBy: user._id.toString(),
-      };
-      // Update schedule in DB
-      const result = await this.testflowRepository.updateSchedular(
-        testflowId,
-        scheduleId,
-        updatedSchedular,
-      );
-      // Optionally update cron job if runConfiguration or isActive changed
-      if (updateScheduleDto.runConfiguration || updateScheduleDto.isActive !== undefined) {
-        const schedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
-        if (schedular) {
-          // Remove old job
-          await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
-          // If still active, re-add job
-          if (schedular.isActive) {
-            const runCycleConfig = this.buildRunCycleConfig(schedular.runConfiguration);
-            const cronExpression = schedular.cronExpression || this.generateCronExpression(runCycleConfig);
-            await this.testflowSchedulerService.addSchedulerJob(
-              runCycleConfig,
-              this.getScheduledExecutionCallback(
-                testflowId,
-                schedular.environmentId,
-                workspaceId,
-                scheduleId,
-                user,
-              ),
-              schedular.schedularName,
-              cronExpression,
+   * Delete a run history entry for a schedule in a testflow
+   */
+  async deleteScheduleRunHistory(
+    workspaceId: string,
+    testflowId: string,
+    scheduleId: string,
+    runHistoryId: string,
+    user: DecodedUserObject,
+  ) {
+    // Permission check (admin or editor)
+    await this.isWorkspaceAdminorEditor(workspaceId, user._id);
+    // Remove the run history entry from the schedule
+    return this.testflowRepository.removeSchedularRunHistory(testflowId, scheduleId, runHistoryId, user._id);
+  }
+
+
+  /**
+   * Update a specific schedule for a testflow.
+   */
+  async updateTestflowSchedule(
+    testflowId: string,
+    scheduleId: string,
+    updateScheduleDto: Partial<TestflowSchedular>,
+    workspaceId: string,
+    user: DecodedUserObject,
+  ) {
+    // Permission check
+    await this.isWorkspaceAdminorEditor(workspaceId, user._id);
+    // Fetch existing schedule
+    const existingSchedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
+    if (!existingSchedular) {
+      throw new NotFoundException('Schedule not found');
+    }
+    // Merge update fields, ensure id is present
+    const updatedSchedular: TestflowSchedular = {
+      ...existingSchedular,
+      ...updateScheduleDto,
+      id: existingSchedular.id,
+      updatedAt: new Date(),
+      updatedBy: user._id.toString(),
+    };
+    // Update schedule in DB
+    const result = await this.testflowRepository.updateSchedular(
+      testflowId,
+      scheduleId,
+      updatedSchedular,
+    );
+    // Optionally update cron job if runConfiguration or isActive changed
+    if (updateScheduleDto.runConfiguration || updateScheduleDto.isActive !== undefined) {
+      const schedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
+      if (schedular) {
+        // Remove old job
+        await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
+        // If still active, re-add job
+        if (schedular.isActive) {
+          const runCycleConfig = this.buildRunCycleConfig(schedular.runConfiguration);
+          const cronExpression = schedular.cronExpression || this.generateCronExpression(runCycleConfig);
+          await this.testflowSchedulerService.addSchedulerJob(
+            runCycleConfig,
+            this.getScheduledExecutionCallback(
+              testflowId,
+              schedular.environmentId,
+              workspaceId,
               scheduleId,
-            );
-          }
+              user,
+            ),
+            schedular.schedularName,
+            cronExpression,
+            scheduleId,
+          );
         }
       }
-      return result;
     }
+    return result;
+  }
 
-    /**
-     * Delete a specific schedule from a testflow.
-     */
-    async deleteTestflowSchedule(
-      testflowId: string,
-      scheduleId: string,  
-      workspaceId: string,
-      user: DecodedUserObject,
-    ) {
-      await this.isWorkspaceAdminorEditor(workspaceId, user._id);
-      // Remove schedule from DB
-      const result = await this.testflowRepository.removeSchedular(
-        testflowId,
-        scheduleId,
-        user._id,
-      );
-      // Remove cron job
-      await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
-      return result;
-    }
+  /**
+   * Delete a specific schedule from a testflow.
+   */
+  async deleteTestflowSchedule(
+    testflowId: string,
+    scheduleId: string,  
+    workspaceId: string,
+    user: DecodedUserObject,
+  ) {
+    await this.isWorkspaceAdminorEditor(workspaceId, user._id);
+    // Remove schedule from DB
+    const result = await this.testflowRepository.removeSchedular(
+      testflowId,
+      scheduleId,
+      user._id,
+    );
+    // Remove cron job
+    await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
+    return result;
+  }
 
-    /**
-     * Manually run a testflow schedule.
-     */
-    async runTestflowSchedule(
-      testflowId: string,
-      scheduleId: string,
-      workspaceId: string,
-      user: DecodedUserObject,
-    ) {
-      await this.isWorkspaceAdminorEditor(workspaceId, user._id);
-      const schedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
-      if (!schedular) {
-        throw new NotFoundException('Schedule not found');
-      }
-      // Run the testflow immediately
-      await this.executeTestflow(
-        testflowId,
-        schedular.environmentId,
-        workspaceId,
-        scheduleId,
-        user,
-      );
-      return { success: true, message: 'Schedule run triggered' };
+  /**
+   * Manually run a testflow schedule.
+   */
+  async runTestflowSchedule(
+    testflowId: string,
+    scheduleId: string,
+    workspaceId: string,
+    user: DecodedUserObject,
+  ) {
+    await this.isWorkspaceAdminorEditor(workspaceId, user._id);
+    const schedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
+    if (!schedular) {
+      throw new NotFoundException('Schedule not found');
     }
+    // Run the testflow immediately
+    await this.executeTestflow(
+      testflowId,
+      schedular.environmentId,
+      workspaceId,
+      scheduleId,
+      user,
+    );
+    return { success: true, message: 'Schedule run triggered' };
+  }
 
   /**
    * Creates new testflow.
