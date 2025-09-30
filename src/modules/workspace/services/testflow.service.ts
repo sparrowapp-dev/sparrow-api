@@ -354,9 +354,6 @@ export class TestflowService implements OnModuleInit {
           "User does not have permission to perform this action.",
         );
       }
-      const testflowDetails = await this.testflowRepository.get(
-        schedularData.testflowId,
-      );
       // Build cron config
       const runCycleConfig = this.buildRunCycleConfig(
         schedularData.runConfiguration,
