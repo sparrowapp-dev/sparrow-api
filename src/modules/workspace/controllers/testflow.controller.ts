@@ -37,7 +37,7 @@ import {
 } from "../payloads/testflow.payload";
 import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
-import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { DecodedUserObject, ExtendedFastifyRequest } from "@src/types/fastify";
 
 /**
  * Controller responsible for handling Testflow operations
@@ -405,6 +405,33 @@ export class TestflowController {
         workspaceId,
         user,
       );
+      const testflow = await this.testflowService.getTestflow(testflowId);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
+
+    /**
+     * Delete a run history for a schedule in a testflow
+     */
+    @Delete(":workspaceId/testflow/:testflowId/schedules/:scheduleId/run-history/:runHistoryId")
+    @ApiOperation({ summary: 'Delete Schedule Run History', description: 'Delete all run history for a schedule in a testflow.' })
+    @ApiResponse({ status: 200, description: 'Run history deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to delete run history' })
+    @UseGuards(JwtAuthGuard)
+    async deleteScheduleRunHistory(
+      @Param("workspaceId") workspaceId: string,
+      @Param("runHistoryId") runHistoryId: string,
+      @Param("testflowId") testflowId: string,
+      @Param("scheduleId") scheduleId: string,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      await this.testflowService.deleteScheduleRunHistory(workspaceId, testflowId, scheduleId, runHistoryId, user);
       const testflow = await this.testflowService.getTestflow(testflowId);
       const responseData = new ApiResponseService(
         "Success",
