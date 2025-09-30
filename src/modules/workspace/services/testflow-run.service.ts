@@ -107,7 +107,7 @@ export class TestflowRunService {
       });
       const finalResult = {
         result:response.data,
-        environmentName:environmentData.name,
+        environmentName:environmentData?.name,
         nodes:testflowDetails.edges,
         edges:testflowDetails.edges,
       }
