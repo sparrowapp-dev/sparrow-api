@@ -96,8 +96,6 @@ export class TestflowService implements OnModuleInit {
               schedule.environmentId,
               tf.workspaceId,
               schedule.id,
-              tf.nodes,
-              tf.edges,
             ),
             schedule.schedularName,
             schedule.cronExpression,
@@ -462,9 +460,6 @@ export class TestflowService implements OnModuleInit {
           "User does not have permission to perform this action.",
         );
       }
-      const testflowDetails = await this.testflowRepository.get(
-        schedularData.testflowId,
-      );
       // Build cron config
       const runCycleConfig = this.buildRunCycleConfig(
         schedularData.runConfiguration,
@@ -505,8 +500,6 @@ export class TestflowService implements OnModuleInit {
           schedularData.environmentId,
           schedularData.workspaceId,
           schedulerId,
-          testflowDetails.nodes,
-          testflowDetails.edges,
           user,
         ),
         jobName,
@@ -678,8 +671,6 @@ export class TestflowService implements OnModuleInit {
     environmentId: string,
     workspaceId: string,
     schedulerId: string,
-    nodes: TestflowNodes[],
-    edges: TestflowEdges[],
     user?: DecodedUserObject,
   ) {
     return async () => {
@@ -688,8 +679,6 @@ export class TestflowService implements OnModuleInit {
         environmentId,
         workspaceId,
         schedulerId,
-        nodes,
-        edges,
         user,
       );
     };
@@ -701,21 +690,19 @@ export class TestflowService implements OnModuleInit {
     environmentId: string,
     workspaceId: string,
     schedulerId: string,
-    nodes: TestflowNodes[],
-    edges: TestflowEdges[],
     user?: DecodedUserObject,
   ) {
     try {
       const response = await this.testflowRunService.handleTestFlowRun(
         environmentId,
         workspaceId,
-        nodes,
-        edges,
+        testflowId,
         user,
       );
       const scheduleHistory = {
-        nodes,
-        edges,
+        id:uuidv4(),
+        nodes: response.nodes,
+        edges: response.edges,
         ...response.result.history,
       };
       //Save execution result in DB
