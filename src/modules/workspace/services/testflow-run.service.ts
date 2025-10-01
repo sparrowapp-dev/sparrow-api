@@ -108,7 +108,7 @@ export class TestflowRunService {
       const finalResult = {
         result:response.data,
         environmentName:environmentData?.name,
-        nodes:testflowDetails.edges,
+        nodes:testflowDetails.nodes,
         edges:testflowDetails.edges,
       }
       // Return only history or any relevant part
