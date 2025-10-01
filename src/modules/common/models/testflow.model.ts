@@ -304,6 +304,9 @@ export class TestFlowSchedularRunHistory {
   @IsNotEmpty()
   failedRequests: number;
 
+  @IsBoolean()
+  isScheduled: boolean;
+
   @IsArray()
   @IsOptional()
   requests?: TestflowSchedularHistoryRequest[];
