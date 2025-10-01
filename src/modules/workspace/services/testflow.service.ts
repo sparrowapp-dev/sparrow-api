@@ -224,6 +224,7 @@ export class TestflowService implements OnModuleInit {
       schedular.environmentId,
       workspaceId,
       scheduleId,
+      false,
       user,
     );
     return { success: true, message: 'Schedule run triggered' };
@@ -696,6 +697,7 @@ export class TestflowService implements OnModuleInit {
         environmentId,
         workspaceId,
         schedulerId,
+        true,
         user,
       );
     };
@@ -707,6 +709,7 @@ export class TestflowService implements OnModuleInit {
     environmentId: string,
     workspaceId: string,
     schedulerId: string,
+    isScheduled: boolean,
     user?: DecodedUserObject,
   ) {
     try {
@@ -718,6 +721,7 @@ export class TestflowService implements OnModuleInit {
       );
       const scheduleHistory = {
         id:uuidv4(),
+        isScheduled,
         nodes: response.nodes,
         edges: response.edges,
         ...response.result.history,

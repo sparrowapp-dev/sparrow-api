@@ -38,6 +38,7 @@ import {
 import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
 import { DecodedUserObject, ExtendedFastifyRequest } from "@src/types/fastify";
+import { TestflowSchedular } from "@src/modules/common/models/testflow.model";
 
 /**
  * Controller responsible for handling Testflow operations
@@ -341,19 +342,24 @@ export class TestflowController {
       @Param('workspaceId') workspaceId: string,
       @Param('testflowId') testflowId: string,
       @Param('scheduleId') scheduleId: string,
-      @Body() updateScheduleDto: any,
+      @Body() updateScheduleDto: Partial<TestflowSchedular>,
       @Res() res: FastifyReply,
       @Req() request: ExtendedFastifyRequest,
     ) {
       const user = request.user;
-      const result = await this.testflowService.updateTestflowSchedule(
+      await this.testflowService.updateTestflowSchedule(
         testflowId,
         scheduleId,
         updateScheduleDto,
         workspaceId,
         user,
       );
-      const responseData = new ApiResponseService('Schedule Updated', HttpStatusCode.OK, result);
+      const testflow = await this.testflowService.getTestflow(testflowId);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
       return res.status(responseData.httpStatusCode).send(responseData);
     }
 
@@ -373,13 +379,18 @@ export class TestflowController {
       @Req() request: ExtendedFastifyRequest,
     ) {
       const user = request.user;
-      const result = await this.testflowService.deleteTestflowSchedule(
+      await this.testflowService.deleteTestflowSchedule(
         testflowId,
         scheduleId,
         workspaceId,
         user,
       );
-      const responseData = new ApiResponseService('Schedule Deleted', HttpStatusCode.OK, result);
+      const testflow = await this.testflowService.getTestflow(testflowId);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
       return res.status(responseData.httpStatusCode).send(responseData);
     }
 
@@ -399,7 +410,7 @@ export class TestflowController {
       @Req() request: ExtendedFastifyRequest,
     ) {
       const user = request.user;
-      const result = await this.testflowService.runTestflowSchedule(
+      await this.testflowService.runTestflowSchedule(
         testflowId,
         scheduleId,
         workspaceId,
@@ -417,7 +428,7 @@ export class TestflowController {
     /**
      * Delete a run history for a schedule in a testflow
      */
-    @Delete(":workspaceId/testflow/:testflowId/schedules/:scheduleId/run-history/:runHistoryId")
+    @Delete(":workspaceId/testflow/:testflowId/schedule/:scheduleId/run-history/:runHistoryId")
     @ApiOperation({ summary: 'Delete Schedule Run History', description: 'Delete all run history for a schedule in a testflow.' })
     @ApiResponse({ status: 200, description: 'Run history deleted successfully' })
     @ApiResponse({ status: 400, description: 'Failed to delete run history' })
