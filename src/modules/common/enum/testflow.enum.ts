@@ -20,6 +20,15 @@ export enum NotificationReceiveType {
   EVERY_TIME = "every_time",
 }
 
+export enum RequestDataTypeEnum {
+  JSON = "JSON",
+  XML = "XML",
+  HTML = "HTML",
+  TEXT = "Text",
+  JAVASCRIPT = "JavaScript",
+  IMAGE = "Image",
+}
+
 export interface EmailData {
   userName: string;
   scheduleName: string;

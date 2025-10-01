@@ -39,6 +39,7 @@ import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
 import { DecodedUserObject, ExtendedFastifyRequest } from "@src/types/fastify";
 import { TestflowSchedular } from "@src/modules/common/models/testflow.model";
+import { CreateTestflowScheduleGuard } from "../guards/plan-limits/create-testflow-schedule-guard";
 
 /**
  * Controller responsible for handling Testflow operations
@@ -297,7 +298,7 @@ export class TestflowController {
    * This endpoint creates a test flow schedular associated with a specific testflow within a workspace.
    */
   @Post("create-testflow-schedule")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard,CreateTestflowScheduleGuard)
   @ApiOperation({
     summary: "Create a test flow schedular",
     description:

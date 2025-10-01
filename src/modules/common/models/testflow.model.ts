@@ -21,7 +21,7 @@ import {
 import { Auth, KeyValue, SparrowRequestBody } from "./collection.rxdb.model";
 import { AuthModeEnum, BodyModeEnum } from "./collection.model";
 import { HTTPMethods } from "fastify";
-import { DayOfWeek, NotificationReceiveType, RunCycleEnum } from "../enum/testflow.enum";
+import { DayOfWeek, NotificationReceiveType, RequestDataTypeEnum, RunCycleEnum,  } from "../enum/testflow.enum";
 
 export class RequestMetaData {
   @ApiProperty({ example: "put" })
@@ -295,6 +295,37 @@ export class TestflowSchedularHistoryRequest {
   error?: string;
 }
 
+export class TFKeyValueStoreDto {
+  @IsString()
+  key: string;
+
+  @IsString()
+  value: string;
+}
+
+export class TestflowSchedularHistoryResponse {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TFKeyValueStoreDto)
+  headers: TFKeyValueStoreDto[];
+
+  @IsString()
+  status: string;
+
+  @IsString()
+  body: string;
+
+  @IsNumber()
+  time: number;
+
+  @IsNumber()
+  size: number;
+
+  @IsOptional()
+  @IsString()
+  responseContentType?: RequestDataTypeEnum;
+}
+
 export class TestFlowSchedularRunHistory {
   @IsString()
   @ApiProperty({ required: true, example: "uuid" })
@@ -310,6 +341,10 @@ export class TestFlowSchedularRunHistory {
   @IsArray()
   @IsOptional()
   requests?: TestflowSchedularHistoryRequest[];
+
+  @IsArray()
+  @IsOptional()
+  responses?:TestflowSchedularHistoryResponse[];
 
   @IsArray()
   @Type(() => TestflowEdges)
