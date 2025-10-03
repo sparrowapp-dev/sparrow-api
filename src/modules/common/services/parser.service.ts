@@ -108,7 +108,7 @@ export class ParserService {
         activeSyncUrl: openApiDocument?.activeSyncUrl ?? "",
         createdAt: new Date(),
         updatedAt: new Date(),
-        createdBy: user._id.toString(),
+        createdBy: user.name,
         updatedBy: {
           id: user._id.toString(),
           name: user.name,
