@@ -327,3 +327,50 @@ export class AuthCollection {
   @IsOptional()
   auth?: AuthContent;
 }
+
+export class MoveRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({
+    example: "507f1f77bcf86cd799439011",
+    description: "ID of the source collection",
+  })
+  oldCollectionId: string;
+
+  @IsString()
+  @ApiProperty({
+    example: "507f1f77bcf86cd799439012",
+    description: "ID of the source folder (optional)",
+  })
+  oldFolderId?: string;
+
+  @IsString()
+  @ApiProperty({
+    example: "507f1f77bcf86cd799439013",
+    description: "ID of the destination collection (optional)",
+  })
+  newCollectionId: string;
+
+  @IsString()
+  @ApiProperty({
+    example: "507f1f77bcf86cd799439014",
+    description: "ID of the destination folder (optional)",
+  })
+  newFolderId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({
+    example: "507f1f77bcf86cd799439015",
+    description: "ID of the request to move",
+  })
+  requestId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({
+    example: "507f1f77bcf86cd799439016",
+    description: "ID of the workspace containing both collections",
+  })
+  workspaceId: string;
+}
