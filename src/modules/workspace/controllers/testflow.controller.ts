@@ -297,8 +297,8 @@ export class TestflowController {
    * @description
    * This endpoint creates a test flow schedular associated with a specific testflow within a workspace.
    */
-  @Post("create-testflow-schedule")
-  @UseGuards(JwtAuthGuard,CreateTestflowScheduleGuard)
+  @Post(":workspaceId/testflow/:testflowId/testflow-schedule")
+  @UseGuards(JwtAuthGuard, CreateTestflowScheduleGuard)
   @ApiOperation({
     summary: "Create a test flow schedular",
     description:

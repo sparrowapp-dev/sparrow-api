@@ -31,7 +31,7 @@ export class CreateTestflowScheduleGuard implements CanActivate {
     if (
       Array.isArray(testflow?.schedules) &&
       testflow.schedules.length >=
-        (planData?.limits?.testflowScheduleRun?.value ?? 0)
+        (planData?.limits?.testflowPerWorkspace?.value ?? 0)
     ) {
       throw new ForbiddenException("Plan limit reached");
     }
