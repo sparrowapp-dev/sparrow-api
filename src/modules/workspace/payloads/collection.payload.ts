@@ -373,4 +373,22 @@ export class MoveRequestDto {
     description: "ID of the workspace containing both collections",
   })
   workspaceId: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    example: "507f1f77bcf86cd799439017",
+    description:
+      "ID of the target request to position the moved request relative to (optional)",
+  })
+  targetRequestId?: string;
+
+  @IsOptional()
+  @IsEnum(["before", "after"])
+  @ApiProperty({
+    example: "before",
+    description:
+      "Position to insert the moved request relative to the targetRequestId",
+  })
+  insertPosition?: "before" | "after";
 }

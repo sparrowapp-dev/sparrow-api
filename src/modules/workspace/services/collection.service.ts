@@ -1257,6 +1257,8 @@ export class CollectionService {
       newFolderId,
       requestId,
       workspaceId,
+      targetRequestId,
+      insertPosition,
     } = moveRequestDto;
 
     // Check workspace permissions
@@ -1355,7 +1357,25 @@ export class CollectionService {
               if (!item.items) {
                 item.items = [];
               }
-              item.items.push(requestToMove!);
+
+              // Handle positioning if targetRequestId is provided
+              if (targetRequestId && insertPosition) {
+                const targetIndex = item.items.findIndex(
+                  (req) => req.id === targetRequestId,
+                );
+
+                if (targetIndex !== -1) {
+                  const insertIndex =
+                    insertPosition === "before" ? targetIndex : targetIndex + 1;
+                  item.items.splice(insertIndex, 0, requestToMove!);
+                } else {
+                  // Target not found, add at the end
+                  item.items.push(requestToMove!);
+                }
+              } else {
+                // No positioning specified, add at the end
+                item.items.push(requestToMove!);
+              }
               return true;
             }
             if (item.type === ItemTypeEnum.FOLDER && item.items) {
@@ -1372,7 +1392,23 @@ export class CollectionService {
         }
       } else {
         // Add to collection root
-        newCollection.items.push(requestToMove!);
+        if (targetRequestId && insertPosition) {
+          const targetIndex = newCollection.items.findIndex(
+            (item) => item.id === targetRequestId,
+          );
+
+          if (targetIndex !== -1) {
+            const insertIndex =
+              insertPosition === "before" ? targetIndex : targetIndex + 1;
+            newCollection.items.splice(insertIndex, 0, requestToMove!);
+          } else {
+            // Target not found, add at the end
+            newCollection.items.push(requestToMove!);
+          }
+        } else {
+          // No positioning specified, add at the end
+          newCollection.items.push(requestToMove!);
+        }
       }
     };
 
