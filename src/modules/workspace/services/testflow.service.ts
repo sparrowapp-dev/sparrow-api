@@ -100,6 +100,7 @@ export class TestflowService implements OnModuleInit {
             schedule.schedularName,
             schedule.cronExpression,
             schedule.id,
+            "UTC"
           );
         }
       }
@@ -119,9 +120,13 @@ export class TestflowService implements OnModuleInit {
     // Permission check (admin or editor)
     await this.isWorkspaceAdminorEditor(workspaceId, user._id);
     // Remove the run history entry from the schedule
-    return this.testflowRepository.removeSchedularRunHistory(testflowId, scheduleId, runHistoryId, user._id);
+    return this.testflowRepository.removeSchedularRunHistory(
+      testflowId,
+      scheduleId,
+      runHistoryId,
+      user._id,
+    );
   }
-
 
   /**
    * Update a specific schedule for a testflow.
@@ -136,9 +141,12 @@ export class TestflowService implements OnModuleInit {
     // Permission check
     await this.isWorkspaceAdminorEditor(workspaceId, user._id);
     // Fetch existing schedule
-    const existingSchedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
+    const existingSchedular = await this.testflowRepository.getSchedularById(
+      testflowId,
+      scheduleId,
+    );
     if (!existingSchedular) {
-      throw new NotFoundException('Schedule not found');
+      throw new NotFoundException("Schedule not found");
     }
     // Merge update fields, ensure id is present
     const updatedSchedular: TestflowSchedular = {
@@ -155,15 +163,25 @@ export class TestflowService implements OnModuleInit {
       updatedSchedular,
     );
     // Optionally update cron job if runConfiguration or isActive changed
-    if (updateScheduleDto.runConfiguration || updateScheduleDto.isActive !== undefined) {
-      const schedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
+    if (
+      updateScheduleDto.runConfiguration ||
+      updateScheduleDto.isActive !== undefined
+    ) {
+      const schedular = await this.testflowRepository.getSchedularById(
+        testflowId,
+        scheduleId,
+      );
       if (schedular) {
         // Remove old job
         await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
         // If still active, re-add job
         if (schedular.isActive) {
-          const runCycleConfig = this.buildRunCycleConfig(schedular.runConfiguration);
-          const cronExpression = schedular.cronExpression || this.generateCronExpression(runCycleConfig);
+          const runCycleConfig = this.buildRunCycleConfig(
+            schedular.runConfiguration,
+          );
+          const cronExpression =
+            schedular.cronExpression ||
+            this.generateCronExpression(runCycleConfig);
           await this.testflowSchedulerService.addSchedulerJob(
             runCycleConfig,
             this.getScheduledExecutionCallback(
@@ -188,7 +206,7 @@ export class TestflowService implements OnModuleInit {
    */
   async deleteTestflowSchedule(
     testflowId: string,
-    scheduleId: string,  
+    scheduleId: string,
     workspaceId: string,
     user: DecodedUserObject,
   ) {
@@ -214,9 +232,12 @@ export class TestflowService implements OnModuleInit {
     user: DecodedUserObject,
   ) {
     await this.isWorkspaceAdminorEditor(workspaceId, user._id);
-    const schedular = await this.testflowRepository.getSchedularById(testflowId, scheduleId);
+    const schedular = await this.testflowRepository.getSchedularById(
+      testflowId,
+      scheduleId,
+    );
     if (!schedular) {
-      throw new NotFoundException('Schedule not found');
+      throw new NotFoundException("Schedule not found");
     }
     // Run the testflow immediately
     await this.executeTestflow(
@@ -227,7 +248,7 @@ export class TestflowService implements OnModuleInit {
       false,
       user,
     );
-    return { success: true, message: 'Schedule run triggered' };
+    return { success: true, message: "Schedule run triggered" };
   }
 
   /**
@@ -523,6 +544,7 @@ export class TestflowService implements OnModuleInit {
         jobName,
         cronExpression,
         schedulerId,
+        "UTC"
       );
       if (!jobAdded) {
         throw new BadRequestException("Failed to register cron job");
@@ -655,11 +677,11 @@ export class TestflowService implements OnModuleInit {
     if (executeAt <= now) {
       return null;
     }
-    const second = executeAt.getSeconds();
-    const minute = executeAt.getMinutes();
-    const hour = executeAt.getHours();
-    const dayOfMonth = executeAt.getDate();
-    const month = executeAt.getMonth() + 1;
+    const second = executeAt.getUTCSeconds();
+    const minute = executeAt.getUTCMinutes();
+    const hour = executeAt.getUTCHours();
+    const dayOfMonth = executeAt.getUTCDate();
+    const month = executeAt.getUTCMonth() + 1;
     return `${second} ${minute} ${hour} ${dayOfMonth} ${month} *`;
   }
 

@@ -318,15 +318,19 @@ export class TestflowController {
     @Req() request: ExtendedFastifyRequest,
   ) {
    const user = request.user;
-    await this.testflowService.createTestflowSchedular(
+    const response = await this.testflowService.createTestflowSchedular(
       createTestflowSchedularDto,
       user,
     );  
     const testflow = await this.testflowService.getTestflow(createTestflowSchedularDto.testflowId);
+    const result = {
+      testflow,
+      schedule:response
+    }
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
-      testflow,
+      result,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
