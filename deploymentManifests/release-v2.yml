@@ -375,6 +375,12 @@ spec:
                 secretKeyRef:
                   name: release-api-v2-secret
                   key: HUB_BASE_DOMAIN
+            - name: SPARROW_PROXY_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: SPARROW_PROXY_BASE_URL 
+
 
 ---
 apiVersion: v1
