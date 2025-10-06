@@ -60,6 +60,7 @@ import { ConfigService } from "@nestjs/config";
 import { Logger } from "@nestjs/common";
 import { OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { EnvironmentRepository } from "../repositories/environment.repository";
 
 /**
  * Testflow Service
@@ -77,6 +78,7 @@ export class TestflowService implements OnModuleInit {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly userReposistory: UserRepository,
+    private readonly environmentReposistory: EnvironmentRepository,
   ) {}
 
   async onModuleInit() {
@@ -148,10 +150,17 @@ export class TestflowService implements OnModuleInit {
     if (!existingSchedular) {
       throw new NotFoundException("Schedule not found");
     }
+
+     let environmentName = "";
+      if(updateScheduleDto?.environmentId){
+        const environmentData = await this.environmentReposistory.get(updateScheduleDto?.environmentId);
+        environmentName = environmentData?.name || "";
+      }
     // Merge update fields, ensure id is present
     const updatedSchedular: TestflowSchedular = {
       ...existingSchedular,
       ...updateScheduleDto,
+      environmentName: environmentName,
       id: existingSchedular.id,
       updatedAt: new Date(),
       updatedBy: user._id.toString(),
@@ -510,11 +519,17 @@ export class TestflowService implements OnModuleInit {
       if (!cronExpression) {
         throw new BadRequestException("Invalid run cycle configuration");
       }
+      let environmentName = "";
+      if(schedularData?.environmentId){
+        const environmentData = await this.environmentReposistory.get(schedularData?.environmentId);
+        environmentName = environmentData?.name || "";
+      }
       // Save scheduler details in DB
       const newSchedular: TestflowSchedular = {
         id: schedulerId,
         name: schedularData.name,
         environmentId: schedularData.environmentId,
+        environmentName: environmentName,
         runConfiguration: schedularData.runConfiguration,
         notification: schedularData.notification,
         isActive: true,
