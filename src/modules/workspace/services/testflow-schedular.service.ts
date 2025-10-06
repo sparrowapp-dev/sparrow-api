@@ -19,29 +19,56 @@ export class TestflowSchedulerService {
     jobName: string,
     cronExpression: string,
     schedularId: string,
+    timezone: string = "UTC", // Always use UTC by default
   ): Promise<boolean> {
     if (!cronExpression) {
       console.error(`Invalid run cycle configuration for job ${jobName}`);
       this.logger.log(`Invalid run cycle configuration for job ${jobName}`);
       return false;
     }
-    const job = new CronJob(cronExpression, async () => {
-      if (runApis) {
-        await runApis(schedularId);
-      }
-      // Handle one-time jobs
-      if (runCycle.type === RunCycleEnum.ONCE) {
-        job.stop();
-        this.schedulerRegistry.deleteCronJob(jobName);
-        this.logger.log(`One-time scheduler ${jobName} completed and removed`);
-      }
-    });
-    this.schedulerRegistry.addCronJob(jobName, job);
-    job.start();
-    this.logger.log(
-      `Scheduler job ${jobName} registered with cycle: ${runCycle.type}`,
-    );
-    return true;
+    try {
+      // Create cron job with UTC timezone
+      const job = new CronJob(
+        cronExpression,
+        async () => {
+          this.logger.log(
+            `Executing job ${jobName} at ${new Date().toISOString()} (UTC)`
+          );
+          if (runApis) {
+            try {
+              await runApis(schedularId);
+            } catch (error) {
+              this.logger.error(
+                `Error executing job ${jobName}: ${error.message}`,
+                error.stack
+              );
+            }
+          }
+          // Handle one-time jobs
+          if (runCycle.type === RunCycleEnum.ONCE) {
+            job.stop();
+            this.schedulerRegistry.deleteCronJob(jobName);
+            this.logger.log(`One-time scheduler ${jobName} completed and removed`);
+          }
+        },
+        null, // onComplete callback
+        false, // start - we'll call start() manually
+        timezone, // Set timezone to UTC
+      );
+      this.schedulerRegistry.addCronJob(jobName, job);
+      job.start();
+      this.logger.log(
+        `Scheduler job ${jobName} registered with cycle: ${runCycle.type}, ` +
+        `timezone: ${timezone}, cron: ${cronExpression}`
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to create scheduler job ${jobName}: ${error.message}`,
+        error.stack
+      );
+      return false;
+    }
   }
 
   /**
