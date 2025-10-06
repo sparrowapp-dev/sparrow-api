@@ -482,6 +482,11 @@ export class TestflowSchedular {
   name: string;
 
   @IsString()
+  @ApiProperty({ required: true, example: "New Testflow Schedular Name" })
+  @IsOptional()
+  environmentName: string;
+
+  @IsString()
   @ApiProperty({ required: true, example: "428347384723" })
   @IsOptional()
   environmentId: string;
