@@ -61,6 +61,7 @@ import { Logger } from "@nestjs/common";
 import { OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { EnvironmentRepository } from "../repositories/environment.repository";
+import { Collections } from "@src/modules/common/enum/database.collection.enum";
 
 /**
  * Testflow Service
@@ -82,9 +83,24 @@ export class TestflowService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log("Bootstrapping schedulers from DB...");
-    const testflows = await this.testflowRepository.getAll();
-    if (testflows.length > 0) {
+    try {
+      this.logger.log("Bootstrapping schedulers from DB...");
+      const collectionItems =
+        await this.testflowRepository.getAllCollectionNames();
+      const testflowCollectionExists = collectionItems.some(
+        (col) => col === Collections.TESTFLOW,
+      );
+      if (!testflowCollectionExists) {
+        this.logger.warn(
+          "Testflow collection does not exist — skipping scheduler bootstrap.",
+        );
+        return;
+      }
+      const testflows = await this.testflowRepository.getAll();
+      if (testflows.length === 0) {
+        this.logger.log("No testflows found — skipping scheduler bootstrap.");
+        return;
+      }
       for (const tf of testflows) {
         if (!tf.schedules?.length) continue;
 
@@ -110,8 +126,8 @@ export class TestflowService implements OnModuleInit {
           }
         }
       }
-    } else {
-      this.logger.log("No testflows found, skipping scheduler bootstrap");
+    } catch (error) {
+      this.logger.error("Error during scheduler bootstrap:", error);
     }
   }
 
