@@ -151,11 +151,11 @@ export class TestflowService implements OnModuleInit {
       throw new NotFoundException("Schedule not found");
     }
 
-     let environmentName = "";
+    let environmentName = "";
       if(updateScheduleDto?.environmentId){
         const environmentData = await this.environmentReposistory.get(updateScheduleDto?.environmentId);
-        environmentName = environmentData?.name || "";
-      }
+      environmentName = environmentData?.name || "";
+    }
     // Merge update fields, ensure id is present
     const updatedSchedular: TestflowSchedular = {
       ...existingSchedular,
@@ -537,6 +537,7 @@ export class TestflowService implements OnModuleInit {
         schedularName: jobName,
         executedCount: 0,
         lastExecuted: undefined,
+        timeZone: schedularData?.timeZone,
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: user._id.toString(),
@@ -789,7 +790,19 @@ export class TestflowService implements OnModuleInit {
       const emailData: EmailData = {
         userName: userDetails?.name,
         scheduleName: getSchedular.name,
-        scheduleLastestRun: new Date(getSchedular.lastExecuted),
+        scheduleLastestRun: new Date(getSchedular.lastExecuted).toLocaleString(
+          "en-IN",
+          {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
+            timeZone: getSchedular.timeZone,
+          },
+        ),
         scheduleRunResult: scheduleRunResult,
         scheduleRunPassedCount: data.successRequests,
         scheduleRunFailedCount: data.failedRequests,

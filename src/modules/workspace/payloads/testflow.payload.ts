@@ -181,4 +181,9 @@ export class CreateTestflowSchedularDto {
   @ValidateNested()
   @Type(() => NotificationDto)
   notification?: NotificationDto;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "Asia/Kolkata" })
+  @IsOptional()
+  timeZone:string;
 }
