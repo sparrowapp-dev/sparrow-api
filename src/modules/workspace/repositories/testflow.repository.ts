@@ -282,13 +282,28 @@ export class TestflowRepository {
   }
 
   async getAll(): Promise<WithId<Testflow>[]> {
-    const data = await this.db
-      .collection<Testflow>(Collections.TESTFLOW)
-      .find({})
-      .toArray();
-    if (!data || data.length === 0) {
-      throw new BadRequestException("No Testflow data found");
+    try {
+      // Check if the Testflow collection exists in the database
+      const collections = await this.db.listCollections().toArray();
+      const testflowCollectionExists = collections.some(
+        (col) => col.name === Collections.TESTFLOW,
+      );
+      if (!testflowCollectionExists) {
+        console.log("Testflow collection does not exist, skipping...");
+        return []; // Return empty array
+      }
+      const data = await this.db
+        .collection<Testflow>(Collections.TESTFLOW)
+        .find({})
+        .toArray();
+      if (!data || data.length === 0) {
+        console.log("No Testflow data found");
+        return [];
+      }
+      return data;
+    } catch (error) {
+      console.error("Error fetching Testflow data:", error);
+      return [];
     }
-    return data;
   }
 }

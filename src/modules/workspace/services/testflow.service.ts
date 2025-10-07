@@ -84,28 +84,34 @@ export class TestflowService implements OnModuleInit {
   async onModuleInit() {
     this.logger.log("Bootstrapping schedulers from DB...");
     const testflows = await this.testflowRepository.getAll();
-    for (const tf of testflows) {
-      if (!tf.schedules?.length) continue;
-      for (const schedule of tf.schedules) {
-        const runCycleConfig = this.buildRunCycleConfig(
-          schedule.runConfiguration,
-        );
-        if (schedule.isActive && schedule.cronExpression) {
-          await this.testflowSchedulerService.addSchedulerJob(
-            runCycleConfig,
-            this.getScheduledExecutionCallback(
-              tf._id.toString(),
-              schedule.environmentId,
-              tf.workspaceId,
-              schedule.id,
-            ),
-            schedule.schedularName,
-            schedule.cronExpression,
-            schedule.id,
-            "UTC",
+    if (testflows.length > 0) {
+      for (const tf of testflows) {
+        if (!tf.schedules?.length) continue;
+
+        for (const schedule of tf.schedules) {
+          const runCycleConfig = this.buildRunCycleConfig(
+            schedule.runConfiguration,
           );
+
+          if (schedule.isActive && schedule.cronExpression) {
+            await this.testflowSchedulerService.addSchedulerJob(
+              runCycleConfig,
+              this.getScheduledExecutionCallback(
+                tf._id.toString(),
+                schedule.environmentId,
+                tf.workspaceId,
+                schedule.id,
+              ),
+              schedule.schedularName,
+              schedule.cronExpression,
+              schedule.id,
+              "UTC",
+            );
+          }
         }
       }
+    } else {
+      this.logger.log("No testflows found, skipping scheduler bootstrap");
     }
   }
 
@@ -151,11 +157,13 @@ export class TestflowService implements OnModuleInit {
       throw new NotFoundException("Schedule not found");
     }
 
-     let environmentName = "";
-      if(updateScheduleDto?.environmentId){
-        const environmentData = await this.environmentReposistory.get(updateScheduleDto?.environmentId);
-        environmentName = environmentData?.name || "";
-      }
+    let environmentName = "";
+    if (updateScheduleDto?.environmentId) {
+      const environmentData = await this.environmentReposistory.get(
+        updateScheduleDto?.environmentId,
+      );
+      environmentName = environmentData?.name || "";
+    }
     // Merge update fields, ensure id is present
     const updatedSchedular: TestflowSchedular = {
       ...existingSchedular,
@@ -520,8 +528,10 @@ export class TestflowService implements OnModuleInit {
         throw new BadRequestException("Invalid run cycle configuration");
       }
       let environmentName = "";
-      if(schedularData?.environmentId){
-        const environmentData = await this.environmentReposistory.get(schedularData?.environmentId);
+      if (schedularData?.environmentId) {
+        const environmentData = await this.environmentReposistory.get(
+          schedularData?.environmentId,
+        );
         environmentName = environmentData?.name || "";
       }
       // Save scheduler details in DB
