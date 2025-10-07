@@ -40,6 +40,7 @@ import {
   TestflowEdges,
   TestflowNodes,
   TestflowSchedular,
+  TestFlowSchedularRunHistory,
 } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
 import { v4 as uuidv4 } from "uuid";
@@ -61,6 +62,7 @@ import { Logger } from "@nestjs/common";
 import { OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { EnvironmentRepository } from "../repositories/environment.repository";
+import { Collections } from "@src/modules/common/enum/database.collection.enum";
 
 /**
  * Testflow Service
@@ -82,30 +84,40 @@ export class TestflowService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log("Bootstrapping schedulers from DB...");
-    const testflows = await this.testflowRepository.getAll();
-    for (const tf of testflows) {
-      if (!tf.schedules?.length) continue;
-      for (const schedule of tf.schedules) {
-        const runCycleConfig = this.buildRunCycleConfig(
-          schedule.runConfiguration,
-        );
-        if (schedule.isActive && schedule.cronExpression) {
-          await this.testflowSchedulerService.addSchedulerJob(
-            runCycleConfig,
-            this.getScheduledExecutionCallback(
-              tf._id.toString(),
-              schedule.environmentId,
-              tf.workspaceId,
-              schedule.id,
-            ),
-            schedule.schedularName,
-            schedule.cronExpression,
-            schedule.id,
-            "UTC",
+    try {
+      this.logger.log("Bootstrapping schedulers from DB...");
+      const testflows = await this.testflowRepository.getAll();
+      if (testflows.length === 0) {
+        this.logger.log("No testflows found — skipping scheduler bootstrap.");
+        return;
+      }
+      for (const tf of testflows) {
+        if (!tf.schedules?.length) continue;
+
+        for (const schedule of tf.schedules) {
+          const runCycleConfig = this.buildRunCycleConfig(
+            schedule.runConfiguration,
           );
+
+          if (schedule.isActive && schedule.cronExpression) {
+            await this.testflowSchedulerService.addSchedulerJob(
+              runCycleConfig,
+              this.getScheduledExecutionCallback(
+                tf._id.toString(),
+                schedule.environmentId,
+                tf.workspaceId,
+                schedule.id,
+              ),
+              schedule.schedularName,
+              schedule.cronExpression,
+              schedule.id,
+              "UTC",
+            );
+          }
         }
       }
+    } catch (error) {
+      this.logger.error("Error during scheduler bootstrap:", error);
     }
   }
 
@@ -152,8 +164,10 @@ export class TestflowService implements OnModuleInit {
     }
 
     let environmentName = "";
-      if(updateScheduleDto?.environmentId){
-        const environmentData = await this.environmentReposistory.get(updateScheduleDto?.environmentId);
+    if (updateScheduleDto?.environmentId) {
+      const environmentData = await this.environmentReposistory.get(
+        updateScheduleDto?.environmentId,
+      );
       environmentName = environmentData?.name || "";
     }
     // Merge update fields, ensure id is present
@@ -520,8 +534,10 @@ export class TestflowService implements OnModuleInit {
         throw new BadRequestException("Invalid run cycle configuration");
       }
       let environmentName = "";
-      if(schedularData?.environmentId){
-        const environmentData = await this.environmentReposistory.get(schedularData?.environmentId);
+      if (schedularData?.environmentId) {
+        const environmentData = await this.environmentReposistory.get(
+          schedularData?.environmentId,
+        );
         environmentName = environmentData?.name || "";
       }
       // Save scheduler details in DB
@@ -742,24 +758,44 @@ export class TestflowService implements OnModuleInit {
     user?: DecodedUserObject,
   ) {
     try {
+      const uuid = uuidv4();
+      const runningHistory: TestFlowSchedularRunHistory = {
+        id: uuid,
+        isScheduled,
+        status: "pending",
+        requests: [],
+        responses:[],
+        nodes: [],
+        edges: [],
+        failedRequests: 0,
+        successRequests: 0,
+        totalTime:"0 ms",
+        createdAt: new Date(),
+      };
+      //Save execution result in DB
+      await this.testflowRepository.updateSchedularExecution(
+        testflowId,
+        schedulerId,
+        runningHistory,
+      );
       const response = await this.testflowRunService.handleTestFlowRun(
         environmentId,
         workspaceId,
         testflowId,
         user,
       );
-      const scheduleHistory = {
-        id: uuidv4(),
+      const executedHistory = {
+        id: uuid,
         isScheduled,
         nodes: response.nodes,
         edges: response.edges,
         ...response.result.history,
       };
       //Save execution result in DB
-      await this.testflowRepository.updateSchedularExecution(
+      await this.testflowRepository.editSchedularExecution(
         testflowId,
         schedulerId,
-        scheduleHistory,
+        executedHistory,
       );
       const getSchedular = await this.testflowRepository.getSchedularById(
         testflowId,
