@@ -37,7 +37,7 @@ export interface EmailData {
   scheduleRunPassedCount: number;
   scheduleRunFailedCount: number;
   scheduleRunTotalRequest: number;
-  scheduleRunPassPercentage: number; 
+  scheduleRunPassPercentage: string; 
   scheduleTotalTime: string | number;
   scheduleRunEnvName: string;
   isSuccess: boolean;

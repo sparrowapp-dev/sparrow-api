@@ -785,8 +785,7 @@ export class TestflowService implements OnModuleInit {
       const userDetails = await this.userReposistory.getUserById(
         data.createdBy,
       );
-      const successPercentage =
-        (data.successRequests / totalRequestCount) * 100;
+      const successPercentage = Math.round((data.successRequests / totalRequestCount) * 100 * 100) / 100;
       const emailData: EmailData = {
         userName: userDetails?.name,
         scheduleName: getSchedular.name,
@@ -807,7 +806,7 @@ export class TestflowService implements OnModuleInit {
         scheduleRunPassedCount: data.successRequests,
         scheduleRunFailedCount: data.failedRequests,
         scheduleRunTotalRequest: data.successRequests + data.failedRequests,
-        scheduleRunPassPercentage: successPercentage,
+        scheduleRunPassPercentage: successPercentage.toString(),
         scheduleTotalTime: data.totalTime,
         scheduleRunEnvName: response.environmentName,
         isSuccess: data.successRequests === totalRequestCount,
