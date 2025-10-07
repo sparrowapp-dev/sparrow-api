@@ -103,7 +103,7 @@ export class TestflowService implements OnModuleInit {
             schedule.schedularName,
             schedule.cronExpression,
             schedule.id,
-            "UTC"
+            "UTC",
           );
         }
       }
@@ -560,7 +560,7 @@ export class TestflowService implements OnModuleInit {
         jobName,
         cronExpression,
         schedulerId,
-        "UTC"
+        "UTC",
       );
       if (!jobAdded) {
         throw new BadRequestException("Failed to register cron job");
@@ -639,34 +639,21 @@ export class TestflowService implements OnModuleInit {
     }
   }
 
-  private parseTime(timeString: string): {
+  private parseTime(utcTimeString: string): {
     hour: number;
     minute: number;
     second: number;
   } {
-    const timeRegex = /^(\d{2}):(\d{2})$/;
-    const match = timeString.match(timeRegex);
-    if (!match) {
+    const date = new Date(utcTimeString);
+    if (isNaN(date.getTime())) {
       throw new BadRequestException(
-        `Invalid time format: ${timeString}. Expected HH:mm format.`,
-      );
-    }
-    const hour = parseInt(match[1], 10);
-    const minute = parseInt(match[2], 10);
-    if (hour < 0 || hour > 23) {
-      throw new BadRequestException(
-        `Invalid hour: ${hour}. Must be between 0-23.`,
-      );
-    }
-    if (minute < 0 || minute > 59) {
-      throw new BadRequestException(
-        `Invalid minute: ${minute}. Must be between 0-59.`,
+        `Invalid UTC datetime: ${utcTimeString}. Expected ISO 8601 format like 2025-10-06T10:51:00Z.`,
       );
     }
     return {
-      hour,
-      minute,
-      second: 0,
+      hour: date.getUTCHours(),
+      minute: date.getUTCMinutes(),
+      second: date.getUTCSeconds(),
     };
   }
   /**
@@ -712,7 +699,11 @@ export class TestflowService implements OnModuleInit {
       const { hour, minute, second = 0 } = startTime;
       return `${second} ${minute} ${hour}-23/${intervalHours} * * *`;
     } else {
-      return `0 0 */${intervalHours} * * *`;
+      const now = new Date();
+      const utcHour = now.getUTCHours();
+      const utcMinute = now.getUTCMinutes();
+      const utcSecond = now.getUTCSeconds();
+      return `${utcSecond} ${utcMinute} ${utcHour}-23/${intervalHours} * * *`;
     }
   }
 
