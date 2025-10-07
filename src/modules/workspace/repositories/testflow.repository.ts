@@ -292,21 +292,17 @@ export class TestflowRepository {
     return data;
   }
 
-  async getAllCollectionNames(): Promise<string[]> {
+  async isTestflowCollectionExist(): Promise<boolean> {
     try {
       const collections = await this.db.listCollections().toArray();
-      const collectionNames = collections.map((col) => col.name);
-
-      if (!collectionNames || collectionNames.length === 0) {
-        throw new BadRequestException("No collections found in the database");
-      }
-
-      return collectionNames;
-    } catch (error) {
-      console.error("Error fetching collection names:", error);
-      throw new BadRequestException(
-        error.message || "Failed to fetch collection names",
+      const testflowExists = collections.some(
+        (col) => col.name === Collections.TESTFLOW,
       );
+
+      return testflowExists;
+    } catch (error) {
+      console.error("Error checking Testflow collection existence:", error);
+      return false; // Return false if any error occurs
     }
   }
 }
