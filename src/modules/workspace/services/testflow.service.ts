@@ -85,14 +85,6 @@ export class TestflowService implements OnModuleInit {
   async onModuleInit() {
     try {
       this.logger.log("Bootstrapping schedulers from DB...");
-      const testflowCollection =
-        await this.testflowRepository.isTestflowCollectionExist();
-      if (!testflowCollection) {
-        this.logger.warn(
-          "Testflow collection does not exist — skipping scheduler bootstrap.",
-        );
-        return;
-      }
       const testflows = await this.testflowRepository.getAll();
       if (testflows.length === 0) {
         this.logger.log("No testflows found — skipping scheduler bootstrap.");

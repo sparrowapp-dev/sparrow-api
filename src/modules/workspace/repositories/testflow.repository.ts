@@ -291,18 +291,4 @@ export class TestflowRepository {
     }
     return data;
   }
-
-  async isTestflowCollectionExist(): Promise<boolean> {
-    try {
-      const collections = await this.db.listCollections().toArray();
-      const testflowExists = collections.some(
-        (col) => col.name === Collections.TESTFLOW,
-      );
-
-      return testflowExists;
-    } catch (error) {
-      console.error("Error checking Testflow collection existence:", error);
-      return false; // Return false if any error occurs
-    }
-  }
 }
