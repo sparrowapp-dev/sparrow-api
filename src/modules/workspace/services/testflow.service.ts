@@ -170,6 +170,18 @@ export class TestflowService implements OnModuleInit {
       );
       environmentName = environmentData?.name || "";
     }
+    let cronExpression;
+    if(updateScheduleDto.runConfiguration){
+      const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
+      cronExpression = this.generateCronExpression(runCycleConfig);
+      if (!cronExpression) {
+        updateScheduleDto.cronExpression = null;
+      }
+      else{
+        updateScheduleDto.cronExpression = cronExpression;
+      }
+    }
+
     // Merge update fields, ensure id is present
     const updatedSchedular: TestflowSchedular = {
       ...existingSchedular,
@@ -187,7 +199,6 @@ export class TestflowService implements OnModuleInit {
     );
     // Optionally update cron job if runConfiguration or isActive changed
     if (
-      updateScheduleDto.runConfiguration ||
       updateScheduleDto.isActive !== undefined
     ) {
       const schedular = await this.testflowRepository.getSchedularById(
@@ -202,9 +213,7 @@ export class TestflowService implements OnModuleInit {
           const runCycleConfig = this.buildRunCycleConfig(
             schedular.runConfiguration,
           );
-          const cronExpression =
-            schedular.cronExpression ||
-            this.generateCronExpression(runCycleConfig);
+          const cronExpression = schedular.cronExpression;
           await this.testflowSchedulerService.addSchedulerJob(
             runCycleConfig,
             this.getScheduledExecutionCallback(
