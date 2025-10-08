@@ -1717,7 +1717,7 @@ export class collectionController {
   @ApiOperation({
     summary: "Move Request Within Workspace",
     description:
-      "This will move a request from one collection/folder to another collection/folder within the same workspace. Collections can be the same for moving within the same collection.",
+      "This will move a request from one collection/folder to another collection/folder within the same workspace.",
   })
   @UseGuards(JwtAuthGuard)
   @ApiResponse({ status: 200, description: "Request moved successfully" })
