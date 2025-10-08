@@ -109,7 +109,7 @@ export class TestflowController {
    * @description This will retrieve a specific Testflow using its ID,
    * returning the Testflow object if found.
    */
-  @Get("testflow/:testflowId")
+  @Get(":workspaceId/testflow/:testflowId")
   @ApiOperation({
     summary: "Get Individual Testflow",
     description: "This will get individual testflow of a workspace",
@@ -121,10 +121,13 @@ export class TestflowController {
   })
   @ApiResponse({ status: 400, description: "Fetch Testflow Request Failed" })
   async getTestflow(
+    @Param("workspaceId") workspaceId: string,
     @Param("testflowId") testflowId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const testflow = await this.testflowService.getTestflow(testflowId);
+    const user = request.user;
+    const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -321,8 +324,8 @@ export class TestflowController {
     const response = await this.testflowService.createTestflowSchedular(
       createTestflowSchedularDto,
       user,
-    );  
-    const testflow = await this.testflowService.getTestflow(createTestflowSchedularDto.testflowId);
+    );
+    const testflow = await this.testflowService.getTestflow(createTestflowSchedularDto.workspaceId, createTestflowSchedularDto.testflowId, user._id);
     const result = {
       testflow,
       schedule:response
@@ -359,7 +362,7 @@ export class TestflowController {
         workspaceId,
         user,
       );
-      const testflow = await this.testflowService.getTestflow(testflowId);
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
       const responseData = new ApiResponseService(
         "Success",
         HttpStatusCode.OK,
@@ -390,7 +393,7 @@ export class TestflowController {
         workspaceId,
         user,
       );
-      const testflow = await this.testflowService.getTestflow(testflowId);
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
       const responseData = new ApiResponseService(
         "Success",
         HttpStatusCode.OK,
@@ -421,7 +424,7 @@ export class TestflowController {
         workspaceId,
         user,
       );
-      const testflow = await this.testflowService.getTestflow(testflowId);
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
       const responseData = new ApiResponseService(
         "Success",
         HttpStatusCode.OK,
@@ -448,7 +451,7 @@ export class TestflowController {
     ) {
       const user = request.user;
       await this.testflowService.deleteScheduleRunHistory(workspaceId, testflowId, scheduleId, runHistoryId, user);
-      const testflow = await this.testflowService.getTestflow(testflowId);
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
       const responseData = new ApiResponseService(
         "Success",
         HttpStatusCode.OK,

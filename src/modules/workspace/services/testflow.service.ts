@@ -330,8 +330,9 @@ export class TestflowService implements OnModuleInit {
    * Fetches single testflow.
    * @param id - Testflow id you want to fetch.
    */
-  async getTestflow(id: string): Promise<WithId<Testflow>> {
-    return await this.testflowRepository.get(id);
+  async getTestflow(workspaceId: string, testflowId: string, userId: ObjectId): Promise<WithId<Testflow>> {
+    await this.checkPermission(workspaceId, userId);
+    return await this.testflowRepository.get(testflowId);
   }
 
   /**
@@ -341,6 +342,9 @@ export class TestflowService implements OnModuleInit {
    */
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
     const workspace = await this.workspaceService.get(workspaceId);
+    if(workspace.workspaceType === WorkspaceType.PUBLIC){
+      return;
+    }
     const hasPermission = workspace.users.some((user) => {
       return user.id.toString() === userid.toString();
     });
@@ -502,26 +506,7 @@ export class TestflowService implements OnModuleInit {
     user: DecodedUserObject,
   ) {
     try {
-      const workspaceUsers = await this.workspaceReposistory.get(
-        schedularData?.workspaceId,
-      );
-      if (!workspaceUsers) {
-        throw new NotFoundException("Workspace not found.");
-      }
-      const userDetails = workspaceUsers.users.find(
-        (item) => item.id === user._id.toString(),
-      );
-      if (!userDetails) {
-        throw new NotFoundException("User not found in workspace.");
-      }
-      if (
-        userDetails.role !== WorkspaceRole.ADMIN &&
-        userDetails.role !== WorkspaceRole.EDITOR
-      ) {
-        throw new ForbiddenException(
-          "User does not have permission to perform this action.",
-        );
-      }
+      await this.isWorkspaceAdminorEditor(schedularData?.workspaceId, user._id);
       // Build cron config
       const runCycleConfig = this.buildRunCycleConfig(
         schedularData.runConfiguration,
