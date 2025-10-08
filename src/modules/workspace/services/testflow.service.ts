@@ -763,12 +763,12 @@ export class TestflowService implements OnModuleInit {
         isScheduled,
         status: "pending",
         requests: [],
-        responses:[],
+        responses: [],
         nodes: [],
         edges: [],
         failedRequests: 0,
         successRequests: 0,
-        totalTime:"0 ms",
+        totalTime: "0 ms",
         createdAt: new Date(),
       };
       //Save execution result in DB
@@ -821,16 +821,27 @@ export class TestflowService implements OnModuleInit {
         data.createdBy,
       );
       const successPercentage =
-        (data.successRequests / totalRequestCount) * 100;
+        Math.round((data.successRequests / totalRequestCount) * 100 * 100) /
+        100;
       const emailData: EmailData = {
         userName: userDetails?.name,
         scheduleName: getSchedular.name,
-        scheduleLastestRun: new Date(getSchedular.lastExecuted),
+        scheduleLastestRun:
+          new Date(getSchedular.lastExecuted).toLocaleString("en-US", {
+            timeZone: "UTC",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          }) + " UTC",
         scheduleRunResult: scheduleRunResult,
         scheduleRunPassedCount: data.successRequests,
         scheduleRunFailedCount: data.failedRequests,
         scheduleRunTotalRequest: data.successRequests + data.failedRequests,
-        scheduleRunPassPercentage: successPercentage,
+        scheduleRunPassPercentage: successPercentage.toString(),
         scheduleTotalTime: data.totalTime,
         scheduleRunEnvName: response.environmentName,
         isSuccess: data.successRequests === totalRequestCount,
