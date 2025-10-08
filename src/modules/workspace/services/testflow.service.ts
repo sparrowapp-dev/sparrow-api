@@ -825,19 +825,7 @@ export class TestflowService implements OnModuleInit {
       const emailData: EmailData = {
         userName: userDetails?.name,
         scheduleName: getSchedular.name,
-        scheduleLastestRun: new Date(getSchedular.lastExecuted).toLocaleString(
-          "en-IN",
-          {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true,
-            timeZone: getSchedular.timeZone,
-          },
-        ),
+        scheduleLastestRun: new Date(getSchedular.lastExecuted).toString(),
         scheduleRunResult: scheduleRunResult,
         scheduleRunPassedCount: data.successRequests,
         scheduleRunFailedCount: data.failedRequests,
