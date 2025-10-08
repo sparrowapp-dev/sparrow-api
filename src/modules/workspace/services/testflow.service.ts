@@ -197,7 +197,7 @@ export class TestflowService implements OnModuleInit {
       scheduleId,
       updatedSchedular,
     );
-    // Optionally update cron job if runConfiguration or isActive changed
+    // Optionally update cron job if isActive changed
     if (
       updateScheduleDto.isActive !== undefined
     ) {
@@ -383,6 +383,16 @@ export class TestflowService implements OnModuleInit {
       id,
       user._id,
     );
+  
+    // Remove all associated cronjobs for this testflow
+    if (testflow?.schedules && Array.isArray(testflow.schedules)) {
+      for (const schedule of testflow.schedules) {
+        if (schedule?.id) {
+          await this.testflowSchedulerService.removeSchedulerJob(schedule.id);
+        }
+      }
+    }
+
     const updateMessage = `"${testflow.name}" testflow is deleted from "${workspace.name}" workspace`;
     const currentWorkspaceObject = new ObjectId(workspaceId);
     const updateWorkspaceData: Partial<Workspace> = {
