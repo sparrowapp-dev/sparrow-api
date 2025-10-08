@@ -170,10 +170,10 @@ export class TestflowService implements OnModuleInit {
       );
       environmentName = environmentData?.name || "";
     }
-    let cronExpression;
+  
     if(updateScheduleDto.runConfiguration){
       const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
-      cronExpression = this.generateCronExpression(runCycleConfig);
+      const cronExpression = this.generateCronExpression(runCycleConfig);
       if (!cronExpression) {
         updateScheduleDto.cronExpression = null;
       }
