@@ -553,7 +553,7 @@ export class TestflowSchedular {
   @IsString()
   @ApiProperty({ required: true, example: "Asia/Kolkata" })
   @IsOptional()
-  timeZone:string;
+  timeZone?:string;
 
   @IsDate()
   @IsOptional()

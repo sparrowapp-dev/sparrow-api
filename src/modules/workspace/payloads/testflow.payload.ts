@@ -185,5 +185,5 @@ export class CreateTestflowSchedularDto {
   @IsString()
   @ApiProperty({ required: true, example: "Asia/Kolkata" })
   @IsOptional()
-  timeZone:string;
+  timeZone?:string;
 }
