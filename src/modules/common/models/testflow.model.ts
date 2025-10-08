@@ -549,12 +549,6 @@ export class TestflowSchedular {
   @IsOptional()
   schedularRunHistory?: TestFlowSchedularRunHistory[];
 
-  
-  @IsString()
-  @ApiProperty({ required: true, example: "Asia/Kolkata" })
-  @IsOptional()
-  timeZone?:string;
-
   @IsDate()
   @IsOptional()
   createdAt?: Date;

@@ -553,7 +553,6 @@ export class TestflowService implements OnModuleInit {
         schedularName: jobName,
         executedCount: 0,
         lastExecuted: undefined,
-        timeZone: schedularData?.timeZone,
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: user._id.toString(),
@@ -764,12 +763,12 @@ export class TestflowService implements OnModuleInit {
         isScheduled,
         status: "pending",
         requests: [],
-        responses:[],
+        responses: [],
         nodes: [],
         edges: [],
         failedRequests: 0,
         successRequests: 0,
-        totalTime:"0 ms",
+        totalTime: "0 ms",
         createdAt: new Date(),
       };
       //Save execution result in DB
@@ -821,11 +820,16 @@ export class TestflowService implements OnModuleInit {
       const userDetails = await this.userReposistory.getUserById(
         data.createdBy,
       );
-      const successPercentage = Math.round((data.successRequests / totalRequestCount) * 100 * 100) / 100;
+      const successPercentage =
+        Math.round((data.successRequests / totalRequestCount) * 100 * 100) /
+        100;
       const emailData: EmailData = {
         userName: userDetails?.name,
         scheduleName: getSchedular.name,
-        scheduleLastestRun: new Date(getSchedular.lastExecuted).toString(),
+        scheduleLastestRun: new Date(getSchedular.lastExecuted)
+          .toISOString()
+          .replace("T", " ")
+          .replace("Z", " UTC"),
         scheduleRunResult: scheduleRunResult,
         scheduleRunPassedCount: data.successRequests,
         scheduleRunFailedCount: data.failedRequests,
