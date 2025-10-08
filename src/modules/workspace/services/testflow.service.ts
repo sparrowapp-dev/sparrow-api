@@ -197,39 +197,36 @@ export class TestflowService implements OnModuleInit {
       scheduleId,
       updatedSchedular,
     );
-    // Optionally update cron job if isActive changed
-    if (
-      updateScheduleDto.isActive !== undefined
-    ) {
-      const schedular = await this.testflowRepository.getSchedularById(
-        testflowId,
-        scheduleId,
-      );
-      if (schedular) {
-        // Remove old job
-        await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
-        // If still active, re-add job
-        if (schedular.isActive) {
-          const runCycleConfig = this.buildRunCycleConfig(
-            schedular.runConfiguration,
-          );
-          const cronExpression = schedular.cronExpression;
-          await this.testflowSchedulerService.addSchedulerJob(
-            runCycleConfig,
-            this.getScheduledExecutionCallback(
-              testflowId,
-              schedular.environmentId,
-              workspaceId,
-              scheduleId,
-              user,
-            ),
-            schedular.schedularName,
-            cronExpression,
+    
+    const schedular = await this.testflowRepository.getSchedularById(
+      testflowId,
+      scheduleId,
+    );
+    if (schedular) {
+      // Remove old job
+      await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
+      // If still active, re-add job
+      if (schedular.isActive) {
+        const runCycleConfig = this.buildRunCycleConfig(
+          schedular.runConfiguration,
+        );
+        const cronExpression = schedular.cronExpression;
+        await this.testflowSchedulerService.addSchedulerJob(
+          runCycleConfig,
+          this.getScheduledExecutionCallback(
+            testflowId,
+            schedular.environmentId,
+            workspaceId,
             scheduleId,
-          );
-        }
+            user,
+          ),
+          schedular.schedularName,
+          cronExpression,
+          scheduleId,
+        );
       }
     }
+    
     return result;
   }
 
