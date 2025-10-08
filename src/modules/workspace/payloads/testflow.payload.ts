@@ -12,6 +12,8 @@ import { Type } from "class-transformer";
 
 // ---- Model
 import {
+  NotificationDto,
+  RunConfigurationDto,
   TestflowEdges,
   TestflowNodes,
 } from "@src/modules/common/models/testflow.model";
@@ -129,4 +131,54 @@ export class UpdateTestflowDto {
   @ValidateNested({ each: true })
   @IsOptional()
   nodes?: TestflowNodes[];
+}
+
+export class CreateTestflowSchedularDto {
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  testflowId: string;
+
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "New Testflow Schedular Name" })
+  @IsOptional()
+  name: string;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "428347384723" })
+  @IsOptional()
+  environmentId: string;
+
+  @ApiProperty({
+    required: true,
+    type: () => RunConfigurationDto,
+    example: {
+      runCycle: "daily",
+      every: "2h",
+      date: "2025-09-23",
+      time: "14:30",
+      startTime: "09:00",
+      endTime: "18:00",
+    },
+  })
+  @ValidateNested()
+  @Type(() => RunConfigurationDto)
+  runConfiguration: RunConfigurationDto;
+
+  @ApiProperty({
+    required: false,
+    type: () => NotificationDto,
+    example: {
+      emails: ["user1@example.com", "user2@example.com"],
+      receiveNotifications: true,
+    },
+  })
+  @ValidateNested()
+  @Type(() => NotificationDto)
+  notification?: NotificationDto;
 }
