@@ -82,8 +82,10 @@ export class TestflowRunService {
     );
     let environmentData;
     if (environmentId) {
-      environmentData =
-        await this.environmentReposistory.get(environmentId);
+      try{
+        environmentData =
+          await this.environmentReposistory.get(environmentId);
+      }catch(err){}
     }
     const activeVariables = this.combineEnvironmentData(
       globalEnvDetails?.variable || [],
