@@ -1381,23 +1381,11 @@ export class CollectionService {
         "Please provide collectionId and Generated Variables.",
       );
     }
-    const workspaceDetails = await this.workspaceRepository.get(workspaceId);
-    const matchingUser = workspaceDetails.users?.find(
-      (currentUser) => currentUser.id === user._id.toString(),
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+      user._id,
     );
-    if (!matchingUser) {
-      throw new NotFoundException(
-        `User with ${user.email} not found in workspace.`,
-      );
-    }
-    if (
-      matchingUser.role !== WorkspaceRole.ADMIN &&
-      matchingUser.role !== WorkspaceRole.EDITOR
-    ) {
-      throw new ForbiddenException(
-        "You do not have permission to modify generated variables.",
-      );
-    }
+    await this.checkPermission(workspaceId, user._id);
     const collectionDocument = await this.getCollection(collectionId);
     if (!collectionDocument) {
       throw new NotFoundException("Collection is not Found.");
