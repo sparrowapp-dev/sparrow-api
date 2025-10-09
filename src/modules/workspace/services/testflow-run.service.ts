@@ -113,11 +113,20 @@ export class TestflowRunService {
         nodes:testflowDetails.nodes,
         edges:testflowDetails.edges,
       }
+      // throw new NotFoundException("Testflow not found");
       // Return only history or any relevant part
       return finalResult;
     } catch (error: any) {
-      console.error("Testflow proxy execution failed:", error.message || error);
-      throw new Error(error?.message || "Testflow execution failed.");
+      return {
+        result:{
+          history: {
+            status: "error"
+          }
+        },
+        environmentName:environmentData?.name,
+        nodes:testflowDetails.nodes,
+        edges:testflowDetails.edges,
+      }
     }
   };
 }
