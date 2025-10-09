@@ -47,6 +47,7 @@ import { v4 as uuidv4 } from "uuid";
 import { TestflowSchedulerService } from "./testflow-schedular.service";
 import {
   DailyConfig,
+  DayOfWeek,
   EmailData,
   HourlyConfig,
   NotificationReceiveType,
@@ -170,14 +171,15 @@ export class TestflowService implements OnModuleInit {
       );
       environmentName = environmentData?.name || "";
     }
-  
-    if(updateScheduleDto.runConfiguration){
-      const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
+
+    if (updateScheduleDto.runConfiguration) {
+      const runCycleConfig = this.buildRunCycleConfig(
+        updateScheduleDto.runConfiguration,
+      );
       const cronExpression = this.generateCronExpression(runCycleConfig);
       if (!cronExpression) {
         updateScheduleDto.cronExpression = null;
-      }
-      else{
+      } else {
         updateScheduleDto.cronExpression = cronExpression;
       }
     }
@@ -197,7 +199,7 @@ export class TestflowService implements OnModuleInit {
       scheduleId,
       updatedSchedular,
     );
-    
+
     const schedular = await this.testflowRepository.getSchedularById(
       testflowId,
       scheduleId,
@@ -226,7 +228,7 @@ export class TestflowService implements OnModuleInit {
         );
       }
     }
-    
+
     return result;
   }
 
@@ -336,7 +338,11 @@ export class TestflowService implements OnModuleInit {
    * Fetches single testflow.
    * @param id - Testflow id you want to fetch.
    */
-  async getTestflow(workspaceId: string, testflowId: string, userId: ObjectId): Promise<WithId<Testflow>> {
+  async getTestflow(
+    workspaceId: string,
+    testflowId: string,
+    userId: ObjectId,
+  ): Promise<WithId<Testflow>> {
     await this.checkPermission(workspaceId, userId);
     return await this.testflowRepository.get(testflowId);
   }
@@ -348,7 +354,7 @@ export class TestflowService implements OnModuleInit {
    */
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
     const workspace = await this.workspaceService.get(workspaceId);
-    if(workspace.workspaceType === WorkspaceType.PUBLIC){
+    if (workspace.workspaceType === WorkspaceType.PUBLIC) {
       return;
     }
     const hasPermission = workspace.users.some((user) => {
@@ -380,7 +386,7 @@ export class TestflowService implements OnModuleInit {
       id,
       user._id,
     );
-  
+
     // Remove all associated cronjobs for this testflow
     if (testflow?.schedules && Array.isArray(testflow.schedules)) {
       for (const schedule of testflow.schedules) {
@@ -713,20 +719,31 @@ export class TestflowService implements OnModuleInit {
     const { intervalHours, startTime } = config;
     if (startTime) {
       const { hour, minute, second = 0 } = startTime;
-      return `${second} ${minute} ${hour}-23/${intervalHours} * * *`;
+      // Run every N hours starting from the specified time
+      return `${second} ${minute} */${intervalHours} * * *`;
     } else {
       const now = new Date();
-      const utcHour = now.getUTCHours();
       const utcMinute = now.getUTCMinutes();
       const utcSecond = now.getUTCSeconds();
-      return `${utcSecond} ${utcMinute} ${utcHour}-23/${intervalHours} * * *`;
+      // Run every N hours at the current minute and second
+      return `${utcSecond} ${utcMinute} */${intervalHours} * * *`;
     }
   }
 
   private generateWeeklyCronExpression(config: WeeklyConfig): string {
     const { days, time } = config;
     const { hour, minute, second = 0 } = time;
-    return `${second} ${minute} ${hour} * * ${days.join(",")}`;
+    const validDays = days.filter((day) => {
+      return day >= DayOfWeek.SUNDAY && day <= DayOfWeek.SATURDAY;
+    });
+    if (validDays.length === 0) {
+      throw new BadRequestException(
+        "Invalid days specified. Days must be valid DayOfWeek values (0=Sunday, 1=Monday, ..., 6=Saturday)",
+      );
+    }
+    const sortedDays = validDays.sort((a, b) => a - b);
+    const daysString = sortedDays.join(",");
+    return `${second} ${minute} ${hour} * * ${daysString}`;
   }
 
   public getScheduledExecutionCallback(
@@ -814,11 +831,9 @@ export class TestflowService implements OnModuleInit {
         scheduleRunResult = "failed";
       } else if (data.status === "success") {
         scheduleRunResult = "success";
-      } 
-      else if (data.status === "error") {
+      } else if (data.status === "error") {
         scheduleRunResult = "error";
-      } 
-      else {
+      } else {
         scheduleRunResult = "partial";
       }
       const totalRequestCount = data.successRequests + data.failedRequests;
