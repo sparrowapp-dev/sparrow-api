@@ -113,7 +113,6 @@ export class TestflowRunService {
         nodes:testflowDetails.nodes,
         edges:testflowDetails.edges,
       }
-      throw new Error("Test flow execution failed");
       return finalResult;
     } catch (error: any) {
       return {
