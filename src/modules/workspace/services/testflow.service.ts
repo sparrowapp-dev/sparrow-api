@@ -814,7 +814,11 @@ export class TestflowService implements OnModuleInit {
         scheduleRunResult = "failed";
       } else if (data.status === "success") {
         scheduleRunResult = "success";
-      } else {
+      } 
+      else if (data.status === "error") {
+        scheduleRunResult = "error";
+      } 
+      else {
         scheduleRunResult = "partial";
       }
       const totalRequestCount = data.successRequests + data.failedRequests;
