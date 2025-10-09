@@ -170,6 +170,18 @@ export class TestflowService implements OnModuleInit {
       );
       environmentName = environmentData?.name || "";
     }
+  
+    if(updateScheduleDto.runConfiguration){
+      const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
+      const cronExpression = this.generateCronExpression(runCycleConfig);
+      if (!cronExpression) {
+        updateScheduleDto.cronExpression = null;
+      }
+      else{
+        updateScheduleDto.cronExpression = cronExpression;
+      }
+    }
+
     // Merge update fields, ensure id is present
     const updatedSchedular: TestflowSchedular = {
       ...existingSchedular,
@@ -185,42 +197,36 @@ export class TestflowService implements OnModuleInit {
       scheduleId,
       updatedSchedular,
     );
-    // Optionally update cron job if runConfiguration or isActive changed
-    if (
-      updateScheduleDto.runConfiguration ||
-      updateScheduleDto.isActive !== undefined
-    ) {
-      const schedular = await this.testflowRepository.getSchedularById(
-        testflowId,
-        scheduleId,
-      );
-      if (schedular) {
-        // Remove old job
-        await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
-        // If still active, re-add job
-        if (schedular.isActive) {
-          const runCycleConfig = this.buildRunCycleConfig(
-            schedular.runConfiguration,
-          );
-          const cronExpression =
-            schedular.cronExpression ||
-            this.generateCronExpression(runCycleConfig);
-          await this.testflowSchedulerService.addSchedulerJob(
-            runCycleConfig,
-            this.getScheduledExecutionCallback(
-              testflowId,
-              schedular.environmentId,
-              workspaceId,
-              scheduleId,
-              user,
-            ),
-            schedular.schedularName,
-            cronExpression,
+    
+    const schedular = await this.testflowRepository.getSchedularById(
+      testflowId,
+      scheduleId,
+    );
+    if (schedular) {
+      // Remove old job
+      await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
+      // If still active, re-add job
+      if (schedular.isActive) {
+        const runCycleConfig = this.buildRunCycleConfig(
+          schedular.runConfiguration,
+        );
+        const cronExpression = schedular.cronExpression;
+        await this.testflowSchedulerService.addSchedulerJob(
+          runCycleConfig,
+          this.getScheduledExecutionCallback(
+            testflowId,
+            schedular.environmentId,
+            workspaceId,
             scheduleId,
-          );
-        }
+            user,
+          ),
+          schedular.schedularName,
+          cronExpression,
+          scheduleId,
+        );
       }
     }
+    
     return result;
   }
 
@@ -374,6 +380,16 @@ export class TestflowService implements OnModuleInit {
       id,
       user._id,
     );
+  
+    // Remove all associated cronjobs for this testflow
+    if (testflow?.schedules && Array.isArray(testflow.schedules)) {
+      for (const schedule of testflow.schedules) {
+        if (schedule?.id) {
+          await this.testflowSchedulerService.removeSchedulerJob(schedule.id);
+        }
+      }
+    }
+
     const updateMessage = `"${testflow.name}" testflow is deleted from "${workspace.name}" workspace`;
     const currentWorkspaceObject = new ObjectId(workspaceId);
     const updateWorkspaceData: Partial<Workspace> = {
