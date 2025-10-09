@@ -49,6 +49,7 @@ import { SalesEmailRepository } from "@src/modules/workspace/repositories/sales-
 import { ConfigService } from "@nestjs/config";
 import { TrialType } from "@src/modules/common/enum/trial.enum";
 import { PricingPlan } from "@src/modules/common/models/pricing.model";
+import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -72,6 +73,7 @@ export class StripeController {
     private readonly pricingService: PricingService,
     private readonly configService: ConfigService,
     private readonly salesEmailRepository: SalesEmailRepository,
+    private readonly stripeSubscriptionRepository: StripeSubscriptionRepository,
   ) {
     this.isStripeAvailable = !!this.stripeService;
 
@@ -295,10 +297,10 @@ export class StripeController {
         for (const planBilling of currentPlan.billing) {
           if (planBilling.providers?.stripe === createSubscriptionDto.priceId) {
             selectedPlan = currentPlan;
-            break; 
+            break;
           }
         }
-        if (selectedPlan) break; 
+        if (selectedPlan) break;
       }
       if (selectedPlan) {
         // Replace or set planName
@@ -458,13 +460,21 @@ export class StripeController {
     @Body() cancelSubscriptionDto: CancelSubscriptionDto,
   ): Promise<SubscriptionResponseDto> {
     try {
+      console.log(
+        "-----------this is the subscription-data ---->",
+        cancelSubscriptionDto,
+        subscriptionId,
+      );
       this.checkStripeAvailability();
-
       const subscription = await this.stripeService.cancelSubscription(
         subscriptionId,
         false, //disables cancellation at mid cycle
       );
-
+      await this.stripeSubscriptionRepository.addDowngradeDetails(
+        cancelSubscriptionDto.teamId,
+        cancelSubscriptionDto.workspaceIds,
+        cancelSubscriptionDto.userIds,
+      );
       return { subscription };
     } catch (error) {
       throw new HttpException(

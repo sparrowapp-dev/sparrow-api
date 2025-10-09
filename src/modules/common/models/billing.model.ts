@@ -179,6 +179,20 @@ export class BillingDto {
   subscription_expired_email_sent?: boolean | Date;
 }
 
+export class BilingDtoWithDowngradeDetails extends BillingDto{
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => String)
+  @IsOptional()
+  downgrade_workspaces?:string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => String)
+  @IsOptional()
+  downgrade_users?:string[];
+}
+
 class BillingChangeDto {
   @IsString()
   @IsOptional()

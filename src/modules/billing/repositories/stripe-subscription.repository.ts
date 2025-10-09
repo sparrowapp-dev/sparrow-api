@@ -110,11 +110,11 @@ export class StripeSubscriptionRepository {
       return await this.db
         .collection(Collections.TEAM)
         .findOne({ 
-          $or: [
-            { "billing.customerId": customerId },
+        $or: [
+          { "billing.customerId": customerId },
             { "billing.paymentProviders.customerId": customerId }
           ]
-        });
+      });
     } catch (error) {
       throw error;
     }
@@ -245,6 +245,53 @@ export class StripeSubscriptionRepository {
         .toArray();
     } catch (error) {
       console.error("Error fetching teams with expiring subscriptions:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add downgrade details (workspaces and users) to a team's billing record.
+   * This function updates the billing section of a team document by appending
+   * workspace IDs to `billing.downgrade_workspaces` and user IDs to
+   * `billing.downgrade_users`. Duplicate entries are automatically avoided
+   * using MongoDB's `$addToSet` operator.
+   * @param teamId The unique identifier of the team whose billing record will be updated.
+   * @param workspaceIds Array of workspace IDs to mark for downgrade.
+   * @param userIds Array of user IDs to mark for downgrade.
+   * @returns MongoDB UpdateResult indicating the success or failure of the update.
+   */
+  async addDowngradeDetails(
+    teamId: string,
+    workspaceIds: string[],
+    userIds: string[],
+  ): Promise<UpdateResult> {
+    try {
+      if (!teamId) {
+        throw new Error("teamId is required to update downgrade details.");
+      }
+      const updateQuery: Record<string, any> = {};
+      // Add workspaces if provided
+      if (workspaceIds && workspaceIds.length > 0) {
+        updateQuery["billing.downgrade_workspaces"] = { $each: workspaceIds };
+      }
+      // Add users if provided
+      if (userIds && userIds.length > 0) {
+        updateQuery["billing.downgrade_users"] = { $each: userIds };
+      }
+      if (Object.keys(updateQuery).length === 0) {
+        throw new Error("No workspaceIds or userIds provided to update.");
+      }
+      const teamObjectId = new ObjectId(teamId);
+      const result = await this.db.collection(Collections.TEAM).updateOne(
+        { _id: teamObjectId },
+        {
+          $addToSet: updateQuery,
+          $set: { "billing.updatedBy": "system" },
+        },
+      );
+      return result;
+    } catch (error) {
+      console.error("Error adding downgrade workspaces and users:", error);
       throw error;
     }
   }

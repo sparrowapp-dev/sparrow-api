@@ -19,7 +19,7 @@ import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
 import { Plan } from "./plan.model";
-import { BillingDto } from "./billing.model";
+import { BilingDtoWithDowngradeDetails, BillingDto } from "./billing.model";
 import { LicensesDto } from "./licenses.model";
 
 export class logoDto {
@@ -120,7 +120,7 @@ export class Team {
 
   @IsOptional()
   @IsObject()
-  billing?: BillingDto;
+  billing?: BilingDtoWithDowngradeDetails;
 
   @IsOptional()
   @IsObject()

@@ -7,6 +7,8 @@ import {
   IsBoolean,
   IsNotEmpty,
   IsNumber,
+  IsArray,
+  ValidateNested,
 } from "class-validator";
 
 export class CreateCustomerDto {
@@ -210,6 +212,32 @@ export class CancelSubscriptionDto {
   @IsOptional()
   @IsBoolean()
   cancelImmediately?: boolean;
+
+  @ApiPropertyOptional({
+    description: "team Id",
+    example: "688731d965594536e3ffdce1",
+  })
+  @IsOptional()
+  @IsString()
+  teamId?: string;
+
+  @ApiPropertyOptional({
+    description: "List of workspace IDs to downgrade",
+    example: ["6889ff80b1338511b5bfc210"],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  workspaceIds?: string[];
+
+  @ApiPropertyOptional({
+    description: "List of user IDs to downgrade",
+    example: ["example@gmail.com"],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  userIds?: string[];
 }
 
 export class ReactivateSubscriptionDto {
