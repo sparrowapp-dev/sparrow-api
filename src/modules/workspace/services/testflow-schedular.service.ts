@@ -27,7 +27,86 @@ export class TestflowSchedulerService {
       return false;
     }
     try {
-      // Create cron job with UTC timezone
+      // For HOURLY rolling interval, create a one-time cron job for the next execution
+      if (runCycle.type === RunCycleEnum.HOURLY && runCycle.intervalHours) {
+
+        const scheduleNext = async (lastRun: Date) => {
+          // Calculate next run time
+          const nextRun = new Date(lastRun.getTime() + runCycle.intervalHours * 60 * 60 * 1000);
+          // Generate one-time cron expression for nextRun
+          const second = nextRun.getUTCSeconds();
+          const minute = nextRun.getUTCMinutes();
+          const hour = nextRun.getUTCHours();
+          const dayOfMonth = nextRun.getUTCDate();
+          const month = nextRun.getUTCMonth() + 1;
+          const oneTimeCron = `${second} ${minute} ${hour} ${dayOfMonth} ${month} *`;
+          const nextJobName = schedularId; // Always use scheduleId as job name
+          this.logger.log(`Next rolling interval job ${nextJobName} scheduled for ${nextRun.toISOString()} (cron: ${oneTimeCron})`);
+          // Remove any existing job with this name before adding
+          if (this.schedulerRegistry.doesExist("cron", nextJobName)) {
+            const oldJob = this.schedulerRegistry.getCronJob(nextJobName);
+            oldJob.stop();
+            this.schedulerRegistry.deleteCronJob(nextJobName);
+          }
+          const job = new CronJob(
+            oneTimeCron,
+            async () => {
+              this.logger.log(`Executing rolling interval job ${nextJobName} at ${new Date().toISOString()} (UTC)`);
+              if (runApis) {
+                try {
+                  await runApis(schedularId);
+                } catch (error) {
+                  this.logger.error(`Error executing job ${nextJobName}: ${error.message}`, error.stack);
+                }
+              }
+              job.stop();
+              this.schedulerRegistry.deleteCronJob(nextJobName);
+              this.logAllCronJobs();
+              // Schedule next job
+              await scheduleNext(nextRun);
+              this.logAllCronJobs();
+            },
+            null,
+            false,
+            timezone,
+          );
+          this.schedulerRegistry.addCronJob(nextJobName, job);
+          job.start();
+        };
+        // Use the provided initial cron expression for the first run
+        const nextJobName = schedularId;
+        // Remove any existing job with this name before adding
+        if (this.schedulerRegistry.doesExist("cron", nextJobName)) {
+          const oldJob = this.schedulerRegistry.getCronJob(nextJobName);
+          oldJob.stop();
+          this.schedulerRegistry.deleteCronJob(nextJobName);
+        }
+        const job = new CronJob(
+          cronExpression,
+          async () => {
+            this.logger.log(`Executing rolling interval job ${nextJobName} at ${new Date().toISOString()} (UTC)`);
+            if (runApis) {
+              try {
+                await runApis(schedularId);
+              } catch (error) {
+                this.logger.error(`Error executing job ${nextJobName}: ${error.message}`, error.stack);
+              }
+            }
+            job.stop();
+            this.schedulerRegistry.deleteCronJob(nextJobName);
+            // After first run, start rolling with scheduleNext
+            await scheduleNext(new Date());
+          },
+          null,
+          false,
+          timezone,
+        );
+        this.schedulerRegistry.addCronJob(nextJobName, job);
+        job.start();
+        this.logger.log(`Rolling interval scheduler job ${jobName} registered with interval: ${runCycle.intervalHours}h, timezone: ${timezone}`);
+        return true;
+      }
+      // Default: Create cron job with UTC timezone
       const job = new CronJob(
         cronExpression,
         async () => {
@@ -119,6 +198,11 @@ export class TestflowSchedulerService {
   }
 
   private generateJobName(schedulerId: string): string {
-    return `scheduler_${schedulerId}`;
+    return `${schedulerId}`;
+  }
+
+  public logAllCronJobs() {
+    const jobs = Array.from(this.schedulerRegistry.getCronJobs().keys());
+    console.log('Active cron jobs: ' + jobs.join(', '));
   }
 }
