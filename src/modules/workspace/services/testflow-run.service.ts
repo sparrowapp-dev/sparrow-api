@@ -73,35 +73,35 @@ export class TestflowRunService {
     testflowId:string,
     user?: DecodedUserObject,
   ): Promise<any> => {
-    // Fetch testflow and environment data
-    const testflowDetails = await this.testflowRepository.get(testflowId);
-    const workspaceID = await this.workspaceReposistory.get(workspaceId);
-    const globalEnvironment = workspaceID.environments[0];
-    const globalEnvDetails = await this.environmentReposistory.get(
-      globalEnvironment.id.toString(),
-    );
-    let environmentData;
-    if (environmentId) {
-      try{
-        environmentData =
-          await this.environmentReposistory.get(environmentId);
-      }catch(err){}
-    }
-    const activeVariables = this.combineEnvironmentData(
-      globalEnvDetails?.variable || [],
-      environmentData?.variable || [],
-    );
-    // Build proxy URL
-    const sparrowProxy = this.configService.get<string>("sparrowProxy.baseUrl");
-    const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
-    // Prepare request body for proxy API
-    const body = {
-      nodes: testflowDetails.nodes || [],
-      variables: activeVariables || [],
-      edges: testflowDetails.edges,
-      userId: user?._id || new ObjectId("000000000000000000000000"),
-    };
     try {
+      // Fetch testflow and environment data
+      const testflowDetails = await this.testflowRepository.get(testflowId);
+      const workspaceID = await this.workspaceReposistory.get(workspaceId);
+      const globalEnvironment = workspaceID.environments[0];
+      const globalEnvDetails = await this.environmentReposistory.get(
+        globalEnvironment.id.toString(),
+      );
+      let environmentData;
+      if (environmentId) {
+        try{
+          environmentData =
+            await this.environmentReposistory.get(environmentId);
+        }catch(err){}
+      }
+      const activeVariables = this.combineEnvironmentData(
+        globalEnvDetails?.variable || [],
+        environmentData?.variable || [],
+      );
+      // Build proxy URL
+      const sparrowProxy = this.configService.get<string>("sparrowProxy.baseUrl");
+      const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
+      // Prepare request body for proxy API
+      const body = {
+        nodes: testflowDetails.nodes || [],
+        variables: activeVariables || [],
+        edges: testflowDetails.edges,
+        userId: user?._id || new ObjectId("000000000000000000000000"),
+      };
       const response = await axios.post(proxyUrl, body, {
         headers: {
           "Content-Type": "application/json",
@@ -113,8 +113,7 @@ export class TestflowRunService {
         nodes:testflowDetails.nodes,
         edges:testflowDetails.edges,
       }
-      // throw new NotFoundException("Testflow not found");
-      // Return only history or any relevant part
+      throw new Error("Test flow execution failed");
       return finalResult;
     } catch (error: any) {
       return {
@@ -123,9 +122,9 @@ export class TestflowRunService {
             status: "error"
           }
         },
-        environmentName:environmentData?.name,
-        nodes:testflowDetails.nodes,
-        edges:testflowDetails.edges,
+        environmentName: "",
+        nodes: [],
+        edges: [],
       }
     }
   };
