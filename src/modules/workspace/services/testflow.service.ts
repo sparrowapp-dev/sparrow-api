@@ -151,7 +151,6 @@ export class TestflowService implements OnModuleInit {
                     cronExpression: _cronExpression,
                   });
                 },
-                schedule.schedularName,
                 cronExpression,
                 schedule.id,
                 "UTC",
@@ -282,9 +281,9 @@ export class TestflowService implements OnModuleInit {
               cronExpression: _cronExpression,
             });
           },
-          schedular.schedularName,
           cronExpression,
           scheduleId,
+          "UTC",
         );
       }
     }
@@ -640,7 +639,6 @@ export class TestflowService implements OnModuleInit {
             cronExpression: _cronExpression,
           });
         },
-        jobName,
         cronExpression,
         schedulerId,
         "UTC",
