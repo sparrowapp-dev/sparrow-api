@@ -9,7 +9,7 @@ import { TestflowRepository } from "../repositories/testflow.repository";
 export class TestflowSchedulerService {
   private readonly logger = new Logger(TestflowSchedulerService.name);
 
-  constructor(private schedulerRegistry: SchedulerRegistry, private testflowRepository: TestflowRepository) {}
+  constructor(private schedulerRegistry: SchedulerRegistry ) {}
 
   /**
    * Add a cron job
