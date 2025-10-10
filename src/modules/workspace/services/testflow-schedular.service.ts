@@ -63,10 +63,8 @@ export class TestflowSchedulerService {
               }
               job.stop();
               this.schedulerRegistry.deleteCronJob(nextJobName);
-              this.logAllCronJobs();
               // Schedule next job
               await scheduleNext(nextRun);
-              this.logAllCronJobs();
             },
             null,
             false,
@@ -87,7 +85,6 @@ export class TestflowSchedulerService {
         const job = new CronJob(
           cronExpression,
           async () => {
-            this.logger.log(`Executing rolling interval job ${nextJobName} at ${new Date().toISOString()} (UTC)`);
             if (runApis) {
               try {
                 await runApis(schedularId);
@@ -106,16 +103,12 @@ export class TestflowSchedulerService {
         );
         this.schedulerRegistry.addCronJob(nextJobName, job);
         job.start();
-        this.logger.log(`Rolling interval scheduler job ${jobName} registered with interval: ${runCycle.intervalHours}h, timezone: ${timezone}`);
         return true;
       }
       // Default: Create cron job with UTC timezone
       const job = new CronJob(
         cronExpression,
         async () => {
-          this.logger.log(
-            `Executing job ${jobName} at ${new Date().toISOString()} (UTC)`
-          );
           if (runApis) {
             try {
               await runApis(schedularId);
@@ -130,7 +123,6 @@ export class TestflowSchedulerService {
           if (runCycle.type === RunCycleEnum.ONCE) {
             job.stop();
             this.schedulerRegistry.deleteCronJob(jobName);
-            this.logger.log(`One-time scheduler ${jobName} completed and removed`);
           }
         },
         null, // onComplete callback
@@ -139,10 +131,6 @@ export class TestflowSchedulerService {
       );
       this.schedulerRegistry.addCronJob(jobName, job);
       job.start();
-      this.logger.log(
-        `Scheduler job ${jobName} registered with cycle: ${runCycle.type}, ` +
-        `timezone: ${timezone}, cron: ${cronExpression}`
-      );
       return true;
     } catch (error) {
       this.logger.error(
@@ -164,9 +152,6 @@ export class TestflowSchedulerService {
         job.stop();
         this.schedulerRegistry.deleteCronJob(jobName);
       }
-      this.logger.log(
-        `Scheduler job ${jobName} (ID: ${schedulerId}) removed from DB + registry`,
-      );
       return true;
     } catch (error) {
       this.logger.warn(
@@ -184,7 +169,6 @@ export class TestflowSchedulerService {
     if (this.schedulerRegistry.doesExist("cron", jobName)) {
       const job = this.schedulerRegistry.getCronJob(jobName);
       job.stop();
-      this.logger.log(`Scheduler job ${jobName} paused`);
     }
   }
 
@@ -196,7 +180,6 @@ export class TestflowSchedulerService {
     if (this.schedulerRegistry.doesExist("cron", jobName)) {
       const job = this.schedulerRegistry.getCronJob(jobName);
       job.start();
-      this.logger.log(`Scheduler job ${jobName} resumed`);
     }
   }
 
@@ -205,7 +188,6 @@ export class TestflowSchedulerService {
   }
 
   public logAllCronJobs() {
-    const jobs = Array.from(this.schedulerRegistry.getCronJobs().keys());
-    console.log('Active cron jobs: ' + jobs.join(', '));
+    return Array.from(this.schedulerRegistry.getCronJobs().keys());
   }
 }
