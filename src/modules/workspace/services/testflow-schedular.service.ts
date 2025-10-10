@@ -18,14 +18,12 @@ export class TestflowSchedulerService {
     runCycle: RunCycleConfig,
     runApis: (schedularId: string) => Promise<void>,
     afterJobCreate: (cronExpression: string) => void,
-    jobName: string,
     cronExpression: string,
     schedularId: string,
     timezone: string = "UTC", // Always use UTC by default
   ): Promise<boolean> {
     if (!cronExpression) {
-      console.error(`Invalid run cycle configuration for job ${jobName}`);
-      this.logger.log(`Invalid run cycle configuration for job ${jobName}`);
+      this.logger.log(`Invalid run cycle configuration for job ${schedularId}`);
       return false;
     }
     try {
@@ -114,7 +112,7 @@ export class TestflowSchedulerService {
               await runApis(schedularId);
             } catch (error) {
               this.logger.error(
-                `Error executing job ${jobName}: ${error.message}`,
+                `Error executing job ${schedularId}: ${error.message}`,
                 error.stack
               );
             }
@@ -122,19 +120,19 @@ export class TestflowSchedulerService {
           // Handle one-time jobs
           if (runCycle.type === RunCycleEnum.ONCE) {
             job.stop();
-            this.schedulerRegistry.deleteCronJob(jobName);
+            this.schedulerRegistry.deleteCronJob(schedularId);
           }
         },
         null, // onComplete callback
         false, // start - we'll call start() manually
         timezone, // Set timezone to UTC
       );
-      this.schedulerRegistry.addCronJob(jobName, job);
+      this.schedulerRegistry.addCronJob(schedularId, job);
       job.start();
       return true;
     } catch (error) {
       this.logger.error(
-        `Failed to create scheduler job ${jobName}: ${error.message}`,
+        `Failed to create scheduler job ${schedularId}: ${error.message}`,
         error.stack
       );
       return false;
