@@ -3,12 +3,13 @@ import { SchedulerRegistry } from "@nestjs/schedule";
 import { CronJob } from "cron";
 import { RunCycleEnum } from "@src/modules/common/enum/testflow.enum";
 import { RunCycleConfig } from "@src/modules/common/enum/testflow.enum";
+import { TestflowRepository } from "../repositories/testflow.repository";
 
 @Injectable()
 export class TestflowSchedulerService {
   private readonly logger = new Logger(TestflowSchedulerService.name);
 
-  constructor(private schedulerRegistry: SchedulerRegistry) {}
+  constructor(private schedulerRegistry: SchedulerRegistry, private testflowRepository: TestflowRepository) {}
 
   /**
    * Add a cron job
@@ -16,6 +17,7 @@ export class TestflowSchedulerService {
   async addSchedulerJob(
     runCycle: RunCycleConfig,
     runApis: (schedularId: string) => Promise<void>,
+    afterJobCreate: (cronExpression: string) => void,
     jobName: string,
     cronExpression: string,
     schedularId: string,
@@ -70,6 +72,7 @@ export class TestflowSchedulerService {
             false,
             timezone,
           );
+          afterJobCreate(oneTimeCron);
           this.schedulerRegistry.addCronJob(nextJobName, job);
           job.start();
         };

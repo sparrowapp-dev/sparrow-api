@@ -264,6 +264,37 @@ export class TestflowRepository {
       );
     }
 
+        /**
+     * Edit a schedular execution (run history item) in a testflow's schedule.
+     * @param {string} testflowId - The testflow document ID.
+     * @param {string} schedularId - The schedule ID.
+     * @param {Partial<TestFlowSchedular>} updatedSchedular - The updated fields for the schedule item.
+     * @returns {Promise<UpdateResult>} - The result of the update operation.
+     */
+    async editSchedular(
+      testflowId: string,
+      schedularId: string,
+      updatedSchedular: Partial<TestflowSchedular>,
+    ): Promise<UpdateResult> {
+      if (!testflowId || !schedularId) {
+        throw new Error("testflowId and schedularId are required");
+      }
+      // Build the update object for only the provided fields
+      const setObj: Record<string, any> = {};
+      for (const [key, value] of Object.entries(updatedSchedular)) {
+        setObj[`schedules.$[elem].${key}`] = value;
+      }
+      return this.db.collection(Collections.TESTFLOW).updateOne(
+        { _id: new ObjectId(testflowId) },
+        { $set: setObj },
+        {
+          arrayFilters: [
+            { "elem.id": schedularId },
+          ],
+        },
+      );
+    }
+
 
   async updateSchedularStatus(
     testflowId: string,

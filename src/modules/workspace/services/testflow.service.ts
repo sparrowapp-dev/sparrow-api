@@ -145,6 +145,11 @@ export class TestflowService implements OnModuleInit {
                   tf.workspaceId,
                   schedule.id,
                 ),
+                (_cronExpression: string)=>{
+                  this.testflowRepository.editSchedular(tf._id.toString(), schedule.id, {
+                    cronExpression: _cronExpression,
+                  });
+                },
                 schedule.schedularName,
                 cronExpression,
                 schedule.id,
@@ -271,6 +276,11 @@ export class TestflowService implements OnModuleInit {
             scheduleId,
             user,
           ),
+          (_cronExpression: string)=>{
+            this.testflowRepository.editSchedular(testflowId, scheduleId, {
+              cronExpression: _cronExpression,
+            });
+          },
           schedular.schedularName,
           cronExpression,
           scheduleId,
@@ -624,6 +634,11 @@ export class TestflowService implements OnModuleInit {
           schedulerId,
           user,
         ),
+        (_cronExpression: string)=>{
+          this.testflowRepository.editSchedular(schedularData.testflowId, schedulerId, {
+            cronExpression: _cronExpression,
+          });
+        },
         jobName,
         cronExpression,
         schedulerId,
