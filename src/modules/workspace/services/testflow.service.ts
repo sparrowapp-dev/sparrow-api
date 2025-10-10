@@ -47,6 +47,7 @@ import { v4 as uuidv4 } from "uuid";
 import { TestflowSchedulerService } from "./testflow-schedular.service";
 import {
   DailyConfig,
+  DayOfWeek,
   EmailData,
   HourlyConfig,
   NotificationReceiveType,
@@ -793,7 +794,17 @@ export class TestflowService implements OnModuleInit {
   private generateWeeklyCronExpression(config: WeeklyConfig): string {
     const { days, time } = config;
     const { hour, minute, second = 0 } = time;
-    return `${second} ${minute} ${hour} * * ${days.join(",")}`;
+    const validDays = days.filter((day) => {
+      return day >= DayOfWeek.SUNDAY && day <= DayOfWeek.SATURDAY;
+    });
+    if (validDays.length === 0) {
+      throw new BadRequestException(
+        "Invalid days specified. Days must be valid DayOfWeek values (0=Sunday, 1=Monday, ..., 6=Saturday)",
+      );
+    }
+    const sortedDays = validDays.sort((a, b) => a - b);
+    const daysString = sortedDays.join(",");
+    return `${second} ${minute} ${hour} * * ${daysString}`;
   }
 
   public getScheduledExecutionCallback(
