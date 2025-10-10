@@ -61,6 +61,7 @@ export interface DailyConfig {
 
 export interface HourlyConfig {
   type: RunCycleEnum.HOURLY;
+  executeAt: Date;
   intervalHours: number;
   startTime?: {
     hour: number;
