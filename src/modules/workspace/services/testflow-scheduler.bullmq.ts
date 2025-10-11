@@ -273,4 +273,13 @@ export class TestflowSchedulerService {
       total: waiting.length + active.length + completed.length + failed.length + delayed.length
     };
   }
+
+  /**
+   * Get the worker instance for error handling
+   */
+  getWorker(): Worker | null {
+    // This would return the worker instance if we had it
+    // For now, return null as the worker is in a separate service
+    return null;
+  }
 }

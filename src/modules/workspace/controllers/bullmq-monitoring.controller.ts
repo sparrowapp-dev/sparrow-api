@@ -7,6 +7,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagg
 
 @ApiTags('Monitoring')
 @Controller('monitoring/bullmq')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('super-admin')
 @ApiBearerAuth()
 export class BullMQMonitoringController {
