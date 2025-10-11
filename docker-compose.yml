@@ -12,6 +12,17 @@ services:
     networks:
       - localnet
 
+  # Redis (for BullMQ job scheduling)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - localnet
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
   # Api
   api:
     build:
@@ -26,7 +37,11 @@ services:
       - localnet
     depends_on:
       - mongo
+      - redis
     env_file: ".env"
+
+volumes:
+  redis-data:
 
 networks:
   localnet:

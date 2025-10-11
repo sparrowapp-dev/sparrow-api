@@ -78,7 +78,8 @@ import { EncryptionService } from "../common/services/encryption.service";
 
 // ---- Schedulers
 import { AiConsumptionScheduler } from "./schedulers/ai-consumption.scheduler";
-import { TestflowSchedulerService } from "./services/testflow-schedular.service";
+import { TestflowSchedulerService } from "./services/testflow-scheduler.bullmq";
+import { TestflowWorkerService } from "./services/testflow-worker.service";
 import { TestflowRunService } from "./services/testflow-run.service";
 import { ScheduleModule } from "@nestjs/schedule";
 
@@ -123,6 +124,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     TestflowService,
     TestflowRunService,
     TestflowSchedulerService,
+    TestflowWorkerService,
     TestflowRepository,
     AiLogHandler,
     AiLogService,
@@ -159,6 +161,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     TestflowService,
     TestflowRunService,
     TestflowSchedulerService,
+    TestflowWorkerService,
     TestflowRepository,
     UserLimitRepository,
     UserLimitService,
