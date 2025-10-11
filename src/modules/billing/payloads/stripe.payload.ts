@@ -201,6 +201,20 @@ export class UpdateSubscriptionDto {
   @IsNumber()
   seats?: number;
   paymentBehavior?: "default_incomplete" | "allow_incomplete";
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  workspaceIds?: string[];
+
+  @ApiPropertyOptional({
+    description: "List of user IDs to downgrade",
+    example: ["example@gmail.com"],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  userIds?: string[];
 }
 
 export class CancelSubscriptionDto {

@@ -12,9 +12,12 @@ import {
   BillingEventType,
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
-import { TeamsPlan } from "@src/modules/common/models/team.model";
+import { Team, TeamsPlan } from "@src/modules/common/models/team.model";
 import { ScheduledDowngradeDto } from "@src/modules/common/models/billing.model";
 import { LicensesDto } from "@src/modules/common/models/licenses.model";
+import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
+import { UserDto } from "@src/modules/common/models/user.model";
+import { DownGradeService } from "./downgrade.service";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -33,6 +36,7 @@ export class StripeSubscriptionService {
     private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
     private readonly billingAuditService: BillingAuditService,
     private readonly paymentEmailHelper: PaymentEmailHelper,
+    private readonly downgradeService: DownGradeService,
     @Optional() @Inject(StripeService) private readonly stripeService?: any,
   ) {}
 
@@ -93,7 +97,8 @@ export class StripeSubscriptionService {
           reason: `Subscription created with status: ${subscription.status}`,
         },
       );
-
+      // Remove auto Disable Auto Downgrade.
+      await this.stripeSubscriptionRepo.disableAutoDowngrade(metadata.hubId);
       // Only update team state if subscription is active
       if (subscription.status === SubscriptionStatus.ACTIVE) {
         await this.updateTeamAndWorkspacesWithPlan(
@@ -140,6 +145,9 @@ export class StripeSubscriptionService {
             undefined, // no seat change
             undefined, // no subscription details needed
             planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
+          );
+          await this.stripeSubscriptionRepo.removeDowngradeDetails(
+            metadata.hubId,
           );
         }
       }
@@ -918,6 +926,8 @@ export class StripeSubscriptionService {
       const team = await this.stripeSubscriptionRepo.findTeamById(
         metadata.hubId,
       );
+      // Execute manual downgrade AFTER plan change is complete
+      await this.executeManualDowngrade(team, metadata.hubId);
       const previousPlan = team?.plan?.name || "unknown";
 
       // Get cancellation reason if available
@@ -970,6 +980,7 @@ export class StripeSubscriptionService {
           reason: `Subscription deleted - ${cancellationReason}`,
         },
       );
+      await this.stripeSubscriptionRepo.removeDowngradeDetails(metadata.hubId);
     } catch (error) {
       throw error;
     }
@@ -1083,6 +1094,9 @@ export class StripeSubscriptionService {
         scheduledDowngrade: scheduledDowngrade,
         updatedBy: "system-stripe-webhook",
       };
+      console.log("--------------this is the downgrade update..------->");
+      // Execute manual downgrade AFTER plan change is complete
+      await this.executeManualDowngrade(team, hubId);
 
       await this.stripeSubscriptionRepo.updateTeamPlan(hubId, team.plan, {
         billing: updatedBilling,
@@ -1101,6 +1115,7 @@ export class StripeSubscriptionService {
           console.error("Error sending plan downgrade email:", error);
         }
       }
+      await this.stripeSubscriptionRepo.removeDowngradeDetails(hubId);
     } catch (error) {
       throw error;
     }
@@ -1143,18 +1158,18 @@ export class StripeSubscriptionService {
           }
 
           // Find the community plan for downgrade
-          const communityPlan =
-            await this.stripeSubscriptionRepo.findPlanByName(
-              PlanName.COMMUNITY,
-            );
-          if (!communityPlan) {
-            console.error("Community plan not found");
-            continue;
-          }
+          // const communityPlan =
+          //   await this.stripeSubscriptionRepo.findPlanByName(
+          //     PlanName.COMMUNITY,
+          //   );
+          // if (!communityPlan) {
+          //   console.error("Community plan not found");
+          //   continue;
+          // }
 
           // Ensure the plan has an ID for the update
-          communityPlan.id = communityPlan._id;
-          delete communityPlan._id;
+          // communityPlan.id = communityPlan._id;
+          // delete communityPlan._id;
 
           // Update billing details for expired subscription
           const billingDetails = {
@@ -1167,11 +1182,11 @@ export class StripeSubscriptionService {
           };
 
           // Update team to community plan
-          await this.updateTeamPlanWithBilling(
-            team._id.toString(),
-            communityPlan,
-            billingDetails,
-          );
+          // await this.updateTeamPlanWithBilling(
+          //   team._id.toString(),
+          //   communityPlan,
+          //   billingDetails,
+          // );
 
           // Send plan downgrade email notification
           if (this.paymentEmailHelper && team.plan?.name) {
@@ -1193,18 +1208,20 @@ export class StripeSubscriptionService {
             | { previous: Record<string, any>; new: Record<string, any> }
             | undefined;
 
-          if (team?.plan?.limits && communityPlan.limits) {
+          if (team?.plan?.limits) {
             planLimits = {
               previous: team.plan.limits,
-              new: communityPlan.limits,
+              new: team.plan.limits,
             };
           }
-
+          await this.stripeSubscriptionRepo.enableAutoDowngrade(
+            team._id.toString(),
+          );
           // Log the plan change
           await this.billingAuditService.recordPlanChange(
             team._id.toString(),
             team.plan?.name || "unknown",
-            PlanName.COMMUNITY,
+            team.plan?.name,
             {
               actor: { type: BillingActorType.SYSTEM, name: "maintenance-job" },
               source: BillingSource.BILLING_MAINTENANCE,
@@ -2005,6 +2022,73 @@ export class StripeSubscriptionService {
     } catch (error) {
       console.error("Error optimizing licenses for upcoming renewals:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Execute manual downgrade - remove workspaces and users not in the downgrade list
+   * This should only be called when the plan change is complete
+   * @param team The team data
+   * @param hubId The team hub ID
+   */
+  private async executeManualDowngrade(
+    team: Team,
+    hubId: string,
+  ): Promise<void> {
+    const manualDownGrade = team?.manual_downgrade;
+    const teamDownGradeWorkspaces = team?.downgrade?.workspaceIds;
+    const teamDownGradeUsers = team?.downgrade?.userIds;
+    if (!manualDownGrade) {
+      return;
+    }
+    // Skip if downgrade data is missing
+    if (!teamDownGradeWorkspaces && !teamDownGradeUsers) {
+      console.warn(
+        `Manual downgrade enabled but missing downgrade data for team ${hubId}`,
+      );
+      return;
+    }
+    try {
+      const allWorkspaces =
+        team?.workspaces?.map((workspace: WorkspaceDto) =>
+          workspace.id.toString(),
+        ) || [];
+      const allUsers =
+        team?.users
+          ?.filter((user: UserDto) => user.role !== "owner")
+          .map((user: UserDto) => user.id) || [];
+
+      // Workspaces not in the downgrade list (these will be deleted)
+      const nonDowngradedWorkspaces = allWorkspaces.filter(
+        (wsId: string) => !teamDownGradeWorkspaces.includes(wsId),
+      );
+      // Users not in the downgrade list (these will be removed)
+      const nonDowngradedUsers = allUsers.filter(
+        (userId: string) => !teamDownGradeUsers.includes(userId),
+      );
+
+      // Delete workspaces that are not in the downgrade list
+      for (const workspaceId of nonDowngradedWorkspaces) {
+        await this.downgradeService.deleteWorkspace(workspaceId);
+        console.log(`Deleted workspace ${workspaceId} during manual downgrade`);
+      }
+
+      // Remove users if teamDownGradeUsers has entries (keep specific users)
+      if (teamDownGradeUsers.length > 0 && nonDowngradedUsers.length > 0) {
+        for (const userId of nonDowngradedUsers) {
+          const payload = {
+            teamId: hubId,
+            userId: userId,
+          };
+          await this.downgradeService.removeUserFromTeam(payload);
+        }
+      }
+      console.log(`Manual downgrade completed for team ${hubId}`);
+    } catch (error) {
+      console.error(
+        `Error executing manual downgrade for team ${hubId}:`,
+        error,
+      );
     }
   }
 }

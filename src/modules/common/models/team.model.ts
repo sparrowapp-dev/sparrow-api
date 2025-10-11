@@ -19,7 +19,7 @@ import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
 import { Plan } from "./plan.model";
-import { BilingDtoWithDowngradeDetails, BillingDto } from "./billing.model";
+import { BillingDto, DowngradeDetails } from "./billing.model";
 import { LicensesDto } from "./licenses.model";
 
 export class logoDto {
@@ -120,11 +120,24 @@ export class Team {
 
   @IsOptional()
   @IsObject()
-  billing?: BilingDtoWithDowngradeDetails;
+  billing?: BillingDto;
 
   @IsOptional()
   @IsObject()
   licenses?: LicensesDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DowngradeDetails)
+  downgrade?: DowngradeDetails;
+
+  @IsBoolean()
+  @IsOptional()
+  manual_downgrade?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  auto_downgrade?: boolean;
 }
 
 export class TeamWithNewInviteTag extends Team {

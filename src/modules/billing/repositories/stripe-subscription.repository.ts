@@ -107,13 +107,11 @@ export class StripeSubscriptionRepository {
    */
   async findTeamByCustomerId(customerId: string): Promise<any> {
     try {
-      return await this.db
-        .collection(Collections.TEAM)
-        .findOne({ 
+      return await this.db.collection(Collections.TEAM).findOne({
         $or: [
           { "billing.customerId": customerId },
-            { "billing.paymentProviders.customerId": customerId }
-          ]
+          { "billing.paymentProviders.customerId": customerId },
+        ],
       });
     } catch (error) {
       throw error;
@@ -252,8 +250,8 @@ export class StripeSubscriptionRepository {
   /**
    * Add downgrade details (workspaces and users) to a team's billing record.
    * This function updates the billing section of a team document by appending
-   * workspace IDs to `billing.downgrade_workspaces` and user IDs to
-   * `billing.downgrade_users`. Duplicate entries are automatically avoided
+   * workspace IDs to `billing.downgrade.workspaces` and user IDs to
+   * `billing.downgrade.users`. Duplicate entries are automatically avoided
    * using MongoDB's `$addToSet` operator.
    * @param teamId The unique identifier of the team whose billing record will be updated.
    * @param workspaceIds Array of workspace IDs to mark for downgrade.
@@ -272,11 +270,11 @@ export class StripeSubscriptionRepository {
       const updateQuery: Record<string, any> = {};
       // Add workspaces if provided
       if (workspaceIds && workspaceIds.length > 0) {
-        updateQuery["billing.downgrade_workspaces"] = { $each: workspaceIds };
+        updateQuery["downgrade.workspaceIds"] = { $each: workspaceIds };
       }
       // Add users if provided
       if (userIds && userIds.length > 0) {
-        updateQuery["billing.downgrade_users"] = { $each: userIds };
+        updateQuery["downgrade.userIds"] = { $each: userIds };
       }
       if (Object.keys(updateQuery).length === 0) {
         throw new Error("No workspaceIds or userIds provided to update.");
@@ -286,12 +284,100 @@ export class StripeSubscriptionRepository {
         { _id: teamObjectId },
         {
           $addToSet: updateQuery,
-          $set: { "billing.updatedBy": "system" },
+          $set: {
+            updatedBy: "system",
+            manual_downgrade: true,
+            updatedAt: new Date(),
+          },
         },
       );
       return result;
     } catch (error) {
-      console.error("Error adding downgrade workspaces and users:", error);
+      console.error("Error adding downgrade details:", error);
+      throw error;
+    }
+  }
+
+  async removeDowngradeDetails(teamId: string): Promise<UpdateResult> {
+    try {
+      if (!teamId) {
+        throw new Error("teamId is required to remove downgrade details.");
+      }
+      const teamObjectId = new ObjectId(teamId);
+      const result = await this.db.collection(Collections.TEAM).updateOne(
+        { _id: teamObjectId },
+        {
+          $unset: {
+            downgrade: "", // Removes the entire downgrade object
+          },
+          $set: {
+            manual_downgrade: false,
+            updatedBy: "system",
+            updatedAt: new Date(),
+          },
+        },
+      );
+      return result;
+    } catch (error) {
+      console.error("Error removing downgrade details:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enable automated downgrade for a team
+   * Sets auto_downgrade flag and optionally updates plan active state
+   * @param teamId - The team ID to update
+   * @param planActive - Optional boolean to set plan.active state
+   * @returns UpdateResult from MongoDB
+   */
+  async enableAutoDowngrade(teamId: string): Promise<UpdateResult> {
+    try {
+      if (!teamId) {
+        throw new Error("teamId is required to enable auto downgrade.");
+      }
+      const setQuery: Record<string, any> = {
+        auto_downgrade: true,
+        updatedBy: "system",
+        updatedAt: new Date(),
+      };
+      setQuery["plan.active"] = false;
+      const teamObjectId = new ObjectId(teamId);
+      const result = await this.db
+        .collection(Collections.TEAM)
+        .updateOne({ _id: teamObjectId }, { $set: setQuery });
+      return result;
+    } catch (error) {
+      console.error("Error enabling auto downgrade:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disable automated downgrade for a team
+   * Clears auto_downgrade flag
+   * @param teamId - The team ID to update
+   * @returns UpdateResult from MongoDB
+   */
+  async disableAutoDowngrade(teamId: string): Promise<UpdateResult> {
+    try {
+      if (!teamId) {
+        throw new Error("teamId is required to disable auto downgrade.");
+      }
+      const teamObjectId = new ObjectId(teamId);
+      const result = await this.db.collection(Collections.TEAM).updateOne(
+        { _id: teamObjectId },
+        {
+          $set: {
+            auto_downgrade: false,
+            updatedBy: "system",
+            updatedAt: new Date(),
+          },
+        },
+      );
+      return result;
+    } catch (error) {
+      console.error("Error disabling auto downgrade:", error);
       throw error;
     }
   }

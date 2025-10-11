@@ -425,6 +425,13 @@ export class StripeController {
         updateSubscriptionDto.seats,
         updateSubscriptionDto.paymentBehavior,
       );
+      if (subscription) {
+        await this.stripeSubscriptionRepository.addDowngradeDetails(
+          updateSubscriptionDto?.metadata?.hubId,
+          updateSubscriptionDto?.workspaceIds,
+          updateSubscriptionDto?.userIds,
+        );
+      }
 
       return subscription;
     } catch (error) {
@@ -460,21 +467,18 @@ export class StripeController {
     @Body() cancelSubscriptionDto: CancelSubscriptionDto,
   ): Promise<SubscriptionResponseDto> {
     try {
-      console.log(
-        "-----------this is the subscription-data ---->",
-        cancelSubscriptionDto,
-        subscriptionId,
-      );
       this.checkStripeAvailability();
       const subscription = await this.stripeService.cancelSubscription(
         subscriptionId,
         false, //disables cancellation at mid cycle
       );
-      await this.stripeSubscriptionRepository.addDowngradeDetails(
-        cancelSubscriptionDto.teamId,
-        cancelSubscriptionDto.workspaceIds,
-        cancelSubscriptionDto.userIds,
-      );
+      if (subscription) {
+        await this.stripeSubscriptionRepository.addDowngradeDetails(
+          cancelSubscriptionDto.teamId,
+          cancelSubscriptionDto.workspaceIds,
+          cancelSubscriptionDto.userIds,
+        );
+      }
       return { subscription };
     } catch (error) {
       throw new HttpException(
@@ -519,7 +523,11 @@ export class StripeController {
         subscriptionId,
         reactivateDto.metadata,
       );
-
+      if (subscription) {
+        await this.stripeSubscriptionRepository.removeDowngradeDetails(
+          reactivateDto.metadata?.hubId,
+        );
+      }
       return { subscription };
     } catch (error) {
       throw new HttpException(

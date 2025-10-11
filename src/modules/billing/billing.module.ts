@@ -22,6 +22,10 @@ import { UserRepository } from "@src/modules/identity/repositories/user.reposito
 import { PricingService } from "@src/modules/workspace/services/pricing.repository";
 import { PricingRepository } from "@src/modules/workspace/repositories/pricing.repository";
 import { SalesEmailRepository } from "../workspace/repositories/sales-email.repository";
+import { DownGradeTeamRepository } from "./repositories/downgradeTeam.reposiotry";
+import { DownGradeUserRepository } from "./repositories/downgradeUser.repository";
+import { DownGradeWorkspaceRepository } from "./repositories/downgradeWorkspace.repository";
+import { DownGradeService } from "./services/downgrade.service";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -48,6 +52,10 @@ export class BillingModule {
       BillingAuditRepository,
       PromoCodeRepository,
       PricingRepository,
+      DownGradeTeamRepository,
+      DownGradeUserRepository,
+      DownGradeWorkspaceRepository,
+      DownGradeService,
       BillingAuditService,
       PromoCodeService,
       PricingService,
@@ -73,6 +81,10 @@ export class BillingModule {
       BillingAuditRepository,
       BillingAuditService,
       PromoCodeService,
+      DownGradeTeamRepository,
+      DownGradeUserRepository,
+      DownGradeWorkspaceRepository,
+      DownGradeService,
       PricingService,
       PaymentEmailService,
       PaymentEmailHelper,
