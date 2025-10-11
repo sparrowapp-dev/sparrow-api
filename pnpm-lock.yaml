@@ -35,6 +35,12 @@ importers:
       '@blazity/nest-file-fastify':
         specifier: ^1.0.0
         version: 1.0.0
+      '@bull-board/api':
+        specifier: ^5.23.0
+        version: 5.23.0(@bull-board/ui@5.23.0)
+      '@bull-board/fastify':
+        specifier: 5.23.0
+        version: 5.23.0
       '@dqbd/tiktoken':
         specifier: ^1.0.21
         version: 1.0.22
@@ -76,7 +82,7 @@ importers:
         version: 10.0.0(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.13)(rxjs@7.5.6))(passport@0.6.0)
       '@nestjs/platform-fastify':
         specifier: ^10.1.3
-        version: 10.4.20(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.20)
+        version: 10.4.20(@fastify/static@6.12.0)(@fastify/view@8.2.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.20)
       '@nestjs/platform-socket.io':
         specifier: ^10.4.0
         version: 10.4.20(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/websockets@10.4.20)(rxjs@7.5.6)
@@ -1198,6 +1204,17 @@ packages:
   '@blazity/nest-file-fastify@1.0.0':
     resolution: {integrity: sha512-Vs3AzEd5/JgT6eakn1pvwV3PeYZCFKpsNglwIqE/U9vLQQSrGpEuMuGUa7263d9X9od3KVrDHJ0n7ouMSzFQUA==}
 
+  '@bull-board/api@5.23.0':
+    resolution: {integrity: sha512-ZZGsWJ+XBG49GAlNgAL9tTEV6Ms7gMkQnZDbzwUhjGChCKWy62RWuPoZSefNXau9QH9+QzlzHRUeFvt4xr5wiw==}
+    peerDependencies:
+      '@bull-board/ui': 5.23.0
+
+  '@bull-board/fastify@5.23.0':
+    resolution: {integrity: sha512-woCnCAav4IByuo05D13MZtETzZp0ej1y0R+6IY33pqLKDRKa6Dor6OMx1l6/nMc/wXeng4SXC5rnrAck7Py70w==}
+
+  '@bull-board/ui@5.23.0':
+    resolution: {integrity: sha512-iI/Ssl8T5ZEn9s899Qz67m92M6RU8thf/aqD7cUHB2yHmkCjqbw7s7NaODTsyArAsnyu7DGJMWm7EhbfFXDNgQ==}
+
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
     engines: {node: '>=0.1.90'}
@@ -1317,6 +1334,9 @@ packages:
 
   '@fastify/static@6.12.0':
     resolution: {integrity: sha512-KK1B84E6QD/FcQWxDI2aiUCwHxMJBI1KeCUzm1BwYpPY1b742+jeKruGHP2uOluuM6OkBPI8CIANrXcCRtC2oQ==}
+
+  '@fastify/view@8.2.0':
+    resolution: {integrity: sha512-hBSiBofCnJNlPHEMZWpO1SL84eqOaqujJ1hR3jntFyZZCkweH5jMs12DKYyGesjVll7SJFRRxPUBB8kmUmneRQ==}
 
   '@foliojs-fork/fontkit@1.9.2':
     resolution: {integrity: sha512-IfB5EiIb+GZk+77TRB86AHroVaqfq8JRFlUbz0WEwsInyCG0epX2tCPOy+UfaWPju30DeVoUAXfzWXmhn753KA==}
@@ -2915,6 +2935,9 @@ packages:
   async-retry@1.3.3:
     resolution: {integrity: sha512-wfr/jstw9xNi/0teMHrRW7dsz3Lt5ARhYNZ2ewpadnhaIp5mbALhOAP+EAdsC7t4Z6wqsDVv9+W6gm1Dk9mEyw==}
 
+  async@3.2.6:
+    resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
+
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
@@ -3546,6 +3569,11 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
+  ejs@3.1.10:
+    resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
+    engines: {node: '>=0.10.0'}
+    hasBin: true
+
   electron-to-chromium@1.5.211:
     resolution: {integrity: sha512-IGBvimJkotaLzFnwIVgW9/UD/AOJ2tByUmeOrtqBfACSbAw5b1G0XpvdaieKyc7ULmbwXVx+4e4Be8pOPBrYkw==}
 
@@ -3832,6 +3860,9 @@ packages:
     resolution: {integrity: sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ==}
     engines: {node: '>=16.0.0'}
 
+  filelist@1.0.4:
+    resolution: {integrity: sha512-w1cEuf3S+DrLCQL7ET6kz+gmlJdbq9J7yXCSjK/OZCPA+qEN1WyF4ZAf0YYJa4/shHJra2t/d/r8SV4Ji+x+8Q==}
+
   fill-range@7.1.1:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
@@ -4077,6 +4108,9 @@ packages:
   has-tostringtag@1.0.2:
     resolution: {integrity: sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==}
     engines: {node: '>= 0.4'}
+
+  hashlru@2.3.0:
+    resolution: {integrity: sha512-0cMsjjIC8I+D3M44pOQdsy0OHXGLVz6Z0beRuufhKa0KfaD2wGwAev6jILzXsd3/vpnNQJmWyZtIILqM1N+n5A==}
 
   hasown@2.0.2:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
@@ -4425,6 +4459,11 @@ packages:
   jackspeak@4.1.1:
     resolution: {integrity: sha512-zptv57P3GpL+O0I7VdMJNBZCu+BPHVQUk55Ft8/QCJjTVxrnJHuVuX/0Bl2A6/+2oyR/ZMEuFKwmzqqZ/U5nPQ==}
     engines: {node: 20 || >=22}
+
+  jake@10.9.4:
+    resolution: {integrity: sha512-wpHYzhxiVQL+IV05BLE2Xn34zW1S223hvjtqk0+gsPrwd/8JNLXJgZZM/iPFsYc1xyphF+6M6EvdE5E9MBGkDA==}
+    engines: {node: '>=10'}
+    hasBin: true
 
   jest-changed-files@29.7.0:
     resolution: {integrity: sha512-fEArFiwf1BpQ+4bXSprcDc3/x4HSzL4al2tozwVpDFpsxALjLYdyiIK4e5Vz66GQJIbXJ82+35PtysofptNX2w==}
@@ -5495,6 +5534,9 @@ packages:
   redis-errors@1.2.0:
     resolution: {integrity: sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==}
     engines: {node: '>=4'}
+
+  redis-info@3.1.0:
+    resolution: {integrity: sha512-ER4L9Sh/vm63DkIE0bkSjxluQlioBiBgf5w1UuldaW/3vPcecdljVDisZhmnCMvsxHNiARTTDDHGg9cGwTfrKg==}
 
   redis-parser@3.0.0:
     resolution: {integrity: sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==}
@@ -7864,6 +7906,23 @@ snapshots:
 
   '@blazity/nest-file-fastify@1.0.0': {}
 
+  '@bull-board/api@5.23.0(@bull-board/ui@5.23.0)':
+    dependencies:
+      '@bull-board/ui': 5.23.0
+      redis-info: 3.1.0
+
+  '@bull-board/fastify@5.23.0':
+    dependencies:
+      '@bull-board/api': 5.23.0(@bull-board/ui@5.23.0)
+      '@bull-board/ui': 5.23.0
+      '@fastify/static': 6.12.0
+      '@fastify/view': 8.2.0
+      ejs: 3.1.10
+
+  '@bull-board/ui@5.23.0':
+    dependencies:
+      '@bull-board/api': 5.23.0(@bull-board/ui@5.23.0)
+
   '@colors/colors@1.6.0': {}
 
   '@compodoc/compodoc@1.1.19':
@@ -8068,6 +8127,11 @@ snapshots:
       fastify-plugin: 4.5.1
       glob: 8.1.0
       p-limit: 3.1.0
+
+  '@fastify/view@8.2.0':
+    dependencies:
+      fastify-plugin: 4.5.1
+      hashlru: 2.3.0
 
   '@foliojs-fork/fontkit@1.9.2':
     dependencies:
@@ -8462,7 +8526,7 @@ snapshots:
       - supports-color
     optional: true
 
-  '@nestjs/platform-fastify@10.4.20(@fastify/static@6.12.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.20)':
+  '@nestjs/platform-fastify@10.4.20(@fastify/static@6.12.0)(@fastify/view@8.2.0)(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/core@10.4.20)':
     dependencies:
       '@fastify/cors': 9.0.1
       '@fastify/formbody': 7.4.0
@@ -8475,6 +8539,7 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@fastify/static': 6.12.0
+      '@fastify/view': 8.2.0
 
   '@nestjs/platform-socket.io@10.4.20(@nestjs/common@10.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.13)(rxjs@7.5.6))(@nestjs/websockets@10.4.20)(rxjs@7.5.6)':
     dependencies:
@@ -10209,6 +10274,8 @@ snapshots:
     dependencies:
       retry: 0.13.1
 
+  async@3.2.6: {}
+
   asynckit@0.4.0: {}
 
   atomic-sleep@1.0.0: {}
@@ -10889,6 +10956,10 @@ snapshots:
 
   ee-first@1.1.1: {}
 
+  ejs@3.1.10:
+    dependencies:
+      jake: 10.9.4
+
   electron-to-chromium@1.5.211: {}
 
   email-validator@2.0.4: {}
@@ -11320,6 +11391,10 @@ snapshots:
     dependencies:
       flat-cache: 4.0.1
 
+  filelist@1.0.4:
+    dependencies:
+      minimatch: 5.1.6
+
   fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
@@ -11618,6 +11693,8 @@ snapshots:
   has-tostringtag@1.0.2:
     dependencies:
       has-symbols: 1.1.0
+
+  hashlru@2.3.0: {}
 
   hasown@2.0.2:
     dependencies:
@@ -11965,6 +12042,12 @@ snapshots:
   jackspeak@4.1.1:
     dependencies:
       '@isaacs/cliui': 8.0.2
+
+  jake@10.9.4:
+    dependencies:
+      async: 3.2.6
+      filelist: 1.0.4
+      picocolors: 1.1.1
 
   jest-changed-files@29.7.0:
     dependencies:
@@ -13191,6 +13274,10 @@ snapshots:
   real-require@0.2.0: {}
 
   redis-errors@1.2.0: {}
+
+  redis-info@3.1.0:
+    dependencies:
+      lodash: 4.17.21
 
   redis-parser@3.0.0:
     dependencies:

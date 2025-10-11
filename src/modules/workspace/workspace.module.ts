@@ -83,6 +83,10 @@ import { TestflowWorkerService } from "./services/testflow-worker.service";
 import { TestflowRunService } from "./services/testflow-run.service";
 import { ScheduleModule } from "@nestjs/schedule";
 
+// ---- Monitoring Services
+import { BullMQMonitoringService } from "./services/bullmq-monitoring.service";
+import { BullMQMonitoringController } from "./controllers/bullmq-monitoring.controller";
+
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
  * and controllers related to the workspace functionality.
@@ -141,6 +145,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     PricingService,
     PricingRepository,
     AiConsumptionScheduler,
+    BullMQMonitoringService,
   ],
   exports: [
     CollectionService,
@@ -184,6 +189,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     MockServerController,
     SalesEmailController,
     PricingController,
+    BullMQMonitoringController,
   ],
 })
 export class WorkspaceModule {}
