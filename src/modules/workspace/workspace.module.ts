@@ -90,6 +90,8 @@ import { BullMQErrorHandler } from "./services/bullmq-error-handler.service";
 import { BullMQMetricsService } from "./services/bullmq-metrics.service";
 import { BullMQGracefulShutdownService } from "./services/bullmq-graceful-shutdown.service";
 import { RedisHealthIndicator } from "./health/redis-health.indicator";
+import { JobStateTracker } from "./services/job-state-tracker.service";
+import { JobStateController } from "./controllers/job-state.controller";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -154,6 +156,7 @@ import { RedisHealthIndicator } from "./health/redis-health.indicator";
     BullMQMetricsService,
     BullMQGracefulShutdownService,
     RedisHealthIndicator,
+    JobStateTracker,
   ],
   exports: [
     CollectionService,
@@ -198,6 +201,7 @@ import { RedisHealthIndicator } from "./health/redis-health.indicator";
     SalesEmailController,
     PricingController,
     BullMQMonitoringController,
+    JobStateController,
   ],
 })
 export class WorkspaceModule {}
