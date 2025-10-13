@@ -148,7 +148,7 @@ export class TestflowService implements OnModuleInit {
                 ),
                 (_cronExpression: string)=>{
                   this.testflowRepository.editSchedular(tf._id.toString(), schedule.id, {
-                    cronExpression: _cronExpression,
+                      cronExpression: _cronExpression,
                   });
                 },
                 cronExpression,
@@ -215,7 +215,7 @@ export class TestflowService implements OnModuleInit {
       );
       environmentName = environmentData?.name || "";
     }
-  
+
     if(updateScheduleDto.runConfiguration){
       const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
       const cronExpression = this.generateCronExpression(runCycleConfig);
@@ -228,13 +228,13 @@ export class TestflowService implements OnModuleInit {
     }else{
       if(existingSchedular.runConfiguration.runCycle === RunCycleEnum.HOURLY){
           const runCycleConfig = this.buildRunCycleConfig(existingSchedular.runConfiguration);
-          const cronExpression = this.generateCronExpression(runCycleConfig);
-          if (!cronExpression) {
-            updateScheduleDto.cronExpression = null;
+        const cronExpression = this.generateCronExpression(runCycleConfig);
+        if (!cronExpression) {
+          updateScheduleDto.cronExpression = null;
           }
           else{
-            updateScheduleDto.cronExpression = cronExpression;
-          }
+          updateScheduleDto.cronExpression = cronExpression;
+        }
       }
     }
 
@@ -253,7 +253,7 @@ export class TestflowService implements OnModuleInit {
       scheduleId,
       updatedSchedular,
     );
-    
+
     const schedular = await this.testflowRepository.getSchedularById(
       testflowId,
       scheduleId,
@@ -287,8 +287,8 @@ export class TestflowService implements OnModuleInit {
         );
       }
     }
-    
-    return result;  
+
+    return result;
   }
 
   /**
@@ -441,7 +441,7 @@ export class TestflowService implements OnModuleInit {
       id,
       user._id,
     );
-  
+
     // Remove all associated cronjobs for this testflow
     if (testflow?.schedules && Array.isArray(testflow.schedules)) {
       for (const schedule of testflow.schedules) {
@@ -636,7 +636,7 @@ export class TestflowService implements OnModuleInit {
         ),
         (_cronExpression: string)=>{
           this.testflowRepository.editSchedular(schedularData.testflowId, schedulerId, {
-            cronExpression: _cronExpression,
+              cronExpression: _cronExpression,
           });
         },
         cronExpression,
@@ -978,12 +978,14 @@ export class TestflowService implements OnModuleInit {
       );
     }
     const transporter = this.emailService.createTransporter();
+    const hubUrlLink = `${this.configService.get("app.url")}/app/collections`
     // Merge emailData
     const context = {
       sparrowEmail: this.configService.get("support.sparrowEmail"),
       sparrowWebsite: this.configService.get("support.sparrowWebsite"),
       sparrowWebsiteName: this.configService.get("support.sparrowWebsiteName"),
       authUrl: this.configService.get("auth.baseURL"),
+      hubUrl: hubUrlLink,
       ...emailData,
     };
     const promises: Promise<any>[] = [];
