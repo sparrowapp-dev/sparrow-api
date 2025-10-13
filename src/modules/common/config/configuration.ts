@@ -141,8 +141,11 @@ export default () => ({
     adminEmail: process.env.SELF_HOST_ADMIN_EMAIL,
     adminPassword: process.env.SELF_HOST_ADMIN_PASSWORD,
   },
-  sparrowProxy:{
-    baseUrl: process.env.SPARROW_PROXY_BASE_URL
+  sparrowProxy: {
+    baseUrl: process.env.SPARROW_PROXY_BASE_URL,
+  },
+  sparrowApp: {
+    baseUrl: process.env.SPARROW_APP_BASE_URL,
   },
   trial: {
     trialPeriod: 14,
