@@ -10,6 +10,7 @@ import {
   BillingActorType,
   BillingSource,
   BillingEventType,
+  SubscriptionDowngradeType,
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import { Team, TeamsPlan } from "@src/modules/common/models/team.model";
@@ -195,6 +196,7 @@ export class StripeSubscriptionService {
     metadata: any,
     eventId?: string,
   ): Promise<void> {
+    console.log("this is the subscription of cancekk------->");
     // Get current team state
     const currentTeam = await this.stripeSubscriptionRepo.findTeamById(
       metadata.hubId,
@@ -2050,54 +2052,81 @@ export class StripeSubscriptionService {
     team: Team,
     hubId: string,
   ): Promise<void> {
-    const manualDownGrade = team?.manual_downgrade;
-    const teamDownGradeWorkspaces = team?.downgrade?.workspaceIds;
-    const teamDownGradeUsers = team?.downgrade?.userIds;
-    if (!manualDownGrade) {
+    const downgrade = team?.downgrade;
+    if (
+      !downgrade ||
+      downgrade.downgradeType !== SubscriptionDowngradeType.MANUAL
+    ) {
+      return;
+    }
+    const downgradeType = team?.downgrade?.downgradeType;
+    const teamDowngradeWorkspaces = team?.downgrade?.workspaces;
+    const teamDowngradeUsers = team?.downgrade?.users;
+    // Only proceed if downgrade type is MANUAL
+    if (downgradeType !== SubscriptionDowngradeType.MANUAL) {
       return;
     }
     // Skip if downgrade data is missing
-    if (!teamDownGradeWorkspaces && !teamDownGradeUsers) {
+    if (!teamDowngradeWorkspaces && !teamDowngradeUsers) {
       console.warn(
         `Manual downgrade enabled but missing downgrade data for team ${hubId}`,
       );
       return;
     }
     try {
+      // Get all current workspace IDs
       const allWorkspaces =
         team?.workspaces?.map((workspace: WorkspaceDto) =>
           workspace.id.toString(),
         ) || [];
+      // Get all current user IDs (excluding owner)
       const allUsers =
         team?.users
           ?.filter((user: UserDto) => user.role !== "owner")
           .map((user: UserDto) => user.id) || [];
 
+      // Extract workspace IDs from downgrade list (workspaces to keep)
+      const downgradeWorkspaceIds =
+        teamDowngradeWorkspaces?.map((ws) => ws.id) || [];
+      // Extract user IDs from downgrade list (users to keep)
+      const downgradeUserIds = teamDowngradeUsers?.map((user) => user.id) || [];
       // Workspaces not in the downgrade list (these will be deleted)
       const nonDowngradedWorkspaces = allWorkspaces.filter(
-        (wsId: string) => !teamDownGradeWorkspaces.includes(wsId),
+        (wsId: string) => !downgradeWorkspaceIds.includes(wsId),
       );
       // Users not in the downgrade list (these will be removed)
       const nonDowngradedUsers = allUsers.filter(
-        (userId: string) => !teamDownGradeUsers.includes(userId),
+        (userId: string) => !downgradeUserIds.includes(userId),
       );
 
       // Delete workspaces that are not in the downgrade list
-      for (const workspaceId of nonDowngradedWorkspaces) {
-        await this.downgradeService.deleteWorkspace(workspaceId);
-      }
-
-      // Remove users if teamDownGradeUsers has entries (keep specific users)
-      if (teamDownGradeUsers.length > 0 && nonDowngradedUsers.length > 0) {
-        for (const userId of nonDowngradedUsers) {
-          const payload = {
-            teamId: hubId,
-            userId: userId,
-          };
-          await this.downgradeService.removeUserFromTeam(payload);
+      if (nonDowngradedWorkspaces.length > 0) {
+        for (const workspaceId of nonDowngradedWorkspaces) {
+          await this.downgradeService.restrictWorkspace(workspaceId);
         }
       }
-      console.log(`Manual downgrade completed for team ${hubId}`);
+
+      // Remove users not in the downgrade list
+      if (nonDowngradedUsers.length > 0) {
+        for (const userId of nonDowngradedUsers) {
+          try {
+            const payload = {
+              teamId: hubId,
+              userId: userId,
+            };
+            await this.downgradeService.removeUserFromTeam(payload);
+          } catch (error) {
+            console.error(
+              `Error removing user ${userId} from team ${hubId}:`,
+              error,
+            );
+            // Continue with other users even if one fails
+          }
+        }
+      }
+      console.log(
+        `Manual downgrade completed for team ${hubId}: ${nonDowngradedWorkspaces.length} workspaces deleted, ${nonDowngradedUsers.length} users removed`,
+      );
     } catch (error) {
       console.error(
         `Error executing manual downgrade for team ${hubId}:`,

@@ -88,49 +88,9 @@ export class DownGradeService {
     return null;
   }
 
-  async deleteWorkspace(id: string): Promise<DeleteResult> {
-    const workspace = await this.downgradeWorkspaceReposiory.get(id);
-    const teamData = await this.downgradeTeamRepository.findTeamByTeamId(
-      new ObjectId(workspace.team.id),
-    );
-    const teamWorkspaces = [...teamData.workspaces];
-    const updatedTeamWorkspaces = teamWorkspaces.filter(
-      (workspace) => workspace.id.toString() !== id,
-    );
-    const updatedTeamParams = {
-      workspaces: updatedTeamWorkspaces,
-    };
-    await this.downgradeTeamRepository.updateTeamById(
-      new ObjectId(workspace.team.id),
-      updatedTeamParams,
-    );
-    const workspaceUsers = [...workspace.users];
-    const updatedIdArray = [];
-    for (const item of workspaceUsers) {
-      if (!isString(item.id)) {
-        updatedIdArray.push(item.id);
-        continue;
-      }
-      updatedIdArray.push(new ObjectId(item.id));
-    }
-    const userDataArray =
-      await this.downgradeUserRepository.findUsersByIdArray(updatedIdArray);
-    for (let index = 0; index < userDataArray.length; index++) {
-      userDataArray[index].workspaces = userDataArray[index].workspaces.filter(
-        (item: any) => item.workspaceId.toString() !== id,
-      );
-    }
-    const userDataPromises = [];
-    for (const item of userDataArray) {
-      userDataPromises.push(
-        this.downgradeUserRepository.updateUserById(
-          new ObjectId(item._id),
-          item,
-        ),
-      );
-    }
-    await Promise.all(userDataPromises);
-    const data = await this.downgradeWorkspaceReposiory.delete(id);
-    return data;
+  async restrictWorkspace(id: string): Promise<any> {
+    const response =
+      await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(id, true);
+    return response;
   }
 }

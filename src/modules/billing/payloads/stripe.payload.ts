@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  downgradeUser,
+  downgradeWorkspace,
+} from "@src/modules/common/models/billing.model";
+import {
   IsEmail,
   IsString,
   IsOptional,
@@ -202,19 +206,27 @@ export class UpdateSubscriptionDto {
   seats?: number;
   paymentBehavior?: "default_incomplete" | "allow_incomplete";
 
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  workspaceIds?: string[];
-
   @ApiPropertyOptional({
-    description: "List of user IDs to downgrade",
-    example: ["example@gmail.com"],
+    description: "List of workspaces to downgrade",
+    example: [
+      { id: "workspace-id-1", name: "Workspace One" },
+      { id: "workspace-id-2", name: "Workspace Two" },
+    ],
   })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  userIds?: string[];
+  workspaces?: downgradeWorkspace[];
+
+  @ApiPropertyOptional({
+    description: "List of users to downgrade",
+    example: [
+      { id: "user-id-1", email: "example1@gmail.com" },
+      { id: "user-id-2", email: "example2@gmail.com" },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  users?: downgradeUser[];
 }
 
 export class CancelSubscriptionDto {
@@ -235,14 +247,9 @@ export class CancelSubscriptionDto {
   @IsString()
   teamId?: string;
 
-  @ApiPropertyOptional({
-    description: "List of workspace IDs to downgrade",
-    example: ["6889ff80b1338511b5bfc210"],
-  })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  workspaceIds?: string[];
+  workspaces?: downgradeWorkspace[];
 
   @ApiPropertyOptional({
     description: "List of user IDs to downgrade",
@@ -250,8 +257,7 @@ export class CancelSubscriptionDto {
   })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  userIds?: string[];
+  users?: downgradeUser[];
 }
 
 export class ReactivateSubscriptionDto {

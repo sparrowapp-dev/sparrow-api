@@ -16,6 +16,7 @@ import {
   BillingEventType,
   BillingSource,
   BillingTransactionType,
+  SubscriptionDowngradeType,
 } from "../enum/billing.enum";
 
 export class PaymentProviderDto {
@@ -182,13 +183,37 @@ export class BillingDto {
 export class DowngradeDetails {
   @IsArray()
   @IsOptional()
-  @Type(() => String)
-  workspaceIds?: string[];
+  @Type(() => downgradeWorkspace)
+  workspaces?: downgradeWorkspace[];
 
   @IsArray()
   @IsOptional()
-  @Type(() => String)
-  userIds?: string[];
+  @Type(() => downgradeUser)
+  users?: downgradeUser[];
+
+  @IsString()
+  @IsOptional()
+  downgradeType?: SubscriptionDowngradeType;
+}
+
+export class downgradeWorkspace {
+  @IsString()
+  @IsOptional()
+  id: string;
+
+  @IsString()
+  @IsOptional()
+  name: string;
+}
+
+export class downgradeUser {
+  @IsString()
+  @IsOptional()
+  id: string;
+
+  @IsString()
+  @IsOptional()
+  email: string;
 }
 
 class BillingChangeDto {

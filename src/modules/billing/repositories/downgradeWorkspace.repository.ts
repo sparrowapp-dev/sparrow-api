@@ -28,4 +28,25 @@ export class DownGradeWorkspaceRepository {
       .collection<Workspace>(Collections.WORKSPACE)
       .deleteOne({ _id });
   }
+
+  async setWorkspaceRestriction(
+    workspaceId: string,
+    isRestricted: boolean,
+  ): Promise<WithId<Workspace>> {
+    const _id = new ObjectId(workspaceId);
+
+    const result = await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .findOneAndUpdate(
+        { _id },
+        { $set: { isRestricted, updatedAt: new Date() } },
+        { returnDocument: "after" },
+      );
+
+    if (!result.value) {
+      throw new BadRequestException("Workspace not found or update failed");
+    }
+
+    return result.value;
+  }
 }

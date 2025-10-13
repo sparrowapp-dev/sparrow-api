@@ -3,6 +3,7 @@ import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import {
   BillingType,
   PaymentProvider,
+  SubscriptionDowngradeType,
   SubscriptionStatus,
 } from "@src/modules/common/enum/billing.enum";
 import { Db, ObjectId, UpdateResult } from "mongodb";
@@ -248,20 +249,22 @@ export class StripeSubscriptionRepository {
   }
 
   /**
-   * Add downgrade details (workspaces and users) to a team's billing record.
-   * This function updates the billing section of a team document by appending
-   * workspace IDs to `billing.downgrade.workspaces` and user IDs to
-   * `billing.downgrade.users`. Duplicate entries are automatically avoided
+   * Add downgrade details (workspaces and users) to a team's downgrade record.
+   * This function updates the downgrade section of a team document by appending
+   * workspace objects to `downgrade.workspaces` and user objects to
+   * `downgrade.users`. Duplicate entries are automatically avoided
    * using MongoDB's `$addToSet` operator.
-   * @param teamId The unique identifier of the team whose billing record will be updated.
-   * @param workspaceIds Array of workspace IDs to mark for downgrade.
-   * @param userIds Array of user IDs to mark for downgrade.
+   * @param teamId The unique identifier of the team whose downgrade record will be updated.
+   * @param workspaces Array of workspace objects {id, name} to mark for downgrade.
+   * @param users Array of user objects {id, email} to mark for downgrade.
+   * @param downgradeType Type of downgrade (manual or auto)
    * @returns MongoDB UpdateResult indicating the success or failure of the update.
    */
   async addDowngradeDetails(
     teamId: string,
-    workspaceIds: string[],
-    userIds: string[],
+    workspaces: Array<{ id: string; name: string }>,
+    users: Array<{ id: string; email: string }>,
+    downgradeType?: SubscriptionDowngradeType,
   ): Promise<UpdateResult> {
     try {
       if (!teamId) {
@@ -269,26 +272,30 @@ export class StripeSubscriptionRepository {
       }
       const updateQuery: Record<string, any> = {};
       // Add workspaces if provided
-      if (workspaceIds && workspaceIds.length > 0) {
-        updateQuery["downgrade.workspaceIds"] = { $each: workspaceIds };
+      if (workspaces && workspaces.length > 0) {
+        updateQuery["downgrade.workspaces"] = { $each: workspaces };
       }
       // Add users if provided
-      if (userIds && userIds.length > 0) {
-        updateQuery["downgrade.userIds"] = { $each: userIds };
+      if (users && users.length > 0) {
+        updateQuery["downgrade.users"] = { $each: users };
       }
       if (Object.keys(updateQuery).length === 0) {
-        throw new Error("No workspaceIds or userIds provided to update.");
+        throw new Error("No workspaces or users provided to update.");
       }
       const teamObjectId = new ObjectId(teamId);
+      const setQuery: Record<string, any> = {
+        updatedBy: "system",
+        updatedAt: new Date(),
+      };
+      // Set downgrade type if provided
+      if (downgradeType) {
+        setQuery["downgrade.downgradeType"] = downgradeType;
+      }
       const result = await this.db.collection(Collections.TEAM).updateOne(
         { _id: teamObjectId },
         {
           $addToSet: updateQuery,
-          $set: {
-            updatedBy: "system",
-            manual_downgrade: true,
-            updatedAt: new Date(),
-          },
+          $set: setQuery,
         },
       );
       return result;
@@ -298,6 +305,12 @@ export class StripeSubscriptionRepository {
     }
   }
 
+  /**
+   * Remove downgrade details from a team
+   * Removes the entire downgrade object from the team document
+   * @param teamId The team ID to update
+   * @returns MongoDB UpdateResult
+   */
   async removeDowngradeDetails(teamId: string): Promise<UpdateResult> {
     try {
       if (!teamId) {
@@ -311,7 +324,6 @@ export class StripeSubscriptionRepository {
             downgrade: "", // Removes the entire downgrade object
           },
           $set: {
-            manual_downgrade: false,
             updatedBy: "system",
             updatedAt: new Date(),
           },
@@ -326,9 +338,8 @@ export class StripeSubscriptionRepository {
 
   /**
    * Enable automated downgrade for a team
-   * Sets auto_downgrade flag and optionally updates plan active state
+   * Sets downgrade type to auto and optionally updates plan active state
    * @param teamId - The team ID to update
-   * @param planActive - Optional boolean to set plan.active state
    * @returns UpdateResult from MongoDB
    */
   async enableAutoDowngrade(teamId: string): Promise<UpdateResult> {
@@ -336,13 +347,13 @@ export class StripeSubscriptionRepository {
       if (!teamId) {
         throw new Error("teamId is required to enable auto downgrade.");
       }
+      const teamObjectId = new ObjectId(teamId);
       const setQuery: Record<string, any> = {
-        auto_downgrade: true,
+        "downgrade.downgradeType": SubscriptionDowngradeType.AUTOMATIC,
+        "plan.active": false,
         updatedBy: "system",
         updatedAt: new Date(),
       };
-      setQuery["plan.active"] = false;
-      const teamObjectId = new ObjectId(teamId);
       const result = await this.db
         .collection(Collections.TEAM)
         .updateOne({ _id: teamObjectId }, { $set: setQuery });
@@ -355,7 +366,7 @@ export class StripeSubscriptionRepository {
 
   /**
    * Disable automated downgrade for a team
-   * Clears auto_downgrade flag
+   * Clears downgrade type and sets plan to active
    * @param teamId - The team ID to update
    * @returns UpdateResult from MongoDB
    */
@@ -368,8 +379,11 @@ export class StripeSubscriptionRepository {
       const result = await this.db.collection(Collections.TEAM).updateOne(
         { _id: teamObjectId },
         {
+          $unset: {
+            "downgrade.downgradeType": "",
+          },
           $set: {
-            auto_downgrade: false,
+            "plan.active": true,
             updatedBy: "system",
             updatedAt: new Date(),
           },

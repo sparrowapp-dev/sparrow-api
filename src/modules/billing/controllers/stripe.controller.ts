@@ -50,6 +50,7 @@ import { ConfigService } from "@nestjs/config";
 import { TrialType } from "@src/modules/common/enum/trial.enum";
 import { PricingPlan } from "@src/modules/common/models/pricing.model";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
+import { SubscriptionDowngradeType } from "@src/modules/common/enum/billing.enum";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -428,8 +429,9 @@ export class StripeController {
       if (subscription) {
         await this.stripeSubscriptionRepository.addDowngradeDetails(
           updateSubscriptionDto?.metadata?.hubId,
-          updateSubscriptionDto?.workspaceIds,
-          updateSubscriptionDto?.userIds,
+          updateSubscriptionDto?.workspaces,
+          updateSubscriptionDto?.users,
+          SubscriptionDowngradeType.MANUAL
         );
       }
 
@@ -475,8 +477,9 @@ export class StripeController {
       if (subscription) {
         await this.stripeSubscriptionRepository.addDowngradeDetails(
           cancelSubscriptionDto.teamId,
-          cancelSubscriptionDto.workspaceIds,
-          cancelSubscriptionDto.userIds,
+          cancelSubscriptionDto.workspaces,
+          cancelSubscriptionDto.users,
+          SubscriptionDowngradeType.MANUAL
         );
       }
       return { subscription };
