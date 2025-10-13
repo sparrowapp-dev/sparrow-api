@@ -97,8 +97,6 @@ export class StripeSubscriptionService {
           reason: `Subscription created with status: ${subscription.status}`,
         },
       );
-      // Remove auto Disable Auto Downgrade.
-      await this.stripeSubscriptionRepo.disableAutoDowngrade(metadata.hubId);
       // Only update team state if subscription is active
       if (subscription.status === SubscriptionStatus.ACTIVE) {
         await this.updateTeamAndWorkspacesWithPlan(
@@ -145,9 +143,6 @@ export class StripeSubscriptionService {
             undefined, // no seat change
             undefined, // no subscription details needed
             planLimits, // Add plan limits for automatic HUB_LIMIT_UPDATED tracking
-          );
-          await this.stripeSubscriptionRepo.removeDowngradeDetails(
-            metadata.hubId,
           );
         }
       }
@@ -560,6 +555,31 @@ export class StripeSubscriptionService {
     const isSeatChange = previousSeats !== newSeats;
     const isSubscriptionRenewal =
       !isPlanChange && !isSeatChange && previousPeriodEnd;
+
+    if (isPlanChange && previousPlan && newPlan) {
+      // Get plan details to determine if it's a downgrade
+      const previousPlanDetails =
+        await this.stripeSubscriptionRepo.findPlanByName(previousPlan);
+      const newPlanDetails =
+        await this.stripeSubscriptionRepo.findPlanByName(newPlan);
+
+      // Simple downgrade detection: if new plan has fewer features/limits or is Community plan
+      const isDowngrade = this.isPlanDowngrade(
+        previousPlanDetails,
+        newPlanDetails,
+      );
+
+      if (isDowngrade) {
+        // Execute manual downgrade updating the plan
+        await this.executeManualDowngrade(team, metadata.hubId);
+        await this.stripeSubscriptionRepo.removeDowngradeDetails(
+          metadata.hubId,
+        );
+      }
+    }
+    if (team?.auto_downgrade) {
+      await this.stripeSubscriptionRepo.disableAutoDowngrade(metadata.hubId);
+    }
 
     // Create billing details object with successful payment status
     const billingDetails = {
@@ -1094,10 +1114,6 @@ export class StripeSubscriptionService {
         scheduledDowngrade: scheduledDowngrade,
         updatedBy: "system-stripe-webhook",
       };
-      console.log("--------------this is the downgrade update..------->");
-      // Execute manual downgrade AFTER plan change is complete
-      await this.executeManualDowngrade(team, hubId);
-
       await this.stripeSubscriptionRepo.updateTeamPlan(hubId, team.plan, {
         billing: updatedBilling,
       });
@@ -1115,7 +1131,6 @@ export class StripeSubscriptionService {
           console.error("Error sending plan downgrade email:", error);
         }
       }
-      await this.stripeSubscriptionRepo.removeDowngradeDetails(hubId);
     } catch (error) {
       throw error;
     }
@@ -2070,7 +2085,6 @@ export class StripeSubscriptionService {
       // Delete workspaces that are not in the downgrade list
       for (const workspaceId of nonDowngradedWorkspaces) {
         await this.downgradeService.deleteWorkspace(workspaceId);
-        console.log(`Deleted workspace ${workspaceId} during manual downgrade`);
       }
 
       // Remove users if teamDownGradeUsers has entries (keep specific users)
@@ -2090,5 +2104,28 @@ export class StripeSubscriptionService {
         error,
       );
     }
+  }
+
+  /**
+   * Helper method to determine if a plan change is a downgrade
+   * @param previousPlan The previous plan object
+   * @param newPlan The new plan object
+   * @returns Boolean indicating if this is a downgrade
+   */
+  private isPlanDowngrade(previousPlan: any, newPlan: any): boolean {
+    // Add your plan hierarchy logic here
+    // For example, you might have a plan hierarchy like:
+    // Community < standard < Professional
+
+    const planHierarchy: { [key: string]: number } = {
+      [PlanName.COMMUNITY]: 0,
+      [PlanName.STANDARD]: 1,
+      [PlanName.PROFESSIONAL]: 2,
+    };
+
+    const previousLevel = planHierarchy[previousPlan.name] ?? 0;
+    const newLevel = planHierarchy[newPlan.name] ?? 0;
+
+    return newLevel < previousLevel;
   }
 }
