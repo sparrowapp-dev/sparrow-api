@@ -557,7 +557,8 @@ export class StripeSubscriptionService {
     const isSeatChange = previousSeats !== newSeats;
     const isSubscriptionRenewal =
       !isPlanChange && !isSeatChange && previousPeriodEnd;
-
+    let isDowngrading = false;
+    // Only check for downgrade if there's a plan change
     if (isPlanChange && previousPlan && newPlan) {
       // Get plan details to determine if it's a downgrade
       const previousPlanDetails =
@@ -565,21 +566,29 @@ export class StripeSubscriptionService {
       const newPlanDetails =
         await this.stripeSubscriptionRepo.findPlanByName(newPlan);
 
-      // Simple downgrade detection: if new plan has fewer features/limits or is Community plan
+      // Check if this is actually a downgrade (moving to a lower tier)
       const isDowngrade = this.isPlanDowngrade(
         previousPlanDetails,
         newPlanDetails,
       );
 
       if (isDowngrade) {
-        // Execute manual downgrade updating the plan
-        await this.executeManualDowngrade(team, metadata.hubId);
-        await this.stripeSubscriptionRepo.removeDowngradeDetails(
-          metadata.hubId,
-        );
+        const hasDowngradeConfig = team?.downgrade;
+        const isManualDowngrade =
+          team?.downgrade?.downgradeType === SubscriptionDowngradeType.MANUAL;
+        if (hasDowngradeConfig && isManualDowngrade) {
+          isDowngrading = true;
+          await this.executeManualDowngrade(team, metadata.hubId);
+          await this.stripeSubscriptionRepo.removeDowngradeDetails(
+            metadata.hubId,
+          );
+        }
       }
     }
-    if (team?.downgrade.downgradeType === SubscriptionDowngradeType.AUTOMATIC) {
+    // Handle automatic downgrade cleanup (separate from manual downgrade)
+    if (
+      team?.downgrade?.downgradeType === SubscriptionDowngradeType.AUTOMATIC
+    ) {
       await this.stripeSubscriptionRepo.disableAutoDowngrade(metadata.hubId);
     }
 
@@ -623,7 +632,9 @@ export class StripeSubscriptionService {
       plan,
       billingDetails,
     );
-    await this.downgradeService.unRestrictWorkpsaces(updateTeam);
+    if (!isDowngrading) {
+      await this.downgradeService.unRestrictWorkpsaces(updateTeam);
+    }
     // Update team with new license data
     await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
       licenses: licenseUpdate,
@@ -2060,7 +2071,8 @@ export class StripeSubscriptionService {
     const downgrade = team?.downgrade;
     if (
       !downgrade ||
-      downgrade.downgradeType !== SubscriptionDowngradeType.MANUAL
+      (downgrade?.downgradeType &&
+        downgrade?.downgradeType !== SubscriptionDowngradeType.MANUAL)
     ) {
       return;
     }
@@ -2072,10 +2084,14 @@ export class StripeSubscriptionService {
       return;
     }
     // Skip if downgrade data is missing
-    if (!teamDowngradeWorkspaces && !teamDowngradeUsers) {
+    if (!teamDowngradeWorkspaces) {
       console.warn(
-        `Manual downgrade enabled but missing downgrade data for team ${hubId}`,
+        `Manual downgrade enabled but missing downgrade data for team ${hubId}.`,
       );
+      return;
+    }
+    if (teamDowngradeWorkspaces.length < 1) {
+      console.warn(`Manual downgrade Workspaces are Missing for ${hubId}.`);
       return;
     }
     try {
@@ -2112,7 +2128,7 @@ export class StripeSubscriptionService {
       }
 
       // Remove users not in the downgrade list
-      if (nonDowngradedUsers.length > 0) {
+      if (nonDowngradedUsers.length > 0 && teamDowngradeUsers.length > 0) {
         for (const userId of nonDowngradedUsers) {
           try {
             const payload = {

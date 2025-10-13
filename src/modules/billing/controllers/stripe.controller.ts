@@ -425,7 +425,7 @@ export class StripeController {
         updateSubscriptionDto.seats,
         updateSubscriptionDto.paymentBehavior,
       );
-      if (subscription) {
+      if (subscription && updateSubscriptionDto?.workspaces) {
         await this.downgradeService.addDowgradeDetails(
           updateSubscriptionDto?.metadata?.hubId,
           updateSubscriptionDto?.workspaces,
