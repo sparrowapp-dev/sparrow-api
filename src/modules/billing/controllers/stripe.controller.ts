@@ -49,8 +49,7 @@ import { SalesEmailRepository } from "@src/modules/workspace/repositories/sales-
 import { ConfigService } from "@nestjs/config";
 import { TrialType } from "@src/modules/common/enum/trial.enum";
 import { PricingPlan } from "@src/modules/common/models/pricing.model";
-import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
-import { SubscriptionDowngradeType } from "@src/modules/common/enum/billing.enum";
+import { DownGradeService } from "../services/downgrade.service";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -74,7 +73,7 @@ export class StripeController {
     private readonly pricingService: PricingService,
     private readonly configService: ConfigService,
     private readonly salesEmailRepository: SalesEmailRepository,
-    private readonly stripeSubscriptionRepository: StripeSubscriptionRepository,
+    private readonly downgradeService: DownGradeService,
   ) {
     this.isStripeAvailable = !!this.stripeService;
 
@@ -427,11 +426,10 @@ export class StripeController {
         updateSubscriptionDto.paymentBehavior,
       );
       if (subscription) {
-        await this.stripeSubscriptionRepository.addDowngradeDetails(
+        await this.downgradeService.addDowgradeDetails(
           updateSubscriptionDto?.metadata?.hubId,
           updateSubscriptionDto?.workspaces,
           updateSubscriptionDto?.users,
-          SubscriptionDowngradeType.MANUAL
         );
       }
 
@@ -475,11 +473,10 @@ export class StripeController {
         false, //disables cancellation at mid cycle
       );
       if (subscription) {
-        await this.stripeSubscriptionRepository.addDowngradeDetails(
+        await this.downgradeService.addDowgradeDetails(
           cancelSubscriptionDto.teamId,
           cancelSubscriptionDto.workspaces,
           cancelSubscriptionDto.users,
-          SubscriptionDowngradeType.MANUAL
         );
       }
       return { subscription };
@@ -527,7 +524,7 @@ export class StripeController {
         reactivateDto.metadata,
       );
       if (subscription) {
-        await this.stripeSubscriptionRepository.removeDowngradeDetails(
+        await this.downgradeService.removeDowngradeDetails(
           reactivateDto.metadata?.hubId,
         );
       }

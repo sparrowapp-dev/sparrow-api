@@ -8,6 +8,8 @@ import { DownGradeUserRepository } from "../repositories/downgradeUser.repositor
 import { LicenseManagementService } from "./license-management.service";
 import { DownGradeWorkspaceRepository } from "../repositories/downgradeWorkspace.repository";
 import { isString } from "class-validator";
+import { SubscriptionDowngradeType } from "@src/modules/common/enum/billing.enum";
+import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 
 @Injectable()
 export class DownGradeService {
@@ -16,6 +18,7 @@ export class DownGradeService {
     private readonly downgradeUserRepository: DownGradeUserRepository,
     private readonly licenseManagementService: LicenseManagementService,
     private readonly downgradeWorkspaceReposiory: DownGradeWorkspaceRepository,
+    private readonly stripeSubscriptionRepository: StripeSubscriptionRepository,
   ) {}
 
   async removeUserFromTeam(payload: DowngradeUserDto): Promise<WithId<Team>> {
@@ -92,5 +95,30 @@ export class DownGradeService {
     const response =
       await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(id, true);
     return response;
+  }
+
+  async addDowgradeDetails(
+    teamId: string,
+    workspaces: Array<{ id: string; name: string }>,
+    users: Array<{ id: string; email: string }>,
+  ) {
+    try {
+      await this.stripeSubscriptionRepository.addDowngradeDetails(
+        teamId,
+        workspaces,
+        users,
+        SubscriptionDowngradeType.MANUAL,
+      );
+    } catch (error) {
+      console.log("Error in add Downgrade", error);
+    }
+  }
+
+  async removeDowngradeDetails(teamId: string) {
+    try {
+      await this.stripeSubscriptionRepository.removeDowngradeDetails(teamId);
+    } catch (error) {
+      console.log("Error in Remove Downgrade", error);
+    }
   }
 }
