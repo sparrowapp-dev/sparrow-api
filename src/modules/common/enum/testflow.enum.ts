@@ -32,12 +32,12 @@ export enum RequestDataTypeEnum {
 export interface EmailData {
   userName: string;
   scheduleName: string;
-  scheduleLastestRun: Date;
+  scheduleLastestRun: string;
   scheduleRunResult: string;
   scheduleRunPassedCount: number;
   scheduleRunFailedCount: number;
   scheduleRunTotalRequest: number;
-  scheduleRunPassPercentage: number; 
+  scheduleRunPassPercentage: string; 
   scheduleTotalTime: string | number;
   scheduleRunEnvName: string;
   isSuccess: boolean;
@@ -61,6 +61,7 @@ export interface DailyConfig {
 
 export interface HourlyConfig {
   type: RunCycleEnum.HOURLY;
+  executeAt: Date;
   intervalHours: number;
   startTime?: {
     hour: number;

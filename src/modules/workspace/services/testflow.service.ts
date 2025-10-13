@@ -47,6 +47,7 @@ import { v4 as uuidv4 } from "uuid";
 import { TestflowSchedulerService } from "./testflow-schedular.service";
 import {
   DailyConfig,
+  DayOfWeek,
   EmailData,
   HourlyConfig,
   NotificationReceiveType,
@@ -62,6 +63,7 @@ import { Logger } from "@nestjs/common";
 import { OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { EnvironmentRepository } from "../repositories/environment.repository";
+import { Collections } from "@src/modules/common/enum/database.collection.enum";
 
 /**
  * Testflow Service
@@ -82,31 +84,85 @@ export class TestflowService implements OnModuleInit {
     private readonly environmentReposistory: EnvironmentRepository,
   ) {}
 
+  async getNextFutureCronExpression(pastCron: string, intervalHours: number): Promise<string> {
+    // Expecting cron in format: 's m h * * *'
+    const parts = pastCron.trim().split(/\s+/);
+    if (parts.length !== 6) return pastCron;
+
+    let second = parseInt(parts[0], 10);
+    let minute = parseInt(parts[1], 10);
+    let hour = parseInt(parts[2], 10);
+    let day = parseInt(parts[3], 10);
+    let month = parseInt(parts[4], 10) - 1;
+
+    // Start from the past time
+    let now = new Date();
+    let next = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      month,
+      day,
+      hour,
+      minute,
+      second,
+      0
+    ));
+
+    // If the past time is in the past, keep adding interval until it's in the future
+    while (next <= now) {
+      next.setUTCHours(next.getUTCHours() + intervalHours);
+    }
+
+    // Return new cron expression
+    return `${next.getUTCSeconds()} ${next.getUTCMinutes()} ${next.getUTCHours()} ${next.getUTCDate()} ${next.getUTCMonth() + 1} *`;
+  }
+
   async onModuleInit() {
-    this.logger.log("Bootstrapping schedulers from DB...");
-    const testflows = await this.testflowRepository.getAll();
-    for (const tf of testflows) {
-      if (!tf.schedules?.length) continue;
-      for (const schedule of tf.schedules) {
-        const runCycleConfig = this.buildRunCycleConfig(
-          schedule.runConfiguration,
-        );
-        if (schedule.isActive && schedule.cronExpression) {
-          await this.testflowSchedulerService.addSchedulerJob(
-            runCycleConfig,
-            this.getScheduledExecutionCallback(
-              tf._id.toString(),
-              schedule.environmentId,
-              tf.workspaceId,
-              schedule.id,
-            ),
-            schedule.schedularName,
-            schedule.cronExpression,
-            schedule.id,
-            "UTC",
-          );
+    try {
+      this.logger.log("Bootstrapping schedulers from DB...");
+      const testflows = await this.testflowRepository.getAll();
+      if (testflows.length === 0) {
+        this.logger.log("No testflows found — skipping scheduler bootstrap.");
+        return;
+      }
+      for (const tf of testflows) {
+        if (!tf.schedules?.length) continue;
+
+        for (const schedule of tf.schedules) {
+          try{
+            const runCycleConfig = this.buildRunCycleConfig(
+              schedule.runConfiguration,
+            );
+            if (schedule.isActive && schedule.cronExpression) {
+              let cronExpression = schedule.cronExpression;
+              if(schedule.runConfiguration.runCycle === RunCycleEnum.HOURLY){
+                const intervalHours = schedule.runConfiguration.intervalHours;
+                cronExpression = await this.getNextFutureCronExpression(cronExpression, intervalHours);
+              }
+              await this.testflowSchedulerService.addSchedulerJob(
+                runCycleConfig,
+                this.getScheduledExecutionCallback(
+                  tf._id.toString(),
+                  schedule.environmentId,
+                  tf.workspaceId,
+                  schedule.id,
+                ),
+                (_cronExpression: string)=>{
+                  this.testflowRepository.editSchedular(tf._id.toString(), schedule.id, {
+                    cronExpression: _cronExpression,
+                  });
+                },
+                cronExpression,
+                schedule.id,
+                "UTC",
+              );
+            }
+          }catch(error){
+            this.logger.error("Error adding scheduler job:", error);
+          }
         }
       }
+    } catch (error) {
+      this.logger.error("Error during scheduler bootstrap:", error);
     }
   }
 
@@ -152,11 +208,36 @@ export class TestflowService implements OnModuleInit {
       throw new NotFoundException("Schedule not found");
     }
 
-     let environmentName = "";
-      if(updateScheduleDto?.environmentId){
-        const environmentData = await this.environmentReposistory.get(updateScheduleDto?.environmentId);
-        environmentName = environmentData?.name || "";
+    let environmentName = "";
+    if (updateScheduleDto?.environmentId) {
+      const environmentData = await this.environmentReposistory.get(
+        updateScheduleDto?.environmentId,
+      );
+      environmentName = environmentData?.name || "";
+    }
+  
+    if(updateScheduleDto.runConfiguration){
+      const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
+      const cronExpression = this.generateCronExpression(runCycleConfig);
+      if (!cronExpression) {
+        updateScheduleDto.cronExpression = null;
       }
+      else{
+        updateScheduleDto.cronExpression = cronExpression;
+      }
+    }else{
+      if(existingSchedular.runConfiguration.runCycle === RunCycleEnum.HOURLY){
+          const runCycleConfig = this.buildRunCycleConfig(existingSchedular.runConfiguration);
+          const cronExpression = this.generateCronExpression(runCycleConfig);
+          if (!cronExpression) {
+            updateScheduleDto.cronExpression = null;
+          }
+          else{
+            updateScheduleDto.cronExpression = cronExpression;
+          }
+      }
+    }
+
     // Merge update fields, ensure id is present
     const updatedSchedular: TestflowSchedular = {
       ...existingSchedular,
@@ -172,43 +253,42 @@ export class TestflowService implements OnModuleInit {
       scheduleId,
       updatedSchedular,
     );
-    // Optionally update cron job if runConfiguration or isActive changed
-    if (
-      updateScheduleDto.runConfiguration ||
-      updateScheduleDto.isActive !== undefined
-    ) {
-      const schedular = await this.testflowRepository.getSchedularById(
-        testflowId,
-        scheduleId,
-      );
-      if (schedular) {
-        // Remove old job
-        await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
-        // If still active, re-add job
-        if (schedular.isActive) {
-          const runCycleConfig = this.buildRunCycleConfig(
-            schedular.runConfiguration,
-          );
-          const cronExpression =
-            schedular.cronExpression ||
-            this.generateCronExpression(runCycleConfig);
-          await this.testflowSchedulerService.addSchedulerJob(
-            runCycleConfig,
-            this.getScheduledExecutionCallback(
-              testflowId,
-              schedular.environmentId,
-              workspaceId,
-              scheduleId,
-              user,
-            ),
-            schedular.schedularName,
-            cronExpression,
+    
+    const schedular = await this.testflowRepository.getSchedularById(
+      testflowId,
+      scheduleId,
+    );
+    if (schedular) {
+      // Remove old job
+      await this.testflowSchedulerService.removeSchedulerJob(scheduleId);
+      // If still active, re-add job
+      if (schedular.isActive) {
+        const runCycleConfig = this.buildRunCycleConfig(
+          schedular.runConfiguration,
+        );
+        const cronExpression = schedular.cronExpression;
+        await this.testflowSchedulerService.addSchedulerJob(
+          runCycleConfig,
+          this.getScheduledExecutionCallback(
+            testflowId,
+            schedular.environmentId,
+            workspaceId,
             scheduleId,
-          );
-        }
+            user,
+          ),
+          (_cronExpression: string)=>{
+            this.testflowRepository.editSchedular(testflowId, scheduleId, {
+              cronExpression: _cronExpression,
+            });
+          },
+          cronExpression,
+          scheduleId,
+          "UTC",
+        );
       }
     }
-    return result;
+    
+    return result;  
   }
 
   /**
@@ -317,8 +397,9 @@ export class TestflowService implements OnModuleInit {
    * Fetches single testflow.
    * @param id - Testflow id you want to fetch.
    */
-  async getTestflow(id: string): Promise<WithId<Testflow>> {
-    return await this.testflowRepository.get(id);
+  async getTestflow(workspaceId: string, testflowId: string, userId: ObjectId): Promise<WithId<Testflow>> {
+    await this.checkPermission(workspaceId, userId);
+    return await this.testflowRepository.get(testflowId);
   }
 
   /**
@@ -328,6 +409,9 @@ export class TestflowService implements OnModuleInit {
    */
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
     const workspace = await this.workspaceService.get(workspaceId);
+    if(workspace.workspaceType === WorkspaceType.PUBLIC){
+      return;
+    }
     const hasPermission = workspace.users.some((user) => {
       return user.id.toString() === userid.toString();
     });
@@ -357,6 +441,16 @@ export class TestflowService implements OnModuleInit {
       id,
       user._id,
     );
+  
+    // Remove all associated cronjobs for this testflow
+    if (testflow?.schedules && Array.isArray(testflow.schedules)) {
+      for (const schedule of testflow.schedules) {
+        if (schedule?.id) {
+          await this.testflowSchedulerService.removeSchedulerJob(schedule.id);
+        }
+      }
+    }
+
     const updateMessage = `"${testflow.name}" testflow is deleted from "${workspace.name}" workspace`;
     const currentWorkspaceObject = new ObjectId(workspaceId);
     const updateWorkspaceData: Partial<Workspace> = {
@@ -489,26 +583,7 @@ export class TestflowService implements OnModuleInit {
     user: DecodedUserObject,
   ) {
     try {
-      const workspaceUsers = await this.workspaceReposistory.get(
-        schedularData?.workspaceId,
-      );
-      if (!workspaceUsers) {
-        throw new NotFoundException("Workspace not found.");
-      }
-      const userDetails = workspaceUsers.users.find(
-        (item) => item.id === user._id.toString(),
-      );
-      if (!userDetails) {
-        throw new NotFoundException("User not found in workspace.");
-      }
-      if (
-        userDetails.role !== WorkspaceRole.ADMIN &&
-        userDetails.role !== WorkspaceRole.EDITOR
-      ) {
-        throw new ForbiddenException(
-          "User does not have permission to perform this action.",
-        );
-      }
+      await this.isWorkspaceAdminorEditor(schedularData?.workspaceId, user._id);
       // Build cron config
       const runCycleConfig = this.buildRunCycleConfig(
         schedularData.runConfiguration,
@@ -521,8 +596,10 @@ export class TestflowService implements OnModuleInit {
         throw new BadRequestException("Invalid run cycle configuration");
       }
       let environmentName = "";
-      if(schedularData?.environmentId){
-        const environmentData = await this.environmentReposistory.get(schedularData?.environmentId);
+      if (schedularData?.environmentId) {
+        const environmentData = await this.environmentReposistory.get(
+          schedularData?.environmentId,
+        );
         environmentName = environmentData?.name || "";
       }
       // Save scheduler details in DB
@@ -557,7 +634,11 @@ export class TestflowService implements OnModuleInit {
           schedulerId,
           user,
         ),
-        jobName,
+        (_cronExpression: string)=>{
+          this.testflowRepository.editSchedular(schedularData.testflowId, schedulerId, {
+            cronExpression: _cronExpression,
+          });
+        },
         cronExpression,
         schedulerId,
         "UTC",
@@ -608,6 +689,7 @@ export class TestflowService implements OnModuleInit {
         }
         return {
           type: RunCycleEnum.HOURLY,
+          executeAt: new Date(Date.now() + 1 * 60 * 1000),
           intervalHours: runConfig.intervalHours,
           startTime: runConfig.time
             ? this.parseTime(runConfig.time)
@@ -694,23 +776,33 @@ export class TestflowService implements OnModuleInit {
   }
 
   private generateHourlyCronExpression(config: HourlyConfig): string {
-    const { intervalHours, startTime } = config;
-    if (startTime) {
-      const { hour, minute, second = 0 } = startTime;
-      return `${second} ${minute} ${hour}-23/${intervalHours} * * *`;
-    } else {
-      const now = new Date();
-      const utcHour = now.getUTCHours();
-      const utcMinute = now.getUTCMinutes();
-      const utcSecond = now.getUTCSeconds();
-      return `${utcSecond} ${utcMinute} ${utcHour}-23/${intervalHours} * * *`;
+    const executeAt = config.executeAt;
+    const now = new Date();
+    if (executeAt <= now) {
+      return null;
     }
+    const second = executeAt.getUTCSeconds();
+    const minute = executeAt.getUTCMinutes();
+    const hour = executeAt.getUTCHours();
+    const dayOfMonth = executeAt.getUTCDate();
+    const month = executeAt.getUTCMonth() + 1;
+    return `${second} ${minute} ${hour} ${dayOfMonth} ${month} *`;
   }
 
   private generateWeeklyCronExpression(config: WeeklyConfig): string {
     const { days, time } = config;
     const { hour, minute, second = 0 } = time;
-    return `${second} ${minute} ${hour} * * ${days.join(",")}`;
+    const validDays = days.filter((day) => {
+      return day >= DayOfWeek.SUNDAY && day <= DayOfWeek.SATURDAY;
+    });
+    if (validDays.length === 0) {
+      throw new BadRequestException(
+        "Invalid days specified. Days must be valid DayOfWeek values (0=Sunday, 1=Monday, ..., 6=Saturday)",
+      );
+    }
+    const sortedDays = validDays.sort((a, b) => a - b);
+    const daysString = sortedDays.join(",");
+    return `${second} ${minute} ${hour} * * ${daysString}`;
   }
 
   public getScheduledExecutionCallback(
@@ -748,12 +840,12 @@ export class TestflowService implements OnModuleInit {
         isScheduled,
         status: "pending",
         requests: [],
-        responses:[],
+        responses: [],
         nodes: [],
         edges: [],
         failedRequests: 0,
         successRequests: 0,
-        totalTime:"0 ms",
+        totalTime: "0 ms",
         createdAt: new Date(),
       };
       //Save execution result in DB
@@ -774,6 +866,7 @@ export class TestflowService implements OnModuleInit {
         nodes: response.nodes,
         edges: response.edges,
         ...response.result.history,
+        status: response?.result?.history?.status || "error",
       };
       //Save execution result in DB
       await this.testflowRepository.editSchedularExecution(
@@ -792,13 +885,19 @@ export class TestflowService implements OnModuleInit {
           false,
         );
       }
-      const data = response.result.history;
+      const data = response?.result?.history;
       let scheduleRunResult;
-      if (data.status === "fail" && data.successRequests < 1) {
+      if(!response?.status){
+        scheduleRunResult = "error";
+      }
+      else if (data?.status === "fail" && data?.successRequests < 1) {
         scheduleRunResult = "failed";
-      } else if (data.status === "success") {
+      } else if (data?.status === "success") {
         scheduleRunResult = "success";
-      } else {
+      } else if (data?.status === "error") {
+        scheduleRunResult = "error";
+      } 
+      else {
         scheduleRunResult = "partial";
       }
       const totalRequestCount = data.successRequests + data.failedRequests;
@@ -806,16 +905,27 @@ export class TestflowService implements OnModuleInit {
         data.createdBy,
       );
       const successPercentage =
-        (data.successRequests / totalRequestCount) * 100;
+        Math.round((data.successRequests / totalRequestCount) * 100 * 100) /
+        100;
       const emailData: EmailData = {
         userName: userDetails?.name,
         scheduleName: getSchedular.name,
-        scheduleLastestRun: new Date(getSchedular.lastExecuted),
+        scheduleLastestRun:
+          new Date(getSchedular.lastExecuted).toLocaleString("en-US", {
+            timeZone: "UTC",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          }) + " UTC",
         scheduleRunResult: scheduleRunResult,
         scheduleRunPassedCount: data.successRequests,
         scheduleRunFailedCount: data.failedRequests,
         scheduleRunTotalRequest: data.successRequests + data.failedRequests,
-        scheduleRunPassPercentage: successPercentage,
+        scheduleRunPassPercentage: successPercentage.toString(),
         scheduleTotalTime: data.totalTime,
         scheduleRunEnvName: response.environmentName,
         isSuccess: data.successRequests === totalRequestCount,
