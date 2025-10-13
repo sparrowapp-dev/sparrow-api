@@ -263,4 +263,21 @@ export class TestflowWorkerService implements OnModuleInit {
       this.logger.log('Testflow worker shut down');
     }
   }
+
+  /**
+   * Get worker instance for graceful shutdown
+   */
+  getWorker(): Worker | null {
+    return this.worker || null;
+  }
+
+  /**
+   * Close worker gracefully
+   */
+  async closeWorker(force = false): Promise<void> {
+    if (this.worker) {
+      await this.worker.close(force);
+      this.logger.log(`Worker closed ${force ? 'forcefully' : 'gracefully'}`);
+    }
+  }
 }

@@ -86,6 +86,12 @@ import { ScheduleModule } from "@nestjs/schedule";
 // ---- Monitoring Services
 import { BullMQMonitoringService } from "./services/bullmq-monitoring.service";
 import { BullMQMonitoringController } from "./controllers/bullmq-monitoring.controller";
+import { BullMQErrorHandler } from "./services/bullmq-error-handler.service";
+import { BullMQMetricsService } from "./services/bullmq-metrics.service";
+import { BullMQGracefulShutdownService } from "./services/bullmq-graceful-shutdown.service";
+import { RedisHealthIndicator } from "./health/redis-health.indicator";
+import { JobStateTracker } from "./services/job-state-tracker.service";
+import { JobStateController } from "./controllers/job-state.controller";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -146,6 +152,11 @@ import { BullMQMonitoringController } from "./controllers/bullmq-monitoring.cont
     PricingRepository,
     AiConsumptionScheduler,
     BullMQMonitoringService,
+    BullMQErrorHandler,
+    BullMQMetricsService,
+    BullMQGracefulShutdownService,
+    RedisHealthIndicator,
+    JobStateTracker,
   ],
   exports: [
     CollectionService,
@@ -190,6 +201,7 @@ import { BullMQMonitoringController } from "./controllers/bullmq-monitoring.cont
     SalesEmailController,
     PricingController,
     BullMQMonitoringController,
+    JobStateController,
   ],
 })
 export class WorkspaceModule {}
