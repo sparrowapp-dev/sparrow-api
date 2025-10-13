@@ -786,12 +786,12 @@ export class TestflowService implements OnModuleInit {
         isScheduled,
         status: "pending",
         requests: [],
-        responses:[],
+        responses: [],
         nodes: [],
         edges: [],
         failedRequests: 0,
         successRequests: 0,
-        totalTime:"0 ms",
+        totalTime: "0 ms",
         createdAt: new Date(),
       };
       //Save execution result in DB
