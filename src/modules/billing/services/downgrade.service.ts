@@ -91,12 +91,26 @@ export class DownGradeService {
     return null;
   }
 
+  /**
+   * Restrict a specific workspace by its ID.
+   *
+   * @param id - The unique identifier of the workspace to restrict.
+   */
   async restrictWorkspace(id: string): Promise<any> {
     const response =
       await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(id, true);
     return response;
   }
 
+  /**
+   * Add downgrade details for a specific team.
+   * @param teamId - The unique identifier of the team being downgraded.
+   * @param workspaces - An array of workspace objects (each containing `id` and `name`)
+   *                     associated with the downgrade.
+   * @param users - An array of user objects (each containing `id` and `email`)
+   *                affected by the downgrade.
+   * associated workspaces and users.
+   */
   async addDowgradeDetails(
     teamId: string,
     workspaces: Array<{ id: string; name: string }>,
@@ -114,11 +128,35 @@ export class DownGradeService {
     }
   }
 
+  /**
+   * Remove existing downgrade details for a team.
+   *
+   * @param teamId - The unique identifier of the team whose downgrade details are to be removed.
+   */
   async removeDowngradeDetails(teamId: string) {
     try {
       await this.stripeSubscriptionRepository.removeDowngradeDetails(teamId);
     } catch (error) {
       console.log("Error in Remove Downgrade", error);
+    }
+  }
+
+  /**
+   * unRestrict a specific Hub.
+   * @param id - The unique identifier of the workspace to restrict.
+   * @returns A promise resolving to the repository response after setting the restriction.
+   **/
+  async unRestrictWorkpsaces(team: Team) {
+    try {
+      const workspaces = team.workspaces;
+      for (let workspace of workspaces) {
+        await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(
+          workspace.id.toString(),
+          false,
+        );
+      }
+    } catch (error) {
+      console.log("Error in Removing restricted Workspaces." + error);
     }
   }
 }

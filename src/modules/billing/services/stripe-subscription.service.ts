@@ -618,7 +618,12 @@ export class StripeSubscriptionService {
       ),
     };
 
-    await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
+    const updateTeam = await this.updateTeamPlanWithBilling(
+      metadata.hubId,
+      plan,
+      billingDetails,
+    );
+    await this.downgradeService.unRestrictWorkpsaces(updateTeam);
     // Update team with new license data
     await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
       licenses: licenseUpdate,
