@@ -978,7 +978,7 @@ export class TestflowService implements OnModuleInit {
       );
     }
     const transporter = this.emailService.createTransporter();
-    const hubUrlLink = `${this.configService.get("app.url")}/app/collections`
+    const hubUrlLink = `${this.configService.get("sparrowApp.baseUrl")}/app/collections`
     // Merge emailData
     const context = {
       sparrowEmail: this.configService.get("support.sparrowEmail"),
