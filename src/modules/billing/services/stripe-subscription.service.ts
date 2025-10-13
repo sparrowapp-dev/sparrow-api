@@ -579,7 +579,7 @@ export class StripeSubscriptionService {
         );
       }
     }
-    if (team?.auto_downgrade) {
+    if (team?.downgrade.downgradeType === SubscriptionDowngradeType.AUTOMATIC) {
       await this.stripeSubscriptionRepo.disableAutoDowngrade(metadata.hubId);
     }
 
