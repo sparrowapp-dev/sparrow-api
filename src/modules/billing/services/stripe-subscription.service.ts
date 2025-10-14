@@ -19,7 +19,7 @@ import { LicensesDto } from "@src/modules/common/models/licenses.model";
 import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
 import { UserDto } from "@src/modules/common/models/user.model";
 import { DownGradeService } from "./downgrade.service";
-import { DownGradeTeamRepository } from "../repositories/downgradeTeam.reposiotry";
+import { DownGradeTeamRepository } from "../repositories/downgradeTeam.repository";
 import { ObjectId } from "mongodb";
 
 // Dynamically import Stripe service class
@@ -633,7 +633,8 @@ export class StripeSubscriptionService {
     await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
     if (!isDowngrading) {
       const teamIdObject = new ObjectId(metadata.hubId);
-      const updateTeam = await this.downgradeTeamRepository.findTeamByTeamId(teamIdObject);
+      const updateTeam =
+        await this.downgradeTeamRepository.findTeamByTeamId(teamIdObject);
       await this.downgradeService.unRestrictWorkpsaces(updateTeam);
     }
     // Update team with new license data

@@ -22,7 +22,7 @@ import { UserRepository } from "@src/modules/identity/repositories/user.reposito
 import { PricingService } from "@src/modules/workspace/services/pricing.repository";
 import { PricingRepository } from "@src/modules/workspace/repositories/pricing.repository";
 import { SalesEmailRepository } from "../workspace/repositories/sales-email.repository";
-import { DownGradeTeamRepository } from "./repositories/downgradeTeam.reposiotry";
+import { DownGradeTeamRepository } from "./repositories/downgradeTeam.repository";
 import { DownGradeUserRepository } from "./repositories/downgradeUser.repository";
 import { DownGradeWorkspaceRepository } from "./repositories/downgradeWorkspace.repository";
 import { DownGradeService } from "./services/downgrade.service";

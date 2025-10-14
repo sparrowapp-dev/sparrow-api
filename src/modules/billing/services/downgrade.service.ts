@@ -3,7 +3,7 @@ import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { Team } from "@src/modules/common/models/team.model";
 import { DeleteResult, ObjectId, WithId } from "mongodb";
 import { DowngradeUserDto } from "../payloads/downgrade-user.payload";
-import { DownGradeTeamRepository } from "../repositories/downgradeTeam.reposiotry";
+import { DownGradeTeamRepository } from "../repositories/downgradeTeam.repository";
 import { DownGradeUserRepository } from "../repositories/downgradeUser.repository";
 import { LicenseManagementService } from "./license-management.service";
 import { DownGradeWorkspaceRepository } from "../repositories/downgradeWorkspace.repository";
