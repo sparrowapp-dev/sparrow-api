@@ -34,7 +34,6 @@ export class DownGradeWorkspaceRepository {
     isRestricted: boolean,
   ): Promise<WithId<Workspace>> {
     const _id = new ObjectId(workspaceId);
-
     const result = await this.db
       .collection<Workspace>(Collections.WORKSPACE)
       .findOneAndUpdate(
@@ -42,11 +41,9 @@ export class DownGradeWorkspaceRepository {
         { $set: { isRestricted, updatedAt: new Date() } },
         { returnDocument: "after" },
       );
-
     if (!result.value) {
       throw new BadRequestException("Workspace not found or update failed");
     }
-
     return result.value;
   }
 }
