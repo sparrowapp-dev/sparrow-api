@@ -266,4 +266,41 @@ export class AiAssistantController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post("/generate-pre-script")
+  @ApiOperation({
+    summary: "Generate Pre-Script for API request",
+    description:
+      "Generates a pre-script for a specific API request definition.",
+  })
+  @UseGuards(JwtAuthGuard, UserLimitGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Generated Pre-Script Successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to generate pre-script.",
+  })
+  @ApiResponse({
+    status: 500,
+    description: "Server failed to generate pre-script.",
+  })
+  async generatePreScriptForRequest(
+    @Body() content: generateTestCasesDto
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const preScript = await this.aiAssistantService.generatePreScript(
+      user,
+      content,
+    );
+    const responseData = new ApiResponseService(
+      "Generated Pre-Script Successfully",
+      HttpStatusCode.OK,
+      preScript,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
 }
