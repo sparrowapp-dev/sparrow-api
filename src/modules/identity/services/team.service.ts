@@ -462,7 +462,7 @@ export class TeamService {
     const teamMap = new Map<string, WithId<Team>>();
     for (const team of teamDocs) {
       // Sanitize invites
-      team.invites?.forEach((invite: Invite) => {
+      team?.invites?.forEach((invite: Invite) => {
         delete invite.inviteId;
         delete invite.isAccepted;
         delete invite.workspaces;

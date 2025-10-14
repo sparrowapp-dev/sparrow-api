@@ -163,6 +163,7 @@ export class StripeSubscriptionService {
   async handleSubscriptionUpdated(
     subscription: any,
     eventId?: string,
+    isResubscribed?: boolean,
   ): Promise<void> {
     try {
       // Extract metadata and validate required fields
@@ -170,6 +171,9 @@ export class StripeSubscriptionService {
         subscription.metadata,
         ["planName", "hubId"],
       );
+      if (isResubscribed) {
+        await this.downgradeService.removeDowngradeDetails(metadata.hubId);
+      }
 
       if (!isValid) {
         return;
