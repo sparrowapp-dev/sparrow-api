@@ -10,11 +10,17 @@ import {
   BillingActorType,
   BillingSource,
   BillingEventType,
+  SubscriptionDowngradeType,
 } from "@src/modules/common/enum/billing.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
-import { TeamsPlan } from "@src/modules/common/models/team.model";
+import { Team, TeamsPlan } from "@src/modules/common/models/team.model";
 import { ScheduledDowngradeDto } from "@src/modules/common/models/billing.model";
 import { LicensesDto } from "@src/modules/common/models/licenses.model";
+import { WorkspaceDto } from "@src/modules/common/models/workspace.model";
+import { UserDto } from "@src/modules/common/models/user.model";
+import { DownGradeService } from "./downgrade.service";
+import { DownGradeTeamRepository } from "../repositories/downgradeTeam.repository";
+import { ObjectId } from "mongodb";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -33,6 +39,8 @@ export class StripeSubscriptionService {
     private readonly stripeSubscriptionRepo: StripeSubscriptionRepository,
     private readonly billingAuditService: BillingAuditService,
     private readonly paymentEmailHelper: PaymentEmailHelper,
+    private readonly downgradeService: DownGradeService,
+    private readonly downgradeTeamRepository: DownGradeTeamRepository,
     @Optional() @Inject(StripeService) private readonly stripeService?: any,
   ) {}
 
@@ -93,7 +101,6 @@ export class StripeSubscriptionService {
           reason: `Subscription created with status: ${subscription.status}`,
         },
       );
-
       // Only update team state if subscription is active
       if (subscription.status === SubscriptionStatus.ACTIVE) {
         await this.updateTeamAndWorkspacesWithPlan(
@@ -192,6 +199,7 @@ export class StripeSubscriptionService {
     metadata: any,
     eventId?: string,
   ): Promise<void> {
+    console.log("this is the subscription of cancekk------->");
     // Get current team state
     const currentTeam = await this.stripeSubscriptionRepo.findTeamById(
       metadata.hubId,
@@ -552,6 +560,40 @@ export class StripeSubscriptionService {
     const isSeatChange = previousSeats !== newSeats;
     const isSubscriptionRenewal =
       !isPlanChange && !isSeatChange && previousPeriodEnd;
+    let isDowngrading = false;
+    // Only check for downgrade if there's a plan change
+    if (isPlanChange && previousPlan && newPlan) {
+      // Get plan details to determine if it's a downgrade
+      const previousPlanDetails =
+        await this.stripeSubscriptionRepo.findPlanByName(previousPlan);
+      const newPlanDetails =
+        await this.stripeSubscriptionRepo.findPlanByName(newPlan);
+
+      // Check if this is actually a downgrade (moving to a lower tier)
+      const isDowngrade = this.isPlanDowngrade(
+        previousPlanDetails,
+        newPlanDetails,
+      );
+
+      if (isDowngrade) {
+        const hasDowngradeConfig = team?.downgrade;
+        const isManualDowngrade =
+          team?.downgrade?.downgradeType === SubscriptionDowngradeType.MANUAL;
+        if (hasDowngradeConfig && isManualDowngrade) {
+          isDowngrading = true;
+          await this.executeManualDowngrade(team, metadata.hubId);
+          await this.stripeSubscriptionRepo.removeDowngradeDetails(
+            metadata.hubId,
+          );
+        }
+      }
+    }
+    // Handle automatic downgrade cleanup (separate from manual downgrade)
+    if (
+      team?.downgrade?.downgradeType === SubscriptionDowngradeType.AUTOMATIC
+    ) {
+      await this.stripeSubscriptionRepo.disableAutoDowngrade(metadata.hubId);
+    }
 
     // Create billing details object with successful payment status
     const billingDetails = {
@@ -589,6 +631,12 @@ export class StripeSubscriptionService {
     };
 
     await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
+    if (!isDowngrading) {
+      const teamIdObject = new ObjectId(metadata.hubId);
+      const updateTeam =
+        await this.downgradeTeamRepository.findTeamByTeamId(teamIdObject);
+      await this.downgradeService.unRestrictWorkpsaces(updateTeam);
+    }
     // Update team with new license data
     await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
       licenses: licenseUpdate,
@@ -918,6 +966,8 @@ export class StripeSubscriptionService {
       const team = await this.stripeSubscriptionRepo.findTeamById(
         metadata.hubId,
       );
+      // Execute manual downgrade AFTER plan change is complete
+      await this.executeManualDowngrade(team, metadata.hubId);
       const previousPlan = team?.plan?.name || "unknown";
 
       // Get cancellation reason if available
@@ -970,6 +1020,7 @@ export class StripeSubscriptionService {
           reason: `Subscription deleted - ${cancellationReason}`,
         },
       );
+      await this.stripeSubscriptionRepo.removeDowngradeDetails(metadata.hubId);
     } catch (error) {
       throw error;
     }
@@ -1083,7 +1134,6 @@ export class StripeSubscriptionService {
         scheduledDowngrade: scheduledDowngrade,
         updatedBy: "system-stripe-webhook",
       };
-
       await this.stripeSubscriptionRepo.updateTeamPlan(hubId, team.plan, {
         billing: updatedBilling,
       });
@@ -1143,18 +1193,18 @@ export class StripeSubscriptionService {
           }
 
           // Find the community plan for downgrade
-          const communityPlan =
-            await this.stripeSubscriptionRepo.findPlanByName(
-              PlanName.COMMUNITY,
-            );
-          if (!communityPlan) {
-            console.error("Community plan not found");
-            continue;
-          }
+          // const communityPlan =
+          //   await this.stripeSubscriptionRepo.findPlanByName(
+          //     PlanName.COMMUNITY,
+          //   );
+          // if (!communityPlan) {
+          //   console.error("Community plan not found");
+          //   continue;
+          // }
 
           // Ensure the plan has an ID for the update
-          communityPlan.id = communityPlan._id;
-          delete communityPlan._id;
+          // communityPlan.id = communityPlan._id;
+          // delete communityPlan._id;
 
           // Update billing details for expired subscription
           const billingDetails = {
@@ -1167,11 +1217,11 @@ export class StripeSubscriptionService {
           };
 
           // Update team to community plan
-          await this.updateTeamPlanWithBilling(
-            team._id.toString(),
-            communityPlan,
-            billingDetails,
-          );
+          // await this.updateTeamPlanWithBilling(
+          //   team._id.toString(),
+          //   communityPlan,
+          //   billingDetails,
+          // );
 
           // Send plan downgrade email notification
           if (this.paymentEmailHelper && team.plan?.name) {
@@ -1193,18 +1243,20 @@ export class StripeSubscriptionService {
             | { previous: Record<string, any>; new: Record<string, any> }
             | undefined;
 
-          if (team?.plan?.limits && communityPlan.limits) {
+          if (team?.plan?.limits) {
             planLimits = {
               previous: team.plan.limits,
-              new: communityPlan.limits,
+              new: team.plan.limits,
             };
           }
-
+          await this.stripeSubscriptionRepo.enableAutoDowngrade(
+            team._id.toString(),
+          );
           // Log the plan change
           await this.billingAuditService.recordPlanChange(
             team._id.toString(),
             team.plan?.name || "unknown",
-            PlanName.COMMUNITY,
+            team.plan?.name,
             {
               actor: { type: BillingActorType.SYSTEM, name: "maintenance-job" },
               source: BillingSource.BILLING_MAINTENANCE,
@@ -2006,5 +2058,126 @@ export class StripeSubscriptionService {
       console.error("Error optimizing licenses for upcoming renewals:", error);
       throw error;
     }
+  }
+
+  /**
+   * Execute manual downgrade - remove workspaces and users not in the downgrade list
+   * This should only be called when the plan change is complete
+   * @param team The team data
+   * @param hubId The team hub ID
+   */
+  private async executeManualDowngrade(
+    team: Team,
+    hubId: string,
+  ): Promise<void> {
+    const downgrade = team?.downgrade;
+    if (
+      !downgrade ||
+      (downgrade?.downgradeType &&
+        downgrade?.downgradeType !== SubscriptionDowngradeType.MANUAL)
+    ) {
+      return;
+    }
+    const downgradeType = team?.downgrade?.downgradeType;
+    const teamDowngradeWorkspaces = team?.downgrade?.workspaces;
+    const teamDowngradeUsers = team?.downgrade?.users;
+    // Only proceed if downgrade type is MANUAL
+    if (downgradeType !== SubscriptionDowngradeType.MANUAL) {
+      return;
+    }
+    // Skip if downgrade data is missing
+    if (!teamDowngradeWorkspaces) {
+      console.warn(
+        `Manual downgrade enabled but missing downgrade data for team ${hubId}.`,
+      );
+      return;
+    }
+    if (teamDowngradeWorkspaces.length < 1) {
+      console.warn(`Manual downgrade Workspaces are Missing for ${hubId}.`);
+      return;
+    }
+    try {
+      // Get all current workspace IDs
+      const allWorkspaces =
+        team?.workspaces?.map((workspace: WorkspaceDto) =>
+          workspace.id.toString(),
+        ) || [];
+      // Get all current user IDs (excluding owner)
+      const allUsers =
+        team?.users
+          ?.filter((user: UserDto) => user.role !== "owner")
+          .map((user: UserDto) => user.id) || [];
+
+      // Extract workspace IDs from downgrade list (workspaces to keep)
+      const downgradeWorkspaceIds =
+        teamDowngradeWorkspaces?.map((ws) => ws.id) || [];
+      // Extract user IDs from downgrade list (users to keep)
+      const downgradeUserIds = teamDowngradeUsers?.map((user) => user.id) || [];
+      // Workspaces not in the downgrade list (these will be deleted)
+      const nonDowngradedWorkspaces = allWorkspaces.filter(
+        (wsId: string) => !downgradeWorkspaceIds.includes(wsId),
+      );
+      // Users not in the downgrade list (these will be removed)
+      const nonDowngradedUsers = allUsers.filter(
+        (userId: string) => !downgradeUserIds.includes(userId),
+      );
+
+      // Delete workspaces that are not in the downgrade list
+      if (nonDowngradedWorkspaces.length > 0) {
+        for (const workspaceId of nonDowngradedWorkspaces) {
+          await this.downgradeService.restrictWorkspace(workspaceId);
+        }
+      }
+
+      // Remove users not in the downgrade list
+      if (nonDowngradedUsers.length > 0 && teamDowngradeUsers.length > 0) {
+        for (const userId of nonDowngradedUsers) {
+          try {
+            const payload = {
+              teamId: hubId,
+              userId: userId,
+            };
+            await this.downgradeService.removeUserFromTeam(payload);
+          } catch (error) {
+            console.error(
+              `Error removing user ${userId} from team ${hubId}:`,
+              error,
+            );
+            // Continue with other users even if one fails
+          }
+        }
+      }
+      console.log(
+        `Manual downgrade completed for team ${hubId}: ${nonDowngradedWorkspaces.length} workspaces deleted, ${nonDowngradedUsers.length} users removed`,
+      );
+    } catch (error) {
+      console.error(
+        `Error executing manual downgrade for team ${hubId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Helper method to determine if a plan change is a downgrade
+   * @param previousPlan The previous plan object
+   * @param newPlan The new plan object
+   * @returns Boolean indicating if this is a downgrade
+   */
+  private isPlanDowngrade(previousPlan: any, newPlan: any): boolean {
+    // Add your plan hierarchy logic here
+    // For example, you might have a plan hierarchy like:
+    // Community < standard < Professional
+
+    const planHierarchy: { [key: string]: number } = {
+      [PlanName.COMMUNITY]: 0,
+      [PlanName.STANDARD]: 1,
+      [PlanName.PROFESSIONAL]: 2,
+    };
+
+    const previousLevel = planHierarchy[previousPlan.name] ?? 0;
+    const newLevel = planHierarchy[newPlan.name] ?? 0;
+
+    return newLevel < previousLevel;
   }
 }
