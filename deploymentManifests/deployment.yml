@@ -411,16 +411,7 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: SPARROW_PROXY_BASE_URL      
-            - name: APP_MAC_VERSION
-              valueFrom:
-                secretKeyRef:
-                  name: sparrow-api-secret
-                  key: APP_MAC_VERSION
-            - name: APP_LINUX_VERSION
-              valueFrom:
-                secretKeyRef:
-                  name: sparrow-api-secret
-                  key: APP_LINUX_VERSION
+        
 
 ---
 apiVersion: v1
