@@ -1,4 +1,4 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, BadRequestException } from "@nestjs/common";
 import { Db } from "mongodb";
 import { ObjectId, WithId } from "mongodb";
 import { User } from "@src/modules/common/models/user.model";
@@ -37,5 +37,21 @@ export class DownGradeUserRepository {
       .find({ _id: { $in: IdArray } })
       .toArray();
     return response;
+  }
+
+  async findUsersByStringIds(ids: string[]): Promise<WithId<User>[]> {
+    try {
+      const objectIds = ids.map((id) => new ObjectId(id));
+      const users = await this.db
+        .collection<User>(Collections.USER)
+        .find({ _id: { $in: objectIds } })
+        .toArray();
+      if (!users || users.length === 0) {
+        return;
+      }
+      return users;
+    } catch (error) {
+      console.error("Error fetching users by string IDs:", error);
+    }
   }
 }

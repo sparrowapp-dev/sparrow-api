@@ -112,3 +112,16 @@ export class DownGradeUserTourGuideDto extends DownGradeUserGenerateVariableDto 
   @Type(() => TourGuideDto)
   tourGuide?: TourGuideDto;
 }
+
+export interface WorkspaceExcelDto {
+  name: string;
+  created_at: string;
+  collections: number;
+  testflow: number;
+}
+
+export interface UserExcelDto {
+  name: string;
+  email: string;
+}
+

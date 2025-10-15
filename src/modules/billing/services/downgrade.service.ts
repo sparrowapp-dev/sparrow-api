@@ -56,6 +56,19 @@ export class DownGradeService {
     const userFilteredWorkspaces = userData.workspaces.filter(
       (workspace) => workspace.teamId !== payload.teamId,
     );
+    const workspaces = teamData.workspaces;
+    for (let workspace of workspaces) {
+      const workspaceData = await this.downgradeWorkspaceReposiory.get(
+        workspace.id.toString(),
+      );
+      const updatedUsers = workspaceData.users.filter(
+        (user) => user.id !== payload.userId,
+      );
+      await this.downgradeWorkspaceReposiory.updateWorkspaceUsers(
+        workspace.id.toString(),
+        updatedUsers,
+      );
+    }
     const userUpdatedParams = {
       teams: userFilteredTeams,
       workspaces: userFilteredWorkspaces,

@@ -21,6 +21,12 @@ import { UserDto } from "@src/modules/common/models/user.model";
 import { DownGradeService } from "./downgrade.service";
 import { DownGradeTeamRepository } from "../repositories/downgradeTeam.repository";
 import { ObjectId } from "mongodb";
+import {
+  UserExcelDto,
+  WorkspaceExcelDto,
+} from "../payloads/downgrade-user.payload";
+import { DownGradeWorkspaceRepository } from "../repositories/downgradeWorkspace.repository";
+import { DownGradeUserRepository } from "../repositories/downgradeUser.repository";
 
 // Dynamically import Stripe service class
 let StripeService: any;
@@ -41,6 +47,8 @@ export class StripeSubscriptionService {
     private readonly paymentEmailHelper: PaymentEmailHelper,
     private readonly downgradeService: DownGradeService,
     private readonly downgradeTeamRepository: DownGradeTeamRepository,
+    private readonly downGradeWorkspaceRepository: DownGradeWorkspaceRepository,
+    private readonly downGradeUserRepository: DownGradeUserRepository,
     @Optional() @Inject(StripeService) private readonly stripeService?: any,
   ) {}
 
@@ -203,7 +211,6 @@ export class StripeSubscriptionService {
     metadata: any,
     eventId?: string,
   ): Promise<void> {
-    console.log("this is the subscription of cancekk------->");
     // Get current team state
     const currentTeam = await this.stripeSubscriptionRepo.findTeamById(
       metadata.hubId,
@@ -585,7 +592,13 @@ export class StripeSubscriptionService {
           team?.downgrade?.downgradeType === SubscriptionDowngradeType.MANUAL;
         if (hasDowngradeConfig && isManualDowngrade) {
           isDowngrading = true;
-          await this.executeManualDowngrade(team, metadata.hubId);
+          await this.executeManualDowngrade(
+            team,
+            metadata.hubId,
+            previousPlan,
+            newPlan,
+            new Date(),
+          );
           await this.stripeSubscriptionRepo.removeDowngradeDetails(
             metadata.hubId,
           );
@@ -971,7 +984,13 @@ export class StripeSubscriptionService {
         metadata.hubId,
       );
       // Execute manual downgrade AFTER plan change is complete
-      await this.executeManualDowngrade(team, metadata.hubId);
+      await this.executeManualDowngrade(
+        team,
+        metadata.hubId,
+        communityPlan.name,
+        team.plan.name,
+        new Date(),
+      );
       const previousPlan = team?.plan?.name || "unknown";
 
       // Get cancellation reason if available
@@ -2073,6 +2092,9 @@ export class StripeSubscriptionService {
   private async executeManualDowngrade(
     team: Team,
     hubId: string,
+    previousPlan?: string,
+    currentPlan?: string,
+    startDate?: Date,
   ): Promise<void> {
     const downgrade = team?.downgrade;
     if (
@@ -2111,12 +2133,20 @@ export class StripeSubscriptionService {
         team?.users
           ?.filter((user: UserDto) => user.role !== "owner")
           .map((user: UserDto) => user.id) || [];
-
+      const OwnerEmail = team.users[0].email;
       // Extract workspace IDs from downgrade list (workspaces to keep)
       const downgradeWorkspaceIds =
         teamDowngradeWorkspaces?.map((ws) => ws.id) || [];
       // Extract user IDs from downgrade list (users to keep)
       const downgradeUserIds = teamDowngradeUsers?.map((user) => user.id) || [];
+      const downgradeUserEmails = teamDowngradeUsers.map((user) => user.email);
+      const nonDowngradedUsersWithEmail =
+        team?.users
+          ?.filter(
+            (user: UserDto) =>
+              user.role !== "owner" && !downgradeUserIds.includes(user.id),
+          )
+          .map((user: UserDto) => user.email) || [];
       // Workspaces not in the downgrade list (these will be deleted)
       const nonDowngradedWorkspaces = allWorkspaces.filter(
         (wsId: string) => !downgradeWorkspaceIds.includes(wsId),
@@ -2151,6 +2181,20 @@ export class StripeSubscriptionService {
           }
         }
       }
+      const workspaceExcelData = await this.workspaceExcelData(
+        nonDowngradedWorkspaces,
+      );
+      const userExcelData = await this.userExcelData(nonDowngradedUsers);
+      await this.sendEmailsToUserHubDowngrade(
+        previousPlan,
+        currentPlan,
+        team,
+        startDate,
+        workspaceExcelData,
+        userExcelData,
+        [...downgradeUserEmails, OwnerEmail],
+        nonDowngradedUsersWithEmail,
+      );
       console.log(
         `Manual downgrade completed for team ${hubId}: ${nonDowngradedWorkspaces.length} workspaces deleted, ${nonDowngradedUsers.length} users removed`,
       );
@@ -2183,5 +2227,89 @@ export class StripeSubscriptionService {
     const newLevel = planHierarchy[newPlan.name] ?? 0;
 
     return newLevel < previousLevel;
+  }
+
+  private async workspaceExcelData(
+    workspaceIds: string[],
+  ): Promise<WorkspaceExcelDto[]> {
+    if (workspaceIds.length === 0) {
+      return [
+        {
+          name: "",
+          created_at: "",
+          collections: 0,
+          testflow: 0,
+        },
+      ];
+    }
+    const workspaces =
+      await this.downGradeWorkspaceRepository.getWorkspacesByIds(workspaceIds);
+    const resultWorkspaces: WorkspaceExcelDto[] = workspaces.map(
+      (workspace) => ({
+        name: workspace.name,
+        created_at: workspace.createdAt
+          ? workspace.createdAt.toUTCString()
+          : "N/A",
+        collections: workspace?.collection?.length || 0,
+        testflow: workspace?.testflows?.length || 0,
+      }),
+    );
+    return resultWorkspaces;
+  }
+
+  private async userExcelData(userIds: string[]): Promise<UserExcelDto[]> {
+    if (userIds.length === 0) {
+      return [
+        {
+          name: "",
+          email: "",
+        },
+      ];
+    }
+    const usersData =
+      await this.downGradeUserRepository.findUsersByStringIds(userIds);
+    const resultUsers: UserExcelDto[] = usersData.map((user) => ({
+      name: user.name || "N/A",
+      email: user.email || "N/A",
+    }));
+    return resultUsers;
+  }
+
+  /**
+   * Helper method to determine if a send Email after downgrade to Hub
+   * @param previousPlan The previous plan object.
+   * @param newPlan The new plan object.
+   * @param currentUsers downgraded users.
+   * @param removedUser removed users from Hub.
+   * @returns Boolean indicating if this is a downgrade
+   */
+  private async sendEmailsToUserHubDowngrade(
+    previousPlan: string,
+    newPlan: string,
+    team: Team,
+    startDate: Date,
+    workspaces?: WorkspaceExcelDto[],
+    users?: UserExcelDto[],
+    currentUser?: string[],
+    removedUser?: string[],
+  ) {
+    await this.paymentEmailHelper.sendHubDowngradedEmail(
+      team,
+      startDate,
+      previousPlan,
+      newPlan,
+      currentUser,
+      workspaces,
+      users,
+    );
+    if (removedUser.length > 0) {
+      await this.paymentEmailHelper.sendHubDowngradeRemoveUserEmail(
+        team,
+        startDate,
+        previousPlan,
+        newPlan,
+        removedUser,
+      );
+    }
   }
 }
