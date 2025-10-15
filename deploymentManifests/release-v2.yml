@@ -384,7 +384,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: release-api-v2-secret
-                  key: SPARROW_APP_BASE_URL       
+                  key: SPARROW_APP_BASE_URL 
+            - name: APP_MAC_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: APP_MAC_VERSION
+            - name: APP_LINUX_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: release-api-v2-secret
+                  key: APP_LINUX_VERSION             
 
 
 ---
