@@ -49,20 +49,7 @@ export class AppService {
    * @param target - The target platform ("darwin" for macOS, "linux" for Linux, or "windows" for Windows)
    * @returns true if server version is greater than client version, false otherwise
    */
-  isVersionGreater(clientVersion: string, target: string) {
-    let serverVersion;
-    
-    // Get the appropriate server version based on the target platform
-    if(target === "darwin"){
-      serverVersion = this.config.get("updater.appMacVersion");
-    }
-    else if(target === "linux"){
-      serverVersion = this.config.get("updater.appLinuxVersion");
-    }
-    else{
-      // Default to Windows version for any other target
-      serverVersion = this.config.get("updater.appVersion");
-    }
+  isVersionGreater(serverVersion: string, clientVersion: string, target: string) {
 
     // Only proceed if both versions are available
     if (serverVersion && clientVersion) {
@@ -87,15 +74,28 @@ export class AppService {
   }
 
   getUpdaterDetails(currentVersion: string, target: string): UpdaterJsonResponsePayload {
+    let serverVersion;
+    // Get the appropriate server version based on the target platform
+    if(target === "darwin"){
+      serverVersion = this.config.get("updater.appMacVersion");
+    }
+    else if(target === "linux"){
+      serverVersion = this.config.get("updater.appLinuxVersion");
+    }
+    else{
+      // Default to Windows version for any other target
+      serverVersion = this.config.get("updater.appVersion");
+    }
     if (
       this.config.get("updater.updateAvailable") === "true" &&
       this.isVersionGreater(
+        serverVersion,
         currentVersion,
         target
       )
     ) {
       const updatorJson = {
-        version: this.config.get("updater.appVersion"),
+        version: serverVersion,
         platforms: {
           "windows-x86_64": {
             signature: this.config.get("updater.windows.appSignature"),
