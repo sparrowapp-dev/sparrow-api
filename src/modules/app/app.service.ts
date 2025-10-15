@@ -43,21 +43,21 @@ export class AppService {
     return this.curlconverterPromise;
   }
 
-  isVersionGreater(v2: string, target: string) {
-    let v1;
+  isVersionGreater(clientVersion: string, target: string) {
+    let serverVersion;
     if(target === "darwin"){
-      v1 = this.config.get("updater.appMacVersion");
+      serverVersion = this.config.get("updater.appMacVersion");
     }
     else if(target === "linux"){
-      v1 = this.config.get("updater.appLinuxVersion");
+      serverVersion = this.config.get("updater.appLinuxVersion");
     }
     else{
-      v1 = this.config.get("updater.appVersion");
+      serverVersion = this.config.get("updater.appVersion");
     }
 
-    if (v1 && v2) {
-      const v1Parts = v1?.split(".")?.map(Number);
-      const v2Parts = v2?.split(".")?.map(Number);
+    if (serverVersion && clientVersion) {
+      const v1Parts = serverVersion?.split(".")?.map(Number);
+      const v2Parts = clientVersion?.split(".")?.map(Number);
 
       for (let i = 0; i < Math.max(v1Parts?.length, v2Parts?.length); i++) {
         const v1Part = v1Parts[i] || 0; // default to 0 if part is missing
