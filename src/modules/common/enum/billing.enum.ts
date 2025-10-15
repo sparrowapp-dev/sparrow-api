@@ -137,3 +137,8 @@ export enum BillingTransactionType {
   ADJUSTMENT = "adjustment",
   PRORATION = "proration",
 }
+
+export enum SubscriptionDowngradeType {
+  MANUAL = "manual",
+  AUTOMATIC = "auto",
+}

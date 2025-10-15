@@ -126,6 +126,10 @@ export class Workspace {
   @IsOptional()
   users?: UserDto[];
 
+  @IsBoolean()
+  @IsOptional()
+  isRestricted?: boolean;
+
   @IsDate()
   @IsOptional()
   createdAt?: Date;

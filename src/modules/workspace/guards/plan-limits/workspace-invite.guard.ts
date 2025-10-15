@@ -35,6 +35,9 @@ export class WorkspaceInviteGuard implements CanActivate {
 
     
     const planData = userTeam?.plan;
+    if (!planData.active) {
+      throw new ForbiddenException("Hub is Restricted.");
+    }
     if (teamUserEmails.size > planData?.limits?.usersPerHub?.value + 1) {
       throw new ForbiddenException("Plan limit reached");
     }
