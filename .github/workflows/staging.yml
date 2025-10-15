@@ -2,7 +2,7 @@ name: Staging
 on:
   push:
     branches:
-      - releases/infra
+      - release/2.34.0
 
 jobs:
    build:
