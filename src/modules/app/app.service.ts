@@ -43,7 +43,18 @@ export class AppService {
     return this.curlconverterPromise;
   }
 
-  isVersionGreater(v1: string, v2: string) {
+  isVersionGreater(v2: string, target: string) {
+    let v1;
+    if(target === "darwin"){
+      v1 = this.config.get("updater.appMacVersion");
+    }
+    else if(target === "linux"){
+      v1 = this.config.get("updater.appLinuxVersion");
+    }
+    else{
+      v1 = this.config.get("updater.appVersion");
+    }
+
     if (v1 && v2) {
       const v1Parts = v1?.split(".")?.map(Number);
       const v2Parts = v2?.split(".")?.map(Number);
@@ -60,12 +71,12 @@ export class AppService {
     return false; // versions are equal
   }
 
-  getUpdaterDetails(currentVersion: string): UpdaterJsonResponsePayload {
+  getUpdaterDetails(currentVersion: string, target: string): UpdaterJsonResponsePayload {
     if (
       this.config.get("updater.updateAvailable") === "true" &&
       this.isVersionGreater(
-        this.config.get("updater.appVersion"),
         currentVersion,
+        target
       )
     ) {
       const updatorJson = {

@@ -51,6 +51,8 @@ export default () => ({
   updater: {
     updateAvailable: process.env.APP_UPDATE_AVAILABLE,
     appVersion: process.env.APP_VERSION,
+    appLinuxVersion: process.env.APP_LINUX_VERSION,
+    appMacVersion: process.env.APP_MAC_VERSION,
     windows: {
       appSignature: process.env.WINDOWS_APP_SIGNATURE,
       appUrl: process.env.WINDOWS_APP_URL,
