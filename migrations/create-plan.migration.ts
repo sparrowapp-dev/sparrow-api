@@ -68,6 +68,10 @@ export class CreatePlanMigration implements OnModuleInit {
               area: LimitArea.AI,
               value: 50,
             },
+            testflowScheduleRun: {
+              area: LimitArea.TESTFLOW_SCHEDULE_RUN,
+              value: 3,
+            },
           },
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -126,6 +130,10 @@ export class CreatePlanMigration implements OnModuleInit {
               area: LimitArea.AI,
               value: 200,
             },
+            testflowScheduleRun: {
+              area: LimitArea.TESTFLOW_SCHEDULE_RUN,
+              value: 10,
+            },
           },
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -183,6 +191,10 @@ export class CreatePlanMigration implements OnModuleInit {
             aiRequestsPerMonth: {
               area: LimitArea.AI,
               value: Infinity,
+            },
+            testflowScheduleRun: {
+              area: LimitArea.TESTFLOW_SCHEDULE_RUN,
+              value: 25,
             },
           },
           createdAt: new Date(),

@@ -78,13 +78,16 @@ import { EncryptionService } from "../common/services/encryption.service";
 
 // ---- Schedulers
 import { AiConsumptionScheduler } from "./schedulers/ai-consumption.scheduler";
+import { TestflowSchedulerService } from "./services/testflow-schedular.service";
+import { TestflowRunService } from "./services/testflow-run.service";
+import { ScheduleModule } from "@nestjs/schedule";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
  * and controllers related to the workspace functionality.
  */
 @Module({
-  imports: [IdentityModule, BillingModule.register()],
+  imports: [ScheduleModule.forRoot(), IdentityModule, BillingModule.register()],
   providers: [
     WorkspaceService,
     WorkspaceRepository,
@@ -118,6 +121,8 @@ import { AiConsumptionScheduler } from "./schedulers/ai-consumption.scheduler";
     // DummyGateway,
     TeamUpdatedHandler,
     TestflowService,
+    TestflowRunService,
+    TestflowSchedulerService,
     TestflowRepository,
     AiLogHandler,
     AiLogService,
@@ -152,6 +157,8 @@ import { AiConsumptionScheduler } from "./schedulers/ai-consumption.scheduler";
     ChatbotStatsService,
     ChatbotStatsRepository,
     TestflowService,
+    TestflowRunService,
+    TestflowSchedulerService,
     TestflowRepository,
     UserLimitRepository,
     UserLimitService,

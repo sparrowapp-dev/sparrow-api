@@ -32,11 +32,14 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 // ---- Payload
 import {
   CreateTestflowDto,
+  CreateTestflowSchedularDto,
   UpdateTestflowDto,
 } from "../payloads/testflow.payload";
 import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
-import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { DecodedUserObject, ExtendedFastifyRequest } from "@src/types/fastify";
+import { TestflowSchedular } from "@src/modules/common/models/testflow.model";
+import { CreateTestflowScheduleGuard } from "../guards/plan-limits/create-testflow-schedule-guard";
 
 /**
  * Controller responsible for handling Testflow operations
@@ -106,7 +109,7 @@ export class TestflowController {
    * @description This will retrieve a specific Testflow using its ID,
    * returning the Testflow object if found.
    */
-  @Get("testflow/:testflowId")
+  @Get(":workspaceId/testflow/:testflowId")
   @ApiOperation({
     summary: "Get Individual Testflow",
     description: "This will get individual testflow of a workspace",
@@ -118,10 +121,13 @@ export class TestflowController {
   })
   @ApiResponse({ status: 400, description: "Fetch Testflow Request Failed" })
   async getTestflow(
+    @Param("workspaceId") workspaceId: string,
     @Param("testflowId") testflowId: string,
     @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
   ) {
-    const testflow = await this.testflowService.getTestflow(testflowId);
+    const user = request.user;
+    const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
     const responseData = new ApiResponseService(
       "Success",
       HttpStatusCode.OK,
@@ -282,4 +288,175 @@ export class TestflowController {
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  /**
+   * Create a new Testflow Schedular for a specific Testflow in a Workspace.
+   *
+   * @param {CreateTestflowSchedularDto} createTestflowSchedularDto - The schedular data to create.
+   * @param {FastifyReply} res - Fastify reply object used to send the response.
+   * @param {ExtendedFastifyRequest} request - The Fastify request object containing authenticated user info.
+   * @returns A response indicating success or failure of the schedular creation.
+   *
+   * @description
+   * This endpoint creates a test flow schedular associated with a specific testflow within a workspace.
+   */
+  @Post(":workspaceId/testflow/:testflowId/testflow-schedule")
+  @UseGuards(JwtAuthGuard, CreateTestflowScheduleGuard)
+  @ApiOperation({
+    summary: "Create a test flow schedular",
+    description:
+      "Creates a new test flow schedular for a specific testflow in a workspace",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Testflow schedular created successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Failed to create a schedular",
+  })
+  async createTestflowSchedule(
+    @Body() createTestflowSchedularDto: CreateTestflowSchedularDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+   const user = request.user;
+    const response = await this.testflowService.createTestflowSchedular(
+      createTestflowSchedularDto,
+      user,
+    );
+    const testflow = await this.testflowService.getTestflow(createTestflowSchedularDto.workspaceId, createTestflowSchedularDto.testflowId, user._id);
+    const result = {
+      testflow,
+      schedule:response
+    }
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+   /**
+     * Update a specific schedule for a testflow.
+     */
+    @Put(':workspaceId/testflow/:testflowId/schedule/:scheduleId')
+    @ApiOperation({ summary: 'Update Testflow Schedule', description: 'Update a specific schedule for a testflow.' })
+    @ApiResponse({ status: 200, description: 'Schedule updated successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to update schedule' })
+    @UseGuards(JwtAuthGuard)
+    async updateTestflowSchedule(
+      @Param('workspaceId') workspaceId: string,
+      @Param('testflowId') testflowId: string,
+      @Param('scheduleId') scheduleId: string,
+      @Body() updateScheduleDto: Partial<TestflowSchedular>,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      await this.testflowService.updateTestflowSchedule(
+        testflowId,
+        scheduleId,
+        updateScheduleDto,
+        workspaceId,
+        user,
+      );
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
+
+    /**
+     * Delete a specific schedule from a testflow.
+     */
+    @Delete(':workspaceId/testflow/:testflowId/schedule/:scheduleId')
+    @ApiOperation({ summary: 'Delete Testflow Schedule', description: 'Delete a specific schedule from a testflow.' })
+    @ApiResponse({ status: 200, description: 'Schedule deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to delete schedule' })
+    @UseGuards(JwtAuthGuard)
+    async deleteTestflowSchedule(
+      @Param('workspaceId') workspaceId: string,
+      @Param('testflowId') testflowId: string,
+      @Param('scheduleId') scheduleId: string,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      await this.testflowService.deleteTestflowSchedule(
+        testflowId,
+        scheduleId,
+        workspaceId,
+        user,
+      );
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
+
+    /**
+     * Manually run a testflow schedule.
+     */
+    @Post(':workspaceId/testflow/:testflowId/schedule/:scheduleId/run')
+    @ApiOperation({ summary: 'Run Testflow Schedule', description: 'Manually run a testflow schedule.' })
+    @ApiResponse({ status: 200, description: 'Schedule run triggered successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to run schedule' })
+    @UseGuards(JwtAuthGuard)
+    async runTestflowSchedule(
+      @Param('workspaceId') workspaceId: string,
+      @Param('testflowId') testflowId: string,
+      @Param('scheduleId') scheduleId: string,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      await this.testflowService.runTestflowSchedule(
+        testflowId,
+        scheduleId,
+        workspaceId,
+        user,
+      );
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
+
+    /**
+     * Delete a run history for a schedule in a testflow
+     */
+    @Delete(":workspaceId/testflow/:testflowId/schedule/:scheduleId/run-history/:runHistoryId")
+    @ApiOperation({ summary: 'Delete Schedule Run History', description: 'Delete all run history for a schedule in a testflow.' })
+    @ApiResponse({ status: 200, description: 'Run history deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Failed to delete run history' })
+    @UseGuards(JwtAuthGuard)
+    async deleteScheduleRunHistory(
+      @Param("workspaceId") workspaceId: string,
+      @Param("runHistoryId") runHistoryId: string,
+      @Param("testflowId") testflowId: string,
+      @Param("scheduleId") scheduleId: string,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      await this.testflowService.deleteScheduleRunHistory(workspaceId, testflowId, scheduleId, runHistoryId, user);
+      const testflow = await this.testflowService.getTestflow(workspaceId, testflowId, user._id);
+      const responseData = new ApiResponseService(
+        "Success",
+        HttpStatusCode.OK,
+        testflow,
+      );
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
 }

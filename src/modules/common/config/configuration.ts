@@ -51,6 +51,8 @@ export default () => ({
   updater: {
     updateAvailable: process.env.APP_UPDATE_AVAILABLE,
     appVersion: process.env.APP_VERSION,
+    appLinuxVersion: process.env.APP_LINUX_VERSION,
+    appMacVersion: process.env.APP_MAC_VERSION,
     windows: {
       appSignature: process.env.WINDOWS_APP_SIGNATURE,
       appUrl: process.env.WINDOWS_APP_URL,
@@ -140,6 +142,12 @@ export default () => ({
   selfHost: {
     adminEmail: process.env.SELF_HOST_ADMIN_EMAIL,
     adminPassword: process.env.SELF_HOST_ADMIN_PASSWORD,
+  },
+  sparrowProxy: {
+    baseUrl: process.env.SPARROW_PROXY_BASE_URL,
+  },
+  sparrowApp: {
+    baseUrl: process.env.SPARROW_APP_BASE_URL,
   },
   trial: {
     trialPeriod: 14,
