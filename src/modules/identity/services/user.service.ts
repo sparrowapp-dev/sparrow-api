@@ -825,4 +825,19 @@ export class UserService {
     });
     return response;
   }
+
+  async requestAssertionsDemoCompleted(email: string) {
+    const userDetails = await this.userRepository.getUserByEmail(email);
+    if (!userDetails) {
+      throw new BadRequestException("User does not exist");
+    }
+    const updatedTourGuide = {
+      ...userDetails.tourGuide,
+      isRequestAssertionsDemoCompleted: true,
+    };
+    const response = await this.userRepository.updateUserById(userDetails._id, {
+      tourGuide: updatedTourGuide,
+    });
+    return response;
+  }
 }

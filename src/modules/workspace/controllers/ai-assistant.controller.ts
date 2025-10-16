@@ -287,7 +287,7 @@ export class AiAssistantController {
     description: "Server failed to generate pre-script.",
   })
   async generatePreScriptForRequest(
-    @Body() content: generateTestCasesDto
+    @Body() content: generateTestCasesDto,
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
   ) {
