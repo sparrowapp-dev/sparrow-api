@@ -2561,17 +2561,6 @@ export class AiAssistantService {
     if (!content.text?.trim()) {
       throw new BadRequestException("prompt must be provided.");
     }
-
-    // You can move this to a separate instructions file if needed
-    const generatePreScriptInstructions = `
-      You are an assistant specialized in generating pre-scripts for API requests.
-      Given the API details and requirements, generate ONLY the pre-script code needed to set up the request environment.
-      STRICT RULES:
-      - Do NOT include explanations, markdown, comments, or any extra text.
-      - Output ONLY the raw script/code required for the pre-request setup.
-      - No text outside of the required output format is allowed.
-    `;
-
     try {
       const response = await this.deepseekClient
         .path("/chat/completions")
