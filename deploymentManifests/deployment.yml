@@ -411,6 +411,7 @@ spec:
                 secretKeyRef:
                   name: sparrow-api-secret
                   key: SPARROW_PROXY_BASE_URL      
+        
 
 ---
 apiVersion: v1
