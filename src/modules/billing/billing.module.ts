@@ -26,6 +26,7 @@ import { DownGradeTeamRepository } from "./repositories/downgradeTeam.repository
 import { DownGradeUserRepository } from "./repositories/downgradeUser.repository";
 import { DownGradeWorkspaceRepository } from "./repositories/downgradeWorkspace.repository";
 import { DownGradeService } from "./services/downgrade.service";
+import { ExcelEmailService } from "./services/excel-email.service";
 
 // Try to import the Stripe module, but don't crash if it's not available
 let StripeModule: any;
@@ -56,6 +57,7 @@ export class BillingModule {
       DownGradeUserRepository,
       DownGradeWorkspaceRepository,
       DownGradeService,
+      ExcelEmailService,
       BillingAuditService,
       PromoCodeService,
       PricingService,
@@ -85,6 +87,7 @@ export class BillingModule {
       DownGradeUserRepository,
       DownGradeWorkspaceRepository,
       DownGradeService,
+      ExcelEmailService,
       PricingService,
       PaymentEmailService,
       PaymentEmailHelper,

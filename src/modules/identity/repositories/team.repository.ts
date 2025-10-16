@@ -84,10 +84,20 @@ export class TeamRepository {
         "The Team with that id could not be found.",
       );
     }
+    const isActive = team?.plan?.active;
+    if (isActive === false) {
+      return {
+        _id: team._id,
+        name: team.name,
+        hubUrl: team.hubUrl,
+        logo: team.logo,
+        isRestricted: true
+      } as unknown as WithId<Team>;
+    }
     return team;
   }
 
-   /**
+  /**
    * Fetches teams from database by UUID
    * @param {string[]} teamIds
    * @returns {Promise<Team>} queried team data
@@ -101,7 +111,20 @@ export class TeamRepository {
         "The teams with that ids could not be found.",
       );
     }
-    return teams;
+    const processedTeams = teams.map((team) => {
+      const isActive = team?.plan?.active;
+      if (isActive === false) {
+        return {
+          _id: team._id,
+          name: team.name,
+          hubUrl: team.hubUrl,
+          logo: team.logo,
+          isRestricted: true
+        } as Partial<WithId<Team>>;
+      }
+      return team;
+    });
+    return processedTeams as WithId<Team>[];
   }
 
   /**
@@ -185,11 +208,11 @@ export class TeamRepository {
     const responseData = await this.db
       .collection<Team>(Collections.TEAM)
       .findOneAndUpdate(
-        { 
+        {
           _id: id,   $expr: {
           $lt: [{ $size: "$workspaces" }, planData.limits.workspacesPerHub.value],
           } , 
-        },      
+        },
         {
           $push: { workspaces: ws },
         },
@@ -255,21 +278,21 @@ export class TeamRepository {
     const incomingEmails = users.map(u => u.email);
 
     const result = await this.db.collection<Team>(Collections.TEAM).findOneAndUpdate(
-      {
-        _id: teamObjectId,
-        // Ensure limit not exceeded
-        $expr: {
-          $lte: [
-            {
-              $add: [
-                { $size: { $ifNull: ["$users", []] } },
-                { $size: { $ifNull: ["$invites", []] } },
-                {
-                  $size: {
-                    $setDifference: [
-                      incomingEmails,
-                      {
-                        $concatArrays: [
+        {
+          _id: teamObjectId,
+          // Ensure limit not exceeded
+          $expr: {
+            $lte: [
+              {
+                $add: [
+                  { $size: { $ifNull: ["$users", []] } },
+                  { $size: { $ifNull: ["$invites", []] } },
+                  {
+                    $size: {
+                      $setDifference: [
+                        incomingEmails,
+                        {
+                          $concatArrays: [
                           { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
                           { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
                         ]
@@ -278,27 +301,27 @@ export class TeamRepository {
                   }
                 }
               ]
-            },
+              },
             { $add: ["$plan.limits.usersPerHub.value", 1] }
           ]
         }
-      },
-      [
-        {
+        },
+        [
+          {
             $set: {
-            invites: {
-              $setUnion: [
-                { $ifNull: ["$invites", []] }, // 👈 fallback to []
-                {
-                  $filter: {
-                    input: users, // 👈 inject your payload as a constant
-                    as: "newInvite",
-                    cond: {
-                      $not: {
-                        $in: [
-                          "$$newInvite.email",
-                          {
-                            $concatArrays: [
+              invites: {
+                $setUnion: [
+                  { $ifNull: ["$invites", []] }, // 👈 fallback to []
+                  {
+                    $filter: {
+                      input: users, // 👈 inject your payload as a constant
+                      as: "newInvite",
+                      cond: {
+                        $not: {
+                          $in: [
+                            "$$newInvite.email",
+                            {
+                              $concatArrays: [
                               { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
                               { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
                             ]
@@ -314,7 +337,7 @@ export class TeamRepository {
         }
       ]  ,
       { returnDocument: "after" }
-    );
+      );
 
     return result.value;
   }
