@@ -2165,20 +2165,14 @@ export class StripeSubscriptionService {
 
       // Remove users not in the downgrade list
       if (nonDowngradedUsers.length > 0 && teamDowngradeUsers.length > 0) {
-        for (const userId of nonDowngradedUsers) {
-          try {
-            const payload = {
-              teamId: hubId,
-              userId: userId,
-            };
-            await this.downgradeService.removeUserFromTeam(payload);
-          } catch (error) {
-            console.error(
-              `Error removing user ${userId} from team ${hubId}:`,
-              error,
-            );
-            // Continue with other users even if one fails
-          }
+        try {
+          const payload = {
+            teamId: hubId,
+            userIds: nonDowngradedUsers,
+          };
+          await this.downgradeService.removeUserFromTeam(payload);
+        } catch (error) {
+          console.error(`Error removing users from team ${hubId}:`, error);
         }
       }
       const workspaceExcelData = await this.workspaceExcelData(

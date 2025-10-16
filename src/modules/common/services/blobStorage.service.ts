@@ -33,9 +33,6 @@ export class BlobStorageService {
     const aiConversationBLobContainer = this.configService.get(
       "ai.conversationConatiner",
     );
-    // const downgradeHubBlobContainer = this.configService.get(
-    //   "downgradeHub.container",
-    // );
 
     try {
       /**
@@ -73,14 +70,14 @@ export class BlobStorageService {
         return;
       }
 
-      // const downgradeHubBlobContainer = this.configService.get(
-      //   "downgradeHub.container",
-      // );
+      const downgradeHubBlobContainer = this.configService.get(
+        "downgradeHub.container",
+      );
 
-      // if (!downgradeHubBlobContainer) {
-      //   console.warn("Downgrade Blob is disabled: No container provided.");
-      //   return;
-      // }
+      if (!downgradeHubBlobContainer) {
+        console.warn("Downgrade Blob is disabled: No container provided.");
+        return;
+      }
 
       this.blobServiceClient = BlobServiceClient.fromConnectionString(
         azureConnectionString,
@@ -97,9 +94,9 @@ export class BlobStorageService {
       this.aiContainerClient = this.blobServiceClient.getContainerClient(
         aiConversationBLobContainer,
       );
-      // this.downGradeHubClient = this.blobServiceClient.getContainerClient(
-      //   downgradeHubBlobContainer,
-      // );
+      this.downGradeHubClient = this.blobServiceClient.getContainerClient(
+        downgradeHubBlobContainer,
+      );
     } catch (e) {
       console.error(e);
     }
@@ -224,13 +221,13 @@ export class BlobStorageService {
       contentType = mimetype;
     }
     const uniqueFileName = `${fileId}-${storageName}.${fileExtension}`;
-    if (!this.aiContainerClient) {
+    if (!this.downGradeHubClient) {
       throw new BadRequestException(
         "Azure blob container is not connected to backend server.",
       );
     }
     const blockBlobClient =
-      this.aiContainerClient.getBlockBlobClient(uniqueFileName);
+      this.downGradeHubClient.getBlockBlobClient(uniqueFileName);
     // Set Content-Type and Content-Disposition headers for Excel download
     const uploadOptions = {
       blobHTTPHeaders: {

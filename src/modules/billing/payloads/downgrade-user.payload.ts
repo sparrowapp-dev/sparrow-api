@@ -21,7 +21,7 @@ export class DowngradeUserDto {
   @ApiProperty({ example: "64f03af32e420f7f68055b92" })
   @IsMongoId()
   @IsNotEmpty()
-  userId: string;
+  userIds: string[];
 }
 
 export class TourGuideDto {

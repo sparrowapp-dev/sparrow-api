@@ -25,36 +25,13 @@ export class DownGradeService {
     const teamFilter = new ObjectId(payload.teamId);
     const teamData =
       await this.downgradeTeamRepository.findTeamByTeamId(teamFilter);
-    const userFilter = new ObjectId(payload.userId);
-    const userData =
-      await this.downgradeUserRepository.findUserByUserId(userFilter);
-    const teamAdmins = [...teamData.admins];
-    let userTeamRole;
-    for (const item of userData.teams) {
-      if (item.id.toString() === payload.teamId) {
-        userTeamRole = item.role;
-      }
-    }
-    const teamUser = [...teamData.users];
-    let filteredAdmin;
-    const filteredData = teamUser.filter(
-      (item) => item.id.toString() !== payload.userId.toString(),
+    const teamUsersData = teamData.users;
+    const teamAdminsData = teamData.admins;
+    const updateTeamUsersData = teamUsersData.filter(
+      (user) => !payload.userIds.includes(user.id),
     );
-    if (userTeamRole === TeamRole.ADMIN) {
-      filteredAdmin = teamAdmins.filter(
-        (id: string) => id.toString() !== payload.userId.toString(),
-      );
-    }
-    const teamUpdatedParams = {
-      users: filteredData,
-      admins: userTeamRole === TeamRole.ADMIN ? filteredAdmin : teamAdmins,
-    };
-    const userTeams = [...userData.teams];
-    const userFilteredTeams = userTeams.filter(
-      (item) => item.id.toString() !== payload.teamId.toString(),
-    );
-    const userFilteredWorkspaces = userData.workspaces.filter(
-      (workspace) => workspace.teamId !== payload.teamId,
+    const updateAdminUserData = teamAdminsData.filter(
+      (admin) => !payload.userIds.includes(admin),
     );
     const workspaces = teamData.workspaces;
     for (let workspace of workspaces) {
@@ -62,21 +39,38 @@ export class DownGradeService {
         workspace.id.toString(),
       );
       const updatedUsers = workspaceData.users.filter(
-        (user) => user.id !== payload.userId,
+        (user) => !payload.userIds.includes(user.id),
+      );
+      const updatedAdmins = workspaceData.admins.filter(
+        (admin) => !payload.userIds.includes(admin.id),
       );
       await this.downgradeWorkspaceReposiory.updateWorkspaceUsers(
         workspace.id.toString(),
         updatedUsers,
+        updatedAdmins,
       );
     }
-    const userUpdatedParams = {
-      teams: userFilteredTeams,
-      workspaces: userFilteredWorkspaces,
+    for (let user of payload.userIds) {
+      const userObject = new ObjectId(user);
+      const userData =
+        await this.downgradeUserRepository.findUserByUserId(userObject);
+      const updateUserTeams = userData.teams.filter(
+        (usr) => usr.id.toString() != payload.teamId,
+      );
+      const updateUserWorkspaces = userData.workspaces.filter(
+        (workspace) =>
+          !workspaces.some((w) => w.id.toString() === workspace.workspaceId),
+      );
+      await this.downgradeUserRepository.updateUserTeamsAndWorkspaces(
+        userObject,
+        updateUserTeams,
+        updateUserWorkspaces,
+      );
+    }
+    const teamUpdatedParams = {
+      users: updateTeamUsersData,
+      admins: updateAdminUserData,
     };
-    await this.downgradeUserRepository.updateUserById(
-      userFilter,
-      userUpdatedParams,
-    );
     const data = await this.downgradeTeamRepository.updateTeamById(
       teamFilter,
       teamUpdatedParams,

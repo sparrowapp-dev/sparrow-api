@@ -1,6 +1,6 @@
 import { Injectable, Inject, BadRequestException } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
-import { UserDto, Workspace } from "@src/modules/common/models/workspace.model";
+import { AdminDto, UserDto, Workspace } from "@src/modules/common/models/workspace.model";
 import { Db, DeleteResult } from "mongodb";
 import { ObjectId, WithId } from "mongodb";
 
@@ -70,6 +70,7 @@ export class DownGradeWorkspaceRepository {
   async updateWorkspaceUsers(
     workspaceId: string,
     updatedUsers: UserDto[],
+    updatedAdmins?: AdminDto[],
   ): Promise<any> {
     if (!workspaceId) {
       throw new BadRequestException("workspaceId is required.");
@@ -77,11 +78,19 @@ export class DownGradeWorkspaceRepository {
     if (!Array.isArray(updatedUsers)) {
       throw new BadRequestException("updatedUsers must be an array.");
     }
+    if (updatedAdmins && !Array.isArray(updatedAdmins)) {
+      throw new BadRequestException(
+        "updatedAdmins must be an array when provided.",
+      );
+    }
     const _id = new ObjectId(workspaceId);
     const updatePayload: Partial<Workspace> = {
       users: updatedUsers,
       updatedAt: new Date(),
     };
+    if (updatedAdmins) {
+      updatePayload.admins = updatedAdmins;
+    }
     try {
       const result = await this.db
         .collection<Workspace>(Collections.WORKSPACE)
@@ -91,8 +100,7 @@ export class DownGradeWorkspaceRepository {
       }
       return result;
     } catch (error) {
-      console.error("Error updating workspace users:", error);
-      throw new BadRequestException("Failed to update workspace users.");
+      console.error("Error updating workspace users/admins:", error);
     }
   }
 }
