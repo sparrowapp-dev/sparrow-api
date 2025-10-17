@@ -1240,11 +1240,12 @@ export class StripeSubscriptionService {
           };
 
           // Update team to community plan
-          // await this.updateTeamPlanWithBilling(
-          //   team._id.toString(),
-          //   communityPlan,
-          //   billingDetails,
-          // );
+          await this.stripeSubscriptionRepo.updateTeamBilling(
+            team._id.toString(),
+            {
+              billing: billingDetails,
+            },
+          );
 
           // Send plan downgrade email notification
           if (this.paymentEmailHelper && team.plan?.name) {

@@ -444,7 +444,7 @@ export class StripeController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("user", "admin")
-  @Delete("subscriptions/:id")
+  @Post("subscriptions/:id")
   @ApiOperation({
     summary: "Cancel a subscription",
     description:
