@@ -1239,7 +1239,7 @@ export class StripeSubscriptionService {
             updatedBy: "system-maintenance-job",
           };
 
-          // Update team to community plan
+          // Update team biling
           await this.stripeSubscriptionRepo.updateTeamBilling(
             team._id.toString(),
             {

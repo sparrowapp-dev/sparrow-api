@@ -56,7 +56,7 @@ export class StripeSubscriptionRepository {
   }
 
   /**
-   * Updates a team's plan based on subscription data
+   * Updates a team's biling based on subscription data
    * @param hubId The team/hub ID
    * @param subscriptionData Additional subscription data
    * @returns The update result
