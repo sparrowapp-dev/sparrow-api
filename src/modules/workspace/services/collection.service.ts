@@ -521,6 +521,10 @@ export class CollectionService {
       ?.isRequestTestsScriptDemoCompleted
       ? false
       : true;
+    collection.isRequestAssertionsDemoCompleted = userDetails?.tourGuide
+      ?.isRequestAssertionsDemoCompleted
+      ? false
+      : true;
     let alreadyProcessed = false;
     if (
       userDetails?.isGenerateVariableTrial &&
@@ -594,6 +598,10 @@ export class CollectionService {
         : true;
       collections[i].isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
         ?.isRequestTestsNoCodeDemoCompleted
+        ? false
+        : true;
+      collections[i].isRequestAssertionsDemoCompleted = userDetails?.tourGuide
+        ?.isRequestAssertionsDemoCompleted
         ? false
         : true;
       let alreadyProcessed = false;
@@ -1387,7 +1395,7 @@ export class CollectionService {
     const validGeneratedPairs = generatedPairs.filter(
       (pair) => pair.key?.trim() && pair.value?.trim(),
     );
-    if(validGeneratedPairs.length < 1){
+    if (validGeneratedPairs.length < 1) {
       throw new BadRequestException(
         "Please provide Vaild Generated Variables.",
       );

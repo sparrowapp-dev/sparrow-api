@@ -44,6 +44,13 @@ export class WorkspaceRepository {
     if (!data) {
       throw new BadRequestException("Not Found");
     }
+    // Check if workspace is restricted
+    if (data?.isRestricted === true) {
+      console.log(`🚫 Access denied: Workspace ${_id} is restricted`);
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     return data;
   }
 
@@ -61,7 +68,16 @@ export class WorkspaceRepository {
         "The workspaces with that ids could not be found.",
       );
     }
-    return workspaces;
+    // Filter out restricted workspaces
+    const filteredWorkspaces = workspaces.filter((workspace) => {
+      // Skip if workspace.isRestricted === true
+      if (workspace?.isRestricted === true) {
+        console.log(`🚫 Skipping restricted workspace: ${workspace._id}`);
+        return false;
+      }
+      return true;
+    });
+    return filteredWorkspaces;
   }
 
   async getPublicWorkspace(id: string): Promise<WithId<Workspace>> {
@@ -87,6 +103,16 @@ export class WorkspaceRepository {
     const response = await this.db
       .collection(Collections.WORKSPACE)
       .findOne({ _id: id });
+    // Check if workspace is restricted
+    if (!response) {
+      throw new BadRequestException("Workspace not found.");
+    }
+    if (response?.isRestricted === true) {
+      console.log(`Access denied: Workspace ${id} is restricted`);
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     return response;
   }
 
@@ -97,7 +123,17 @@ export class WorkspaceRepository {
       .collection<Workspace>(Collections.WORKSPACE)
       .find({ _id: { $in: IdArray } })
       .toArray();
-    return response;
+    if (!response || response.length === 0) {
+      throw new BadRequestException("No workspaces found.");
+    }
+    // Filter out restricted workspaces
+    const filteredResponse = response.filter((workspace) => {
+      if (workspace?.isRestricted === true) {
+        return false;
+      }
+      return true;
+    });
+    return filteredResponse;
   }
 
   async updateWorkspaceById(

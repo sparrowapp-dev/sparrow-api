@@ -1,0 +1,201 @@
+{{!< layoutName}} <!DOCTYPE html>
+    <html lang="en">
+
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Plan Downgraded</title>
+
+      <style>
+          body {
+              font-family: "Inter", sans-serif;
+              box-sizing: border-box;
+              padding: 0;
+              margin: 0;
+              transition: background-color 0.3s, color 0.3s;
+          }
+
+          .container {
+              display: flex;
+              justify-content: center;
+              width: 100%;
+              height: 100%;
+
+          }
+
+          .container-data {
+              margin: auto;
+              max-width: 570px;
+              padding: 20px;
+              transition: background-color 0.3s, color 0.3s;
+          }
+
+          .email-text-style {
+              color: var(--email-text-color, #333);
+              font-family: "Inter", sans-serif;
+              font-size: 16px;
+              font-style: normal;
+              font-weight: 400;
+              line-height: 21px;
+          }
+          .details-title {
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: left;
+            margin-bottom: 10px;
+        }
+
+        .details-list {
+            list-style-type: disc; 
+            padding-left: 20px;
+        }
+
+        .details-list li {
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;            
+            font-style: normal;          
+            line-height: 1.43;           
+            letter-spacing: 0;           
+            text-align: left;
+        }
+        .status{
+          font-family: 'Inter', sans-serif;
+          font-weight: 700;           
+          font-style: normal;          
+          font-size: 16px;
+          line-height: 1.5;            
+          letter-spacing: 0;
+        }
+      </style>
+  </head>
+
+    <body>
+     <div class="container">
+         <section style="width: 100%;">
+             <div class="container-data">
+
+                 {{> headerV2}}
+                 <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
+                     <tr>
+                         <td align="center" valign="top">
+                             <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                                 <tr>
+                                     <td align="center" valign="middle" background="https://sparrowassets.blob.core.windows.net/emailtemplate/Sparrow-email-headerv2.png" bgcolor="#4A90E2" style="background-position: center; background-repeat: no-repeat; background-size: cover;">
+                                         <div style="padding: 40px 30px;">
+                                             <h1 style="font-size: 20px; font-weight: 600; color: #ffffff; margin: 0 0 12px 0; line-height: 1.2; font-family: 'Inter', Arial, sans-serif;">Your {{hubName}} Hub Has Been Downgraded</h1><br>
+                                         </div>
+                                     </td>
+                                 </tr>
+                             </table>
+                         </td>
+                     </tr>
+                 </table>
+                 <section>
+                     <!-- Welcome Box -->
+                    <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 30px;">
+                         <tr>
+                             <td>
+                                 <div class="email-text-style">
+                                     <p>
+                                         Hi {{firstName}}, 👋
+                                     </p>
+                                     <p>
+                                         As scheduled, your subscription for the <strong>{{hubName}}</strong> Hub has been changed from the <strong>{{previousPlanName}}</strong> to the <strong>{{newPlanName}}</strong>, effective today.
+                                     </p>
+                                     <p>
+                                         Based on the selections you made, your chosen workspaces and team members remain active. All other workspaces have now been archived, and the remaining team members have been removed from the Hub.
+                                     </p>
+                                 </div>
+                             </td>
+                         </tr>
+                    </table>
+                     <!-- button -->
+                     <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
+                         <tr>
+                             <td align="center" valign="middle">
+                                  <tr>
+                                     <td>
+                                        <div style="padding: 5px 0px 5px 0px;">
+                                            <p style="font-size: 16px; margin: 0; line-height: 1.4; font-family: 'Inter', Arial, sans-serif; font-weight: 400; margin-bottom: 14px;">
+                                            For a detailed list of all the content and users affected by this change, you can view a full summary report.
+                                            </p>
+                                            <div>
+                                            <table cellspacing="0" cellpadding="0" border="0">
+                                                <tr>
+                                                 <td align="left" valign="middle" style="">
+                                                    <div>
+                                                        <div>
+                                                            <table cellspacing="0" cellpadding="0" border="0">
+                                                                <tr>
+                                                                    <td style="border-radius: 6px; background-color: #316CF6; padding: 6px 12px; min-height: 36px;">
+                                                                        <a href="{{excelDownloadUrl}}" class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none; cursor: pointer;">
+                                                                            View Downgrade Summary
+                                                                        </a>
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                 </td>
+                                                </tr>
+                                            </table>
+                                            </div>
+                                        </div>
+                                      </td>
+                                  </tr>
+                             </td>
+                         </tr>
+                     </table>
+                     <table style="margin-bottom: 20px;" class="email-text-style" width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td style="border-bottom:1px solid #b0b8c1" colspan="2">
+                                <h1 style="margin-top:0; font-size: 20px;font-weight: 600;margin-bottom: 15px;">Overview</h1>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom:1px solid #e0e0e0; padding: 12px 0;">Previous plan</td>
+                            <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{previousPlanName}}</td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom:1px solid #e0e0e0; padding: 12px 0;">Current Plan</td>
+                            <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{newPlanName}}</td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom:1px solid #e0e0e0; padding: 12px 0;">Effective From</td>
+                            <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{effectiveDate}}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="padding-top: 12px;">
+                                <p style="margin: 0;">You can upgrade your plan at any time to instantly restore all archived workspaces and team permissions.</p>
+                            </td>
+                        </tr>
+                    </table>
+                     <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 30px;">
+                         <tr>
+                             <td>
+                                 <div class="email-text-style">
+                                     <p>
+                                         If you have any questions or need a quick walkthrough, we're here to help, reach out to us at
+                                         <a href="mailto:{{sparrowEmail}}" style="color: #316CF6;">{{sparrowEmail}}</a>
+                                     </p>
+                                     <p>
+                                         Warm Regards,<br>
+                                         The Sparrow Team<br>
+                                         <a href="{{sparrowWebsite}}" style="color: #316CF6;">{{sparrowWebsite}}</a>
+                                     </p>
+                                 </div>
+                             </td>
+                         </tr>
+                     </table>
+                 </section>
+                 {{> footerV2}}
+             </div>
+         </section>
+     </div>
+  </body>
+</html>

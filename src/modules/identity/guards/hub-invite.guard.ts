@@ -9,9 +9,7 @@ import { TeamService } from "@src/modules/identity/services/team.service";
 
 @Injectable()
 export class HubInviteGuard implements CanActivate {
-  constructor(
-    private readonly teamService: TeamService,
-  ) {}
+  constructor(private readonly teamService: TeamService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -30,6 +28,9 @@ export class HubInviteGuard implements CanActivate {
     });
 
     const planData = userTeam?.plan;
+    if (!planData.active) {
+      throw new ForbiddenException("Hub is Restricted.");
+    }
     if (teamUserEmails.size > planData?.limits?.usersPerHub?.value + 1) {
       throw new ForbiddenException("Plan limit reached");
     }

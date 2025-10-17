@@ -29,6 +29,9 @@ export class UserLimitGuard implements CanActivate {
     }
 
     const teamData = await this.teamRepository.get(teamId);
+    if (!teamData.plan?.active) {
+      throw new ForbiddenException("Hub is Restricted.");
+    }
     if (!teamData || !teamData.users) {
       throw new ForbiddenException("Team not found or invalid.");
     }
@@ -37,7 +40,7 @@ export class UserLimitGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException("User not found in team.");
     }
-    
+
     const status = await this.userLimitService.checkLimitAndLogRequest(
       user.id,
       teamId,
