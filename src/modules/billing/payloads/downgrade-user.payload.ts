@@ -36,6 +36,10 @@ export class TourGuideDto {
   @IsBoolean()
   @IsOptional()
   isRequestTestsScriptDemoCompleted?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isRequestAssertionsDemoCompleted?: boolean;
 }
 
 class UserWorkspaceDto {
