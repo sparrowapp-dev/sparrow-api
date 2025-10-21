@@ -369,7 +369,6 @@ export class PaymentEmailService {
       downloadName,
       mimetype,
     );
-    console.log("---------------this is the blob result---->", blobResult);
     // Send emails to all recipients
     const transporter = this.emailService.createTransporter();
     for (const email of data.sendEmails) {

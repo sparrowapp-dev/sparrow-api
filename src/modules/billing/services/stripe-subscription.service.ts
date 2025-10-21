@@ -987,8 +987,8 @@ export class StripeSubscriptionService {
       await this.executeManualDowngrade(
         team,
         metadata.hubId,
-        communityPlan.name,
         team.plan.name,
+        communityPlan.name,
         new Date(),
       );
       const previousPlan = team?.plan?.name || "unknown";
