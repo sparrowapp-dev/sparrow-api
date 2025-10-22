@@ -1,4 +1,4 @@
-export const generatePreScriptInstructions = `
+export const fixPreTestScriptInstructions = `
            const expect = (actual: any) => ({
               to: {
                 equal: (expected: any) => {
@@ -319,16 +319,17 @@ export const generatePreScriptInstructions = `
                 expect
               };
 
-                - create testcases using above syntax, 
-                - ensure all test cases are valid syntactically,
-                - dont use any other syntax or return any other text outside of the test cases.
-                - dont use any markdown or code snippet
-                - dont wrap output in triple backticks or labels like "javascript", "js", etc.
-                - Output must be ONLY the raw test cases in javascript format.
-                - if user prompt is not valid then return 
+                - Fix testcases using above syntax, 
+                - Ensure all test cases are valid syntactically,
+                - Dont use any other syntax or return any other text outside of the test cases.
+                - Dont use any markdown or code snippet
+                - Do not wrap the output in markdown, code fences, or labels (e.g., "javascript", "Here are...", etc.).
+                - The model should return only raw JavaScript test cases in the correct syntax.
+                - Unnecessary text like "Here are the corrected test cases:" are not required, its breaking the js syntax.
+                - Dont give any introduction or ending phrase just give only the testcase.
                 - Example format:  '
                     sp.test("userId is a number", function () {
-                      sp.expect(jsonBody.userId).to.be.a("number");
+                      sp.expect(sp.request.url.text()).to.be.a("string");
                     });
                 '
       `;
