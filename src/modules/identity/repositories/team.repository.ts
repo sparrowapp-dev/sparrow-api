@@ -110,6 +110,7 @@ export class TeamRepository {
     const returnTeam = {
       ...team,
       workspaces: filteredWorkspaces || [],
+      isDowngraded: team.workspaces?.length !== filteredWorkspaces.length,
     };
     return returnTeam as WithId<Team>;
   }
@@ -156,6 +157,7 @@ export class TeamRepository {
       return {
         ...team,
         workspaces: filteredWorkspaces,
+        isDowngraded: team.workspaces?.length !== filteredWorkspaces.length,
       } as WithId<Team>;
     });
     return processedTeams as WithId<Team>[];

@@ -217,7 +217,6 @@ export class DownGradeService {
         workspaceIds,
         true,
       );
-      await this.downgradeTeamRepository.setTeamDowngradedStatus(teamId, true);
     } catch (error) {
       console.log(error);
     }

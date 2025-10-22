@@ -613,7 +613,6 @@ export class StripeSubscriptionService {
         metadata.hubId,
         team?.workspaces,
       );
-      await this.downgradeTeamRepository.setTeamDowngradedStatus(metadata.hubId, false);
     }
 
     // Create billing details object with successful payment status
@@ -660,7 +659,6 @@ export class StripeSubscriptionService {
         updateTeam,
         metadata.hubId,
       );
-      await this.downgradeTeamRepository.setTeamDowngradedStatus(metadata.hubId, false);
     }
     // Update team with new license data
     await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
@@ -2189,7 +2187,6 @@ export class StripeSubscriptionService {
           console.error(`Error removing users from team ${hubId}:`, error);
         }
       }
-      await this.downgradeTeamRepository.setTeamDowngradedStatus(hubId, true);
       const workspaceExcelData = await this.workspaceExcelData(
         nonDowngradedWorkspaces,
       );

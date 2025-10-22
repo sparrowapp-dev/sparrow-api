@@ -30,32 +30,4 @@ export class DownGradeTeamRepository {
       .findOneAndUpdate({ _id: id }, updatedTeamParams);
     return responseData.value;
   }
-
-  async setTeamDowngradedStatus(
-    teamId: string,
-    isDowngraded: boolean,
-  ): Promise<boolean> {
-    if (!teamId) {
-      return;
-    }
-    const _id = new ObjectId(teamId);
-    const result = await this.db.collection<Team>(Collections.TEAM).updateOne(
-      { _id },
-      {
-        $set: {
-          isDowngraded,
-          updatedAt: new Date(),
-        },
-      },
-    );
-    if (result.matchedCount === 0) {
-      throw new BadRequestException(`Team with ID ${teamId} not found.`);
-    }
-    if (result.modifiedCount === 0) {
-      throw new BadRequestException(
-        "Update failed — isDowngraded was not modified.",
-      );
-    }
-    return true;
-  }
 }
