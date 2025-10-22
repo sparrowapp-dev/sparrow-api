@@ -10,6 +10,7 @@ import { DownGradeWorkspaceRepository } from "../repositories/downgradeWorkspace
 import { isString } from "class-validator";
 import { SubscriptionDowngradeType } from "@src/modules/common/enum/billing.enum";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
+import { WorkspaceDtoWithRestriction } from "@src/modules/common/models/workspace.model";
 
 @Injectable()
 export class DownGradeService {
@@ -109,6 +110,30 @@ export class DownGradeService {
     return response;
   }
 
+  async restrictTeamWorkspace(teamId: string, workspaceIds: string[]) {
+    const teamObject = new ObjectId(teamId);
+    const teamData =
+      await this.downgradeTeamRepository.findTeamByTeamId(teamObject);
+    const updatedWorkspaces = teamData.workspaces.map((workspace) => {
+      const workspaceId = workspace.id.toString();
+      if (workspaceIds.includes(workspaceId)) {
+        return {
+          ...workspace,
+          isRestricted: true,
+        };
+      }
+      return workspace;
+    });
+    const teamUpdated = {
+      workspaces: updatedWorkspaces,
+    };
+    const data = await this.downgradeTeamRepository.updateTeamById(
+      teamObject,
+      teamUpdated,
+    );
+    return data;
+  }
+
   /**
    * Add downgrade details for a specific team.
    * @param teamId - The unique identifier of the team being downgraded.
@@ -153,8 +178,9 @@ export class DownGradeService {
    * @param id - The unique identifier of the workspace to restrict.
    * @returns A promise resolving to the repository response after setting the restriction.
    **/
-  async unRestrictWorkpsaces(team: Team) {
+  async unRestrictWorkpsaces(team: Team, teamId: string) {
     try {
+      const teamObject = new ObjectId(teamId);
       const workspaces = team.workspaces;
       for (let workspace of workspaces) {
         await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(
@@ -162,8 +188,55 @@ export class DownGradeService {
           false,
         );
       }
+      const updatedWorkspaces = workspaces.map((workspace) => ({
+        ...workspace,
+        isRestricted: false,
+      }));
+      const teamUpdated = {
+        workspaces: updatedWorkspaces,
+      };
+      await this.downgradeTeamRepository.updateTeamById(
+        teamObject,
+        teamUpdated,
+      );
     } catch (error) {
       console.log("Error in Removing restricted Workspaces." + error);
+    }
+  }
+
+  async enableAutoDowngrade(
+    teamId: string,
+    workspaces: WorkspaceDtoWithRestriction[],
+  ) {
+    try {
+      await this.stripeSubscriptionRepository.enableAutoDowngrade(teamId);
+      const workspaceIds = workspaces.map((workspace) =>
+        workspace.id.toString(),
+      );
+      await this.downgradeWorkspaceReposiory.setMultipleWorkspaceRestrictions(
+        workspaceIds,
+        true,
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async disableAutoDowngrade(
+    teamId: string,
+    workspaces: WorkspaceDtoWithRestriction[],
+  ) {
+    try {
+      await this.stripeSubscriptionRepository.disableAutoDowngrade(teamId);
+      const workspaceIds = workspaces.map((workspace) =>
+        workspace.id.toString(),
+      );
+      await this.downgradeWorkspaceReposiory.setMultipleWorkspaceRestrictions(
+        workspaceIds,
+        false,
+      );
+    } catch (error) {
+      console.log(error);
     }
   }
 }

@@ -45,7 +45,7 @@ export class WorkspaceRepository {
       throw new BadRequestException("Not Found");
     }
     // Check if workspace is restricted
-    if (data?.isRestricted === true) {
+    if (data?.isRestricted === true || data?.isFreezed === true) {
       console.log(`🚫 Access denied: Workspace ${_id} is restricted`);
       throw new BadRequestException(
         "This workspace is restricted and cannot be accessed.",
@@ -71,7 +71,7 @@ export class WorkspaceRepository {
     // Filter out restricted workspaces
     const filteredWorkspaces = workspaces.filter((workspace) => {
       // Skip if workspace.isRestricted === true
-      if (workspace?.isRestricted === true) {
+      if (workspace?.isRestricted === true || workspace?.isFreezed === true) {
         console.log(`🚫 Skipping restricted workspace: ${workspace._id}`);
         return false;
       }

@@ -13,7 +13,7 @@ import {
   IsUUID,
   ValidateNested,
 } from "class-validator";
-import { WorkspaceDto } from "./workspace.model";
+import { WorkspaceDto, WorkspaceDtoWithRestriction } from "./workspace.model";
 import { Type } from "class-transformer";
 import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
@@ -82,10 +82,10 @@ export class Team {
   logo?: logoDto;
 
   @IsArray()
-  @Type(() => WorkspaceDto)
+  @Type(() => WorkspaceDtoWithRestriction)
   @ValidateNested({ each: true })
   @IsOptional()
-  workspaces?: WorkspaceDto[];
+  workspaces?: WorkspaceDtoWithRestriction[];
 
   @IsArray()
   @Type(() => UserDto)

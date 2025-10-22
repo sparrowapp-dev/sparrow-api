@@ -1,6 +1,10 @@
 import { Injectable, Inject, BadRequestException } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
-import { AdminDto, UserDto, Workspace } from "@src/modules/common/models/workspace.model";
+import {
+  AdminDto,
+  UserDto,
+  Workspace,
+} from "@src/modules/common/models/workspace.model";
 import { Db, DeleteResult } from "mongodb";
 import { ObjectId, WithId } from "mongodb";
 
@@ -102,5 +106,25 @@ export class DownGradeWorkspaceRepository {
     } catch (error) {
       console.error("Error updating workspace users/admins:", error);
     }
+  }
+
+  async setMultipleWorkspaceRestrictions(
+    workspaceIds: string[],
+    isFreezed: boolean,
+  ): Promise<boolean> {
+    if (!workspaceIds || workspaceIds.length === 0) {
+      return;
+    }
+    const objectIds = workspaceIds.map((id) => new ObjectId(id));
+    const result = await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .updateMany(
+        { _id: { $in: objectIds } },
+        { $set: { isFreezed, updatedAt: new Date() } },
+      );
+    if (result.modifiedCount === 0) {
+      throw new BadRequestException("No workspaces were updated.");
+    }
+    return true;
   }
 }
