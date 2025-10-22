@@ -609,7 +609,10 @@ export class StripeSubscriptionService {
     if (
       team?.downgrade?.downgradeType === SubscriptionDowngradeType.AUTOMATIC
     ) {
-      await this.stripeSubscriptionRepo.disableAutoDowngrade(metadata.hubId);
+      await this.downgradeService.disableAutoDowngrade(
+        metadata.hubId,
+        team?.workspaces,
+      );
     }
 
     // Create billing details object with successful payment status
@@ -652,7 +655,10 @@ export class StripeSubscriptionService {
       const teamIdObject = new ObjectId(metadata.hubId);
       const updateTeam =
         await this.downgradeTeamRepository.findTeamByTeamId(teamIdObject);
-      await this.downgradeService.unRestrictWorkpsaces(updateTeam);
+      await this.downgradeService.unRestrictWorkpsaces(
+        updateTeam,
+        metadata.hubId,
+      );
     }
     // Update team with new license data
     await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
@@ -1273,8 +1279,9 @@ export class StripeSubscriptionService {
               new: team.plan.limits,
             };
           }
-          await this.stripeSubscriptionRepo.enableAutoDowngrade(
+          await this.downgradeService.enableAutoDowngrade(
             team._id.toString(),
+            team.workspaces,
           );
           // Log the plan change
           await this.billingAuditService.recordPlanChange(
@@ -2162,6 +2169,10 @@ export class StripeSubscriptionService {
         for (const workspaceId of nonDowngradedWorkspaces) {
           await this.downgradeService.restrictWorkspace(workspaceId);
         }
+        await this.downgradeService.restrictTeamWorkspace(
+          hubId,
+          nonDowngradedWorkspaces,
+        );
       }
 
       // Remove users not in the downgrade list

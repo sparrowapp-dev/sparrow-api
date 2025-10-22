@@ -81,20 +81,38 @@ export class TeamRepository {
       .findOne({ _id });
     if (!team) {
       throw new BadRequestException(
-        "The Team with that id could not be found.",
+        "The Team with that ID could not be found.",
       );
     }
     const isActive = team?.plan?.active;
+    // Case 1: Plan inactive → return restricted info
     if (isActive === false) {
       return {
         _id: team._id,
         name: team.name,
         hubUrl: team.hubUrl,
         logo: team.logo,
-        isRestricted: true
+        workspaces:[],
+        isRestricted: true,
       } as unknown as WithId<Team>;
     }
-    return team;
+    // Case 2: Plan active → filter workspaces
+    let filteredWorkspaces: any[] = [];
+    if (Array.isArray(team.workspaces) && team.workspaces.length > 0) {
+      filteredWorkspaces = team.workspaces.filter(
+        (ws) =>
+          ws?.isRestricted === false ||
+          ws?.isRestricted === undefined ||
+          ws?.isRestricted === null,
+      );
+    }
+    // Always return workspaces, even if empty
+    const returnTeam = {
+      ...team,
+      workspaces: filteredWorkspaces || [],
+      isDowngraded: team.workspaces?.length !== filteredWorkspaces.length,
+    };
+    return returnTeam as WithId<Team>;
   }
 
   /**
@@ -103,9 +121,10 @@ export class TeamRepository {
    * @returns {Promise<Team>} queried team data
    */
   async getTeamsByIds(teamIds: string[]): Promise<WithId<Team>[]> {
-    const teams = await this.db.collection<Team>(Collections.TEAM)
-    .find({ _id: { $in: teamIds.map(id => new ObjectId(id)) } })
-    .toArray();
+    const teams = await this.db
+      .collection<Team>(Collections.TEAM)
+      .find({ _id: { $in: teamIds.map((id) => new ObjectId(id)) } })
+      .toArray();
     if (!teams) {
       throw new BadRequestException(
         "The teams with that ids could not be found.",
@@ -113,16 +132,33 @@ export class TeamRepository {
     }
     const processedTeams = teams.map((team) => {
       const isActive = team?.plan?.active;
+      // If plan is inactive → return limited fields with isRestricted true
       if (isActive === false) {
         return {
           _id: team._id,
           name: team.name,
           hubUrl: team.hubUrl,
           logo: team.logo,
-          isRestricted: true
+          workspaces:[],
+          isRestricted: true,
         } as Partial<WithId<Team>>;
       }
-      return team;
+      // Filter out restricted workspaces
+      let filteredWorkspaces = team.workspaces;
+      if (Array.isArray(team.workspaces) && team.workspaces.length > 0) {
+        filteredWorkspaces = team.workspaces.filter(
+          (ws) =>
+            ws?.isRestricted === false ||
+            ws?.isRestricted === undefined ||
+            ws?.isRestricted === null,
+        );
+      }
+      // Return the team with filtered workspaces
+      return {
+        ...team,
+        workspaces: filteredWorkspaces,
+        isDowngraded: team.workspaces?.length !== filteredWorkspaces.length,
+      } as WithId<Team>;
     });
     return processedTeams as WithId<Team>[];
   }

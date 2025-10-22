@@ -1,4 +1,4 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, BadRequestException } from "@nestjs/common";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { Team, TeamDto } from "@src/modules/common/models/team.model";
 import { Db } from "mongodb";
