@@ -56,6 +56,37 @@ export class StripeSubscriptionRepository {
   }
 
   /**
+   * Updates a team's biling based on subscription data
+   * @param hubId The team/hub ID
+   * @param subscriptionData Additional subscription data
+   * @returns The update result
+   */
+  async updateTeamBilling(
+    hubId: string,
+    subscriptionData: {
+      billing?: BillingDto;
+    },
+  ): Promise<UpdateResult> {
+    try {
+      if (!subscriptionData.billing) {
+        throw new Error("Billing data is required to update team");
+      }
+      const objectId = new ObjectId(hubId);
+      const updateDoc = {
+        $set: {
+          billing: subscriptionData.billing,
+        },
+      };
+      // Update only one team
+      return await this.db
+        .collection(Collections.TEAM)
+        .updateOne({ _id: objectId }, updateDoc);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Update team with arbitrary data
    * @param teamId The team ID
    * @param updateData The data to update

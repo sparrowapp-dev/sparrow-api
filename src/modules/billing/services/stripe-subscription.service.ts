@@ -987,8 +987,8 @@ export class StripeSubscriptionService {
       await this.executeManualDowngrade(
         team,
         metadata.hubId,
-        communityPlan.name,
         team.plan.name,
+        communityPlan.name,
         new Date(),
       );
       const previousPlan = team?.plan?.name || "unknown";
@@ -1239,12 +1239,13 @@ export class StripeSubscriptionService {
             updatedBy: "system-maintenance-job",
           };
 
-          // Update team to community plan
-          // await this.updateTeamPlanWithBilling(
-          //   team._id.toString(),
-          //   communityPlan,
-          //   billingDetails,
-          // );
+          // Update team biling
+          await this.stripeSubscriptionRepo.updateTeamBilling(
+            team._id.toString(),
+            {
+              billing: billingDetails,
+            },
+          );
 
           // Send plan downgrade email notification
           if (this.paymentEmailHelper && team.plan?.name) {
