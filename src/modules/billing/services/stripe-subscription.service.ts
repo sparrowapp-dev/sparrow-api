@@ -574,38 +574,33 @@ export class StripeSubscriptionService {
     let isDowngrading = false;
     // Only check for downgrade if there's a plan change
     if (isPlanChange && previousPlan && newPlan) {
-      // Get plan details to determine if it's a downgrade
-      const previousPlanDetails =
-        await this.stripeSubscriptionRepo.findPlanByName(previousPlan);
-      const newPlanDetails =
-        await this.stripeSubscriptionRepo.findPlanByName(newPlan);
-
-      // Check if this is actually a downgrade (moving to a lower tier)
-      const isDowngrade = this.isPlanDowngrade(
-        previousPlanDetails,
-        newPlanDetails,
-      );
+      const isDowngrade = this.isPlanDowngrade(previousPlan, newPlan);
 
       if (isDowngrade) {
         const hasDowngradeConfig = team?.downgrade;
         const isManualDowngrade =
           team?.downgrade?.downgradeType === SubscriptionDowngradeType.MANUAL;
         if (hasDowngradeConfig && isManualDowngrade) {
-          isDowngrading = true;
-          await this.executeManualDowngrade(
-            team,
-            metadata.hubId,
-            previousPlan,
-            newPlan,
-            new Date(),
-          );
-          await this.stripeSubscriptionRepo.removeDowngradeDetails(
-            metadata.hubId,
-          );
+          try {
+            isDowngrading = true;
+            await this.executeManualDowngrade(
+              team,
+              metadata.hubId,
+              previousPlan,
+              newPlan,
+              new Date(),
+            );
+            await this.stripeSubscriptionRepo.removeDowngradeDetails(
+              metadata.hubId,
+            );
+          } catch (error) {
+            console.log(error);
+          }
         }
       }
     }
-    // Handle automatic downgrade cleanup (separate from manual downgrade)
+
+    // Handle auto downgrade cleanup
     if (
       team?.downgrade?.downgradeType === SubscriptionDowngradeType.AUTOMATIC
     ) {
@@ -2114,7 +2109,7 @@ export class StripeSubscriptionService {
     }
     const downgradeType = team?.downgrade?.downgradeType;
     const teamDowngradeWorkspaces = team?.downgrade?.workspaces;
-    const teamDowngradeUsers = team?.downgrade?.users;
+    const teamDowngradeUsers = team?.downgrade?.users || [];
     // Only proceed if downgrade type is MANUAL
     if (downgradeType !== SubscriptionDowngradeType.MANUAL) {
       return;
@@ -2147,7 +2142,7 @@ export class StripeSubscriptionService {
         teamDowngradeWorkspaces?.map((ws) => ws.id) || [];
       // Extract user IDs from downgrade list (users to keep)
       const downgradeUserIds = teamDowngradeUsers?.map((user) => user.id) || [];
-      const downgradeUserEmails = teamDowngradeUsers.map((user) => user.email);
+      const downgradeUserEmails = teamDowngradeUsers?.map((user) => user.email) || [];
       const nonDowngradedUsersWithEmail =
         team?.users
           ?.filter(
@@ -2218,7 +2213,7 @@ export class StripeSubscriptionService {
    * @param newPlan The new plan object
    * @returns Boolean indicating if this is a downgrade
    */
-  private isPlanDowngrade(previousPlan: any, newPlan: any): boolean {
+  private isPlanDowngrade(previousPlan: string, newPlan: string): boolean {
     // Add your plan hierarchy logic here
     // For example, you might have a plan hierarchy like:
     // Community < standard < Professional
@@ -2228,10 +2223,8 @@ export class StripeSubscriptionService {
       [PlanName.STANDARD]: 1,
       [PlanName.PROFESSIONAL]: 2,
     };
-
-    const previousLevel = planHierarchy[previousPlan.name] ?? 0;
-    const newLevel = planHierarchy[newPlan.name] ?? 0;
-
+    const previousLevel = planHierarchy[previousPlan] ?? 0;
+    const newLevel = planHierarchy[newPlan] ?? 0;
     return newLevel < previousLevel;
   }
 
