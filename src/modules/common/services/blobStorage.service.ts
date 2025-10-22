@@ -17,6 +17,7 @@ export class BlobStorageService {
   private blobServiceClient: BlobServiceClient;
   private containerClient: ContainerClient;
   private aiContainerClient: ContainerClient;
+  private downGradeHubClient: ContainerClient;
 
   /**
    * Constructor to initialize BlobStorageService with required dependencies.
@@ -30,8 +31,8 @@ export class BlobStorageService {
       "feedbackBlob.container",
     );
     const aiConversationBLobContainer = this.configService.get(
-      "ai.conversationConatiner"
-    )
+      "ai.conversationConatiner",
+    );
 
     try {
       /**
@@ -63,7 +64,18 @@ export class BlobStorageService {
       );
 
       if (!aiConversationBLobContainer) {
-        console.warn("AI Conversation Blob is disabled: No container provided.");
+        console.warn(
+          "AI Conversation Blob is disabled: No container provided.",
+        );
+        return;
+      }
+
+      const downgradeHubBlobContainer = this.configService.get(
+        "downgradeHub.container",
+      );
+
+      if (!downgradeHubBlobContainer) {
+        console.warn("Downgrade Blob is disabled: No container provided.");
         return;
       }
 
@@ -81,6 +93,9 @@ export class BlobStorageService {
        */
       this.aiContainerClient = this.blobServiceClient.getContainerClient(
         aiConversationBLobContainer,
+      );
+      this.downGradeHubClient = this.blobServiceClient.getContainerClient(
+        downgradeHubBlobContainer,
       );
     } catch (e) {
       console.error(e);
@@ -175,6 +190,56 @@ export class BlobStorageService {
     
     const docURL = blockBlobClient.url;
     return docURL;
+  }
+
+  /**
+   * Uploads an Excel Document to Azure Blob Storage.
+   * @param buffer - Buffer containing the Excel file data
+   * @param storageName - Name used for storing the file in blob (with timestamp)
+   * @param downloadName - Name shown when user downloads the file (clean name)
+   * @param mimetype - MIME type of the file (Excel format) or file extension (e.g., ".xlsx")
+   * @returns Object containing fileId and fileUrl
+   */
+  async uploadExcelBlob(
+    buffer: Buffer,
+    storageName: string,
+    downloadName: string,
+    mimetype: string,
+  ): Promise<{ fileUrl: string; fileId: string }> {
+    const fileId = uuidv4();
+    // Handle both full MIME type and file extension
+    let fileExtension: string;
+    let contentType: string;
+    if (mimetype.startsWith(".")) {
+      // If mimetype is an extension like ".xlsx"
+      fileExtension = mimetype.substring(1); // Remove the dot
+      contentType =
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    } else {
+      // If mimetype is a full MIME type
+      fileExtension = await this.getFileExtension(mimetype);
+      contentType = mimetype;
+    }
+    const uniqueFileName = `${fileId}-${storageName}.${fileExtension}`;
+    if (!this.downGradeHubClient) {
+      throw new BadRequestException(
+        "Azure blob container is not connected to backend server.",
+      );
+    }
+    const blockBlobClient =
+      this.downGradeHubClient.getBlockBlobClient(uniqueFileName);
+    // Set Content-Type and Content-Disposition headers for Excel download
+    const uploadOptions = {
+      blobHTTPHeaders: {
+        blobContentType: contentType,
+        blobContentDisposition: `attachment; filename="${downloadName}.${fileExtension}"`, 
+      },
+    };
+    await blockBlobClient.upload(buffer, buffer.length, uploadOptions);
+    return {
+      fileId: fileId,
+      fileUrl: blockBlobClient.url,
+    };
   }
 
   async deleteAiDocByUrl(fileUrl: string): Promise<string> {

@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EmailService } from "@src/modules/common/services/email.service";
+import { ExcelEmailService } from "./excel-email.service";
+import { BlobStorageService } from "@src/modules/common/services/blobStorage.service";
 
 export enum PaymentEmailType {
   PAYMENT_SUCCESS = "payment_success",
@@ -9,6 +11,8 @@ export enum PaymentEmailType {
   SUBSCRIPTION_RESUBSCRIBED = "subscription_resubscribed",
   PLAN_UPGRADED = "plan_upgraded",
   PLAN_DOWNGRADED = "plan_downgraded",
+  HUB_DOWNGRADED = "hub_downgraded",
+  HUB_DOWNGRADED_REMOVE_USER = "hub_downgrade_remove_user",
   UPCOMING_PAYMENT = "upcoming_payment",
   SUBSCRIPTION_EXPIRED = "subscription_expired",
   PAYMENT_INFO_UPDATED = "payment_info_updated",
@@ -43,6 +47,9 @@ export interface PaymentEmailData {
   usedSeats?: number;
   invitedSeats?: number;
   manageUsersUrl?: string;
+  workspaces?: any;
+  users?: any;
+  sendEmails?: string[];
 }
 
 @Injectable()
@@ -50,6 +57,8 @@ export class PaymentEmailService {
   constructor(
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly excelEmailService: ExcelEmailService,
+    private readonly blobStorageService: BlobStorageService,
   ) {}
 
   /**
@@ -80,6 +89,12 @@ export class PaymentEmailService {
           break;
         case PaymentEmailType.PLAN_DOWNGRADED:
           await this.sendPlanDowngradedEmail(data);
+          break;
+        case PaymentEmailType.HUB_DOWNGRADED:
+          await this.sendHubDowngradedEmail(data);
+          break;
+        case PaymentEmailType.HUB_DOWNGRADED_REMOVE_USER:
+          await this.sendHubDowngradeRemovedUserEmail(data);
           break;
         case PaymentEmailType.UPCOMING_PAYMENT:
           await this.sendUpcomingPaymentActionRequiredEmail(data);
@@ -328,6 +343,91 @@ export class PaymentEmailService {
     };
 
     await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
+  /**
+   * Send hub downgraded email
+   */
+  private async sendHubDowngradedEmail(data: PaymentEmailData): Promise<void> {
+    // Generate Excel buffer
+    const excelBuffer =
+      await this.excelEmailService.generateDowngradeSummaryExcel(
+        data.workspaces,
+        data.users,
+      );
+    // Upload to Azure Blob Storage and get URL
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, -5);
+    const storageName = `Downgrade_Summary_${data.hubName}_${timestamp}`;
+    const downloadName = `Downgrade_Summary_${data.hubName}`;
+    const mimetype = ".xlsx";
+    const blobResult = await this.blobStorageService.uploadExcelBlob(
+      excelBuffer,
+      storageName,
+      downloadName,
+      mimetype,
+    );
+    console.log("---------------this is the blob result---->", blobResult);
+    // Send emails to all recipients
+    const transporter = this.emailService.createTransporter();
+    for (const email of data.sendEmails) {
+      const mailOptions = {
+        from: this.configService.get("app.senderEmail"),
+        to: email,
+        text: "Hub Downgraded",
+        template: "hubDowngradedEmail",
+        context: {
+          firstName: this.extractFirstName(data.ownerName),
+          hubName: data.hubName,
+          previousPlanName: data.previousPlanName || "Previous Plan",
+          newPlanName: data.planName,
+          effectiveDate: this.formatDate(data.billingPeriodStart),
+          excelDownloadUrl: blobResult.fileUrl,
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName: this.configService.get(
+            "support.sparrowWebsiteName",
+          ),
+        },
+        subject: `Your Plan for ${data.hubName} has been updated to ${data.planName}`,
+      };
+      await this.emailService.sendEmail(transporter, mailOptions);
+    }
+  }
+
+  /**
+   * Send a Hub downgrade Email after the user is removed from the Hub
+   */
+  private async sendHubDowngradeRemovedUserEmail(
+    data: PaymentEmailData,
+  ): Promise<void> {
+    for (let i = 0; i < data.sendEmails.length; i++) {
+      const transporter = this.emailService.createTransporter();
+      const mailOptions = {
+        from: this.configService.get("app.senderEmail"),
+        to: data.sendEmails[i],
+        text: "Hub Downgraded",
+        template: "hubDowngradeRemoveUserEmail",
+        context: {
+          firstName: this.extractFirstName(data.ownerName),
+          hubName: data.hubName,
+          previousPlanName: data.previousPlanName || "Previous Plan",
+          newPlanName: data.planName,
+          effectiveDate: data.billingPeriodStart
+            ? this.formatDate(data.billingPeriodStart)
+            : this.formatDate(data.billingPeriodStart),
+          sparrowEmail: this.configService.get("support.sparrowEmail"),
+          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+          sparrowWebsiteName: this.configService.get(
+            "support.sparrowWebsiteName",
+          ),
+        },
+        subject: `Your Plan for ${data.hubName} has been updated to ${data.planName}`,
+      };
+      await this.emailService.sendEmail(transporter, mailOptions);
+    }
   }
 
   /**
