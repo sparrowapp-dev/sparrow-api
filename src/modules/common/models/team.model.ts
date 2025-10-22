@@ -130,6 +130,10 @@ export class Team {
   @ValidateNested()
   @Type(() => DowngradeDetails)
   downgrade?: DowngradeDetails;
+
+  @IsBoolean()
+  @IsOptional()
+  isDowngraded?: boolean;
 }
 
 export class TeamWithNewInviteTag extends Team {
