@@ -34,6 +34,7 @@ import {
   CreateTestflowDto,
   CreateTestflowSchedularDto,
   UpdateTestflowDto,
+  TestflowValidationResultDto,
 } from "../payloads/testflow.payload";
 import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
@@ -456,6 +457,41 @@ export class TestflowController {
         "Success",
         HttpStatusCode.OK,
         testflow,
+      );
+      return res.status(responseData.httpStatusCode).send(responseData);
+    }
+
+    /**
+     * Check testflow nodes for localhost URLs or formdata files
+     */
+    @Get(':workspaceId/testflow/:testflowId/validate-run')
+    @ApiOperation({ 
+      summary: 'Validate Testflow Nodes', 
+      description: 'Check if testflow nodes contain APIs with localhost URLs or formdata files.' 
+    })
+    @ApiResponse({ 
+      status: 200, 
+      description: 'Validation results returned successfully',
+      type: TestflowValidationResultDto
+    })
+    @ApiResponse({ status: 400, description: 'Failed to validate testflow' })
+    @UseGuards(JwtAuthGuard)
+    async validateTestflowNodes(
+      @Param('workspaceId') workspaceId: string,
+      @Param('testflowId') testflowId: string,
+      @Res() res: FastifyReply,
+      @Req() request: ExtendedFastifyRequest,
+    ) {
+      const user = request.user;
+      const validationResult = await this.testflowService.validateTestflowNodes(
+        workspaceId,
+        testflowId,
+        user._id,
+      );
+      const responseData = new ApiResponseService(
+        "Validation completed successfully",
+        HttpStatusCode.OK,
+        validationResult,
       );
       return res.status(responseData.httpStatusCode).send(responseData);
     }
