@@ -2142,22 +2142,29 @@ export class StripeSubscriptionService {
         teamDowngradeWorkspaces?.map((ws) => ws.id) || [];
       // Extract user IDs from downgrade list (users to keep)
       const downgradeUserIds = teamDowngradeUsers?.map((user) => user.id) || [];
-      const downgradeUserEmails = teamDowngradeUsers?.map((user) => user.email) || [];
-      const nonDowngradedUsersWithEmail =
-        team?.users
-          ?.filter(
-            (user: UserDto) =>
-              user.role !== "owner" && !downgradeUserIds.includes(user.id),
-          )
-          .map((user: UserDto) => user.email) || [];
+      const downgradeUserEmails =
+        teamDowngradeUsers?.map((user) => user.email) || [];
+      let nonDowngradedUsersWithEmail: string[] = [];
+      if (downgradeUserIds.length > 0) {
+        nonDowngradedUsersWithEmail =
+          team?.users
+            ?.filter(
+              (user: UserDto) =>
+                user.role !== "owner" && !downgradeUserIds.includes(user.id),
+            )
+            .map((user: UserDto) => user.email) || [];
+      }
       // Workspaces not in the downgrade list (these will be deleted)
       const nonDowngradedWorkspaces = allWorkspaces.filter(
         (wsId: string) => !downgradeWorkspaceIds.includes(wsId),
       );
+      let nonDowngradedUsers: string[] = [];
       // Users not in the downgrade list (these will be removed)
-      const nonDowngradedUsers = allUsers.filter(
-        (userId: string) => !downgradeUserIds.includes(userId),
-      );
+      if (downgradeUserIds.length > 0) {
+        nonDowngradedUsers = allUsers.filter(
+          (userId: string) => !downgradeUserIds.includes(userId),
+        );
+      }
 
       // Delete workspaces that are not in the downgrade list
       if (nonDowngradedWorkspaces.length > 0) {
