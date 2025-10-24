@@ -66,6 +66,7 @@ import { OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { EnvironmentRepository } from "../repositories/environment.repository";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
+import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 
 /**
  * Testflow Service
@@ -84,6 +85,7 @@ export class TestflowService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly userReposistory: UserRepository,
     private readonly environmentReposistory: EnvironmentRepository,
+    private readonly teamReposistory:TeamRepository,
   ) {}
 
   async getNextFutureCronExpression(pastCron: string, intervalHours: number): Promise<string> {
@@ -483,7 +485,13 @@ export class TestflowService implements OnModuleInit {
   ): Promise<WithId<Testflow>[]> {
     await this.checkPermission(id, userId);
     const workspace = await this.workspaceService.get(id);
-    const testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    let testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    const teamId = workspace.team.id;
+    const getTeamData = await this.teamReposistory.get(teamId);
+    if(getTeamData){
+      const testflowLimit =  getTeamData.plan.limits.testflowPerWorkspace.value;
+      testflowIds = testflowIds.slice(0, testflowLimit);
+    }
     if (testflowIds.length === 0) return [];
     const testflows =
       await this.testflowRepository.getTestflowsByIds(testflowIds);
@@ -499,7 +507,13 @@ export class TestflowService implements OnModuleInit {
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    let testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    const teamId = workspace.team.id;
+    const getTeamData = await this.teamReposistory.get(teamId);
+    if(getTeamData){
+      const testflowLimit =  getTeamData.plan.limits.testflowPerWorkspace.value;
+      testflowIds = testflowIds.slice(0, testflowLimit);
+    }
     if (testflowIds.length === 0) return [];
     const testflows =
       await this.testflowRepository.getTestflowsByIds(testflowIds);
