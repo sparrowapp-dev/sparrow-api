@@ -94,6 +94,8 @@ export class TeamRepository {
         logo: team.logo,
         workspaces:[],
         isRestricted: true,
+        users:team.users,
+        owner:team.owner
       } as unknown as WithId<Team>;
     }
     // Case 2: Plan active → filter workspaces
@@ -141,6 +143,8 @@ export class TeamRepository {
           logo: team.logo,
           workspaces:[],
           isRestricted: true,
+          users:team.users,
+          owner:team.owner
         } as Partial<WithId<Team>>;
       }
       // Filter out restricted workspaces
