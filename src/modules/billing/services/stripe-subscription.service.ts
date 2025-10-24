@@ -607,6 +607,7 @@ export class StripeSubscriptionService {
       await this.downgradeService.disableAutoDowngrade(
         metadata.hubId,
         team?.workspaces,
+        newPlan
       );
     }
 
@@ -650,7 +651,7 @@ export class StripeSubscriptionService {
       const teamIdObject = new ObjectId(metadata.hubId);
       const updateTeam =
         await this.downgradeTeamRepository.findTeamByTeamId(teamIdObject);
-      await this.downgradeService.unRestrictWorkpsaces(
+      await this.downgradeService.unRestrictWorkspaces(
         updateTeam,
         metadata.hubId,
       );
