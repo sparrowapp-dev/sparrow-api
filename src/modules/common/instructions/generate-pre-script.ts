@@ -17,9 +17,7 @@ export const generatePreScriptInstructions = `
                   },
                   true: () => {
                   },
-                  false: () => {
-                
-                  
+                  false: () => {  
                   },
                   within: (min: number, max: number) => {
                 
@@ -326,6 +324,8 @@ export const generatePreScriptInstructions = `
                 - dont wrap output in triple backticks or labels like "javascript", "js", etc.
                 - Output must be ONLY the raw test cases in javascript format.
                 - if user prompt is not valid then return 
+                - If the user's prompt is not clearly about API pre-script generation or contains irrelevant content 
+                  (general coding questions, or non-API testing topics) then return
                 - Example format:  '
                     sp.test("userId is a number", function () {
                       sp.expect(jsonBody.userId).to.be.a("number");
