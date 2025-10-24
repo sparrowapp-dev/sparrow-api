@@ -11,6 +11,7 @@ import { isString } from "class-validator";
 import { SubscriptionDowngradeType } from "@src/modules/common/enum/billing.enum";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 import { WorkspaceDtoWithRestriction } from "@src/modules/common/models/workspace.model";
+import { PlanName } from "@src/modules/common/enum/plan.enum";
 
 @Injectable()
 export class DownGradeService {
@@ -178,29 +179,78 @@ export class DownGradeService {
    * @param id - The unique identifier of the workspace to restrict.
    * @returns A promise resolving to the repository response after setting the restriction.
    **/
-  async unRestrictWorkpsaces(team: Team, teamId: string) {
+  async unRestrictWorkspaces(team: Team, teamId: string) {
     try {
       const teamObject = new ObjectId(teamId);
-      const workspaces = team.workspaces;
-      for (let workspace of workspaces) {
-        await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(
-          workspace.id.toString(),
-          false,
+      const restrictedWorkspaces = team.workspaces.filter(
+        (workspace) => workspace.isRestricted === true,
+      );
+      if (restrictedWorkspaces.length > 0) {
+        let workspacesToUnrestrict: WorkspaceDtoWithRestriction[] = [];
+        let updatedWorkspaces: WorkspaceDtoWithRestriction[];
+        if (team.workspaces.length > team.plan.limits.workspacesPerHub.value) {
+          const unRestrictedWorkspaceCount =
+            team.workspaces.length - restrictedWorkspaces.length;
+          // Calculate how many MORE workspaces can be unrestricted
+          const canUnrestrictCount =
+            team.plan.limits.workspacesPerHub.value -
+            unRestrictedWorkspaceCount;
+
+          // Take only the number of workspaces that can be unrestricted
+          workspacesToUnrestrict = restrictedWorkspaces.slice(
+            0,
+            canUnrestrictCount > 0 ? canUnrestrictCount : 0,
+          );
+
+          // Get IDs of workspaces that will be unrestricted
+          const workspacesToUnrestrictIds = new Set(
+            workspacesToUnrestrict.map((w) => w.id.toString()),
+          );
+
+          // Update workspaces: set isRestricted to false only for workspaces in workspacesToUnrestrict
+          updatedWorkspaces = team.workspaces.map((workspace) => {
+            if (
+              workspace.isRestricted &&
+              workspacesToUnrestrictIds.has(workspace.id.toString())
+            ) {
+              return {
+                ...workspace,
+                isRestricted: false,
+              };
+            }
+            return workspace;
+          });
+        } else {
+          // Team has EQUAL or LESS workspaces than allowed - unrestrict ALL
+          workspacesToUnrestrict = restrictedWorkspaces;
+
+          // Set all workspaces to isRestricted: false
+          updatedWorkspaces = team.workspaces.map((workspace) => {
+            if (workspace.isRestricted) {
+            }
+            return {
+              ...workspace,
+              isRestricted: false,
+            };
+          });
+        }
+        // Unrestrict the workspaces in the database
+        for (const workspace of workspacesToUnrestrict) {
+          await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(
+            workspace.id.toString(),
+            false,
+          );
+        }
+        const teamUpdated = {
+          workspaces: updatedWorkspaces,
+        };
+        await this.downgradeTeamRepository.updateTeamById(
+          teamObject,
+          teamUpdated,
         );
       }
-      const updatedWorkspaces = workspaces.map((workspace) => ({
-        ...workspace,
-        isRestricted: false,
-      }));
-      const teamUpdated = {
-        workspaces: updatedWorkspaces,
-      };
-      await this.downgradeTeamRepository.updateTeamById(
-        teamObject,
-        teamUpdated,
-      );
     } catch (error) {
-      console.log("Error in Removing restricted Workspaces." + error);
+      console.error("Error in Removing restricted Workspaces.", error);
     }
   }
 
@@ -225,16 +275,34 @@ export class DownGradeService {
   async disableAutoDowngrade(
     teamId: string,
     workspaces: WorkspaceDtoWithRestriction[],
+    newPlan:PlanName,
   ) {
     try {
       await this.stripeSubscriptionRepository.disableAutoDowngrade(teamId);
-      const workspaceIds = workspaces.map((workspace) =>
-        workspace.id.toString(),
-      );
-      await this.downgradeWorkspaceReposiory.setMultipleWorkspaceRestrictions(
-        workspaceIds,
-        false,
-      );
+      const teamPlan = await this.stripeSubscriptionRepository.findPlanByName(newPlan);
+      const planLimitWorkspaces = teamPlan.limits.workspacesPerHub.value || 3;
+      if (workspaces.length > planLimitWorkspaces) {
+        // Split workspaces into allowed and to-be-removed
+        const allowedWorkspaces = workspaces.slice(0, planLimitWorkspaces);
+        // Get IDs for allowed workspaces (set restriction to false)
+        const allowedWorkspaceIds = allowedWorkspaces.map((workspace) =>
+          workspace.id.toString(),
+        );
+        // Enable only the allowed workspaces (set restriction = false)
+        await this.downgradeWorkspaceReposiory.setMultipleWorkspaceRestrictions(
+          allowedWorkspaceIds,
+          false,
+        );
+      } else {
+        // All workspaces are within the limit, disable restrictions for all
+        const workspaceIds = workspaces.map((workspace) =>
+          workspace.id.toString(),
+        );
+        await this.downgradeWorkspaceReposiory.setMultipleWorkspaceRestrictions(
+          workspaceIds,
+          false,
+        );
+      }
     } catch (error) {
       console.log(error);
     }
