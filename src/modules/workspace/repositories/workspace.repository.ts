@@ -157,12 +157,6 @@ export class WorkspaceRepository {
     id: ObjectId,
     updatedWorkspace: Partial<WorkspaceDtoForIdDocument>,
   ): Promise<WithId<Workspace>> {
-    const data = await this.getWorkspace(id.toString());
-    if (data?.isRestricted || data?.isFreezed) {
-      throw new BadRequestException(
-        "This workspace is restricted and cannot be accessed.",
-      );
-    }
     const response = await this.db
       .collection<Workspace>(Collections.WORKSPACE)
       .findOneAndUpdate(
@@ -263,12 +257,6 @@ export class WorkspaceRepository {
     environment: EnvironmentDto,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    const data = await this.getWorkspace(workspaceId);
-    if (data?.isRestricted || data?.isFreezed) {
-      throw new BadRequestException(
-        "This workspace is restricted and cannot be accessed.",
-      );
-    }
     return await this.db.collection(Collections.WORKSPACE).updateOne(
       { _id },
       {
@@ -334,12 +322,6 @@ export class WorkspaceRepository {
     testflow: TestflowInfoDto,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    const data = await this.getWorkspace(workspaceId);
-    if (data?.isRestricted || data?.isFreezed) {
-      throw new BadRequestException(
-        "This workspace is restricted and cannot be accessed.",
-      );
-    }
     const response = await this.db.collection(Collections.WORKSPACE).updateOne(
       { _id },
       {
@@ -396,12 +378,6 @@ export class WorkspaceRepository {
     name: string,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
-    const data = await this.getWorkspace(workspaceId);
-    if (data?.isRestricted || data?.isFreezed) {
-      throw new BadRequestException(
-        "This workspace is restricted and cannot be accessed.",
-      );
-    }
     const response = await this.db
       .collection(Collections.WORKSPACE)
       .updateOne(

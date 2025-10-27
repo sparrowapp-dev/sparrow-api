@@ -275,23 +275,44 @@ export class DownGradeService {
   async disableAutoDowngrade(
     teamId: string,
     workspaces: WorkspaceDtoWithRestriction[],
-    newPlan:PlanName,
+    newPlan: PlanName,
   ) {
     try {
       await this.stripeSubscriptionRepository.disableAutoDowngrade(teamId);
-      const teamPlan = await this.stripeSubscriptionRepository.findPlanByName(newPlan);
+      const teamPlan =
+        await this.stripeSubscriptionRepository.findPlanByName(newPlan);
       const planLimitWorkspaces = teamPlan.limits.workspacesPerHub.value || 3;
       if (workspaces.length > planLimitWorkspaces) {
         // Split workspaces into allowed and to-be-removed
-        const allowedWorkspaces = workspaces.slice(0, planLimitWorkspaces);
-        // Get IDs for allowed workspaces (set restriction to false)
-        const allowedWorkspaceIds = allowedWorkspaces.map((workspace) =>
+        const workspaceIds = workspaces.map((workspace) =>
           workspace.id.toString(),
         );
         // Enable only the allowed workspaces (set restriction = false)
         await this.downgradeWorkspaceReposiory.setMultipleWorkspaceRestrictions(
-          allowedWorkspaceIds,
+          workspaceIds,
           false,
+        );
+        // Get only the workspaces beyond the allowed plan limit
+        const remainingWorkspaces = workspaces.slice(planLimitWorkspaces);
+        // Mark those as restricted = true before updating
+        for (const workspace of remainingWorkspaces) {
+          await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(
+            workspace.id.toString(),
+            true,
+          );
+          workspace.isRestricted = true;
+        }
+        // Build updated list: allowed stay as-is, remaining now marked restricted
+        const updatedWorkspaces = [
+          ...workspaces.slice(0, planLimitWorkspaces), // allowed ones
+          ...remainingWorkspaces, // already modified above
+        ];
+        const teamUpdated = {
+          workspaces: updatedWorkspaces,
+        };
+        await this.downgradeTeamRepository.updateTeamById(
+          new ObjectId(teamId),
+          teamUpdated,
         );
       } else {
         // All workspaces are within the limit, disable restrictions for all
