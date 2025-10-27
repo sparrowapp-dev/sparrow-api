@@ -2311,11 +2311,6 @@ export class StripeSubscriptionService {
     currentUser?: string[],
     removedUser?: string[],
   ) {
-    console.log(
-      "we are getting emails ------------->",
-      currentUser,
-      removedUser,
-    );
     await this.paymentEmailHelper.sendHubDowngradedEmail(
       team,
       startDate,
