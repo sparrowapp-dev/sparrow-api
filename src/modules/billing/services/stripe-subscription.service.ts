@@ -607,8 +607,15 @@ export class StripeSubscriptionService {
       await this.downgradeService.disableAutoDowngrade(
         metadata.hubId,
         team?.workspaces,
-        newPlan
       );
+      const teamIdObject = new ObjectId(metadata.hubId);
+      const updateTeam =
+        await this.downgradeTeamRepository.findTeamByTeamId(teamIdObject);
+      await this.downgradeService.unRestrictWorkspaces(
+        updateTeam,
+        metadata.hubId,
+      );
+      isDowngrading = true;
     }
 
     // Create billing details object with successful payment status
@@ -658,7 +665,6 @@ export class StripeSubscriptionService {
       await this.downgradeService.disableAutoDowngrade(
         metadata.hubId,
         team?.workspaces,
-        newPlan
       );
     }
     // Update team with new license data
@@ -2305,6 +2311,11 @@ export class StripeSubscriptionService {
     currentUser?: string[],
     removedUser?: string[],
   ) {
+    console.log(
+      "we are getting emails ------------->",
+      currentUser,
+      removedUser,
+    );
     await this.paymentEmailHelper.sendHubDowngradedEmail(
       team,
       startDate,
