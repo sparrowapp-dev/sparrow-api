@@ -10,12 +10,18 @@ export class AdminWorkspaceRepository {
 
   async findWorkspaceById(workspaceId: string) {
     const workspaceObjectId = new ObjectId(workspaceId);
-    return this.db.collection("workspace").findOne({ _id: workspaceObjectId });
+    return this.db.collection("workspace").findOne({
+      _id: workspaceObjectId,
+      isRestricted: { $ne: true }, // allow only non-restricted workspaces
+    });
   }
 
   async findPaginated(query: any, sort: any, skip: number, limit: number) {
     const collection = this.db.collection("workspace");
-
+    query = {
+      ...query,
+      isRestricted: { $ne: true }, // allow false OR undefined only
+    };
     const total = await collection.countDocuments(query);
     const rawData = await collection
       .find(query)
@@ -28,8 +34,13 @@ export class AdminWorkspaceRepository {
   }
 
   async getTotalWorkspaceCount(query: any): Promise<number> {
+    query = {
+      ...query,
+      isRestricted: { $ne: true }, // exclude restricted workspaces
+    };
     return await this.db.collection("workspace").countDocuments(query);
   }
+
   async getFilteredCollectionsByIds({
     ids = [],
     search = "",

@@ -655,6 +655,11 @@ export class StripeSubscriptionService {
         updateTeam,
         metadata.hubId,
       );
+      await this.downgradeService.disableAutoDowngrade(
+        metadata.hubId,
+        team?.workspaces,
+        newPlan
+      );
     }
     // Update team with new license data
     await this.stripeSubscriptionRepo.updateTeamById(metadata.hubId, {
