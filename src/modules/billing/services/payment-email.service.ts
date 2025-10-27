@@ -355,13 +355,14 @@ export class PaymentEmailService {
         data.workspaces,
         data.users,
       );
-    // Upload to Azure Blob Storage and get URL
+    // Clean hub name for Azure-friendly file name
+    const safeHubName = data.hubName.replace(/[^a-zA-Z0-9-_ ]/g, ""); // Removes quotes, apostrophes, etc.
     const timestamp = new Date()
       .toISOString()
       .replace(/[:.]/g, "-")
       .slice(0, -5);
-    const storageName = `Downgrade_Summary_${data.hubName}_${timestamp}`;
-    const downloadName = `Downgrade_Summary_${data.hubName}`;
+    const storageName = `Downgrade_Summary_${safeHubName}_${timestamp}`;
+    const downloadName = `Downgrade_Summary_${safeHubName}`;
     const mimetype = ".xlsx";
     const blobResult = await this.blobStorageService.uploadExcelBlob(
       excelBuffer,
@@ -369,7 +370,7 @@ export class PaymentEmailService {
       downloadName,
       mimetype,
     );
-    // Send emails to all recipients
+    // Send emails to recipients
     const transporter = this.emailService.createTransporter();
     for (const email of data.sendEmails) {
       const mailOptions = {
