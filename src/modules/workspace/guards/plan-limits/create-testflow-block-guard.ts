@@ -12,7 +12,7 @@ import { TeamService } from "@src/modules/identity/services/team.service";
 export class CreateTestflowBlockGuard implements CanActivate {
   constructor(
     private readonly workspaceService: WorkspaceService,
-    private readonly teamService: TeamService
+    private readonly teamService: TeamService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -22,8 +22,10 @@ export class CreateTestflowBlockGuard implements CanActivate {
     );
     const teamId = workspaceDetails.team.id;
     const userTeam = await this.teamService.get(teamId);
-    const planData = userTeam?.plan
-
+    const planData = userTeam?.plan;
+    if (!planData.active) {
+      throw new ForbiddenException("Hub is Restricted.");
+    }
     if (
       request?.body?.nodes?.length >
       planData?.limits?.blocksPerTestflow?.value + 1

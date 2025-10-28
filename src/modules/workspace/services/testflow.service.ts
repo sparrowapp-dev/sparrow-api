@@ -33,6 +33,7 @@ import {
   CreateTestflowDto,
   CreateTestflowSchedularDto,
   UpdateTestflowDto,
+  TestflowValidationResultDto,
 } from "../payloads/testflow.payload";
 import {
   RunConfigurationDto,
@@ -42,6 +43,7 @@ import {
   TestflowSchedular,
   TestFlowSchedularRunHistory,
 } from "@src/modules/common/models/testflow.model";
+import { BodyModeEnum } from "@src/modules/common/models/collection.model";
 import { DecodedUserObject } from "@src/types/fastify";
 import { v4 as uuidv4 } from "uuid";
 import { TestflowSchedulerService } from "./testflow-schedular.service";
@@ -64,6 +66,7 @@ import { OnModuleInit } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { EnvironmentRepository } from "../repositories/environment.repository";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
+import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
 
 /**
  * Testflow Service
@@ -82,6 +85,7 @@ export class TestflowService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly userReposistory: UserRepository,
     private readonly environmentReposistory: EnvironmentRepository,
+    private readonly teamReposistory:TeamRepository,
   ) {}
 
   async getNextFutureCronExpression(pastCron: string, intervalHours: number): Promise<string> {
@@ -148,7 +152,7 @@ export class TestflowService implements OnModuleInit {
                 ),
                 (_cronExpression: string)=>{
                   this.testflowRepository.editSchedular(tf._id.toString(), schedule.id, {
-                    cronExpression: _cronExpression,
+                      cronExpression: _cronExpression,
                   });
                 },
                 cronExpression,
@@ -215,7 +219,7 @@ export class TestflowService implements OnModuleInit {
       );
       environmentName = environmentData?.name || "";
     }
-  
+
     if(updateScheduleDto.runConfiguration){
       const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
       const cronExpression = this.generateCronExpression(runCycleConfig);
@@ -228,13 +232,13 @@ export class TestflowService implements OnModuleInit {
     }else{
       if(existingSchedular.runConfiguration.runCycle === RunCycleEnum.HOURLY){
           const runCycleConfig = this.buildRunCycleConfig(existingSchedular.runConfiguration);
-          const cronExpression = this.generateCronExpression(runCycleConfig);
-          if (!cronExpression) {
-            updateScheduleDto.cronExpression = null;
+        const cronExpression = this.generateCronExpression(runCycleConfig);
+        if (!cronExpression) {
+          updateScheduleDto.cronExpression = null;
           }
           else{
-            updateScheduleDto.cronExpression = cronExpression;
-          }
+          updateScheduleDto.cronExpression = cronExpression;
+        }
       }
     }
 
@@ -253,7 +257,7 @@ export class TestflowService implements OnModuleInit {
       scheduleId,
       updatedSchedular,
     );
-    
+
     const schedular = await this.testflowRepository.getSchedularById(
       testflowId,
       scheduleId,
@@ -287,8 +291,8 @@ export class TestflowService implements OnModuleInit {
         );
       }
     }
-    
-    return result;  
+
+    return result;
   }
 
   /**
@@ -441,7 +445,7 @@ export class TestflowService implements OnModuleInit {
       id,
       user._id,
     );
-  
+
     // Remove all associated cronjobs for this testflow
     if (testflow?.schedules && Array.isArray(testflow.schedules)) {
       for (const schedule of testflow.schedules) {
@@ -481,7 +485,13 @@ export class TestflowService implements OnModuleInit {
   ): Promise<WithId<Testflow>[]> {
     await this.checkPermission(id, userId);
     const workspace = await this.workspaceService.get(id);
-    const testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    let testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    const teamId = workspace.team.id;
+    const getTeamData = await this.teamReposistory.get(teamId);
+    if(getTeamData){
+      const testflowLimit =  getTeamData.plan.limits.testflowPerWorkspace.value;
+      testflowIds = testflowIds.slice(0, testflowLimit);
+    }
     if (testflowIds.length === 0) return [];
     const testflows =
       await this.testflowRepository.getTestflowsByIds(testflowIds);
@@ -497,7 +507,13 @@ export class TestflowService implements OnModuleInit {
     if (workspace.workspaceType !== WorkspaceType.PUBLIC) {
       throw new BadRequestException("Workspace is not public.");
     }
-    const testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    let testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
+    const teamId = workspace.team.id;
+    const getTeamData = await this.teamReposistory.get(teamId);
+    if(getTeamData){
+      const testflowLimit =  getTeamData.plan.limits.testflowPerWorkspace.value;
+      testflowIds = testflowIds.slice(0, testflowLimit);
+    }
     if (testflowIds.length === 0) return [];
     const testflows =
       await this.testflowRepository.getTestflowsByIds(testflowIds);
@@ -636,7 +652,7 @@ export class TestflowService implements OnModuleInit {
         ),
         (_cronExpression: string)=>{
           this.testflowRepository.editSchedular(schedularData.testflowId, schedulerId, {
-            cronExpression: _cronExpression,
+              cronExpression: _cronExpression,
           });
         },
         cronExpression,
@@ -968,6 +984,117 @@ export class TestflowService implements OnModuleInit {
     }
   }
 
+  /**
+   * Validates testflow nodes for localhost URLs and formdata files
+   * @param workspaceId - The workspace ID
+   * @param testflowId - The testflow ID
+   * @param userId - The user ID for permission check
+   * @returns Validation results containing flags and detailed node information
+   */
+  async validateTestflowNodes(
+    workspaceId: string, 
+    testflowId: string, 
+    userId: ObjectId
+  ): Promise<TestflowValidationResultDto> {
+    // Check permissions
+    await this.checkPermission(workspaceId, userId);
+    
+    // Get the testflow
+    const testflow = await this.testflowRepository.get(testflowId);
+    
+    const localhostNodes: Array<{
+      nodeId: string;
+      blockName: string;
+      url: string;
+    }> = [];
+    
+    const formdataNodes: Array<{
+      nodeId: string;
+      blockName: string;
+      fileCount: number;
+    }> = [];
+
+    // Validate each node
+    if (testflow.nodes && Array.isArray(testflow.nodes)) {
+      for (const node of testflow.nodes) {
+        if (!node.data) continue;
+
+        const { blockName = 'Unnamed Block', requestData } = node.data;
+        
+        // Check for localhost URLs by examining hostname only
+        if (requestData?.url) {
+          try {
+            const url = new URL(requestData.url.trim());
+            const hostname = url.hostname.toLowerCase();
+            
+            const localhostPatterns = [
+              'localhost',
+              '127.0.0.1', 
+              '0.0.0.0',
+              '::1', // IPv6 localhost
+            ];
+            
+            // Check for private IP ranges
+            const isPrivateIP = (
+              hostname.startsWith('192.168.') ||
+              hostname.startsWith('10.') ||
+              (hostname.startsWith('172.') && 
+                (() => {
+                  const parts = hostname.split('.');
+                  if (parts.length >= 2) {
+                    const secondOctet = parseInt(parts[1], 10);
+                    return secondOctet >= 16 && secondOctet <= 31;
+                  }
+                  return false;
+                })()
+              ) ||
+              hostname.endsWith('.local') ||
+              hostname.includes('.local.')
+            );
+            
+            const isLocalhost = localhostPatterns.includes(hostname) || isPrivateIP;
+            
+            if (isLocalhost) {
+              localhostNodes.push({
+                nodeId: node.id,
+                blockName,
+                url: requestData.url,
+              });
+            }
+          } catch (error) {           
+          }
+        }
+      
+        // Check for formdata files
+        if (requestData?.selectedRequestBodyType === BodyModeEnum["multipart/form-data"] && requestData?.body?.formdata?.text) {
+          const files = requestData.body.formdata.text.filter((formData)=>{
+            if(formData.type === 'file'){
+              return true;
+            }else{
+              return false;
+            }
+          });
+          const fileCount = Array.isArray(files) ? files.length : 0;
+          
+          if (fileCount > 0) {
+            formdataNodes.push({
+              nodeId: node.id,
+              blockName,
+              fileCount,
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      hasLocalhostUrls: localhostNodes.length > 0,
+      hasFormdataFiles: formdataNodes.length > 0,
+      localhostNodes,
+      formdataNodes,
+    };
+  }
+
   private async sendNotification(
     emails: string[],
     emailData: EmailData,
@@ -978,12 +1105,14 @@ export class TestflowService implements OnModuleInit {
       );
     }
     const transporter = this.emailService.createTransporter();
+    const hubUrlLink = `${this.configService.get("sparrowApp.baseUrl")}/app/collections`
     // Merge emailData
     const context = {
       sparrowEmail: this.configService.get("support.sparrowEmail"),
       sparrowWebsite: this.configService.get("support.sparrowWebsite"),
       sparrowWebsiteName: this.configService.get("support.sparrowWebsiteName"),
       authUrl: this.configService.get("auth.baseURL"),
+      hubUrl: hubUrlLink,
       ...emailData,
     };
     const promises: Promise<any>[] = [];

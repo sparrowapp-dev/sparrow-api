@@ -4,8 +4,7 @@
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Sparrow Test Report</title>
-
+      <title>Plan Downgraded</title>
 
       <style>
           body {
@@ -88,8 +87,7 @@
                                  <tr>
                                      <td align="center" valign="middle" background="https://sparrowassets.blob.core.windows.net/emailtemplate/Sparrow-email-headerv2.png" bgcolor="#4A90E2" style="background-position: center; background-repeat: no-repeat; background-size: cover;">
                                          <div style="padding: 40px 30px;">
-                                             <h1 style="font-size: 20px; font-weight: 600; color: #ffffff; margin: 0 0 12px 0; line-height: 1.2; font-family: 'Inter', Arial, sans-serif;">Sparrow Test Report</h1><br>
-                                             <p style="font-size: 14px; font-weight: 400; color: #ffffff; margin: 0 0 0 0; line-height: 1.2; font-family: 'Inter', Arial, sans-serif;">Scheduled Run Completed</p>
+                                             <h1 style="font-size: 20px; font-weight: 600; color: #ffffff; margin: 0 0 12px 0; line-height: 1.2; font-family: 'Inter', Arial, sans-serif;">Your {{hubName}} Hub Has Been Downgraded</h1><br>
                                          </div>
                                      </td>
                                  </tr>
@@ -99,81 +97,32 @@
                  </table>
                  <section>
                      <!-- Welcome Box -->
-                     <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 30px;">
+                    <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 30px;">
                          <tr>
                              <td>
                                  <div class="email-text-style">
                                      <p>
-                                         Hi {{userName}}, 👋
+                                         Hi {{firstName}}, 👋
                                      </p>
                                      <p>
-                                         Your scheduled run for "{{scheduleName}}" completed at {{scheduleLastestRun}}. Here's the overview of the results:
+                                         As scheduled, your subscription for the <strong>{{hubName}}</strong> Hub has been changed from the <strong>{{previousPlanName}}</strong> to the <strong>{{newPlanName}}</strong>, effective today.
                                      </p>
                                      <p>
-                                         Run Result: 
-                                        {{#if isSuccess}}
-                                            ✅️ <span class="status" style=""> Success</span> (All Passed)
-                                        {{else if isFailed}}
-                                            ❌️ <span class="status" style=""> Failed</span>
-                                        {{else if isPartial}}
-                                            ⚠️ <span class="status" style=""> Partially Failed</span><span>({{scheduleRunFailedCount}}/{{scheduleRunTotalRequest}} Requests Failed)</span>
-                                        {{/if}}
+                                         Based on the selections you made, your chosen workspaces and team members remain active. All other workspaces have now been archived, and the remaining team members have been removed from the Hub.
                                      </p>
                                  </div>
                              </td>
                          </tr>
-                     </table>
-                     <table style="margin-bottom: 20px;" class="email-text-style" width="100%" cellpadding="0" cellspacing="0" border="0">
-                         <tr>
-                             <td style="border-bottom:1px solid #b0b8c1" colspan="2">
-                                 <h1 style="margin-top:0; font-size: 20px;font-weight: 600;margin-bottom: 15px;">Run Summary</h1>
-                             </td>
-                         </tr>
-                         <tr>
-                             <td style="border-bottom:1px solid #e0e0e0;">Total Requests</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{scheduleRunTotalRequest}}</td>
-                         </tr>
-                         <tr>
-                             <td style="border-bottom:1px solid #e0e0e0;">Passed</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{scheduleRunPassedCount}}</td>
-                         </tr>
-                         <tr>
-                             <td style="border-bottom:1px solid #e0e0e0;">Failed</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{scheduleRunFailedCount}}</td>
-                         </tr>
-                         <tr>
-                             <td style="border-bottom:1px solid #e0e0e0;">Pass Rate</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{scheduleRunPassPercentage}}%</td>
-                         </tr>
-                         <tr>
-                             <td style="border-bottom:1px solid #e0e0e0;">Total Duration</td>
-                             <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">
-                                 {{scheduleTotalTime}}
-                             </td>
-                         </tr>
-                     </table>
-
-                     <!-- Run Details -->
+                    </table>
+                     <!-- button -->
                      <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
                          <tr>
                              <td align="center" valign="middle">
                                   <tr>
-                                    <td>
-                                        <div style="padding: 20px 12px;">
-                                            <h3 class="details-title">Run Details:</h3>
-                                            <ul class="details-list">
-                                            <li><strong>Schedule Name: </strong>{{scheduleName}}</li>
-                                            <li><strong>Executed On: </strong>{{scheduleLastestRun}}</li>
-                                            <li><strong>Environment: </strong>{{scheduleRunEnvName}}</li>
-                                            </ul>
-                                        </div>
-                                    </td>
-                                  </tr>
-                                  <tr>
                                      <td>
-                                        <div style="padding: 5px 12px 5px 12px;">
+                                        <div style="padding: 5px 0px 5px 0px;">
                                             <p style="font-size: 16px; margin: 0; line-height: 1.4; font-family: 'Inter', Arial, sans-serif; font-weight: 400; margin-bottom: 14px;">
-                                            Click below to view full detailed report in Sparrow:
+                                            For a detailed list of all the content and users affected by this change, you can view a full summary report.
                                             </p>
                                             <div>
                                             <table cellspacing="0" cellpadding="0" border="0">
@@ -184,8 +133,8 @@
                                                             <table cellspacing="0" cellpadding="0" border="0">
                                                                 <tr>
                                                                     <td style="border-radius: 6px; background-color: #316CF6; padding: 6px 12px; min-height: 36px;">
-                                                                        <a href={{hubUrl}} class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none;">
-                                                                            View Report
+                                                                        <a href="{{excelDownloadUrl}}" class="email-text-style" style="display: inline-block; color: #ffffff; text-decoration: none; cursor: pointer;">
+                                                                            View Downgrade Summary
                                                                         </a>
                                                                     </td>
                                                                 </tr>
@@ -202,25 +151,47 @@
                              </td>
                          </tr>
                      </table>
+                     <table style="margin-bottom: 20px;" class="email-text-style" width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td style="border-bottom:1px solid #b0b8c1" colspan="2">
+                                <h1 style="margin-top:0; font-size: 20px;font-weight: 600;margin-bottom: 15px;">Overview</h1>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom:1px solid #e0e0e0; padding: 12px 0;">Previous plan</td>
+                            <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{previousPlanName}}</td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom:1px solid #e0e0e0; padding: 12px 0;">Current Plan</td>
+                            <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{newPlanName}}</td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom:1px solid #e0e0e0; padding: 12px 0;">Effective From</td>
+                            <td style="text-align:start; padding:12px 160px 12px 96px; border-bottom:1px solid #e0e0e0;">{{effectiveDate}}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="padding-top: 12px;">
+                                <p style="margin: 0;">You can upgrade your plan at any time to instantly restore all archived workspaces and team permissions.</p>
+                            </td>
+                        </tr>
+                    </table>
                      <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 30px;">
                          <tr>
                              <td>
                                  <div class="email-text-style">
                                      <p>
-                                         If you have any questions or need a quick walkthrough, we’re here to help, reach out to us at
-                                         <a href="mailto:contactus@sparrowapp.dev" style="color: #316CF6;">contactus@sparrowapp.dev</a>
+                                         If you have any questions or need a quick walkthrough, we're here to help, reach out to us at
+                                         <a href="mailto:{{sparrowEmail}}" style="color: #316CF6;">{{sparrowEmail}}</a>
                                      </p>
                                      <p>
                                          Warm Regards,<br>
                                          The Sparrow Team<br>
-                                         <a href="https://sparrowapp.dev/" style="color: #316CF6;">https://sparrowapp.dev/</a>
+                                         <a href="{{sparrowWebsite}}" style="color: #316CF6;">{{sparrowWebsite}}</a>
                                      </p>
                                  </div>
                              </td>
                          </tr>
                      </table>
-
-
                  </section>
                  {{> footerV2}}
              </div>

@@ -18,10 +18,29 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { Auth, KeyValue, SparrowRequestBody } from "./collection.rxdb.model";
+import { Auth, KeyValue } from "./collection.rxdb.model";
 import { AuthModeEnum, BodyModeEnum } from "./collection.model";
 import { HTTPMethods } from "fastify";
 import { DayOfWeek, NotificationReceiveType, RequestDataTypeEnum, RunCycleEnum,  } from "../enum/testflow.enum";
+
+export class SparrowRequestBody {
+  raw?: string;
+  urlencoded?: KeyValue[];
+  formdata?: FormData;
+}
+
+
+export class FormDataKeyValue {
+  key: string;
+  value: string | unknown;
+  checked: boolean;
+  type: "text" | "file";
+}
+
+
+interface FormData {
+  text: FormDataKeyValue[];
+}
 
 export class RequestMetaData {
   @ApiProperty({ example: "put" })

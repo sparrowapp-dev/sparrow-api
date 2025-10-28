@@ -9,6 +9,7 @@ import {
   AuthCollection,
   AuthProfiles,
   CreateCollectionDto,
+  MoveRequestDto,
   UpdateCollectionDto,
 } from "../payloads/collection.payload";
 import { CollectionRepository } from "../repositories/collection.repository";
@@ -521,6 +522,10 @@ export class CollectionService {
       ?.isRequestTestsScriptDemoCompleted
       ? false
       : true;
+    collection.isRequestAssertionsDemoCompleted = userDetails?.tourGuide
+      ?.isRequestAssertionsDemoCompleted
+      ? false
+      : true;
     let alreadyProcessed = false;
     if (
       userDetails?.isGenerateVariableTrial &&
@@ -594,6 +599,10 @@ export class CollectionService {
         : true;
       collections[i].isRequestTestsNoCodeDemoCompleted = userDetails?.tourGuide
         ?.isRequestTestsNoCodeDemoCompleted
+        ? false
+        : true;
+      collections[i].isRequestAssertionsDemoCompleted = userDetails?.tourGuide
+        ?.isRequestAssertionsDemoCompleted
         ? false
         : true;
       let alreadyProcessed = false;
@@ -1245,6 +1254,213 @@ export class CollectionService {
     return count;
   }
 
+  async moveRequest(
+    moveRequestDto: MoveRequestDto,
+    user: DecodedUserObject,
+  ): Promise<{ success: boolean; message: string }> {
+    const {
+      oldCollectionId,
+      oldFolderId,
+      newCollectionId,
+      newFolderId,
+      requestId,
+      workspaceId,
+      targetRequestId,
+      insertPosition,
+    } = moveRequestDto;
+
+    // Check workspace permissions
+    await this.checkPermission(workspaceId, user._id);
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
+
+    // Validate collections exist
+    const oldCollection = await this.collectionRepository.get(oldCollectionId);
+    if (!oldCollection) {
+      throw new Error("Source collection not found");
+    }
+
+    let newCollection = oldCollection;
+    if (oldCollectionId !== newCollectionId) {
+      newCollection = await this.collectionRepository.get(newCollectionId);
+      if (!newCollection) {
+        throw new Error("Destination collection not found");
+      }
+    }
+
+    // Verify both collections belong to the same workspace
+    const workspace = await this.workspaceRepository.get(workspaceId);
+    const collectionIds =
+      workspace.collection?.map((c) => c.id.toString()) || [];
+
+    if (!collectionIds.includes(oldCollectionId)) {
+      throw new Error(
+        "Source collection does not belong to the specified workspace",
+      );
+    }
+
+    if (!collectionIds.includes(newCollectionId)) {
+      throw new Error(
+        "Destination collection does not belong to the specified workspace",
+      );
+    }
+
+    // Find and remove request from source
+    let requestToMove: CollectionItem | null = null;
+
+    const removeRequestFromItems = (items: CollectionItem[]): boolean => {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        if (item.id === requestId) {
+          requestToMove = { ...item };
+          items.splice(i, 1);
+          return true;
+        }
+
+        if (item.type === ItemTypeEnum.FOLDER && item.items) {
+          if (removeRequestFromItems(item.items)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    // Remove from specific folder or collection root
+    let requestFound = false;
+    if (oldFolderId) {
+      // Find the specific folder and remove from it
+      const findAndRemoveFromFolder = (items: CollectionItem[]): boolean => {
+        for (const item of items) {
+          if (item.type === ItemTypeEnum.FOLDER && item.id === oldFolderId) {
+            if (item.items) {
+              return removeRequestFromItems(item.items);
+            }
+          }
+          if (item.type === ItemTypeEnum.FOLDER && item.items) {
+            if (findAndRemoveFromFolder(item.items)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      requestFound = findAndRemoveFromFolder(oldCollection.items);
+    } else {
+      // Remove from collection root
+      requestFound = removeRequestFromItems(oldCollection.items);
+    }
+
+    if (!requestFound || !requestToMove) {
+      throw new Error("Request not found in source location");
+    }
+
+    // Add request to destination
+    const addRequestToDestination = () => {
+      if (newFolderId) {
+        // Add to specific folder
+        const findAndAddToFolder = (items: CollectionItem[]): boolean => {
+          for (const item of items) {
+            if (item.type === ItemTypeEnum.FOLDER && item.id === newFolderId) {
+              if (!item.items) {
+                item.items = [];
+              }
+
+              // Handle positioning if targetRequestId is provided
+              if (targetRequestId && insertPosition) {
+                const targetIndex = item.items.findIndex(
+                  (req) => req.id === targetRequestId,
+                );
+
+                if (targetIndex !== -1) {
+                  const insertIndex =
+                    insertPosition === "before" ? targetIndex : targetIndex + 1;
+                  item.items.splice(insertIndex, 0, requestToMove!);
+                } else {
+                  // Target not found, add at the end
+                  item.items.push(requestToMove!);
+                }
+              } else {
+                // No positioning specified, add at the end
+                item.items.push(requestToMove!);
+              }
+              return true;
+            }
+            if (item.type === ItemTypeEnum.FOLDER && item.items) {
+              if (findAndAddToFolder(item.items)) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        if (!findAndAddToFolder(newCollection.items)) {
+          throw new Error("Destination folder not found");
+        }
+      } else {
+        // Add to collection root
+        if (targetRequestId && insertPosition) {
+          const targetIndex = newCollection.items.findIndex(
+            (item) => item.id === targetRequestId,
+          );
+
+          if (targetIndex !== -1) {
+            const insertIndex =
+              insertPosition === "before" ? targetIndex : targetIndex + 1;
+            newCollection.items.splice(insertIndex, 0, requestToMove!);
+          } else {
+            // Target not found, add at the end
+            newCollection.items.push(requestToMove!);
+          }
+        } else {
+          // No positioning specified, add at the end
+          newCollection.items.push(requestToMove!);
+        }
+      }
+    };
+
+    addRequestToDestination();
+
+    // Update collections
+    if (oldCollectionId === newCollectionId) {
+      // Same collection - single update
+      await this.collectionRepository.updateCollection(oldCollectionId, {
+        items: oldCollection.items,
+        updatedAt: new Date(),
+        updatedBy: { name: user.name, id: user._id.toString() },
+      });
+    } else {
+      // Different collections - update both
+      await this.collectionRepository.updateCollection(oldCollectionId, {
+        items: oldCollection.items,
+        updatedAt: new Date(),
+        updatedBy: { name: user.name, id: user._id.toString() },
+      });
+
+      await this.collectionRepository.updateCollection(newCollectionId, {
+        items: newCollection.items,
+        updatedAt: new Date(),
+        updatedBy: { name: user.name, id: user._id.toString() },
+      });
+    }
+
+    // Update workspace timestamp
+    const currentWorkspaceObject = new ObjectId(workspaceId);
+    const updateWorkspaceData: Partial<Workspace> = {
+      updatedAt: new Date(),
+    };
+    await this.workspaceRepository.updateWorkspaceById(
+      currentWorkspaceObject,
+      updateWorkspaceData,
+    );
+
+    return {
+      success: true,
+      message: `Request "${requestToMove.name}" moved successfully`,
+    };
+  }
+
   private replaceMockRequestUrls(
     items: CollectionItem[],
     mockCollectionUrl: string,
@@ -1387,7 +1603,7 @@ export class CollectionService {
     const validGeneratedPairs = generatedPairs.filter(
       (pair) => pair.key?.trim() && pair.value?.trim(),
     );
-    if(validGeneratedPairs.length < 1){
+    if (validGeneratedPairs.length < 1) {
       throw new BadRequestException(
         "Please provide Vaild Generated Variables.",
       );

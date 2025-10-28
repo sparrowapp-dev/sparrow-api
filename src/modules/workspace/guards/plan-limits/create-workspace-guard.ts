@@ -17,6 +17,9 @@ export class CreateWorkspaceGuard implements CanActivate {
     const teamId = request?.body?.id;
     const usersTeamdetails = await this.teamService.get(teamId);
     const planData = usersTeamdetails?.plan;
+    if (!planData.active) {
+      throw new ForbiddenException("Hub is Restricted.");
+    }
     if (
       usersTeamdetails?.workspaces?.length >=
       planData?.limits?.workspacesPerHub?.value

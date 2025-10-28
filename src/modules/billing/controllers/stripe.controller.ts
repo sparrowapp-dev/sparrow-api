@@ -49,6 +49,7 @@ import { SalesEmailRepository } from "@src/modules/workspace/repositories/sales-
 import { ConfigService } from "@nestjs/config";
 import { TrialType } from "@src/modules/common/enum/trial.enum";
 import { PricingPlan } from "@src/modules/common/models/pricing.model";
+import { DownGradeService } from "../services/downgrade.service";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -72,6 +73,7 @@ export class StripeController {
     private readonly pricingService: PricingService,
     private readonly configService: ConfigService,
     private readonly salesEmailRepository: SalesEmailRepository,
+    private readonly downgradeService: DownGradeService,
   ) {
     this.isStripeAvailable = !!this.stripeService;
 
@@ -295,10 +297,10 @@ export class StripeController {
         for (const planBilling of currentPlan.billing) {
           if (planBilling.providers?.stripe === createSubscriptionDto.priceId) {
             selectedPlan = currentPlan;
-            break; 
+            break;
           }
         }
-        if (selectedPlan) break; 
+        if (selectedPlan) break;
       }
       if (selectedPlan) {
         // Replace or set planName
@@ -423,6 +425,13 @@ export class StripeController {
         updateSubscriptionDto.seats,
         updateSubscriptionDto.paymentBehavior,
       );
+      if (subscription && updateSubscriptionDto?.workspaces) {
+        await this.downgradeService.addDowgradeDetails(
+          updateSubscriptionDto?.metadata?.hubId,
+          updateSubscriptionDto?.workspaces,
+          updateSubscriptionDto?.users,
+        );
+      }
 
       return subscription;
     } catch (error) {
@@ -435,7 +444,7 @@ export class StripeController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("user", "admin")
-  @Delete("subscriptions/:id")
+  @Post("subscriptions/:id")
   @ApiOperation({
     summary: "Cancel a subscription",
     description:
@@ -459,12 +468,17 @@ export class StripeController {
   ): Promise<SubscriptionResponseDto> {
     try {
       this.checkStripeAvailability();
-
       const subscription = await this.stripeService.cancelSubscription(
         subscriptionId,
         false, //disables cancellation at mid cycle
       );
-
+      if (subscription) {
+        await this.downgradeService.addDowgradeDetails(
+          cancelSubscriptionDto.teamId,
+          cancelSubscriptionDto.workspaces,
+          cancelSubscriptionDto.users,
+        );
+      }
       return { subscription };
     } catch (error) {
       throw new HttpException(
@@ -509,7 +523,11 @@ export class StripeController {
         subscriptionId,
         reactivateDto.metadata,
       );
-
+      if (subscription) {
+        await this.downgradeService.removeDowngradeDetails(
+          reactivateDto.metadata?.hubId,
+        );
+      }
       return { subscription };
     } catch (error) {
       throw new HttpException(

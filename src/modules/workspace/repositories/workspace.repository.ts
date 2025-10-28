@@ -44,6 +44,24 @@ export class WorkspaceRepository {
     if (!data) {
       throw new BadRequestException("Not Found");
     }
+    // Check if workspace is restricted
+    if (data?.isRestricted === true || data?.isFreezed === true) {
+      console.log(`🚫 Access denied: Workspace ${_id} is restricted`);
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
+    return data;
+  }
+
+  private async getWorkspace(id: string) {
+    const _id = new ObjectId(id);
+    const data = await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .findOne({ _id });
+    if (!data) {
+      throw new BadRequestException("Not Found");
+    }
     return data;
   }
 
@@ -52,16 +70,28 @@ export class WorkspaceRepository {
    * @param {string[]} workspaceIds
    * @returns {Promise<Team>} queried team data
    */
-  async getWorkspacesByIds(workspaceIds: string[]): Promise<WithId<Workspace>[]> {
-    const workspaces = await this.db.collection<Workspace>(Collections.WORKSPACE)
-    .find({ _id: { $in: workspaceIds.map(id => new ObjectId(id)) } })
-    .toArray();
+  async getWorkspacesByIds(
+    workspaceIds: string[],
+  ): Promise<WithId<Workspace>[]> {
+    const workspaces = await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .find({ _id: { $in: workspaceIds.map((id) => new ObjectId(id)) } })
+      .toArray();
     if (!workspaces) {
       throw new BadRequestException(
         "The workspaces with that ids could not be found.",
       );
     }
-    return workspaces;
+    // Filter out restricted workspaces
+    const filteredWorkspaces = workspaces.filter((workspace) => {
+      // Skip if workspace.isRestricted === true
+      if (workspace?.isRestricted === true || workspace?.isFreezed === true) {
+        console.log(`🚫 Skipping restricted workspace: ${workspace._id}`);
+        return false;
+      }
+      return true;
+    });
+    return filteredWorkspaces;
   }
 
   async getPublicWorkspace(id: string): Promise<WithId<Workspace>> {
@@ -76,10 +106,13 @@ export class WorkspaceRepository {
     };
   }
 
-  async addWorkspace(params: Workspace, _uuid: ObjectId): Promise<InsertOneResult<Document>> {
+  async addWorkspace(
+    params: Workspace,
+    _uuid: ObjectId,
+  ): Promise<InsertOneResult<Document>> {
     const response = await this.db
       .collection(Collections.WORKSPACE)
-      .insertOne({...params, _id: _uuid || new ObjectId()});
+      .insertOne({ ...params, _id: _uuid || new ObjectId() });
     return response;
   }
 
@@ -87,6 +120,16 @@ export class WorkspaceRepository {
     const response = await this.db
       .collection(Collections.WORKSPACE)
       .findOne({ _id: id });
+    // Check if workspace is restricted
+    if (!response) {
+      throw new BadRequestException("Workspace not found.");
+    }
+    if (response?.isRestricted === true || response?.isFreezed === true) {
+      console.log(`Access denied: Workspace ${id} is restricted`);
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     return response;
   }
 
@@ -97,7 +140,17 @@ export class WorkspaceRepository {
       .collection<Workspace>(Collections.WORKSPACE)
       .find({ _id: { $in: IdArray } })
       .toArray();
-    return response;
+    if (!response || response.length === 0) {
+      throw new BadRequestException("No workspaces found.");
+    }
+    // Filter out restricted workspaces
+    const filteredResponse = response.filter((workspace) => {
+      if (workspace?.isRestricted === true) {
+        return false;
+      }
+      return true;
+    });
+    return filteredResponse;
   }
 
   async updateWorkspaceById(
@@ -143,6 +196,12 @@ export class WorkspaceRepository {
     collection: CollectionDto,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
+    const data = await this.getWorkspace(workspaceId);
+    if (data?.isRestricted || data?.isFreezed) {
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     return await this.db.collection(Collections.WORKSPACE).updateOne(
       { _id },
       {
@@ -163,6 +222,12 @@ export class WorkspaceRepository {
     name: string,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
+    const data = await this.getWorkspace(workspaceId);
+    if (data?.isRestricted || data?.isFreezed) {
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     const collection_id = new ObjectId(collectionId);
     return this.db
       .collection(Collections.WORKSPACE)
@@ -176,6 +241,12 @@ export class WorkspaceRepository {
     collectionsArray: CollectionDto[],
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
+    const data = await this.getWorkspace(workspaceId);
+    if (data?.isRestricted || data?.isFreezed) {
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     return this.db
       .collection(Collections.WORKSPACE)
       .updateOne({ _id }, { $set: { collection: collectionsArray } });
@@ -205,6 +276,12 @@ export class WorkspaceRepository {
     environmentsArray: EnvironmentDto[],
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
+    const data = await this.getWorkspace(workspaceId);
+    if (data?.isRestricted || data?.isFreezed) {
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     return this.db
       .collection(Collections.WORKSPACE)
       .updateOne({ _id }, { $set: { environments: environmentsArray } });
@@ -216,6 +293,12 @@ export class WorkspaceRepository {
     name: string,
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
+    const data = await this.getWorkspace(workspaceId);
+    if (data?.isRestricted || data?.isFreezed) {
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     const environment_id = new ObjectId(environmentId);
     return this.db
       .collection(Collections.WORKSPACE)
@@ -267,6 +350,12 @@ export class WorkspaceRepository {
     testflowsArray: TestflowInfoDto[],
   ): Promise<UpdateResult> {
     const _id = new ObjectId(workspaceId);
+    const data = await this.getWorkspace(workspaceId);
+    if (data?.isRestricted || data?.isFreezed) {
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     const response = await this.db
       .collection(Collections.WORKSPACE)
       .updateOne({ _id }, { $set: { testflows: testflowsArray } });
@@ -302,6 +391,12 @@ export class WorkspaceRepository {
     id: ObjectId,
     workspaceType: WorkspaceType,
   ): Promise<WithId<Workspace>> {
+    const data = await this.getWorkspace(id.toString());
+    if (data?.isRestricted || data?.isFreezed) {
+      throw new BadRequestException(
+        "This workspace is restricted and cannot be accessed.",
+      );
+    }
     const response = await this.db
       .collection<Workspace>(Collections.WORKSPACE)
       .findOneAndUpdate(

@@ -126,6 +126,14 @@ export class Workspace {
   @IsOptional()
   users?: UserDto[];
 
+  @IsBoolean()
+  @IsOptional()
+  isRestricted?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isFreezed?:boolean;
+
   @IsDate()
   @IsOptional()
   createdAt?: Date;
@@ -157,4 +165,10 @@ export class WorkspaceDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+}
+
+export class WorkspaceDtoWithRestriction extends WorkspaceDto{
+  @IsBoolean()
+  @IsOptional()
+  isRestricted?: boolean;
 }
