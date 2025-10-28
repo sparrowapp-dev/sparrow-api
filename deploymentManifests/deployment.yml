@@ -422,7 +422,6 @@ spec:
                   name: sparrow-api-secret
                   key: DOWNGRADE_HUB_BLOB_CONTAINER
                   
-
 ---
 apiVersion: v1
 kind: Service
