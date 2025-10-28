@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 // ---- Third Party Libraries
@@ -18,87 +18,70 @@ export class BlobStorageService {
   private containerClient: ContainerClient;
   private aiContainerClient: ContainerClient;
   private downGradeHubClient: ContainerClient;
+  private readonly logger = new Logger(BlobStorageService.name);
 
   /**
    * Constructor to initialize BlobStorageService with required dependencies.
    * @param configService - Injected ConfigService to access environment variables.
    */
   constructor(private configService: ConfigService) {
-    const AZURE_STORAGE_CONNECTION_STRING = this.configService.get(
-      "azure.connectionString",
-    );
-    const feedbackBlobContainer = this.configService.get(
-      "feedbackBlob.container",
-    );
-    const aiConversationBLobContainer = this.configService.get(
-      "ai.conversationConatiner",
-    );
-
     try {
-      /**
-       * Create an instance of BlobServiceClient using the connection string.
-       */
-
       const azureConnectionString = this.configService.get(
         "azure.connectionString",
       );
-
-      if (!azureConnectionString) {
-        console.warn(
-          "Azure Storage is disabled: No connection string provided.",
-        );
-        return;
-      }
-
       const feedbackBlobContainer = this.configService.get(
         "feedbackBlob.container",
       );
-
-      if (!feedbackBlobContainer) {
-        console.warn("Feedback Blob is disabled: No container provided.");
-        return;
-      }
-
       const aiConversationBLobContainer = this.configService.get(
         "ai.conversationConatiner",
       );
-
-      if (!aiConversationBLobContainer) {
-        console.warn(
-          "AI Conversation Blob is disabled: No container provided.",
-        );
-        return;
-      }
-
       const downgradeHubBlobContainer = this.configService.get(
         "downgradeHub.container",
       );
 
+      if (!azureConnectionString) {
+        this.logger.warn(
+          "Azure Storage disabled: Connection string not provided",
+        );
+        return;
+      }
+
+      if (!feedbackBlobContainer) {
+        this.logger.warn("Feedback Blob disabled: Container not provided");
+        return;
+      }
+
+      if (!aiConversationBLobContainer) {
+        this.logger.warn(
+          "AI Conversation Blob disabled: Container not provided",
+        );
+        return;
+      }
+
       if (!downgradeHubBlobContainer) {
-        console.warn("Downgrade Blob is disabled: No container provided.");
+        this.logger.warn("Downgrade Blob disabled: Container not provided");
         return;
       }
 
       this.blobServiceClient = BlobServiceClient.fromConnectionString(
         azureConnectionString,
       );
-      /**
-       * Get a ContainerClient instance for the 'feedbackfiles' container.
-       */
       this.containerClient = this.blobServiceClient.getContainerClient(
         feedbackBlobContainer,
       );
-      /**
-       * Get a ContainerClient instance for the 'AI Conversation Doc' container.
-       */
       this.aiContainerClient = this.blobServiceClient.getContainerClient(
         aiConversationBLobContainer,
       );
       this.downGradeHubClient = this.blobServiceClient.getContainerClient(
         downgradeHubBlobContainer,
       );
-    } catch (e) {
-      console.error(e);
+
+      this.logger.log("Azure Blob Storage initialized successfully");
+    } catch (error) {
+      this.logger.error(
+        `Azure Blob Storage initialization failed: ${error.message}`,
+      );
+      throw error;
     }
   }
 
