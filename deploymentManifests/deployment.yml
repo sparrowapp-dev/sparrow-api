@@ -415,7 +415,13 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: sparrow-api-secret
-                  key: SPARROW_APP_BASE_URL            
+                  key: SPARROW_APP_BASE_URL 
+            - name: DOWNGRADE_HUB_BLOB_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key:   DOWNGRADE_HUB_BLOB_CONTAINER
+                  
 
 ---
 apiVersion: v1
