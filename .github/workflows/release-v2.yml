@@ -15,3 +15,4 @@ jobs:
       KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
       RELEASE_NAMESPACE: ${{ secrets.RELEASE_NAMESPACE }}
       SPARROW_GITHUB_TOKEN: ${{ secrets.SPARROW_GITHUB_TOKEN }}
+  
