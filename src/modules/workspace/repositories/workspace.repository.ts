@@ -122,7 +122,7 @@ export class WorkspaceRepository {
       .findOne({ _id: id });
     // Check if workspace is restricted
     if (!response) {
-      throw new BadRequestException("Workspace not found.");
+      return;
     }
     if (response?.isRestricted === true || response?.isFreezed === true) {
       console.log(`Access denied: Workspace ${id} is restricted`);
@@ -141,7 +141,7 @@ export class WorkspaceRepository {
       .find({ _id: { $in: IdArray } })
       .toArray();
     if (!response || response.length === 0) {
-      throw new BadRequestException("No workspaces found.");
+      return [];
     }
     // Filter out restricted workspaces
     const filteredResponse = response.filter((workspace) => {
