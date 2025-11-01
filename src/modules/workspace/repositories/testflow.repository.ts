@@ -19,6 +19,7 @@ import { Collections } from "@src/modules/common/enum/database.collection.enum";
 // ---- Payload & model
 import {
   Testflow,
+  TestflowDataSetItem,
   TestflowSchedular,
   TestFlowSchedularRunHistory,
 } from "@src/modules/common/models/testflow.model";
@@ -264,37 +265,34 @@ export class TestflowRepository {
     );
   }
 
-        /**
-     * Edit a schedular execution (run history item) in a testflow's schedule.
-     * @param {string} testflowId - The testflow document ID.
-     * @param {string} schedularId - The schedule ID.
-     * @param {Partial<TestFlowSchedular>} updatedSchedular - The updated fields for the schedule item.
-     * @returns {Promise<UpdateResult>} - The result of the update operation.
-     */
-    async editSchedular(
-      testflowId: string,
-      schedularId: string,
-      updatedSchedular: Partial<TestflowSchedular>,
-    ): Promise<UpdateResult> {
-      if (!testflowId || !schedularId) {
-        throw new Error("testflowId and schedularId are required");
-      }
-      // Build the update object for only the provided fields
-      const setObj: Record<string, any> = {};
-      for (const [key, value] of Object.entries(updatedSchedular)) {
-        setObj[`schedules.$[elem].${key}`] = value;
-      }
-      return this.db.collection(Collections.TESTFLOW).updateOne(
-        { _id: new ObjectId(testflowId) },
-        { $set: setObj },
-        {
-          arrayFilters: [
-            { "elem.id": schedularId },
-          ],
-        },
-      );
+  /**
+   * Edit a schedular execution (run history item) in a testflow's schedule.
+   * @param {string} testflowId - The testflow document ID.
+   * @param {string} schedularId - The schedule ID.
+   * @param {Partial<TestFlowSchedular>} updatedSchedular - The updated fields for the schedule item.
+   * @returns {Promise<UpdateResult>} - The result of the update operation.
+   */
+  async editSchedular(
+    testflowId: string,
+    schedularId: string,
+    updatedSchedular: Partial<TestflowSchedular>,
+  ): Promise<UpdateResult> {
+    if (!testflowId || !schedularId) {
+      throw new Error("testflowId and schedularId are required");
     }
-
+    // Build the update object for only the provided fields
+    const setObj: Record<string, any> = {};
+    for (const [key, value] of Object.entries(updatedSchedular)) {
+      setObj[`schedules.$[elem].${key}`] = value;
+    }
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      { $set: setObj },
+      {
+        arrayFilters: [{ "elem.id": schedularId }],
+      },
+    );
+  }
 
   async updateSchedularStatus(
     testflowId: string,
@@ -355,5 +353,97 @@ export class TestflowRepository {
       throw new BadRequestException("No Testflow data found");
     }
     return data;
+  }
+
+  /**
+   * Add a new dataset to a testflow
+   * @param testflowId - The ID of the testflow
+   * @param datasetItem - The dataset item to add
+   * @returns UpdateResult
+   */
+  async addDataset(
+    testflowId: string,
+    datasetItem: TestflowDataSetItem,
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $push: { datasets: datasetItem },
+        $set: { updatedAt: new Date() },
+      },
+    );
+  }
+
+  /**
+   * Update the fileUrl of a specific dataset
+   * @param testflowId - The ID of the testflow
+   * @param datasetId - The ID of the dataset to update
+   * @param fileUrl - The new file URL
+   * @returns UpdateResult
+   */
+  async updateDatasetFileUrl(
+    testflowId: string,
+    datasetId: string,
+    fileUrl: string,
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      {
+        _id: new ObjectId(testflowId),
+        "datasets.id": datasetId,
+      },
+      {
+        $set: {
+          "datasets.$.fileUrl": fileUrl,
+          "datasets.$.updatedAt": new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
+
+  /**
+   * Remove a dataset from a testflow by dataset ID
+   * @param testflowId - The ID of the testflow
+   * @param datasetId - The ID of the dataset to remove
+   * @returns UpdateResult
+   */
+  async removeDataset(
+    testflowId: string,
+    datasetId: string,
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $pull: { datasets: { id: datasetId } },
+        $set: { updatedAt: new Date() },
+      },
+    );
+  }
+
+  /**
+   * Get a specific dataset from a testflow
+   * @param testflowId - The ID of the testflow
+   * @param datasetId - The ID of the dataset to retrieve
+   * @returns The dataset item or null
+   */
+  async getDataset(
+    testflowId: string,
+    datasetId: string,
+  ): Promise<TestflowDataSetItem> {
+    const result = await this.db.collection(Collections.TESTFLOW).findOne(
+      {
+        _id: new ObjectId(testflowId),
+        "datasets.id": datasetId,
+      },
+      {
+        projection: {
+          datasets: {
+            $elemMatch: { id: datasetId },
+          },
+        },
+      },
+    );
+
+    return result?.datasets?.[0] || null;
   }
 }

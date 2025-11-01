@@ -21,7 +21,17 @@ import {
 import { Auth, KeyValue } from "./collection.rxdb.model";
 import { AuthModeEnum, BodyModeEnum } from "./collection.model";
 import { HTTPMethods } from "fastify";
-import { DayOfWeek, NotificationReceiveType, RequestDataTypeEnum, RunCycleEnum,  } from "../enum/testflow.enum";
+import {
+  DayOfWeek,
+  NotificationReceiveType,
+  RequestDataTypeEnum,
+  RunCycleEnum,
+} from "../enum/testflow.enum";
+
+enum AddTo {
+  Header = "Header",
+  QueryParameter = "Query Parameter",
+}
 
 export class SparrowRequestBody {
   raw?: string;
@@ -29,14 +39,12 @@ export class SparrowRequestBody {
   formdata?: FormData;
 }
 
-
 export class FormDataKeyValue {
   key: string;
   value: string | unknown;
   checked: boolean;
   type: "text" | "file";
 }
-
 
 interface FormData {
   text: FormDataKeyValue[];
@@ -227,6 +235,238 @@ export class TestflowNodes {
   data?: NodeData;
 }
 
+// Form data text field
+export class FormDataTextField {
+  @IsString()
+  @IsNotEmpty()
+  key: string;
+
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+
+  @IsBoolean()
+  @IsOptional()
+  checked?: boolean;
+}
+
+// Form data file field
+export class FormDataFileField {
+  @IsString()
+  @IsNotEmpty()
+  key: string;
+
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+
+  @IsBoolean()
+  @IsOptional()
+  checked?: boolean;
+}
+
+// Multipart form data body structure
+export class FormDataBody {
+  @IsArray()
+  @Type(() => FormDataTextField)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  text?: FormDataTextField[];
+
+  @IsArray()
+  @Type(() => FormDataFileField)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  file?: FormDataFileField[];
+}
+
+// URL encoded body field
+export class UrlEncodedField {
+  @IsString()
+  @IsNotEmpty()
+  key: string;
+
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+
+  @IsBoolean()
+  @IsOptional()
+  checked?: boolean;
+}
+
+// Authentication configurations
+export class BearerTokenAuth {
+  @IsString()
+  type: "bearerToken";
+
+  @IsString()
+  @IsNotEmpty()
+  bearerToken: string;
+}
+
+export class BasicAuth {
+  @IsString()
+  type: "basicAuth";
+
+  @IsString()
+  @IsNotEmpty()
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+}
+
+export class ApiKeyAuth {
+  @IsString()
+  type: "apiKey";
+
+  @IsString()
+  @IsNotEmpty()
+  key: string;
+
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+
+  @IsString()
+  @IsNotEmpty()
+  addTo: AddTo;
+}
+
+export class NoAuth {
+  @IsString()
+  type: "none";
+}
+
+// Union type for all auth types
+export type DataSetAuth = BearerTokenAuth | BasicAuth | ApiKeyAuth | NoAuth;
+
+// Individual request data
+export class DataSetRequest {
+  @IsNumber()
+  @IsNotEmpty()
+  id?: number;
+
+  @IsString()
+  @IsNotEmpty()
+  name?: string;
+
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  headers?: KeyValue[];
+
+  @IsArray()
+  @Type(() => KeyValue)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  params?: KeyValue[];
+
+  // Body can be string, array, or object depending on bodyType
+  @ApiProperty({ type: [SparrowRequestBody] })
+  @Type(() => SparrowRequestBody)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  body?: SparrowRequestBody;
+
+  @ApiProperty({
+    enum: [
+      "application/json",
+      "application/xml",
+      "application/x-www-form-urlencoded",
+      "multipart/form-data",
+      "application/javascript",
+      "text/plain",
+      "text/html",
+    ],
+  })
+  @IsEnum({ BodyModeEnum })
+  @IsString()
+  @IsOptional()
+  bodyType?: BodyModeEnum;
+
+  @IsOptional()
+  auth?: DataSetAuth;
+}
+
+// Dataset group
+export class DataSetGroup {
+  @IsNumber()
+  @IsNotEmpty()
+  no: number;
+
+  @IsArray()
+  @Type(() => DataSetRequest)
+  @ValidateNested({ each: true })
+  @IsNotEmpty()
+  data: DataSetRequest[];
+}
+
+// Main TestflowDataSet class
+export class TestflowDataSet {
+  @IsArray()
+  @Type(() => DataSetGroup)
+  @ValidateNested({ each: true })
+  @IsNotEmpty()
+  dataSet: DataSetGroup[];
+}
+
+export enum FormatType {
+  JSON = "JSON",
+  CSV = "CSV",
+}
+
+export class TestflowDataSetItem {
+  @IsString()
+  @ApiProperty({ required: true, example: "schedular-uuid" })
+  id: string;
+
+  @ValidateNested()
+  @Type(() => TestflowDataSet)
+  item: TestflowDataSet;
+
+  @IsString()
+  @IsNotEmpty()
+  formatType: FormatType;
+
+  @IsString()
+  @IsNotEmpty()
+  fileSize: string;
+
+  @IsDate()
+  @IsOptional()
+  createdAt?: Date;
+
+  @IsDate()
+  @IsOptional()
+  updatedAt?: Date;
+
+  @IsString()
+  @IsOptional()
+  fileUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  createdBy?: string;
+
+  @IsString()
+  @IsOptional()
+  updatedBy?: string;
+}
+
+export class TestflowDataSetDto {
+  @ValidateNested()
+  @Type(() => TestflowDataSet)
+  item: TestflowDataSet;
+
+  @IsString()
+  @IsNotEmpty()
+  formatType: FormatType;
+}
+
 /**
  * Represents a Testflow, containing nodes and edges.
  */
@@ -256,6 +496,12 @@ export class Testflow {
   @ValidateNested({ each: true })
   @IsOptional()
   schedules?: TestflowSchedular[];
+
+  @IsArray()
+  @Type(() => TestflowDataSetItem)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  datasets?: TestflowDataSetItem[];
 
   @IsDate()
   @IsOptional()
@@ -363,7 +609,7 @@ export class TestFlowSchedularRunHistory {
 
   @IsArray()
   @IsOptional()
-  responses?:TestflowSchedularHistoryResponse[];
+  responses?: TestflowSchedularHistoryResponse[];
 
   @IsArray()
   @Type(() => TestflowEdges)
@@ -429,7 +675,7 @@ export class RunConfigurationDto {
     required: true,
     enum: RunCycleEnum,
     example: RunCycleEnum.DAILY,
-    description: "Type of run cycle"
+    description: "Type of run cycle",
   })
   @IsEnum(RunCycleEnum)
   runCycle: RunCycleEnum;
@@ -438,7 +684,8 @@ export class RunConfigurationDto {
   @ApiProperty({
     required: false,
     example: "2025-12-25T15:30:00.000Z",
-    description: "ISO date string for one-time execution (required for ONCE type)"
+    description:
+      "ISO date string for one-time execution (required for ONCE type)",
   })
   @IsISO8601()
   @IsOptional()
@@ -450,7 +697,7 @@ export class RunConfigurationDto {
     example: 2,
     minimum: 1,
     maximum: 24,
-    description: "Interval in hours (required for HOURLY type)"
+    description: "Interval in hours (required for HOURLY type)",
   })
   @IsInt()
   @Min(1)
@@ -462,8 +709,9 @@ export class RunConfigurationDto {
   @ApiProperty({
     required: false,
     example: [1, 3, 5], // Monday, Wednesday, Friday
-    description: "Array of days (0=Sunday, 1=Monday, ..., 6=Saturday) - required for WEEKLY type",
-    type: [Number]
+    description:
+      "Array of days (0=Sunday, 1=Monday, ..., 6=Saturday) - required for WEEKLY type",
+    type: [Number],
   })
   @IsArray()
   @IsInt({ each: true })
@@ -477,12 +725,13 @@ export class RunConfigurationDto {
   @ApiProperty({
     required: false,
     example: "14:30",
-    description: "Time in HH:mm format - REQUIRED for DAILY (runs daily at this time), REQUIRED for WEEKLY (runs on selected days at this time), OPTIONAL for HOURLY (start time)"
+    description:
+      "Time in HH:mm format - REQUIRED for DAILY (runs daily at this time), REQUIRED for WEEKLY (runs on selected days at this time), OPTIONAL for HOURLY (start time)",
   })
   @IsString()
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'string' && /^\d{2}:\d{2}$/.test(value)) {
+    if (typeof value === "string" && /^\d{2}:\d{2}$/.test(value)) {
       return value;
     }
     return value;
@@ -529,7 +778,11 @@ export class TestflowSchedular {
   @IsBoolean()
   @ApiProperty({ required: true, example: true })
   @IsOptional()
-  isActive:boolean;
+  isActive: boolean;
+
+  @IsString()
+  @IsOptional()
+  testflowDataSetId?: string;
 
   @ApiProperty({
     required: false,
@@ -560,7 +813,7 @@ export class TestflowSchedular {
   @IsString()
   @ApiProperty({ required: true, example: "test" })
   @IsOptional()
-  schedularName?:string;
+  schedularName?: string;
 
   @IsArray()
   @Type(() => TestFlowSchedularRunHistory)

@@ -29,5 +29,7 @@
   },
   "[svelte]": {
     "editor.defaultFormatter": "svelte.svelte-vscode"
-  }
+  },
+  "github.copilot.chat.agent.currentEditorContext.enabled": true,
+  "github.copilot.chat.agent.autoFix": false
 }
