@@ -81,6 +81,7 @@ import { AiConsumptionScheduler } from "./schedulers/ai-consumption.scheduler";
 import { TestflowSchedulerService } from "./services/testflow-schedular.service";
 import { TestflowRunService } from "./services/testflow-run.service";
 import { ScheduleModule } from "@nestjs/schedule";
+import { TestflowDataSetService } from "./services/testflow-dataset.service";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -124,6 +125,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     TestflowRunService,
     TestflowSchedulerService,
     TestflowRepository,
+    TestflowDataSetService,
     AiLogHandler,
     AiLogService,
     LlmConversationService,
@@ -159,6 +161,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     TestflowService,
     TestflowRunService,
     TestflowSchedulerService,
+    TestflowDataSetService,
     TestflowRepository,
     UserLimitRepository,
     UserLimitService,
