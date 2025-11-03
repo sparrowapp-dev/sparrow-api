@@ -149,6 +149,7 @@ export class TestflowService implements OnModuleInit {
                   schedule.environmentId,
                   tf.workspaceId,
                   schedule.id,
+                  schedule.testflowDataSetId,
                 ),
                 (_cronExpression: string)=>{
                   this.testflowRepository.editSchedular(tf._id.toString(), schedule.id, {
@@ -278,6 +279,7 @@ export class TestflowService implements OnModuleInit {
             schedular.environmentId,
             workspaceId,
             scheduleId,
+            schedular.testflowDataSetId,
             user,
           ),
           (_cronExpression: string)=>{
@@ -323,6 +325,7 @@ export class TestflowService implements OnModuleInit {
     testflowId: string,
     scheduleId: string,
     workspaceId: string,
+    testflowDataSetId:string,
     user: DecodedUserObject,
   ) {
     await this.isWorkspaceAdminorEditor(workspaceId, user._id);
@@ -340,6 +343,7 @@ export class TestflowService implements OnModuleInit {
       workspaceId,
       scheduleId,
       false,
+      testflowDataSetId,
       user,
     );
     return { success: true, message: "Schedule run triggered" };
@@ -647,6 +651,7 @@ export class TestflowService implements OnModuleInit {
           schedularData.testflowId,
           schedularData.environmentId,
           schedularData.workspaceId,
+          schedularData.testflowDataSetId,
           schedulerId,
           user,
         ),
@@ -826,6 +831,7 @@ export class TestflowService implements OnModuleInit {
     environmentId: string,
     workspaceId: string,
     schedulerId: string,
+    testflowDataSetId:string,
     user?: DecodedUserObject,
   ) {
     return async () => {
@@ -835,6 +841,7 @@ export class TestflowService implements OnModuleInit {
         workspaceId,
         schedulerId,
         true,
+        testflowDataSetId,
         user,
       );
     };
@@ -847,6 +854,7 @@ export class TestflowService implements OnModuleInit {
     workspaceId: string,
     schedulerId: string,
     isScheduled: boolean,
+    testflowDataSetId:string,
     user?: DecodedUserObject,
   ) {
     try {

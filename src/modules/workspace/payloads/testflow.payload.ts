@@ -156,6 +156,11 @@ export class CreateTestflowSchedularDto {
   @IsOptional()
   environmentId: string;
 
+  @IsString()
+  @ApiProperty({ required: true, example: "428347384723" })
+  @IsOptional()
+  testflowDataSetId?:string;
+
   @ApiProperty({
     required: true,
     type: () => RunConfigurationDto,

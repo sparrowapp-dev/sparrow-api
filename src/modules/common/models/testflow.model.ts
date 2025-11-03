@@ -343,6 +343,17 @@ export class NoAuth {
 // Union type for all auth types
 export type DataSetAuth = BearerTokenAuth | BasicAuth | ApiKeyAuth | NoAuth;
 
+export class KeyValueDataSet {
+  @IsString()
+  key: string;
+
+  @IsOptional()
+  value: string | unknown;
+
+  @IsBoolean()
+  checked: boolean;
+}
+
 // Individual request data
 export class DataSetRequest {
   @IsNumber()
@@ -354,21 +365,20 @@ export class DataSetRequest {
   name?: string;
 
   @IsArray()
-  @Type(() => KeyValue)
+  @Type(() => KeyValueDataSet)
   @ValidateNested({ each: true })
   @IsOptional()
-  headers?: KeyValue[];
+  headers?: KeyValueDataSet[];
 
   @IsArray()
-  @Type(() => KeyValue)
+  @Type(() => KeyValueDataSet)
   @ValidateNested({ each: true })
   @IsOptional()
-  params?: KeyValue[];
+  params?: KeyValueDataSet[];
 
   // Body can be string, array, or object depending on bodyType
-  @ApiProperty({ type: [SparrowRequestBody] })
+  @ApiProperty({ type: SparrowRequestBody })
   @Type(() => SparrowRequestBody)
-  @ValidateNested({ each: true })
   @IsOptional()
   body?: SparrowRequestBody;
 
@@ -383,7 +393,7 @@ export class DataSetRequest {
       "text/html",
     ],
   })
-  @IsEnum({ BodyModeEnum })
+  @IsEnum(BodyModeEnum)
   @IsString()
   @IsOptional()
   bodyType?: BodyModeEnum;
@@ -836,4 +846,10 @@ export class TestflowSchedular {
   @IsString()
   @IsOptional()
   updatedBy?: string;
+}
+
+export class RunScheduleTestDataSetDto {
+  @IsString()
+  @ApiProperty({ required: true, example: "uuid" })
+  testflowDataSetId: string;
 }

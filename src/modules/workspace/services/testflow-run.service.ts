@@ -270,16 +270,13 @@ export class TestflowRunService {
       const formattedNodes: TestflowNodes[] = [];
       const testflowRequestData = testflowDataItem.data;
 
-      for (const request of testflowRequestData) {
+      // Iterate over requests and assign each to the next node sequentially (skip first node for assignment)
+      for (let i = 0; i < testflowRequestData.length; i++) {
+        const request = testflowRequestData[i];
         if (!request?.id) continue;
 
-        const currentNode = nodes.find(
-          (node) =>
-            node.id === request.id.toString() &&
-            node.data?.blockName?.trim().toLowerCase() ===
-              request.name?.trim().toLowerCase(),
-        );
-
+        // Skip the first node and start assigning from second node
+        const currentNode = nodes[i + 1];
         if (!currentNode) continue;
 
         const requestData = currentNode.data.requestData;

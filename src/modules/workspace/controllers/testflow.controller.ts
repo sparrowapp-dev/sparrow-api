@@ -40,6 +40,7 @@ import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
 import { DecodedUserObject, ExtendedFastifyRequest } from "@src/types/fastify";
 import {
+  RunScheduleTestDataSetDto,
   TestflowDataSetDto,
   TestflowSchedular,
 } from "@src/modules/common/models/testflow.model";
@@ -450,6 +451,7 @@ export class TestflowController {
     @Param("workspaceId") workspaceId: string,
     @Param("testflowId") testflowId: string,
     @Param("scheduleId") scheduleId: string,
+    @Body() runScheduleTestDataSetDto: RunScheduleTestDataSetDto,
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
   ) {
@@ -458,6 +460,7 @@ export class TestflowController {
       testflowId,
       scheduleId,
       workspaceId,
+      runScheduleTestDataSetDto.testflowDataSetId,
       user,
     );
     const testflow = await this.testflowService.getTestflow(
