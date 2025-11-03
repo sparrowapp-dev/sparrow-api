@@ -39,7 +39,6 @@ build/config\.gypi
 *.sublime-workspace
 
 # IDE - VSCode
-.vscode/*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
