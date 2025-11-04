@@ -431,8 +431,13 @@ export enum FormatType {
 
 export class TestflowDataSetItem {
   @IsString()
-  @ApiProperty({ required: true, example: "schedular-uuid" })
+  @ApiProperty({ required: true, example: "uuid" })
   id: string;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "testflow-dataset-name" })
+  @IsNotEmpty()
+  name: string;
 
   @ValidateNested()
   @Type(() => TestflowDataSet)
@@ -475,6 +480,11 @@ export class TestflowDataSetDto {
   @IsString()
   @IsNotEmpty()
   formatType: FormatType;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: true, example: "testflow-dataset-name" })
+  name: string;
 }
 
 /**
@@ -662,6 +672,79 @@ export class TestFlowSchedularRunHistory {
   updatedBy?: string;
 }
 
+export class TestflowSchedularDataSetHistory {
+  @IsString()
+  @ApiProperty({ required: true, example: "uuid" })
+  id: string;
+
+  @IsArray()
+  @Type(() => TestflowDataSetRunHistoryRequest)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  schedularDataRunHistory?: TestflowDataSetRunHistoryRequest[];
+
+  @IsBoolean()
+  isScheduled: boolean;
+
+  @IsString()
+  @IsNotEmpty()
+  status: string;
+
+  @IsDate()
+  @IsOptional()
+  createdAt?: Date;
+
+  @IsDate()
+  @IsOptional()
+  updatedAt?: Date;
+
+  @IsString()
+  @IsOptional()
+  createdBy?: string;
+
+  @IsString()
+  @IsOptional()
+  updatedBy?: string;
+}
+
+export class TestflowDataSetRunHistoryRequest {
+  @IsString()
+  @IsNotEmpty()
+  failedRequests: number;
+
+  @IsArray()
+  @IsOptional()
+  requests?: TestflowSchedularHistoryRequest[];
+
+  @IsArray()
+  @IsOptional()
+  responses?: TestflowSchedularHistoryResponse[];
+
+  @IsArray()
+  @Type(() => TestflowEdges)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  edges: TestflowEdges[];
+
+  @IsArray()
+  @Type(() => TestflowNodes)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  nodes: TestflowNodes[];
+
+  @IsString()
+  @IsNotEmpty()
+  status: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  successRequests: number;
+
+  @IsString()
+  @IsNotEmpty()
+  totalTime: string;
+}
+
 export class NotificationDto {
   @ApiProperty({
     required: false,
@@ -831,6 +914,12 @@ export class TestflowSchedular {
   @IsOptional()
   schedularRunHistory?: TestFlowSchedularRunHistory[];
 
+  @IsArray()
+  @Type(() => TestflowSchedularDataSetHistory)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  schedularDataSetHistory?: TestflowSchedularDataSetHistory[];
+
   @IsDate()
   @IsOptional()
   createdAt?: Date;
@@ -851,5 +940,6 @@ export class TestflowSchedular {
 export class RunScheduleTestDataSetDto {
   @IsString()
   @ApiProperty({ required: true, example: "uuid" })
-  testflowDataSetId: string;
+  @IsOptional()
+  testflowDataSetId?: string;
 }
