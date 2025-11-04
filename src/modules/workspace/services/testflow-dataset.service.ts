@@ -104,10 +104,13 @@ export class TestflowDataSetService {
       "text/plain",
       "text/html",
     ];
-    if (!request.bodyType || !validBodyTypes.includes(request.bodyType)) {
-      throw new BadRequestException(
-        `Dataset ${datasetNo}, Request "${request.name}": bodyType must be one of ${validBodyTypes.join(", ")}`,
-      );
+
+    if (request.body && request.bodyType) {
+      if (!validBodyTypes.includes(request.bodyType)) {
+        throw new BadRequestException(
+          `Dataset ${datasetNo}, Request "${request.name}": bodyType must be one of ${validBodyTypes.join(", ")}`,
+        );
+      }
     }
 
     // Validate headers & params
@@ -164,7 +167,7 @@ export class TestflowDataSetService {
    */
   private validateBodyFormat(request: any, datasetNo: number): void {
     const { bodyType, body, name } = request;
-    if (!body) return;
+    if (!body || !bodyType) return;
 
     if (typeof body !== "object") {
       throw new BadRequestException(
