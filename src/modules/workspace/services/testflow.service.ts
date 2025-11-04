@@ -668,6 +668,7 @@ export class TestflowService implements OnModuleInit {
         notification: schedularData.notification,
         isActive: true,
         cronExpression,
+        testflowDataSetId: schedularData?.testflowDataSetId || "",
         schedularName: jobName,
         executedCount: 0,
         lastExecuted: undefined,
@@ -687,8 +688,8 @@ export class TestflowService implements OnModuleInit {
           schedularData.testflowId,
           schedularData.environmentId,
           schedularData.workspaceId,
-          schedularData.testflowDataSetId,
           schedulerId,
+          schedularData.testflowDataSetId,
           user,
         ),
         (_cronExpression: string) => {
@@ -1089,7 +1090,6 @@ export class TestflowService implements OnModuleInit {
         schedulerId,
         runningHistory,
       );
-
       // Execute testflow with dataset
       const dataSetResults =
         await this.testflowRunService.handleTestflowDataSetRun(
@@ -1099,7 +1099,7 @@ export class TestflowService implements OnModuleInit {
           testflowDataSetId,
           user,
         );
-
+      console.log("this is the dat----------->", dataSetResults);
       // Transform each dataset result into TestflowDataSetRunHistoryRequest format
       const schedularDataRunHistory: TestflowDataSetRunHistoryRequest[] =
         dataSetResults.map((dataSetResult: any) => {
@@ -1152,24 +1152,6 @@ export class TestflowService implements OnModuleInit {
       };
     } catch (error) {
       console.error(`Error executing testflow with dataset:`, error);
-      const uuid = uuidv4();
-      const errorHistory: Partial<TestflowSchedularDataSetHistory> = {
-        id: uuid,
-        isScheduled,
-        schedularDataRunHistory: [],
-        status: "error",
-        updatedAt: new Date(),
-      };
-
-      await this.testflowRepository.editSchedularDataSetHistory(
-        testflowId,
-        schedulerId,
-        errorHistory,
-      );
-      return {
-        success: false,
-        error: error.message,
-      };
     }
   }
 

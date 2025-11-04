@@ -234,7 +234,7 @@ export class TestflowRunService {
           result: response.data,
           environmentName:
             environmentData?.name || globalEnvDetails?.name || "",
-          nodes: testflowDetails.nodes,
+          nodes: dataSet,
           edges: testflowDetails.edges,
         });
       }
@@ -242,7 +242,6 @@ export class TestflowRunService {
       return dataSetResult;
     } catch (error) {
       console.error("Error running Testflow dataset:", error.message);
-
       return [
         {
           result: {
@@ -263,77 +262,166 @@ export class TestflowRunService {
     nodes: TestflowNodes[],
     testflowDataSet: TestflowDataSet,
   ): Promise<TestflowNodes[][]> {
-    const formattedDataSetNodes: TestflowNodes[][] = [];
-    const testflowDataItems: DataSetGroup[] = testflowDataSet.dataSet;
+    let formattedDataSetNodes: TestflowNodes[][] = [];
+    let testflowDataItems: DataSetGroup[] = testflowDataSet.dataSet;
+    // Iterate through each dataset group
+    for (
+      let datasetIndex = 0;
+      datasetIndex < testflowDataItems.length;
+      datasetIndex++
+    ) {
+      let formattedNodes: TestflowNodes[] = [];
+      let currentDatasetGroup = testflowDataItems[datasetIndex];
+      // Iterate through each node
+      for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
+        // Create a deep copy of the node for each dataset group
+        let currentNode = JSON.parse(JSON.stringify(nodes[nodeIndex]));
+        // Push the first dummy node (startBlock) and continue
+        if (currentNode.id === "1" || currentNode.type === "startBlock") {
+          formattedNodes.push(currentNode);
+          continue;
+        }
 
-    for (const testflowDataItem of testflowDataItems) {
-      const formattedNodes: TestflowNodes[] = [];
-      const testflowRequestData = testflowDataItem.data;
+        // Get the corresponding request data (nodeIndex - 1 because we skip first node)
+        let requestDataIndex = nodeIndex - 1;
+        let requestData = currentDatasetGroup.data[requestDataIndex];
 
-      // Iterate over requests and assign each to the next node sequentially (skip first node for assignment)
-      for (let i = 0; i < testflowRequestData.length; i++) {
-        const request = testflowRequestData[i];
-        if (!request?.id) continue;
+        if (!requestData) {
+          continue;
+        }
 
-        // Skip the first node and start assigning from second node
-        const currentNode = nodes[i + 1];
-        if (!currentNode) continue;
-
-        const requestData = currentNode.data.requestData;
+        let nodeRequestData = currentNode.data.requestData;
 
         // Headers
-        if (request.headers) {
-          requestData.headers = request.headers;
+        if (requestData.headers && requestData.headers.length > 0) {
+          nodeRequestData.headers = requestData.headers;
         }
 
         // Query Params
-        if (request.params) {
-          requestData.queryParams = request.params;
+        if (requestData.params && requestData.params.length > 0) {
+          nodeRequestData.queryParams = requestData.params;
         }
 
         // Body
-        if (request.body) {
-          requestData.body = request.body;
-          requestData.selectedRequestBodyType =
-            request.bodyType ?? BodyModeEnum["application/json"];
+        if (requestData.body) {
+          // JSON or raw body
+          if (
+            requestData.body.raw &&
+            requestData.bodyType === BodyModeEnum["application/json"]
+          ) {
+            nodeRequestData.body = requestData.body;
+            nodeRequestData.selectedRequestBodyType =
+              BodyModeEnum["application/json"];
+          }
+
+          // XML
+          else if (
+            requestData.body.raw &&
+            requestData.bodyType === BodyModeEnum["application/xml"]
+          ) {
+            nodeRequestData.body = requestData.body;
+            nodeRequestData.selectedRequestBodyType =
+              BodyModeEnum["application/xml"];
+          }
+
+          // URL-encoded form
+          else if (
+            requestData.body.urlencoded &&
+            requestData.bodyType ===
+              BodyModeEnum["application/x-www-form-urlencoded"]
+          ) {
+            nodeRequestData.body.urlencoded = requestData.body.urlencoded;
+            nodeRequestData.selectedRequestBodyType =
+              BodyModeEnum["application/x-www-form-urlencoded"];
+          }
+
+          // Multipart form data
+          else if (
+            requestData.body.formdata &&
+            requestData.bodyType === BodyModeEnum["multipart/form-data"]
+          ) {
+            nodeRequestData.body.formdata = requestData.body.formdata;
+            nodeRequestData.selectedRequestBodyType =
+              BodyModeEnum["multipart/form-data"];
+          }
+
+          // JavaScript
+          else if (
+            requestData.body.raw &&
+            requestData.bodyType === BodyModeEnum["application/javascript"]
+          ) {
+            nodeRequestData.body = requestData.body;
+            nodeRequestData.selectedRequestBodyType =
+              BodyModeEnum["application/javascript"];
+          }
+
+          // Plain text
+          else if (
+            requestData.body.raw &&
+            requestData.bodyType === BodyModeEnum["text/plain"]
+          ) {
+            nodeRequestData.body = requestData.body;
+            nodeRequestData.selectedRequestBodyType =
+              BodyModeEnum["text/plain"];
+          }
+
+          // HTML
+          else if (
+            requestData.body.raw &&
+            requestData.bodyType === BodyModeEnum["text/html"]
+          ) {
+            nodeRequestData.body = requestData.body;
+            nodeRequestData.selectedRequestBodyType = BodyModeEnum["text/html"];
+          }
+
+          // Default fallback if type not matched
+          else if (requestData.body.raw) {
+            nodeRequestData.body = requestData.body;
+            nodeRequestData.selectedRequestBodyType =
+              BodyModeEnum["application/json"];
+          }
         }
 
         // Auth
-        if (request.auth) {
-          switch (request.auth.type) {
+        if (requestData.auth && requestData.auth.type) {
+          switch (requestData.auth.type) {
             case "apiKey":
-              requestData.auth = {
+              nodeRequestData.auth = {
                 bearerToken: "",
                 basicAuth: { username: "", password: "" },
                 apiKey: {
-                  authKey: request.auth.key,
-                  authValue: request.auth.value,
-                  addTo: request.auth.addTo,
+                  authKey: requestData.auth.key,
+                  authValue: requestData.auth.value,
+                  addTo: requestData.auth.addTo,
                 },
               };
+              nodeRequestData.selectedRequestAuthType = "API Key";
               break;
 
             case "basicAuth":
-              requestData.auth = {
+              nodeRequestData.auth = {
                 bearerToken: "",
                 basicAuth: {
-                  username: request.auth.username,
-                  password: request.auth.password,
+                  username: requestData.auth.username,
+                  password: requestData.auth.password,
                 },
                 apiKey: { authKey: "", authValue: "", addTo: AddTo.Header },
               };
+              nodeRequestData.selectedRequestAuthType = "Basic Auth";
               break;
 
             case "bearerToken":
-              requestData.auth = {
-                bearerToken: request.auth.bearerToken,
+              nodeRequestData.auth = {
+                bearerToken: requestData.auth.bearerToken,
                 basicAuth: { username: "", password: "" },
                 apiKey: { authKey: "", authValue: "", addTo: AddTo.Header },
               };
+              nodeRequestData.selectedRequestAuthType = "Bearer Token";
               break;
 
             case "none":
-              requestData.auth = {};
+              nodeRequestData.auth = {};
+              nodeRequestData.selectedRequestAuthType = "No Auth";
               break;
           }
         }
