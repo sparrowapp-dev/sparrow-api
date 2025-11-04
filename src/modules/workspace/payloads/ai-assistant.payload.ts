@@ -363,6 +363,14 @@ export class RequestTestScriptDataDto {
   @IsNotEmpty()
   @ApiProperty({ required: true, example: "test()" })
   testScript: string;
+
+  /**
+  * Script Type
+  */
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false, example: "pre-script" })
+  type?: string;
 }
 
 export class generateTestCasesDto {

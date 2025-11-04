@@ -27,6 +27,9 @@ import { PostmanParserService } from "../common/services/postman.parser.service"
 import { subscribePayload } from "./payloads/subscribe.payload";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { Roles } from "../common/decorators/roles.decorators";
+import { register } from "prom-client";
+import { RolesGuard } from "../common/guards/roles.guard";
 /**
  * App Controller
  */
@@ -54,8 +57,10 @@ export class AppController {
     @Param("currentVersion") currentVersion: string,
     @Param("target") target: string,
   ) {
-    const { statusCode, data } =
-      await this.appService.getUpdaterDetails(currentVersion, target);
+    const { statusCode, data } = await this.appService.getUpdaterDetails(
+      currentVersion,
+      target,
+    );
     return res.status(statusCode).send(data);
   }
 
@@ -279,5 +284,16 @@ export class AppController {
       collectionObj,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Get("metrics")
+  @ApiOperation({
+    summary: "Get Prometheus Metrics",
+    description: "Returns Prometheus metrics for monitoring.",
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("super-admin")
+  async getMetrics() {
+    return register.metrics();
   }
 }

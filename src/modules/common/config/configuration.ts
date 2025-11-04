@@ -152,4 +152,7 @@ export default () => ({
   trial: {
     trialPeriod: 14,
   },
+  downgradeHub: {
+    container: process.env.DOWNGRADE_HUB_BLOB_CONTAINER,
+  },
 });

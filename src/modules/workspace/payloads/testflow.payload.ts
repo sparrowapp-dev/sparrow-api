@@ -6,6 +6,8 @@ import {
   IsOptional,
   IsNotEmpty,
   IsMongoId,
+  IsBoolean,
+  IsNumber,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
@@ -181,4 +183,75 @@ export class CreateTestflowSchedularDto {
   @ValidateNested()
   @Type(() => NotificationDto)
   notification?: NotificationDto;
+}
+
+/**
+ * Data Transfer Object for localhost node validation result.
+ */
+export class LocalhostNodeDto {
+  @ApiProperty({ example: "node-123" })
+  @IsString()
+  nodeId: string;
+
+  @ApiProperty({ example: "Login API" })
+  @IsString()
+  blockName: string;
+
+  @ApiProperty({ example: "http://localhost:3000/api/login" })
+  @IsString()
+  url: string;
+}
+
+/**
+ * Data Transfer Object for formdata node validation result.
+ */
+export class FormdataNodeDto {
+  @ApiProperty({ example: "node-456" })
+  @IsString()
+  nodeId: string;
+
+  @ApiProperty({ example: "Upload File API" })
+  @IsString()
+  blockName: string;
+
+  @ApiProperty({ example: 2 })
+  @IsNumber()
+  fileCount: number;
+}
+
+/**
+ * Data Transfer Object for testflow validation result.
+ */
+export class TestflowValidationResultDto {
+  @ApiProperty({ 
+    example: true,
+    description: "Indicates if any nodes contain localhost URLs"
+  })
+  @IsBoolean()
+  hasLocalhostUrls: boolean;
+
+  @ApiProperty({ 
+    example: false,
+    description: "Indicates if any nodes contain formdata files"
+  })
+  @IsBoolean()
+  hasFormdataFiles: boolean;
+
+  @ApiProperty({ 
+    type: [LocalhostNodeDto],
+    description: "List of nodes containing localhost URLs"
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => LocalhostNodeDto)
+  localhostNodes: LocalhostNodeDto[];
+
+  @ApiProperty({ 
+    type: [FormdataNodeDto],
+    description: "List of nodes containing formdata files"
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FormdataNodeDto)
+  formdataNodes: FormdataNodeDto[];
 }

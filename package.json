@@ -1,6 +1,6 @@
 {
   "name": "project-sparrow-api",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "description": "Backend APIs for Project Sparrow.",
   "author": "techdome",
   "license": "",
@@ -82,6 +82,7 @@
     "crypto-js": "^4.2.0",
     "curlconverter": "^4.9.0",
     "dotenv": "16.0.1",
+    "exceljs": "^4.4.0",
     "fastify": "4.28.1",
     "form-data": "^4.0.1",
     "gravatar": "1.8.2",

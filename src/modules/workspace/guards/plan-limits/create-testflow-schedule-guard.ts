@@ -28,6 +28,9 @@ export class CreateTestflowScheduleGuard implements CanActivate {
     const testflow = await this.testflowRepository.get(
       request?.body?.testflowId,
     );
+    if (!planData.active) {
+      throw new ForbiddenException("Hub is Restricted.");
+    }
     if (
       Array.isArray(testflow?.schedules) &&
       testflow.schedules.length >=

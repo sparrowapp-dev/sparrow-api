@@ -84,6 +84,8 @@ import {
 } from "@src/modules/common/enum/collection.request.enum";
 import { fixTestScriptInstructions } from "@src/modules/common/instructions/fix-test-script";
 import { generateTestCasesInstructions } from "@src/modules/common/instructions/generate-test-cases";
+import { fixPreTestScriptInstructions } from "@src/modules/common/instructions/fix-pre-test-script";
+import { generatePreScriptInstructions } from "@src/modules/common/instructions/generate-pre-script";
 
 async function initializeGenAI(authKey: string, client?: WebSocket) {
   const { GoogleGenAI } = await import("@google/genai");
@@ -164,7 +166,7 @@ export class AiAssistantService {
     try {
       if (!this.endpoint || !this.apiKey || !this.apiVersion) {
         console.warn("GPT Client is disabled. Missing configuration values");
-      }else{
+      } else {
         this.gptAssistantsClient = this.getGPTClient();
       }
     } catch (e) {
@@ -181,10 +183,9 @@ export class AiAssistantService {
         console.warn(
           "Deepseek Client is disabled. Missing configuration values",
         );
-      }else{
+      } else {
         this.deepseekClient = this.getDeepSeekClient();
       }
-
     } catch (e) {
       console.error(e);
     }
@@ -2476,7 +2477,164 @@ export class AiAssistantService {
     if (!content.testScript?.trim()) {
       throw new BadRequestException("Test script must be provided.");
     }
+   if(content?.type === "pre-script"){
+     try {
+       const response = await this.deepseekClient
+         .path("/chat/completions")
+         .post({
+           body: {
+             model: this.deepseekModel,
+             messages: [
+               { role: "system", content: fixPreTestScriptInstructions },
+               {
+                 role: "user",
+                 content: `${content.testScript}`,
+               },
+             ],
+           },
+         });
+         
+       const output = (
+         response.body as any
+       ).choices?.[0]?.message?.content?.trim();
+       if (!output) {
+         throw new BadRequestException(
+           "No test script generated from the model.",
+         );
+       }
+       let parsedOutput: any;
+       try {
+         parsedOutput = JSON.parse(output);
+       } catch {
+         parsedOutput = output;
+       }
+       const body = response.body as any;
+       const tokens = body?.usage?.total_tokens;
+  
+       const eventMessage = {
+         userId: user._id,
+         tokenCount: tokens,
+         model: "deepseek",
+       };
+  
+       await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+         value: JSON.stringify(eventMessage),
+       });
+  
+       const activityLog = {
+         userId: user._id.toString(),
+         userEmail: user.email,
+         activity: "fix-pre-test-script",
+         model: "deepseek",
+         tokenConsumed: tokens,
+         threadId: "null",
+       };
+  
+       // Send activity log to Kafka topic
+       await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+         value: JSON.stringify(activityLog),
+       });
+  
+       return { result: parsedOutput };
+     } catch (error) {
+       console.error("Error fixing pre test script:", error);
+       Sentry.withScope((scope) => {
+         scope.setTag("emailId", user.email);
+         scope.setTag("errorType", "AI");
+         Sentry.captureException(error);
+       });
+       throw new BadRequestException(
+         error?.message || "Failed to fix test script. Please try again.",
+       );
+     }
 
+   }
+   else{
+      try {
+        const response = await this.deepseekClient
+          .path("/chat/completions")
+          .post({
+            body: {
+              model: this.deepseekModel,
+              messages: [
+                { role: "system", content: fixTestScriptInstructions },
+                {
+                  role: "user",
+                  content: `${content.testScript}`,
+                },
+              ],
+            },
+          });
+          
+        const output = (
+          response.body as any
+        ).choices?.[0]?.message?.content?.trim();
+        if (!output) {
+          throw new BadRequestException(
+            "No test script generated from the model.",
+          );
+        }
+        let parsedOutput: any;
+        try {
+          parsedOutput = JSON.parse(output);
+        } catch {
+          parsedOutput = output;
+        }
+        const body = response.body as any;
+        const tokens = body?.usage?.total_tokens;
+
+        const eventMessage = {
+          userId: user._id,
+          tokenCount: tokens,
+          model: "deepseek",
+        };
+
+        await this.producerService.produce(TOPIC.AI_RESPONSE_GENERATED_TOPIC, {
+          value: JSON.stringify(eventMessage),
+        });
+
+        const activityLog = {
+          userId: user._id.toString(),
+          userEmail: user.email,
+          activity: "fix-test-script",
+          model: "deepseek",
+          tokenConsumed: tokens,
+          threadId: "null",
+        };
+
+        // Send activity log to Kafka topic
+        await this.producerService.produce(TOPIC.AI_ACTIVITY_LOG_TOPIC, {
+          value: JSON.stringify(activityLog),
+        });
+
+        return { result: parsedOutput };
+      } catch (error) {
+        console.error("Error fixing test script:", error);
+        Sentry.withScope((scope) => {
+          scope.setTag("emailId", user.email);
+          scope.setTag("errorType", "AI");
+          Sentry.captureException(error);
+        });
+        throw new BadRequestException(
+          error?.message || "Failed to fix test script. Please try again.",
+        );
+      }
+    }
+  }
+
+  /**
+   * Generates a pre-script for a request item within a collection.
+   * @param user - The authenticated user requesting the data.
+   * @param content - The request pre-script content.
+   * @returns Generated pre-script as JSON or string.
+   */
+  public async generatePreScript(
+    user: DecodedUserObject,
+    content: generateTestCasesDto, // Or create a dedicated DTO if needed
+  ) {
+    if (!content.text?.trim()) {
+      throw new BadRequestException("prompt must be provided.");
+    }
     try {
       const response = await this.deepseekClient
         .path("/chat/completions")
@@ -2484,21 +2642,24 @@ export class AiAssistantService {
           body: {
             model: this.deepseekModel,
             messages: [
-              { role: "system", content: fixTestScriptInstructions },
+              {
+                role: "system",
+                content: generatePreScriptInstructions,
+              },
               {
                 role: "user",
-                content: `${content.testScript}`,
+                content: `Pre-Script Prompt:\n${content.text}\n\n`,
               },
             ],
           },
         });
-        
+
       const output = (
         response.body as any
       ).choices?.[0]?.message?.content?.trim();
       if (!output) {
         throw new BadRequestException(
-          "No test script generated from the model.",
+          "No pre-script generated from the model.",
         );
       }
       let parsedOutput: any;
@@ -2523,7 +2684,7 @@ export class AiAssistantService {
       const activityLog = {
         userId: user._id.toString(),
         userEmail: user.email,
-        activity: "fix-test-script",
+        activity: "generate-pre-script",
         model: "deepseek",
         tokenConsumed: tokens,
         threadId: "null",
@@ -2536,18 +2697,17 @@ export class AiAssistantService {
 
       return { result: parsedOutput };
     } catch (error) {
-      console.error("Error fixing test script:", error);
+      console.error("Error generating pre-script:", error);
       Sentry.withScope((scope) => {
         scope.setTag("emailId", user.email);
         scope.setTag("errorType", "AI");
         Sentry.captureException(error);
       });
       throw new BadRequestException(
-        error?.message || "Failed to fix test script. Please try again.",
+        error?.message || "Failed to generate pre-script. Please try again.",
       );
     }
   }
-
   /**
    * Generates test cases for a request item within a collection, based on the specified type.
    * @param user - The authenticated user requesting the data.
