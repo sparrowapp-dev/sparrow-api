@@ -149,6 +149,37 @@ export class TestflowController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  @Get(":workspaceId/testflow/:testflowId/DataSets")
+  @ApiOperation({
+    summary: "Get Individual Testflow DataSet",
+    description: "This will get individual testflow dataset of a workspace",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Fetch Testflow Request Received",
+  })
+  @ApiResponse({ status: 400, description: "Fetch Testflow Request Failed" })
+  async getTestflowDataSets(
+    @Param("workspaceId") workspaceId: string,
+    @Param("testflowId") testflowId: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const testflow = await this.testflowService.getTestflowDataSets(
+      workspaceId,
+      testflowId,
+      user._id,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      testflow,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   /**
    * Update an existing Testflow in the Workspace.
    *
@@ -460,7 +491,7 @@ export class TestflowController {
       testflowId,
       scheduleId,
       workspaceId,
-      runScheduleTestDataSetDto.testflowDataSetId,
+      runScheduleTestDataSetDto?.testflowDataSetId || "",
       user,
     );
     const testflow = await this.testflowService.getTestflow(
@@ -579,6 +610,7 @@ export class TestflowController {
       testflowId,
       testflowDataSetDto.item,
       testflowDataSetDto.formatType,
+      testflowDataSetDto.name,
       user._id.toString(),
     );
     const responseData = new ApiResponseService(

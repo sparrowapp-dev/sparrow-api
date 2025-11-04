@@ -19,6 +19,7 @@ export class TestflowDataSetService {
     testflowId: string,
     testflowData: TestflowDataSet,
     formatType: FormatType,
+    testdataName: string,
     userId?: string,
   ) {
     // Check if dataset exists
@@ -54,26 +55,31 @@ export class TestflowDataSetService {
     const dataSetId = uuidv4();
     const testflowDataSetItem: TestflowDataSetItem = {
       id: dataSetId,
+      name: testdataName,
       item: testflowData,
       formatType,
       fileSize: `${fileSizeKB}kb`,
       createdAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: userId,
       createdBy: userId,
     };
 
     // Add dataset to testflow
-    await this.testflowRepository.addDataset(testflowId, testflowDataSetItem);
+    const response = await this.testflowRepository.addDataset(
+      testflowId,
+      testflowDataSetItem,
+    );
 
-    console.log("✅ Dataset validation and import successful.");
     return {
       success: true,
       message: "Dataset imported successfully",
-      data: testflowDataSetItem,
+      data: response,
     };
   }
 
   /**
-   * ✅ Validate request format strictly (no variable check)
+   * Validate request format strictly (no variable check)
    */
   private validateRequestFormat(request: any, datasetNo: number): void {
     if (!request.id || typeof request.id !== "number") {
@@ -88,7 +94,7 @@ export class TestflowDataSetService {
       );
     }
 
-    // ✅ Validate bodyType
+    // Validate bodyType
     const validBodyTypes = [
       "application/json",
       "application/xml",
@@ -104,7 +110,7 @@ export class TestflowDataSetService {
       );
     }
 
-    // ✅ Validate headers & params
+    // Validate headers & params
     this.validateKeyValueArray(
       request.headers,
       "headers",
@@ -118,7 +124,7 @@ export class TestflowDataSetService {
       datasetNo,
     );
 
-    // ✅ Validate body & auth
+    // Validate body & auth
     this.validateBodyFormat(request, datasetNo);
     this.validateAuthFormat(request, datasetNo);
   }

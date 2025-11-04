@@ -38,9 +38,12 @@ import {
 import {
   RunConfigurationDto,
   Testflow,
+  TestflowDataSetItem,
+  TestflowDataSetRunHistoryRequest,
   TestflowEdges,
   TestflowNodes,
   TestflowSchedular,
+  TestflowSchedularDataSetHistory,
   TestFlowSchedularRunHistory,
 } from "@src/modules/common/models/testflow.model";
 import { BodyModeEnum } from "@src/modules/common/models/collection.model";
@@ -85,10 +88,13 @@ export class TestflowService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly userReposistory: UserRepository,
     private readonly environmentReposistory: EnvironmentRepository,
-    private readonly teamReposistory:TeamRepository,
+    private readonly teamReposistory: TeamRepository,
   ) {}
 
-  async getNextFutureCronExpression(pastCron: string, intervalHours: number): Promise<string> {
+  async getNextFutureCronExpression(
+    pastCron: string,
+    intervalHours: number,
+  ): Promise<string> {
     // Expecting cron in format: 's m h * * *'
     const parts = pastCron.trim().split(/\s+/);
     if (parts.length !== 6) return pastCron;
@@ -101,15 +107,9 @@ export class TestflowService implements OnModuleInit {
 
     // Start from the past time
     let now = new Date();
-    let next = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      month,
-      day,
-      hour,
-      minute,
-      second,
-      0
-    ));
+    let next = new Date(
+      Date.UTC(now.getUTCFullYear(), month, day, hour, minute, second, 0),
+    );
 
     // If the past time is in the past, keep adding interval until it's in the future
     while (next <= now) {
@@ -132,15 +132,18 @@ export class TestflowService implements OnModuleInit {
         if (!tf.schedules?.length) continue;
 
         for (const schedule of tf.schedules) {
-          try{
+          try {
             const runCycleConfig = this.buildRunCycleConfig(
               schedule.runConfiguration,
             );
             if (schedule.isActive && schedule.cronExpression) {
               let cronExpression = schedule.cronExpression;
-              if(schedule.runConfiguration.runCycle === RunCycleEnum.HOURLY){
+              if (schedule.runConfiguration.runCycle === RunCycleEnum.HOURLY) {
                 const intervalHours = schedule.runConfiguration.intervalHours;
-                cronExpression = await this.getNextFutureCronExpression(cronExpression, intervalHours);
+                cronExpression = await this.getNextFutureCronExpression(
+                  cronExpression,
+                  intervalHours,
+                );
               }
               await this.testflowSchedulerService.addSchedulerJob(
                 runCycleConfig,
@@ -151,17 +154,21 @@ export class TestflowService implements OnModuleInit {
                   schedule.id,
                   schedule.testflowDataSetId,
                 ),
-                (_cronExpression: string)=>{
-                  this.testflowRepository.editSchedular(tf._id.toString(), schedule.id, {
+                (_cronExpression: string) => {
+                  this.testflowRepository.editSchedular(
+                    tf._id.toString(),
+                    schedule.id,
+                    {
                       cronExpression: _cronExpression,
-                  });
+                    },
+                  );
                 },
                 cronExpression,
                 schedule.id,
                 "UTC",
               );
             }
-          }catch(error){
+          } catch (error) {
             this.logger.error("Error adding scheduler job:", error);
           }
         }
@@ -221,23 +228,25 @@ export class TestflowService implements OnModuleInit {
       environmentName = environmentData?.name || "";
     }
 
-    if(updateScheduleDto.runConfiguration){
-      const runCycleConfig = this.buildRunCycleConfig(updateScheduleDto.runConfiguration);
+    if (updateScheduleDto.runConfiguration) {
+      const runCycleConfig = this.buildRunCycleConfig(
+        updateScheduleDto.runConfiguration,
+      );
       const cronExpression = this.generateCronExpression(runCycleConfig);
       if (!cronExpression) {
         updateScheduleDto.cronExpression = null;
-      }
-      else{
+      } else {
         updateScheduleDto.cronExpression = cronExpression;
       }
-    }else{
-      if(existingSchedular.runConfiguration.runCycle === RunCycleEnum.HOURLY){
-          const runCycleConfig = this.buildRunCycleConfig(existingSchedular.runConfiguration);
+    } else {
+      if (existingSchedular.runConfiguration.runCycle === RunCycleEnum.HOURLY) {
+        const runCycleConfig = this.buildRunCycleConfig(
+          existingSchedular.runConfiguration,
+        );
         const cronExpression = this.generateCronExpression(runCycleConfig);
         if (!cronExpression) {
           updateScheduleDto.cronExpression = null;
-          }
-          else{
+        } else {
           updateScheduleDto.cronExpression = cronExpression;
         }
       }
@@ -282,7 +291,7 @@ export class TestflowService implements OnModuleInit {
             schedular.testflowDataSetId,
             user,
           ),
-          (_cronExpression: string)=>{
+          (_cronExpression: string) => {
             this.testflowRepository.editSchedular(testflowId, scheduleId, {
               cronExpression: _cronExpression,
             });
@@ -325,7 +334,7 @@ export class TestflowService implements OnModuleInit {
     testflowId: string,
     scheduleId: string,
     workspaceId: string,
-    testflowDataSetId:string,
+    testflowDataSetId: string,
     user: DecodedUserObject,
   ) {
     await this.isWorkspaceAdminorEditor(workspaceId, user._id);
@@ -405,9 +414,36 @@ export class TestflowService implements OnModuleInit {
    * Fetches single testflow.
    * @param id - Testflow id you want to fetch.
    */
-  async getTestflow(workspaceId: string, testflowId: string, userId: ObjectId): Promise<WithId<Testflow>> {
+  async getTestflow(
+    workspaceId: string,
+    testflowId: string,
+    userId: ObjectId,
+  ): Promise<WithId<Testflow>> {
     await this.checkPermission(workspaceId, userId);
     return await this.testflowRepository.get(testflowId);
+  }
+
+  /**
+   * Fetches single testflow.
+   * @param id - Testflow id you want to fetch.
+   */
+  async getTestflowDataSets(
+    workspaceId: string,
+    testflowId: string,
+    userId: ObjectId,
+  ): Promise<{ datasets?: TestflowDataSetItem[] }> {
+    await this.checkPermission(workspaceId, userId);
+    const response = await this.testflowRepository.get(testflowId);
+    if (!response) {
+      throw new NotFoundException(`Testflow not found for ID: ${testflowId}`);
+    }
+    // Only return the datasets field
+    const updatedResponse = {
+      datasets: response?.datasets ?? [],
+      workspaceId,
+      testflowId,
+    };
+    return updatedResponse;
   }
 
   /**
@@ -417,7 +453,7 @@ export class TestflowService implements OnModuleInit {
    */
   async checkPermission(workspaceId: string, userid: ObjectId): Promise<void> {
     const workspace = await this.workspaceService.get(workspaceId);
-    if(workspace.workspaceType === WorkspaceType.PUBLIC){
+    if (workspace.workspaceType === WorkspaceType.PUBLIC) {
       return;
     }
     const hasPermission = workspace.users.some((user) => {
@@ -492,8 +528,8 @@ export class TestflowService implements OnModuleInit {
     let testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
     const teamId = workspace.team.id;
     const getTeamData = await this.teamReposistory.get(teamId);
-    if(getTeamData){
-      const testflowLimit =  getTeamData.plan.limits.testflowPerWorkspace.value;
+    if (getTeamData) {
+      const testflowLimit = getTeamData.plan.limits.testflowPerWorkspace.value;
       testflowIds = testflowIds.slice(0, testflowLimit);
     }
     if (testflowIds.length === 0) return [];
@@ -514,8 +550,8 @@ export class TestflowService implements OnModuleInit {
     let testflowIds = workspace.testflows?.map((t) => t.id.toString()) || [];
     const teamId = workspace.team.id;
     const getTeamData = await this.teamReposistory.get(teamId);
-    if(getTeamData){
-      const testflowLimit =  getTeamData.plan.limits.testflowPerWorkspace.value;
+    if (getTeamData) {
+      const testflowLimit = getTeamData.plan.limits.testflowPerWorkspace.value;
       testflowIds = testflowIds.slice(0, testflowLimit);
     }
     if (testflowIds.length === 0) return [];
@@ -655,10 +691,14 @@ export class TestflowService implements OnModuleInit {
           schedulerId,
           user,
         ),
-        (_cronExpression: string)=>{
-          this.testflowRepository.editSchedular(schedularData.testflowId, schedulerId, {
+        (_cronExpression: string) => {
+          this.testflowRepository.editSchedular(
+            schedularData.testflowId,
+            schedulerId,
+            {
               cronExpression: _cronExpression,
-          });
+            },
+          );
         },
         cronExpression,
         schedulerId,
@@ -831,7 +871,7 @@ export class TestflowService implements OnModuleInit {
     environmentId: string,
     workspaceId: string,
     schedulerId: string,
-    testflowDataSetId:string,
+    testflowDataSetId: string,
     user?: DecodedUserObject,
   ) {
     return async () => {
@@ -854,7 +894,44 @@ export class TestflowService implements OnModuleInit {
     workspaceId: string,
     schedulerId: string,
     isScheduled: boolean,
-    testflowDataSetId:string,
+    testflowDataSetId: string,
+    user?: DecodedUserObject,
+  ) {
+    try {
+      if (!testflowDataSetId) {
+        await this.executeTestflowWithOutDatSet(
+          testflowId,
+          environmentId,
+          workspaceId,
+          schedulerId,
+          isScheduled,
+          user,
+        );
+      } else {
+        await this.executeTestflowWithDataset(
+          testflowId,
+          environmentId,
+          workspaceId,
+          schedulerId,
+          isScheduled,
+          testflowDataSetId,
+          user,
+        );
+      }
+    } catch (err) {
+      console.error(
+        `Error executing testflow for scheduler ${schedulerId}:`,
+        err,
+      );
+    }
+  }
+
+  private async executeTestflowWithOutDatSet(
+    testflowId: string,
+    environmentId: string,
+    workspaceId: string,
+    schedulerId: string,
+    isScheduled: boolean,
     user?: DecodedUserObject,
   ) {
     try {
@@ -911,17 +988,15 @@ export class TestflowService implements OnModuleInit {
       }
       const data = response?.result?.history;
       let scheduleRunResult;
-      if(!response?.status){
+      if (!response?.status) {
         scheduleRunResult = "error";
-      }
-      else if (data?.status === "fail" && data?.successRequests < 1) {
+      } else if (data?.status === "fail" && data?.successRequests < 1) {
         scheduleRunResult = "failed";
       } else if (data?.status === "success") {
         scheduleRunResult = "success";
       } else if (data?.status === "error") {
         scheduleRunResult = "error";
-      } 
-      else {
+      } else {
         scheduleRunResult = "partial";
       }
       const totalRequestCount = data.successRequests + data.failedRequests;
@@ -985,10 +1060,116 @@ export class TestflowService implements OnModuleInit {
         );
       }
     } catch (err) {
-      console.error(
-        `Error executing testflow for scheduler ${schedulerId}:`,
-        err,
+      console.error(`Error executing testflow without dataset:`, err);
+    }
+  }
+
+  private async executeTestflowWithDataset(
+    testflowId: string,
+    environmentId: string,
+    workspaceId: string,
+    schedulerId: string,
+    isScheduled: boolean,
+    testflowDataSetId: string,
+    user?: DecodedUserObject,
+  ) {
+    try {
+      const uuid = uuidv4();
+      const runningHistory: TestflowSchedularDataSetHistory = {
+        id: uuid,
+        isScheduled,
+        status: "pending",
+        schedularDataRunHistory: [],
+        createdAt: new Date(),
+      };
+
+      // Add initial pending history
+      await this.testflowRepository.updateSchedularDataSetExecution(
+        testflowId,
+        schedulerId,
+        runningHistory,
       );
+
+      // Execute testflow with dataset
+      const dataSetResults =
+        await this.testflowRunService.handleTestflowDataSetRun(
+          environmentId,
+          workspaceId,
+          testflowId,
+          testflowDataSetId,
+          user,
+        );
+
+      // Transform each dataset result into TestflowDataSetRunHistoryRequest format
+      const schedularDataRunHistory: TestflowDataSetRunHistoryRequest[] =
+        dataSetResults.map((dataSetResult: any) => {
+          const history = dataSetResult.result?.history || {};
+
+          return {
+            failedRequests: history.failedRequests || 0,
+            requests: history.requests || [],
+            responses: history.responses || [],
+            edges: dataSetResult.edges || [],
+            nodes: dataSetResult.nodes || [],
+            status: history.status || "error",
+            successRequests: history.successRequests || 0,
+            totalTime: history.totalTime || "0ms",
+          };
+        });
+
+      // Determine overall status based on all dataset results
+      const hasError = schedularDataRunHistory.some(
+        (h) => h.status === "error",
+      );
+      const hasPending = schedularDataRunHistory.some(
+        (h) => h.status === "pending",
+      );
+      const overallStatus = hasError
+        ? "error"
+        : hasPending
+          ? "pending"
+          : "success";
+
+      // Prepare the executed history with all dataset run results
+      const executedHistory: Partial<TestflowSchedularDataSetHistory> = {
+        id: uuid,
+        isScheduled,
+        schedularDataRunHistory,
+        status: overallStatus,
+        updatedAt: new Date(),
+      };
+      // Update execution result in DB
+      await this.testflowRepository.editSchedularDataSetHistory(
+        testflowId,
+        schedulerId,
+        executedHistory,
+      );
+      return {
+        success: true,
+        historyId: uuid,
+        status: overallStatus,
+        totalDataSets: schedularDataRunHistory.length,
+      };
+    } catch (error) {
+      console.error(`Error executing testflow with dataset:`, error);
+      const uuid = uuidv4();
+      const errorHistory: Partial<TestflowSchedularDataSetHistory> = {
+        id: uuid,
+        isScheduled,
+        schedularDataRunHistory: [],
+        status: "error",
+        updatedAt: new Date(),
+      };
+
+      await this.testflowRepository.editSchedularDataSetHistory(
+        testflowId,
+        schedulerId,
+        errorHistory,
+      );
+      return {
+        success: false,
+        error: error.message,
+      };
     }
   }
 
@@ -1000,22 +1181,22 @@ export class TestflowService implements OnModuleInit {
    * @returns Validation results containing flags and detailed node information
    */
   async validateTestflowNodes(
-    workspaceId: string, 
-    testflowId: string, 
-    userId: ObjectId
+    workspaceId: string,
+    testflowId: string,
+    userId: ObjectId,
   ): Promise<TestflowValidationResultDto> {
     // Check permissions
     await this.checkPermission(workspaceId, userId);
-    
+
     // Get the testflow
     const testflow = await this.testflowRepository.get(testflowId);
-    
+
     const localhostNodes: Array<{
       nodeId: string;
       blockName: string;
       url: string;
     }> = [];
-    
+
     const formdataNodes: Array<{
       nodeId: string;
       blockName: string;
@@ -1027,41 +1208,40 @@ export class TestflowService implements OnModuleInit {
       for (const node of testflow.nodes) {
         if (!node.data) continue;
 
-        const { blockName = 'Unnamed Block', requestData } = node.data;
-        
+        const { blockName = "Unnamed Block", requestData } = node.data;
+
         // Check for localhost URLs by examining hostname only
         if (requestData?.url) {
           try {
             const url = new URL(requestData.url.trim());
             const hostname = url.hostname.toLowerCase();
-            
+
             const localhostPatterns = [
-              'localhost',
-              '127.0.0.1', 
-              '0.0.0.0',
-              '::1', // IPv6 localhost
+              "localhost",
+              "127.0.0.1",
+              "0.0.0.0",
+              "::1", // IPv6 localhost
             ];
-            
+
             // Check for private IP ranges
-            const isPrivateIP = (
-              hostname.startsWith('192.168.') ||
-              hostname.startsWith('10.') ||
-              (hostname.startsWith('172.') && 
+            const isPrivateIP =
+              hostname.startsWith("192.168.") ||
+              hostname.startsWith("10.") ||
+              (hostname.startsWith("172.") &&
                 (() => {
-                  const parts = hostname.split('.');
+                  const parts = hostname.split(".");
                   if (parts.length >= 2) {
                     const secondOctet = parseInt(parts[1], 10);
                     return secondOctet >= 16 && secondOctet <= 31;
                   }
                   return false;
-                })()
-              ) ||
-              hostname.endsWith('.local') ||
-              hostname.includes('.local.')
-            );
-            
-            const isLocalhost = localhostPatterns.includes(hostname) || isPrivateIP;
-            
+                })()) ||
+              hostname.endsWith(".local") ||
+              hostname.includes(".local.");
+
+            const isLocalhost =
+              localhostPatterns.includes(hostname) || isPrivateIP;
+
             if (isLocalhost) {
               localhostNodes.push({
                 nodeId: node.id,
@@ -1069,21 +1249,24 @@ export class TestflowService implements OnModuleInit {
                 url: requestData.url,
               });
             }
-          } catch (error) {           
-          }
+          } catch (error) {}
         }
-      
+
         // Check for formdata files
-        if (requestData?.selectedRequestBodyType === BodyModeEnum["multipart/form-data"] && requestData?.body?.formdata?.text) {
-          const files = requestData.body.formdata.text.filter((formData)=>{
-            if(formData.type === 'file'){
+        if (
+          requestData?.selectedRequestBodyType ===
+            BodyModeEnum["multipart/form-data"] &&
+          requestData?.body?.formdata?.text
+        ) {
+          const files = requestData.body.formdata.text.filter((formData) => {
+            if (formData.type === "file") {
               return true;
-            }else{
+            } else {
               return false;
             }
           });
           const fileCount = Array.isArray(files) ? files.length : 0;
-          
+
           if (fileCount > 0) {
             formdataNodes.push({
               nodeId: node.id,
@@ -1113,7 +1296,7 @@ export class TestflowService implements OnModuleInit {
       );
     }
     const transporter = this.emailService.createTransporter();
-    const hubUrlLink = `${this.configService.get("sparrowApp.baseUrl")}/app/collections`
+    const hubUrlLink = `${this.configService.get("sparrowApp.baseUrl")}/app/collections`;
     // Merge emailData
     const context = {
       sparrowEmail: this.configService.get("support.sparrowEmail"),

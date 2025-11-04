@@ -21,6 +21,7 @@ import {
   Testflow,
   TestflowDataSetItem,
   TestflowSchedular,
+  TestflowSchedularDataSetHistory,
   TestFlowSchedularRunHistory,
 } from "@src/modules/common/models/testflow.model";
 import { UpdateTestflowDto } from "../payloads/testflow.payload";
@@ -232,6 +233,62 @@ export class TestflowRepository {
     );
   }
 
+  async updateSchedularDataSetExecution(
+    testflowId: string,
+    schedularId: string,
+    dataSetHistoryItem: TestflowSchedularDataSetHistory,
+  ): Promise<UpdateResult> {
+    const nowUtc = new Date().toISOString();
+    if (!testflowId || !schedularId) {
+      throw new Error("Both testflowId and schedularId are required");
+    }
+    const updateOperations: any = {
+      $set: {
+        updatedAt: nowUtc,
+      },
+      $push: {
+        "schedules.$[elem].schedularDataSetHistory": {
+          $each: [dataSetHistoryItem],
+          $position: 0, // newest first
+        },
+      },
+    };
+    return this.db
+      .collection(Collections.TESTFLOW)
+      .updateOne({ _id: new ObjectId(testflowId) }, updateOperations, {
+        arrayFilters: [{ "elem.id": schedularId }],
+      });
+  }
+
+  async editSchedularDataSetHistory(
+    testflowId: string,
+    schedularId: string,
+    updatedDataSetHistory: Partial<TestflowSchedularDataSetHistory>,
+  ): Promise<UpdateResult> {
+    if (!testflowId || !schedularId || !updatedDataSetHistory.id) {
+      throw new Error(
+        "testflowId, schedularId, and dataSetHistoryId are required",
+      );
+    }
+    // Build the update object for only the provided fields
+    const setObj: Record<string, any> = {};
+    for (const [key, value] of Object.entries(updatedDataSetHistory)) {
+      setObj[`schedules.$[elem].schedularDataSetHistory.$[dataset].${key}`] =
+        value;
+    }
+    setObj["updatedAt"] = new Date();
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      { $set: setObj },
+      {
+        arrayFilters: [
+          { "elem.id": schedularId },
+          { "dataset.id": updatedDataSetHistory.id },
+        ],
+      },
+    );
+  }
+
   /**
    * Edit a schedular execution (run history item) in a testflow's schedule.
    * @param {string} testflowId - The testflow document ID.
@@ -359,19 +416,28 @@ export class TestflowRepository {
    * Add a new dataset to a testflow
    * @param testflowId - The ID of the testflow
    * @param datasetItem - The dataset item to add
-   * @returns UpdateResult
+   * @returns TestflowDataSetItem
    */
   async addDataset(
     testflowId: string,
     datasetItem: TestflowDataSetItem,
-  ): Promise<UpdateResult> {
-    return this.db.collection(Collections.TESTFLOW).updateOne(
-      { _id: new ObjectId(testflowId) },
-      {
-        $push: { datasets: datasetItem },
-        $set: { updatedAt: new Date() },
-      },
-    );
+  ): Promise<TestflowDataSetItem> {
+    const result = await this.db
+      .collection(Collections.TESTFLOW)
+      .findOneAndUpdate(
+        { _id: new ObjectId(testflowId) },
+        {
+          $push: { datasets: datasetItem } as any,
+          $set: { updatedAt: new Date() },
+        },
+        {
+          returnDocument: "after",
+        },
+      );
+    if (!result) {
+      throw new Error("Testflow not found");
+    }
+    return datasetItem;
   }
 
   /**
