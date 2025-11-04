@@ -1099,7 +1099,6 @@ export class TestflowService implements OnModuleInit {
           testflowDataSetId,
           user,
         );
-      console.log("this is the dat----------->", dataSetResults);
       // Transform each dataset result into TestflowDataSetRunHistoryRequest format
       const schedularDataRunHistory: TestflowDataSetRunHistoryRequest[] =
         dataSetResults.map((dataSetResult: any) => {
