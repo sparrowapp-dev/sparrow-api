@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
 import {
   FormatType,
   TestflowDataSet,
@@ -270,5 +274,52 @@ export class TestflowDataSetService {
       case "none":
         break;
     }
+  }
+
+  /**
+   * Update specific fields of a dataset
+   */
+  async updateDatasetItem(
+    testflowId: string,
+    datasetId: string,
+    updateData: Partial<
+      Pick<TestflowDataSetItem, "name" | "fileUrl" | "updatedBy">
+    >,
+  ): Promise<any> {
+    // Automatically set updatedAt
+    const result = await this.testflowRepository.updateDataset(
+      testflowId,
+      datasetId,
+      {
+        ...updateData,
+        updatedAt: new Date(),
+      },
+    );
+    if (!result) {
+      throw new NotFoundException("Dataset not found or no changes made");
+    }
+    return {
+      message: "Dataset updated successfully",
+      updated: true,
+      result,
+    };
+  }
+
+  /**
+   * Delete a dataset item
+   */
+  async deleteDatasetItem(testflowId: string, datasetId: string): Promise<any> {
+    const result = await this.testflowRepository.deleteDataset(
+      testflowId,
+      datasetId,
+    );
+
+    if (result.modifiedCount === 0) {
+      throw new NotFoundException("Dataset not found");
+    }
+    return {
+      message: "Dataset deleted successfully",
+      deleted: true,
+    };
   }
 }

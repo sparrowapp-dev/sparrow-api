@@ -512,4 +512,64 @@ export class TestflowRepository {
 
     return result?.datasets?.[0] || null;
   }
+
+  /**
+   * Update specific fields of a dataset in a testflow
+   * @param testflowId - The ID of the testflow
+   * @param datasetId - The ID of the dataset to update
+   * @param updateData - The fields to update (e.g., name, fileUrl, updatedAt, updatedBy)
+   * @returns The update result
+   */
+  async updateDataset(
+    testflowId: string,
+    datasetId: string,
+    updateData: Partial<
+      Pick<TestflowDataSetItem, "name" | "fileUrl" | "updatedAt" | "updatedBy">
+    >,
+  ): Promise<TestflowDataSetItem | null> {
+    const updateFields: any = {};
+    if (updateData.name) updateFields["datasets.$.name"] = updateData.name;
+    if (updateData.fileUrl)
+      updateFields["datasets.$.fileUrl"] = updateData.fileUrl;
+    if (updateData.updatedAt)
+      updateFields["datasets.$.updatedAt"] = updateData.updatedAt;
+    if (updateData.updatedBy)
+      updateFields["datasets.$.updatedBy"] = updateData.updatedBy;
+    // Perform atomic update and fetch updated dataset
+    const updatedTestflow = await this.db
+      .collection(Collections.TESTFLOW)
+      .findOneAndUpdate(
+        {
+          _id: new ObjectId(testflowId),
+          "datasets.id": datasetId,
+        },
+        { $set: updateFields },
+        {
+          returnDocument: "after",
+          projection: { datasets: { $elemMatch: { id: datasetId } } },
+        },
+      );
+    return updatedTestflow?.value?.datasets?.[0] || null;
+  }
+
+  /**
+   * Delete a dataset from a testflow
+   * @param testflowId - The ID of the testflow
+   * @param datasetId - The ID of the dataset to delete
+   * @returns The update result
+   */
+  async deleteDataset(
+    testflowId: string,
+    datasetId: string,
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $pull: {
+          datasets: { id: datasetId },
+        },
+        $set: { updatedAt: new Date() },
+      },
+    );
+  }
 }
