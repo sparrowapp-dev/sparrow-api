@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   Post,
+  Patch,
   Put,
   Req,
   Res,
@@ -35,6 +36,7 @@ import {
   CreateTestflowSchedularDto,
   UpdateTestflowDto,
   TestflowValidationResultDto,
+  UpdateTestflowDatasetDto,
 } from "../payloads/testflow.payload";
 import { CreateTestflowBlockGuard } from "../guards/plan-limits/create-testflow-block-guard";
 import { CreateTestflowGuard } from "../guards/plan-limits/create-testflow-guard";
@@ -619,5 +621,68 @@ export class TestflowController {
       response,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
+   * Update specific dataset fields (name, fileUrl)
+   */
+  @Patch(":testflowId/dataset/:datasetId")
+  @ApiOperation({
+    summary: "Update a dataset",
+    description:
+      "Update dataset name, fileUrl, or metadata for a given testflow.",
+  })
+  @ApiResponse({ status: 200, description: "Dataset updated successfully" })
+  @ApiResponse({ status: 404, description: "Dataset not found" })
+  @UseGuards(JwtAuthGuard)
+  async updateDataset(
+    @Param("testflowId") testflowId: string,
+    @Param("datasetId") datasetId: string,
+    @Body() updateTestflowDatasetDto: UpdateTestflowDatasetDto,
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.testflowDataSetService.updateDatasetItem(
+      testflowId,
+      datasetId,
+      { ...updateTestflowDatasetDto, updatedBy: user._id.toString() },
+    );
+
+    const responseData = new ApiResponseService(
+      result.message,
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(HttpStatusCode.OK).send(responseData);
+  }
+
+  /**
+   * Delete a dataset from a testflow
+   */
+  @Delete(":testflowId/dataset/:datasetId")
+  @ApiOperation({
+    summary: "Delete a dataset",
+    description: "Remove a dataset from a specific testflow.",
+  })
+  @ApiResponse({ status: 200, description: "Dataset deleted successfully" })
+  @ApiResponse({ status: 404, description: "Dataset not found" })
+  @UseGuards(JwtAuthGuard)
+  async deleteDataset(
+    @Param("testflowId") testflowId: string,
+    @Param("datasetId") datasetId: string,
+    @Res() res: FastifyReply,
+  ) {
+    const result = await this.testflowDataSetService.deleteDatasetItem(
+      testflowId,
+      datasetId,
+    );
+
+    const responseData = new ApiResponseService(
+      result.message,
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(HttpStatusCode.OK).send(responseData);
   }
 }
