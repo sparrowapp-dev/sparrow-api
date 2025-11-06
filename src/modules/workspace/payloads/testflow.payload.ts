@@ -16,6 +16,7 @@ import { Type } from "class-transformer";
 import {
   NotificationDto,
   RunConfigurationDto,
+  TestflowDataSet,
   TestflowEdges,
   TestflowNodes,
 } from "@src/modules/common/models/testflow.model";
@@ -269,4 +270,8 @@ export class UpdateTestflowDatasetDto {
   @IsString()
   @IsOptional()
   fileUrl?: string;
+
+  @ValidateNested()
+  @Type(() => TestflowDataSet)
+  item: TestflowDataSet;
 }

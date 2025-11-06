@@ -235,193 +235,11 @@ export class TestflowNodes {
   data?: NodeData;
 }
 
-// Form data text field
-export class FormDataTextField {
-  @IsString()
-  @IsNotEmpty()
-  key: string;
-
-  @IsString()
-  @IsNotEmpty()
-  value: string;
-
-  @IsBoolean()
-  @IsOptional()
-  checked?: boolean;
-}
-
-// Form data file field
-export class FormDataFileField {
-  @IsString()
-  @IsNotEmpty()
-  key: string;
-
-  @IsString()
-  @IsNotEmpty()
-  value: string;
-
-  @IsBoolean()
-  @IsOptional()
-  checked?: boolean;
-}
-
-// Multipart form data body structure
-export class FormDataBody {
-  @IsArray()
-  @Type(() => FormDataTextField)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  text?: FormDataTextField[];
-
-  @IsArray()
-  @Type(() => FormDataFileField)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  file?: FormDataFileField[];
-}
-
-// URL encoded body field
-export class UrlEncodedField {
-  @IsString()
-  @IsNotEmpty()
-  key: string;
-
-  @IsString()
-  @IsNotEmpty()
-  value: string;
-
-  @IsBoolean()
-  @IsOptional()
-  checked?: boolean;
-}
-
-// Authentication configurations
-export class BearerTokenAuth {
-  @IsString()
-  type: "bearerToken";
-
-  @IsString()
-  @IsNotEmpty()
-  bearerToken: string;
-}
-
-export class BasicAuth {
-  @IsString()
-  type: "basicAuth";
-
-  @IsString()
-  @IsNotEmpty()
-  username: string;
-
-  @IsString()
-  @IsNotEmpty()
-  password: string;
-}
-
-export class ApiKeyAuth {
-  @IsString()
-  type: "apiKey";
-
-  @IsString()
-  @IsNotEmpty()
-  key: string;
-
-  @IsString()
-  @IsNotEmpty()
-  value: string;
-
-  @IsString()
-  @IsNotEmpty()
-  addTo: AddTo;
-}
-
-export class NoAuth {
-  @IsString()
-  type: "none";
-}
-
-// Union type for all auth types
-export type DataSetAuth = BearerTokenAuth | BasicAuth | ApiKeyAuth | NoAuth;
-
-export class KeyValueDataSet {
-  @IsString()
-  key: string;
-
-  @IsOptional()
-  value: string | unknown;
-
-  @IsBoolean()
-  checked: boolean;
-}
-
-// Individual request data
-export class DataSetRequest {
-  @IsNumber()
-  @IsNotEmpty()
-  id?: number;
-
-  @IsString()
-  @IsNotEmpty()
-  name?: string;
-
-  @IsArray()
-  @Type(() => KeyValueDataSet)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  headers?: KeyValueDataSet[];
-
-  @IsArray()
-  @Type(() => KeyValueDataSet)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  params?: KeyValueDataSet[];
-
-  // Body can be string, array, or object depending on bodyType
-  @ApiProperty({ type: SparrowRequestBody })
-  @Type(() => SparrowRequestBody)
-  @IsOptional()
-  body?: SparrowRequestBody;
-
-  @ApiProperty({
-    enum: [
-      "application/json",
-      "application/xml",
-      "application/x-www-form-urlencoded",
-      "multipart/form-data",
-      "application/javascript",
-      "text/plain",
-      "text/html",
-    ],
-  })
-  @IsEnum(BodyModeEnum)
-  @IsString()
-  @IsOptional()
-  bodyType?: BodyModeEnum;
-
-  @IsOptional()
-  auth?: DataSetAuth;
-}
-
-// Dataset group
-export class DataSetGroup {
-  @IsNumber()
-  @IsNotEmpty()
-  no: number;
-
-  @IsArray()
-  @Type(() => DataSetRequest)
-  @ValidateNested({ each: true })
-  @IsNotEmpty()
-  data: DataSetRequest[];
-}
-
 // Main TestflowDataSet class
 export class TestflowDataSet {
   @IsArray()
-  @Type(() => DataSetGroup)
-  @ValidateNested({ each: true })
   @IsNotEmpty()
-  dataSet: DataSetGroup[];
+  dataSet: Record<string, any>[];
 }
 
 export enum FormatType {
@@ -472,10 +290,16 @@ export class TestflowDataSetItem {
   updatedBy?: string;
 }
 
+export class TestflowDataSetItemDto {
+  @IsArray()
+  @IsNotEmpty()
+  dataSet: Record<string, any>[];
+}
+
 export class TestflowDataSetDto {
   @ValidateNested()
-  @Type(() => TestflowDataSet)
-  item: TestflowDataSet;
+  @Type(() => TestflowDataSetItemDto)
+  item: TestflowDataSetItemDto;
 
   @IsString()
   @IsNotEmpty()
