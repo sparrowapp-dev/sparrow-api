@@ -524,7 +524,10 @@ export class TestflowRepository {
     testflowId: string,
     datasetId: string,
     updateData: Partial<
-      Pick<TestflowDataSetItem, "name" | "fileUrl" | "updatedAt" | "updatedBy">
+      Pick<
+        TestflowDataSetItem,
+        "name" | "fileUrl" | "item" | "updatedAt" | "updatedBy"
+      >
     >,
   ): Promise<TestflowDataSetItem | null> {
     const updateFields: any = {};
@@ -535,6 +538,7 @@ export class TestflowRepository {
       updateFields["datasets.$.updatedAt"] = updateData.updatedAt;
     if (updateData.updatedBy)
       updateFields["datasets.$.updatedBy"] = updateData.updatedBy;
+    if (updateData.item) updateFields["datasets.$.item"] = updateData.item;
     // Perform atomic update and fetch updated dataset
     const updatedTestflow = await this.db
       .collection(Collections.TESTFLOW)

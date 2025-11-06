@@ -12,14 +12,6 @@ import { ConfigService } from "@nestjs/config";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { VariableDto } from "@src/modules/common/models/environment.model";
 import { ObjectId } from "mongodb";
-import {
-  DataSetGroup,
-  TestflowDataSet,
-  TestflowEdges,
-  TestflowNodes,
-} from "@src/modules/common/models/testflow.model";
-import { BodyModeEnum } from "@src/modules/common/models/collection.model";
-import { AddTo } from "../payloads/collection.payload";
 
 @Injectable()
 export class TestflowRunService {
@@ -193,12 +185,6 @@ export class TestflowRunService {
         }
       }
 
-      // Combine global + environment-specific variables
-      const activeVariables = this.combineEnvironmentData(
-        globalEnvDetails?.variable || [],
-        environmentData?.variable || [],
-      );
-
       // Build proxy URL
       const sparrowProxy = this.configService.get<string>(
         "sparrowProxy.baseUrl",
@@ -209,19 +195,28 @@ export class TestflowRunService {
 
       const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
 
-      // Format nodes using dataset
-      const dataSetNodes = await this.formatTestflowNodes(
-        testflowDetails.nodes,
-        testflowDataSet.item,
+      const testflowDataSets = await this.createVariableforTestdata(
+        testflowDataSet.item.dataSet,
       );
 
       const dataSetResult = [];
 
       // Run dataset groups one by one
-      for (const dataSet of dataSetNodes) {
+      for (const dataSet of testflowDataSets) {
+        // Combine global + environment-specific variables
+        const activeVariables = this.combineEnvironmentData(
+          globalEnvDetails?.variable || [],
+          environmentData?.variable || [],
+        );
+
+        const latestVariables = this.combineEnvironmentData(
+          activeVariables || [],
+          dataSet || [],
+        );
+
         const body = {
-          nodes: dataSet || [],
-          variables: activeVariables || [],
+          nodes: testflowDetails.nodes || [],
+          variables: latestVariables || [],
           edges: testflowDetails.edges,
           userId: user?._id || new ObjectId("000000000000000000000000"),
         };
@@ -258,177 +253,24 @@ export class TestflowRunService {
     }
   }
 
-  private async formatTestflowNodes(
-    nodes: TestflowNodes[],
-    testflowDataSet: TestflowDataSet,
-  ): Promise<TestflowNodes[][]> {
-    let formattedDataSetNodes: TestflowNodes[][] = [];
-    let testflowDataItems: DataSetGroup[] = testflowDataSet.dataSet;
-    // Iterate through each dataset group
-    for (
-      let datasetIndex = 0;
-      datasetIndex < testflowDataItems.length;
-      datasetIndex++
-    ) {
-      let formattedNodes: TestflowNodes[] = [];
-      let currentDatasetGroup = testflowDataItems[datasetIndex];
-      // Iterate through each node
-      for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
-        // Create a deep copy of the node for each dataset group
-        let currentNode = JSON.parse(JSON.stringify(nodes[nodeIndex]));
-        // Push the first dummy node (startBlock) and continue
-        if (currentNode.id === "1" || currentNode.type === "startBlock") {
-          formattedNodes.push(currentNode);
-          continue;
+  private async createVariableforTestdata(
+    items: Record<string, any>[],
+  ): Promise<VariableDto[][]> {
+    const formattedDataSetNodes: VariableDto[][] = [];
+    for (const dataSet of items) {
+      const group: VariableDto[] = [];
+
+      if (dataSet && typeof dataSet === "object") {
+        for (const [key, value] of Object.entries(dataSet)) {
+          group.push({
+            key,
+            value,
+            checked: true,
+          });
         }
-
-        // Get the corresponding request data (nodeIndex - 1 because we skip first node)
-        let requestDataIndex = nodeIndex - 1;
-        let requestData = currentDatasetGroup.data[requestDataIndex];
-
-        if (!requestData) {
-          continue;
-        }
-
-        let nodeRequestData = currentNode.data.requestData;
-
-        // Headers
-        if (requestData.headers && requestData.headers.length > 0) {
-          nodeRequestData.headers = requestData.headers;
-        }
-
-        // Query Params
-        if (requestData.params && requestData.params.length > 0) {
-          nodeRequestData.queryParams = requestData.params;
-        }
-
-        // Body
-        if (requestData.body) {
-          // JSON or raw body
-          if (
-            requestData.body.raw &&
-            requestData.bodyType === BodyModeEnum["application/json"]
-          ) {
-            nodeRequestData.body = requestData.body;
-            nodeRequestData.selectedRequestBodyType =
-              BodyModeEnum["application/json"];
-          }
-
-          // XML
-          else if (
-            requestData.body.raw &&
-            requestData.bodyType === BodyModeEnum["application/xml"]
-          ) {
-            nodeRequestData.body = requestData.body;
-            nodeRequestData.selectedRequestBodyType =
-              BodyModeEnum["application/xml"];
-          }
-
-          // URL-encoded form
-          else if (
-            requestData.body.urlencoded &&
-            requestData.bodyType ===
-              BodyModeEnum["application/x-www-form-urlencoded"]
-          ) {
-            nodeRequestData.body.urlencoded = requestData.body.urlencoded;
-            nodeRequestData.selectedRequestBodyType =
-              BodyModeEnum["application/x-www-form-urlencoded"];
-          }
-
-          // Multipart form data
-          else if (
-            requestData.body.formdata &&
-            requestData.bodyType === BodyModeEnum["multipart/form-data"]
-          ) {
-            nodeRequestData.body.formdata = requestData.body.formdata;
-            nodeRequestData.selectedRequestBodyType =
-              BodyModeEnum["multipart/form-data"];
-          }
-
-          // JavaScript
-          else if (
-            requestData.body.raw &&
-            requestData.bodyType === BodyModeEnum["application/javascript"]
-          ) {
-            nodeRequestData.body = requestData.body;
-            nodeRequestData.selectedRequestBodyType =
-              BodyModeEnum["application/javascript"];
-          }
-
-          // Plain text
-          else if (
-            requestData.body.raw &&
-            requestData.bodyType === BodyModeEnum["text/plain"]
-          ) {
-            nodeRequestData.body = requestData.body;
-            nodeRequestData.selectedRequestBodyType =
-              BodyModeEnum["text/plain"];
-          }
-
-          // HTML
-          else if (
-            requestData.body.raw &&
-            requestData.bodyType === BodyModeEnum["text/html"]
-          ) {
-            nodeRequestData.body = requestData.body;
-            nodeRequestData.selectedRequestBodyType = BodyModeEnum["text/html"];
-          }
-
-          // Default fallback if type not matched
-          else if (requestData.body.raw) {
-            nodeRequestData.body = requestData.body;
-            nodeRequestData.selectedRequestBodyType =
-              BodyModeEnum["application/json"];
-          }
-        }
-
-        // Auth
-        if (requestData.auth && requestData.auth.type) {
-          switch (requestData.auth.type) {
-            case "apiKey":
-              nodeRequestData.auth = {
-                bearerToken: "",
-                basicAuth: { username: "", password: "" },
-                apiKey: {
-                  authKey: requestData.auth.key,
-                  authValue: requestData.auth.value,
-                  addTo: requestData.auth.addTo,
-                },
-              };
-              nodeRequestData.selectedRequestAuthType = "API Key";
-              break;
-
-            case "basicAuth":
-              nodeRequestData.auth = {
-                bearerToken: "",
-                basicAuth: {
-                  username: requestData.auth.username,
-                  password: requestData.auth.password,
-                },
-                apiKey: { authKey: "", authValue: "", addTo: AddTo.Header },
-              };
-              nodeRequestData.selectedRequestAuthType = "Basic Auth";
-              break;
-
-            case "bearerToken":
-              nodeRequestData.auth = {
-                bearerToken: requestData.auth.bearerToken,
-                basicAuth: { username: "", password: "" },
-                apiKey: { authKey: "", authValue: "", addTo: AddTo.Header },
-              };
-              nodeRequestData.selectedRequestAuthType = "Bearer Token";
-              break;
-
-            case "none":
-              nodeRequestData.auth = {};
-              nodeRequestData.selectedRequestAuthType = "No Auth";
-              break;
-          }
-        }
-        formattedNodes.push(currentNode);
       }
-      // Push formatted nodes for this dataset group
-      formattedDataSetNodes.push(formattedNodes);
+
+      formattedDataSetNodes.push(group);
     }
     return formattedDataSetNodes;
   }
