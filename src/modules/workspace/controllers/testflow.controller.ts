@@ -623,6 +623,39 @@ export class TestflowController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
+  @Post("testflow/:testflowId/import-dataset/file")
+  @ApiOperation({
+    summary: "Import Testflow Dataset",
+    description: "Manually import a dataset into a testflow.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Dataset imported successfully",
+  })
+  @ApiResponse({ status: 400, description: "Failed to import dataset" })
+  @UseGuards(JwtAuthGuard)
+  async importTestflowDataSetFileChange(
+    @Param("testflowId") testflowId: string,
+    @Body() testflowDataSetDto: TestflowDataSetDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const response = await this.testflowDataSetService.changeImportFileName(
+      testflowId,
+      testflowDataSetDto.item,
+      testflowDataSetDto.formatType,
+      testflowDataSetDto.name,
+      user._id.toString(),
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      response,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
   /**
    * Update specific dataset fields (name, fileUrl)
    */
@@ -651,6 +684,34 @@ export class TestflowController {
 
     const responseData = new ApiResponseService(
       result.message,
+      HttpStatusCode.OK,
+      result,
+    );
+    return res.status(HttpStatusCode.OK).send(responseData);
+  }
+
+  @Patch(":testflowId/dataset")
+  @ApiOperation({
+    summary: "Update a dataset by name",
+    description:
+      "Find and update a dataset based on its name. Updates file, content, or metadata for a given testflow.",
+  })
+  @ApiResponse({ status: 200, description: "Dataset updated successfully" })
+  @ApiResponse({ status: 404, description: "Dataset not found" })
+  @UseGuards(JwtAuthGuard)
+  async updateDatasetByName(
+    @Param("testflowId") testflowId: string,
+    @Body() updateTestflowDatasetDto: UpdateTestflowDatasetDto,
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.testflowDataSetService.locateAndUpdateFileByName(
+      updateTestflowDatasetDto,
+      testflowId,
+    );
+    const responseData = new ApiResponseService(
+      "Dataset updated successfully",
       HttpStatusCode.OK,
       result,
     );

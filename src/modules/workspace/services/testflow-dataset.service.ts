@@ -10,6 +10,7 @@ import {
 } from "@src/modules/common/models/testflow.model";
 import { v4 as uuidv4 } from "uuid";
 import { TestflowRepository } from "../repositories/testflow.repository";
+import { UpdateTestflowDatasetDto } from "../payloads/testflow.payload";
 
 @Injectable()
 export class TestflowDataSetService {
@@ -67,8 +68,6 @@ export class TestflowDataSetService {
     );
 
     return {
-      success: true,
-      message: "Dataset imported successfully",
       data: response,
     };
   }
@@ -105,6 +104,83 @@ export class TestflowDataSetService {
       (dataset) => dataset.name === datasetName.trim(),
     );
     return exists;
+  }
+
+  async changeImportFileName(
+    testflowId: string,
+    testflowData: TestflowDataSetItemDto,
+    formatType: FormatType,
+    testdataName: string,
+    userId?: string,
+  ) {
+    // Check if dataset exists
+    if (!testflowData?.dataSet || testflowData.dataSet.length === 0) {
+      throw new BadRequestException(
+        "Dataset must contain at least one dataset group",
+      );
+    }
+    if (testflowData.dataSet.length > 5) {
+      throw new BadRequestException(
+        "Dataset must contain less than 5 dataset group",
+      );
+    }
+
+    await this.validateDataSetGroups(testflowData.dataSet);
+    const updateFileName = this.incrementOrAppendNumber(testdataName.trim());
+    // Calculate file size (approximate)
+    const dataSize = JSON.stringify(testflowData).length;
+    const fileSizeKB = (dataSize / 1024).toFixed(2);
+
+    // Create dataset item
+    const dataSetId = uuidv4();
+    const testflowDataSetItem: TestflowDataSetItem = {
+      id: dataSetId,
+      name: updateFileName,
+      item: testflowData,
+      formatType,
+      fileSize: `${fileSizeKB}kb`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: userId,
+      createdBy: userId,
+    };
+
+    // Add dataset to testflow
+    const response = await this.testflowRepository.addDataset(
+      testflowId,
+      testflowDataSetItem,
+    );
+
+    return {
+      data: response,
+    };
+  }
+
+  private incrementOrAppendNumber(fileName: string) {
+    const match = fileName.match(/\d+/);
+    if (match) {
+      const number = match[0];
+      const incremented = String(Number(number) + 1);
+      return fileName.replace(number, incremented);
+    } else {
+      return fileName + "1";
+    }
+  }
+
+  async locateAndUpdateFileByName(
+    testflowData: UpdateTestflowDatasetDto,
+    testflowId: string,
+  ) {
+    const payload: Partial<TestflowDataSetItem> = {
+      item: testflowData.item,
+      updatedAt: new Date(),
+    };
+    const reponse = await this.testflowRepository.updateDatasetByName(
+      testflowId,
+      testflowData.name,
+      payload,
+    );
+    return reponse;
   }
 
   /**

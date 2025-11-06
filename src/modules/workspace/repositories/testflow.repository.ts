@@ -557,6 +557,49 @@ export class TestflowRepository {
   }
 
   /**
+   * Update specific fields of a dataset in a testflow
+   * @param testflowId - The ID of the testflow
+   * @param datasetName - The Name of the dataset to update
+   * @param updateData - The fields to update (e.g., name, fileUrl, updatedAt, updatedBy)
+   * @returns The update result
+   */
+  async updateDatasetByName(
+    testflowId: string,
+    datasetName: string,
+    updateData: Partial<
+      Pick<
+        TestflowDataSetItem,
+        "name" | "fileUrl" | "item" | "updatedAt" | "updatedBy"
+      >
+    >,
+  ): Promise<TestflowDataSetItem | null> {
+    const updateFields: any = {};
+    if (updateData.name) updateFields["datasets.$.name"] = updateData.name;
+    if (updateData.fileUrl)
+      updateFields["datasets.$.fileUrl"] = updateData.fileUrl;
+    if (updateData.item) updateFields["datasets.$.item"] = updateData.item;
+    if (updateData.updatedAt)
+      updateFields["datasets.$.updatedAt"] = updateData.updatedAt;
+    if (updateData.updatedBy)
+      updateFields["datasets.$.updatedBy"] = updateData.updatedBy;
+    // Perform atomic update based on dataset name
+    const updatedTestflow = await this.db
+      .collection(Collections.TESTFLOW)
+      .findOneAndUpdate(
+        {
+          _id: new ObjectId(testflowId),
+          "datasets.name": datasetName,
+        },
+        { $set: updateFields },
+        {
+          returnDocument: "after",
+          projection: { datasets: { $elemMatch: { name: datasetName } } },
+        },
+      );
+    return updatedTestflow?.value?.datasets?.[0] || null;
+  }
+
+  /**
    * Delete a dataset from a testflow
    * @param testflowId - The ID of the testflow
    * @param datasetId - The ID of the dataset to delete
