@@ -52,6 +52,7 @@ import { v4 as uuidv4 } from "uuid";
 import { TestflowSchedulerService } from "./testflow-schedular.service";
 import {
   DailyConfig,
+  DatasetSummaryItem,
   DayOfWeek,
   EmailData,
   HourlyConfig,
@@ -195,6 +196,27 @@ export class TestflowService implements OnModuleInit {
       testflowId,
       scheduleId,
       runHistoryId,
+      user._id,
+    );
+  }
+
+  /**
+   * Delete a run history entry for a schedule in a testflow
+   */
+  async deleteScheduleRunHistoryTestData(
+    workspaceId: string,
+    testflowId: string,
+    scheduleId: string,
+    runHistoryTestDataId: string,
+    user: DecodedUserObject,
+  ) {
+    // Permission check (admin or editor)
+    await this.isWorkspaceAdminorEditor(workspaceId, user._id);
+    // Remove the run history entry from the schedule
+    return this.testflowRepository.removeSchedularRunHistoryTestData(
+      testflowId,
+      scheduleId,
+      runHistoryTestDataId,
       user._id,
     );
   }
@@ -1123,19 +1145,113 @@ export class TestflowService implements OnModuleInit {
             totalTime: history.totalTime || "0ms",
           };
         });
+      const aggregatedHistory = dataSetResults.reduce(
+        (acc: any, dataSetResult: any) => {
+          const history = dataSetResult.result?.history || {};
+
+          acc.failedRequests += history.failedRequests || 0;
+          acc.successRequests += history.successRequests || 0;
+          acc.totalRequests +=
+            (history.failedRequests || 0) + (history.successRequests || 0);
+
+          // Accumulate duration if available
+          if (history.totalTime) {
+            const timeStr = history.totalTime.toString().trim();
+            let timeInMs = 0;
+            if (timeStr.endsWith("sec")) {
+              const seconds = parseFloat(timeStr.replace("sec", "").trim());
+              timeInMs = isNaN(seconds) ? 0 : seconds * 1000;
+            } else if (timeStr.endsWith("ms")) {
+              const ms = parseFloat(timeStr.replace("ms", "").trim());
+              timeInMs = isNaN(ms) ? 0 : ms;
+            }
+            acc.totalTimeMs += timeInMs;
+          }
+
+          return acc;
+        },
+        {
+          failedRequests: 0,
+          successRequests: 0,
+          totalRequests: 0,
+          totalTimeMs: 0,
+        },
+      );
+      // Build datasetSummary array from dataSetResults
+      const datasetSummary: DatasetSummaryItem[] = dataSetResults.map(
+        (dataSetResult: any, index: number) => {
+          const history = dataSetResult.result?.history || {};
+
+          const passedCount = history.successRequests || 0;
+          const failedCount = history.failedRequests || 0;
+          const requestCount = passedCount + failedCount;
+
+          // Normalize duration string (ensure seconds or ms format)
+          let duration = "0ms";
+          if (history.totalTime) {
+            const totalTime = parseFloat(
+              history.totalTime.toString().replace(/[^\d.]/g, ""),
+            );
+            duration = `${(totalTime / 1000).toFixed(2)}s`;
+          }
+
+          return {
+            datasetName: `Dataset ${index + 1}`,
+            requestCount,
+            passedCount,
+            failedCount,
+            duration,
+          };
+        },
+      );
+
+      // Convert total time back to a readable format
+      const averageTime =
+        aggregatedHistory.totalRequests > 0
+          ? `${(aggregatedHistory.totalTimeMs / 1000).toFixed(2)} sec`
+          : "0 sec";
+
+      // Derive overall status
+      let scheduleRunResult: string;
+      if (
+        aggregatedHistory.successRequests === 0 &&
+        aggregatedHistory.failedRequests > 0
+      ) {
+        scheduleRunResult = "failed";
+      } else if (
+        aggregatedHistory.failedRequests === 0 &&
+        aggregatedHistory.successRequests > 0
+      ) {
+        scheduleRunResult = "success";
+      } else if (
+        aggregatedHistory.failedRequests > 0 &&
+        aggregatedHistory.successRequests > 0
+      ) {
+        scheduleRunResult = "partial";
+      } else {
+        scheduleRunResult = "error";
+      }
+
+      const totalRequestCount =
+        aggregatedHistory.successRequests + aggregatedHistory.failedRequests;
+
+      const successPercentage =
+        totalRequestCount > 0
+          ? Math.round(
+              (aggregatedHistory.successRequests / totalRequestCount) *
+                100 *
+                100,
+            ) / 100
+          : 0;
 
       // Determine overall status based on all dataset results
       const hasError = schedularDataRunHistory.some(
         (h) => h.status === "error",
       );
-      const hasPending = schedularDataRunHistory.some(
-        (h) => h.status === "pending",
+      const hasFailure = schedularDataRunHistory.some(
+        (h) => h.status === "fail",
       );
-      const overallStatus = hasError
-        ? "error"
-        : hasPending
-          ? "pending"
-          : "success";
+      const overallStatus = hasError ? "error" : hasFailure ? "fail" : "pass";
 
       // Prepare the executed history with all dataset run results
       const executedHistory: Partial<TestflowSchedularDataSetHistory> = {
@@ -1151,12 +1267,69 @@ export class TestflowService implements OnModuleInit {
         schedulerId,
         executedHistory,
       );
-      return {
-        success: true,
-        historyId: uuid,
-        status: overallStatus,
-        totalDataSets: schedularDataRunHistory.length,
+      const getSchedular = await this.testflowRepository.getSchedularById(
+        testflowId,
+        schedulerId,
+      );
+      const userDetails = await this.userReposistory.getUserById(
+        user._id.toString(),
+      );
+      const emailData: EmailData = {
+        userName: userDetails?.name,
+        scheduleName: getSchedular.name,
+        scheduleLastestRun:
+          new Date(getSchedular.lastExecuted).toLocaleString("en-US", {
+            timeZone: "UTC",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          }) + " UTC",
+        scheduleRunResult: scheduleRunResult,
+        scheduleRunPassedCount: aggregatedHistory.successRequests,
+        scheduleRunFailedCount: aggregatedHistory.failedRequests,
+        scheduleRunTotalRequest: aggregatedHistory.totalRequests,
+        scheduleRunPassPercentage: successPercentage.toString(),
+        scheduleTotalTime: averageTime,
+        scheduleRunEnvName: getSchedular.environmentName,
+        isSuccess: aggregatedHistory.successRequests === totalRequestCount,
+        isFailed: aggregatedHistory.successRequests === 0,
+        isPartial:
+          aggregatedHistory.successRequests > 0 &&
+          aggregatedHistory.successRequests < totalRequestCount,
+        testflowDataSummary: datasetSummary,
       };
+      if (
+        getSchedular.notification.receiveNotifications ===
+        NotificationReceiveType.FAILURE
+      ) {
+        if (overallStatus === "fail") {
+          await this.sendNotification(
+            getSchedular.notification.emails,
+            emailData,
+          );
+        }
+      }
+      if (
+        getSchedular.notification.receiveNotifications ===
+        NotificationReceiveType.EVERY_TIME
+      ) {
+        await this.sendNotification(
+          getSchedular.notification.emails,
+          emailData,
+        );
+      }
+      if (getSchedular.runConfiguration.runCycle === RunCycleEnum.ONCE) {
+        await this.testflowRepository.updateSchedularStatus(
+          testflowId,
+          schedulerId,
+          false,
+        );
+      }
+      return;
     } catch (error) {
       console.error(`Error executing testflow with dataset:`, error);
     }
@@ -1302,7 +1475,9 @@ export class TestflowService implements OnModuleInit {
         from: this.configService.get("app.senderEmail"),
         to: email.trim(),
         text: "Testflow Run Report",
-        template: "testflowScheduleRunEmail",
+        template: emailData?.testflowDataSummary
+          ? "testflowScheduleDataSetEmail"
+          : "testflowScheduleRunEmail",
         context,
         subject: `Sparrow Test Report`,
       };
