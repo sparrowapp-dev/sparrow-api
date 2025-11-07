@@ -658,6 +658,13 @@ export class TestflowService implements OnModuleInit {
         );
         environmentName = environmentData?.name || "";
       }
+      let getTestflowDataSet: TestflowDataSetItem | null = null;
+      if (schedularData?.testflowDataSetId) {
+        getTestflowDataSet = await this.testflowRepository.getDataset(
+          schedularData.testflowId,
+          schedularData?.testflowDataSetId,
+        );
+      }
       // Save scheduler details in DB
       const newSchedular: TestflowSchedular = {
         id: schedulerId,
@@ -669,6 +676,7 @@ export class TestflowService implements OnModuleInit {
         isActive: true,
         cronExpression,
         testflowDataSetId: schedularData?.testflowDataSetId || "",
+        testflowDataSetName: getTestflowDataSet?.name ?? "",
         schedularName: jobName,
         executedCount: 0,
         lastExecuted: undefined,

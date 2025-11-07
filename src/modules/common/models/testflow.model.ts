@@ -701,6 +701,10 @@ export class TestflowSchedular {
   @IsOptional()
   testflowDataSetId?: string;
 
+  @IsString()
+  @IsOptional()
+  testflowDataSetName?: string;
+
   @ApiProperty({
     required: false,
     type: () => NotificationDto,
