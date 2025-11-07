@@ -203,11 +203,9 @@ export class TestflowDataSetService {
       },
     );
     if (!result) {
-      throw new NotFoundException("Dataset not found or no changes made");
+      throw new NotFoundException("Dataset not found.");
     }
     return {
-      message: "Dataset updated successfully",
-      updated: true,
       result,
     };
   }
@@ -216,17 +214,15 @@ export class TestflowDataSetService {
    * Delete a dataset item
    */
   async deleteDatasetItem(testflowId: string, datasetId: string): Promise<any> {
-    const result = await this.testflowRepository.deleteDataset(
+    const response = await this.testflowRepository.deleteDataset(
       testflowId,
       datasetId,
     );
-
-    if (result.modifiedCount === 0) {
-      throw new NotFoundException("Dataset not found");
+    if (!response.datasets) {
+      throw new NotFoundException("Dataset not found.");
     }
     return {
-      message: "Dataset deleted successfully",
-      deleted: true,
+      result: response?.datasets || [],
     };
   }
 }

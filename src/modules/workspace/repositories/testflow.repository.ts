@@ -550,10 +550,10 @@ export class TestflowRepository {
         { $set: updateFields },
         {
           returnDocument: "after",
-          projection: { datasets: { $elemMatch: { id: datasetId } } },
+          projection: { datasets: 1 },
         },
       );
-    return updatedTestflow?.value?.datasets?.[0] || null;
+    return updatedTestflow?.value?.datasets || null;
   }
 
   /**
@@ -608,15 +608,20 @@ export class TestflowRepository {
   async deleteDataset(
     testflowId: string,
     datasetId: string,
-  ): Promise<UpdateResult> {
-    return this.db.collection(Collections.TESTFLOW).updateOne(
-      { _id: new ObjectId(testflowId) },
-      {
-        $pull: {
-          datasets: { id: datasetId },
+  ): Promise<{ datasets: any[] }> {
+    const result = await this.db
+      .collection(Collections.TESTFLOW)
+      .findOneAndUpdate(
+        { _id: new ObjectId(testflowId) } as any,
+        {
+          $pull: { datasets: { id: datasetId } },
+          $set: { updatedAt: new Date() },
+        } as any,
+        {
+          returnDocument: "after",
+          projection: { datasets: 1 }, // returns all datasets
         },
-        $set: { updatedAt: new Date() },
-      },
-    );
+      );
+    return { datasets: result.value?.datasets || null };
   }
 }
