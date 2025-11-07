@@ -74,6 +74,30 @@ export class TestflowRepository {
     );
   }
 
+  // Remove a single run history entry from a schedule in a testflow by runHistoryId
+  async removeSchedularRunHistoryTestData(
+    testflowId: string,
+    schedularId: string,
+    runHistoryId: string,
+    userId: ObjectId,
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.TESTFLOW).updateOne(
+      { _id: new ObjectId(testflowId) },
+      {
+        $pull: {
+          "schedules.$[elem].schedularDataSetHistory": { id: runHistoryId },
+        },
+        $set: {
+          updatedAt: new Date(),
+          updatedBy: userId.toString(),
+        },
+      },
+      {
+        arrayFilters: [{ "elem.id": schedularId }],
+      },
+    );
+  }
+
   /**
    * Retrieves a Testflow document by its ID.
    *

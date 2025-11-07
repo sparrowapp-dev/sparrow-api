@@ -552,6 +552,48 @@ export class TestflowController {
   }
 
   /**
+   * Delete a run history for a schedule in a testflow
+   */
+  @Delete(
+    ":workspaceId/testflow/:testflowId/schedule/:scheduleId/run-history-dataset/:runHistoryTestDataId",
+  )
+  @ApiOperation({
+    summary: "Delete Schedule Run History",
+    description: "Delete all run history for a schedule in a testflow.",
+  })
+  @ApiResponse({ status: 200, description: "Run history deleted successfully" })
+  @ApiResponse({ status: 400, description: "Failed to delete run history" })
+  @UseGuards(JwtAuthGuard)
+  async deleteScheduleRunHistoryDataSet(
+    @Param("workspaceId") workspaceId: string,
+    @Param("runHistoryTestDataId") runHistoryTestDataId: string,
+    @Param("testflowId") testflowId: string,
+    @Param("scheduleId") scheduleId: string,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    await this.testflowService.deleteScheduleRunHistoryTestData(
+      workspaceId,
+      testflowId,
+      scheduleId,
+      runHistoryTestDataId,
+      user,
+    );
+    const testflow = await this.testflowService.getTestflow(
+      workspaceId,
+      testflowId,
+      user._id,
+    );
+    const responseData = new ApiResponseService(
+      "Success",
+      HttpStatusCode.OK,
+      testflow,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  /**
    * Check testflow nodes for localhost URLs or formdata files
    */
   @Get(":workspaceId/testflow/:testflowId/validate-run")
