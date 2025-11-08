@@ -152,33 +152,37 @@
                              </td>
                          </tr>
                      </table>
-                     <table style="margin-bottom: 20px;" cellpadding="0" cellspacing="0" border="0">
+                     <table style="margin-bottom: 20px; border-collapse: collapse; width: 100%;" class="email-text-style" cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                            <td colspan="5" style="border-bottom:1px solid #b0b8c1;">
-                            <h1 style="margin-top:0; font-size: 20px;font-weight: 600;margin-bottom: 15px;">Dataset Summary</h1>
+                            <td style="border-bottom: 2px solid #b0b8c1; padding-bottom: 15px;" colspan="5">
+                                <h1 style="margin: 0; font-size: 20px; font-weight: 600;">Dataset Summary</h1>
                             </td>
                         </tr>
-                        <tr style="font-weight: 600; text-align: left; border-bottom:1px solid #e0e0e0;">
-                            <th style="padding: 12px 8px;">Dataset</th>
-                            <th style="padding: 12px 8px;">Request</th>
-                            <th style="padding: 12px 8px;">Passed</th>
-                            <th style="padding: 12px 8px;">Failed</th>
-                            <th style="padding: 12px 8px;">Duration</th>
+                        <tr style="text-align: left; border-bottom: 2px solid #b0b8c1;">
+                            <th style="padding: 16px 8px; font-size: 12px; font-weight: 600; text-align: left;">Dataset</th>
+                            <th style="padding: 16px 8px; font-size: 12px; font-weight: 600; text-align: left;">Request</th>
+                            <th style="padding: 16px 8px; font-size: 12px; font-weight: 600; text-align: left;">Passed</th>
+                            <th style="padding: 16px 8px; font-size: 12px; font-weight: 600; text-align: left;">Failed</th>
+                            <th style="padding: 16px 8px; font-size: 12px; font-weight: 600; text-align: left;">Duration</th>
                         </tr>
-                         
 
-                    {{#if testflowDataSummary.length}}
-                        {{#each testflowDataSummary}}
-                            <tr style="border-bottom: 1px solid #e0e0e0;">
-                            <td style="padding: 12px 8px;">{{this.datasetName}}</td>
-                            <td style="padding: 12px 8px;">{{this.requestCount}}</td>
-                            <td style="padding: 12px 8px;">{{this.passedCount}}</td>
-                            <td style="padding: 12px 8px;">{{this.failedCount}}</td>
-                            <td style="padding: 12px 8px;">{{this.duration}}</td>
+                        {{#if testflowDataSummary.length}}
+                            {{#each testflowDataSummary}}
+                                <tr style="border-bottom:1px solid #e0e0e0;">
+                                    <td style="padding: 16px 8px; font-size: 12px; ">{{this.datasetName}}</td>
+                                    <td style="padding: 16px 8px; font-size: 12px; ">{{this.requestCount}}</td>
+                                    <td style="padding: 16px 8px; font-size: 12px; ">{{this.passedCount}}</td>
+                                    <td style="padding: 16px 8px; font-size: 12px; ">{{this.failedCount}}</td>
+                                    <td style="padding: 16px 8px; font-size: 12px; ">{{this.duration}}</td>
+                                </tr>
+                            {{/each}}
+                        {{else}}
+                            <tr>
+                                <td colspan="5" style="padding: 24px 8px; text-align: center; color: #888; font-size: 12px;">
+                                    No dataset summary available
+                                </td>
                             </tr>
-                        {{/each}}
-                    {{/if}}
-
+                        {{/if}}
                      </table>
 
 
