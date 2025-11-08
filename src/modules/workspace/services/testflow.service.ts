@@ -1185,16 +1185,7 @@ export class TestflowService implements OnModuleInit {
           const passedCount = history.successRequests || 0;
           const failedCount = history.failedRequests || 0;
           const requestCount = passedCount + failedCount;
-
-          // Normalize duration string (ensure seconds or ms format)
-          let duration = "0ms";
-          if (history.totalTime) {
-            const totalTime = parseFloat(
-              history.totalTime.toString().replace(/[^\d.]/g, ""),
-            );
-            duration = `${(totalTime / 1000).toFixed(2)}s`;
-          }
-
+          const duration = history.totalTime;
           return {
             datasetName: `Dataset ${index + 1}`,
             requestCount,

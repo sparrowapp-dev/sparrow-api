@@ -193,46 +193,51 @@ export class TestflowRunService {
         throw new Error("Sparrow Proxy base URL not configured");
       }
 
-      const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
+      const proxyUrl = `${sparrowProxy}/proxy/testflow/dataset-execute`;
 
       const testflowDataSets = await this.createVariableforTestdata(
         testflowDataSet.item.dataSet,
       );
 
-      const dataSetResult = [];
+      let dataSetResult = [];
+      const activeVariables = this.combineEnvironmentData(
+        globalEnvDetails?.variable || [],
+        environmentData?.variable || [],
+      );
 
-      // Run dataset groups one by one
-      for (const dataSet of testflowDataSets) {
-        // Combine global + environment-specific variables
-        const activeVariables = this.combineEnvironmentData(
-          globalEnvDetails?.variable || [],
-          environmentData?.variable || [],
-        );
-
+      // Build the full payload array
+      const payloads = testflowDataSets.map((dataSet) => {
         const latestVariables = this.combineEnvironmentData(
           activeVariables || [],
           dataSet || [],
         );
 
-        const body = {
+        return {
           nodes: testflowDetails.nodes || [],
           variables: latestVariables || [],
           edges: testflowDetails.edges,
           userId: user?._id || new ObjectId("000000000000000000000000"),
-        };
-
-        const response = await axios.post(proxyUrl, body, {
-          headers: { "Content-Type": "application/json" },
-        });
-
-        dataSetResult.push({
-          result: response.data,
           environmentName:
             environmentData?.name || globalEnvDetails?.name || "",
-          nodes: dataSet,
-          edges: testflowDetails.edges,
-        });
-      }
+          nodesInput: dataSet,
+        };
+      });
+
+      const testflowPayload = {
+        testflowItems: payloads,
+      };
+
+      // Send all payloads in a single POST request
+      const response = await axios.post(proxyUrl, testflowPayload, {
+        headers: { "Content-Type": "application/json" },
+      });
+      // Map the response to match your expected structure
+      dataSetResult = response.data.map((result: any, index: number) => ({
+        result,
+        environmentName: payloads[index].environmentName,
+        nodes: payloads[index].nodesInput,
+        edges: payloads[index].edges,
+      }));
       return dataSetResult;
     } catch (error) {
       console.error("Error running Testflow dataset:", error.message);
