@@ -11,18 +11,25 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { TestflowRepository } from "../repositories/testflow.repository";
 import { UpdateTestflowDatasetDto } from "../payloads/testflow.payload";
+import { TestflowService } from "./testflow.service";
+import { DecodedUserObject } from "@src/types/fastify";
 
 @Injectable()
 export class TestflowDataSetService {
-  constructor(private readonly testflowRepository: TestflowRepository) {}
+  constructor(
+    private readonly testflowRepository: TestflowRepository,
+    private readonly testflowService: TestflowService,
+  ) {}
 
   async importData(
     testflowId: string,
     testflowData: TestflowDataSetItemDto,
     formatType: FormatType,
     testdataName: string,
-    userId?: string,
+    workspaceId: string,
+    user?: DecodedUserObject,
   ) {
+    await this.testflowService.isWorkspaceAdminorEditor(workspaceId, user._id);
     // Check if dataset exists
     if (!testflowData?.dataSet || testflowData.dataSet.length === 0) {
       throw new BadRequestException(
@@ -57,8 +64,8 @@ export class TestflowDataSetService {
       fileSize: `${fileSizeKB}kb`,
       createdAt: new Date(),
       updatedAt: new Date(),
-      updatedBy: userId,
-      createdBy: userId,
+      updatedBy: user._id.toString(),
+      createdBy: user._id.toString(),
     };
 
     // Add dataset to testflow
@@ -73,18 +80,18 @@ export class TestflowDataSetService {
   }
 
   private async validateDataSetGroups(
-    items: Record<string, any>[],
+    items: Record<string, string | number | boolean | null>[],
   ): Promise<void> {
     for (let index = 0; index < items.length; index++) {
       const data = items[index];
       if (!data || typeof data !== "object") {
-        throw new Error(
+        throw new BadRequestException(
           `Item at index=${index} has invalid or missing data object.`,
         );
       }
       for (const [key, value] of Object.entries(data)) {
         if (value === undefined || value === null || value === "") {
-          throw new Error(
+          throw new BadRequestException(
             `Item at index=${index} has empty value for key '${key}'.`,
           );
         }
@@ -114,8 +121,10 @@ export class TestflowDataSetService {
     testflowData: TestflowDataSetItemDto,
     formatType: FormatType,
     testdataName: string,
-    userId?: string,
+    workspaceId: string,
+    user?: DecodedUserObject,
   ) {
+    await this.testflowService.isWorkspaceAdminorEditor(workspaceId, user._id);
     // Check if dataset exists
     if (!testflowData?.dataSet || testflowData.dataSet.length === 0) {
       throw new BadRequestException(
@@ -124,7 +133,7 @@ export class TestflowDataSetService {
     }
     if (testflowData.dataSet.length > 5) {
       throw new BadRequestException(
-        "Dataset must contain less than 5 dataset group",
+        "Dataset must contain fewer than 5 dataset groups",
       );
     }
 
@@ -144,8 +153,8 @@ export class TestflowDataSetService {
       fileSize: `${fileSizeKB}kb`,
       createdAt: new Date(),
       updatedAt: new Date(),
-      updatedBy: userId,
-      createdBy: userId,
+      updatedBy: user._id.toString(),
+      createdBy: user._id.toString(),
     };
 
     // Add dataset to testflow
@@ -173,7 +182,10 @@ export class TestflowDataSetService {
   async locateAndUpdateFileByName(
     testflowData: UpdateTestflowDatasetDto,
     testflowId: string,
+    workspaceId: string,
+    user: DecodedUserObject,
   ) {
+    await this.testflowService.isWorkspaceAdminorEditor(workspaceId, user._id);
     const payload: Partial<TestflowDataSetItem> = {
       item: testflowData.item,
       updatedAt: new Date(),
@@ -193,9 +205,12 @@ export class TestflowDataSetService {
     testflowId: string,
     datasetId: string,
     updateData: Partial<
-      Pick<TestflowDataSetItem, "name" | "item" | "fileUrl" | "updatedBy">
+      Pick<TestflowDataSetItem, "name" | "item" | "updatedBy">
     >,
+    workspaceId: string,
+    user: DecodedUserObject,
   ): Promise<any> {
+    await this.testflowService.isWorkspaceAdminorEditor(workspaceId, user._id);
     // Automatically set updatedAt
     const result = await this.testflowRepository.updateDataset(
       testflowId,
@@ -216,7 +231,13 @@ export class TestflowDataSetService {
   /**
    * Delete a dataset item
    */
-  async deleteDatasetItem(testflowId: string, datasetId: string): Promise<any> {
+  async deleteDatasetItem(
+    testflowId: string,
+    datasetId: string,
+    workspaceId: string,
+    user: DecodedUserObject,
+  ): Promise<any> {
+    await this.testflowService.isWorkspaceAdminorEditor(workspaceId, user._id);
     const response = await this.testflowRepository.deleteDataset(
       testflowId,
       datasetId,

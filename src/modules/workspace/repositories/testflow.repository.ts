@@ -548,16 +548,11 @@ export class TestflowRepository {
     testflowId: string,
     datasetId: string,
     updateData: Partial<
-      Pick<
-        TestflowDataSetItem,
-        "name" | "fileUrl" | "item" | "updatedAt" | "updatedBy"
-      >
+      Pick<TestflowDataSetItem, "name" | "item" | "updatedAt" | "updatedBy">
     >,
   ): Promise<TestflowDataSetItem | null> {
     const updateFields: any = {};
     if (updateData.name) updateFields["datasets.$.name"] = updateData.name;
-    if (updateData.fileUrl)
-      updateFields["datasets.$.fileUrl"] = updateData.fileUrl;
     if (updateData.updatedAt)
       updateFields["datasets.$.updatedAt"] = updateData.updatedAt;
     if (updateData.updatedBy)
@@ -591,16 +586,11 @@ export class TestflowRepository {
     testflowId: string,
     datasetName: string,
     updateData: Partial<
-      Pick<
-        TestflowDataSetItem,
-        "name" | "fileUrl" | "item" | "updatedAt" | "updatedBy"
-      >
+      Pick<TestflowDataSetItem, "name" | "item" | "updatedAt" | "updatedBy">
     >,
   ): Promise<TestflowDataSetItem | null> {
     const updateFields: any = {};
     if (updateData.name) updateFields["datasets.$.name"] = updateData.name;
-    if (updateData.fileUrl)
-      updateFields["datasets.$.fileUrl"] = updateData.fileUrl;
     if (updateData.item) updateFields["datasets.$.item"] = updateData.item;
     if (updateData.updatedAt)
       updateFields["datasets.$.updatedAt"] = updateData.updatedAt;
