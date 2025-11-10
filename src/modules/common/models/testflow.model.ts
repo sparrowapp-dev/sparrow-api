@@ -239,7 +239,7 @@ export class TestflowNodes {
 export class TestflowDataSet {
   @IsArray()
   @IsNotEmpty()
-  dataSet: Record<string, any>[];
+  dataSet: Record<string, string | number | boolean | null>[];
 }
 
 export enum FormatType {
@@ -279,10 +279,6 @@ export class TestflowDataSetItem {
 
   @IsString()
   @IsOptional()
-  fileUrl?: string;
-
-  @IsString()
-  @IsOptional()
   createdBy?: string;
 
   @IsString()
@@ -293,7 +289,7 @@ export class TestflowDataSetItem {
 export class TestflowDataSetItemDto {
   @IsArray()
   @IsNotEmpty()
-  dataSet: Record<string, any>[];
+  dataSet: Record<string, string | number | boolean | null>[];
 }
 
 export class TestflowDataSetDto {

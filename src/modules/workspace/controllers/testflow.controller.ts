@@ -632,7 +632,7 @@ export class TestflowController {
   /**
    * Manually run a testflow schedule.
    */
-  @Post("testflow/:testflowId/import-dataset")
+  @Post(":workspaceId/testflow/:testflowId/import-dataset")
   @ApiOperation({
     summary: "Import Testflow Dataset",
     description: "Manually import a dataset into a testflow.",
@@ -645,6 +645,7 @@ export class TestflowController {
   @UseGuards(JwtAuthGuard)
   async importTestflowDataSet(
     @Param("testflowId") testflowId: string,
+    @Param("workspaceId") workspaceId: string,
     @Body() testflowDataSetDto: TestflowDataSetDto,
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
@@ -655,7 +656,8 @@ export class TestflowController {
       testflowDataSetDto.item,
       testflowDataSetDto.formatType,
       testflowDataSetDto.name,
-      user._id.toString(),
+      workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
       "Success",
@@ -665,7 +667,7 @@ export class TestflowController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Post("testflow/:testflowId/import-dataset/file")
+  @Post(":workspaceId/testflow/:testflowId/import-dataset/file")
   @ApiOperation({
     summary: "Import Testflow Dataset",
     description: "Manually import a dataset into a testflow.",
@@ -678,6 +680,7 @@ export class TestflowController {
   @UseGuards(JwtAuthGuard)
   async importTestflowDataSetFileChange(
     @Param("testflowId") testflowId: string,
+    @Param("workspaceId") workspaceId: string,
     @Body() testflowDataSetDto: TestflowDataSetDto,
     @Res() res: FastifyReply,
     @Req() request: ExtendedFastifyRequest,
@@ -688,10 +691,11 @@ export class TestflowController {
       testflowDataSetDto.item,
       testflowDataSetDto.formatType,
       testflowDataSetDto.name,
-      user._id.toString(),
+      workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
-      "Success",
+      "Dataset imported successfully",
       HttpStatusCode.OK,
       response,
     );
@@ -701,7 +705,7 @@ export class TestflowController {
   /**
    * Update specific dataset fields (name, fileUrl)
    */
-  @Patch(":testflowId/dataset/:datasetId")
+  @Patch(":workspaceId/testflow/:testflowId/dataset/:datasetId")
   @ApiOperation({
     summary: "Update a dataset",
     description:
@@ -712,6 +716,7 @@ export class TestflowController {
   @UseGuards(JwtAuthGuard)
   async updateDataset(
     @Param("testflowId") testflowId: string,
+    @Param("workspaceId") workspaceId: string,
     @Param("datasetId") datasetId: string,
     @Body() updateTestflowDatasetDto: UpdateTestflowDatasetDto,
     @Req() request: ExtendedFastifyRequest,
@@ -722,6 +727,8 @@ export class TestflowController {
       testflowId,
       datasetId,
       { ...updateTestflowDatasetDto, updatedBy: user._id.toString() },
+      workspaceId,
+      user,
     );
 
     const responseData = new ApiResponseService(
@@ -732,7 +739,7 @@ export class TestflowController {
     return res.status(HttpStatusCode.OK).send(responseData);
   }
 
-  @Patch(":testflowId/dataset")
+  @Patch(":workspaceId/testflow/:testflowId/dataset")
   @ApiOperation({
     summary: "Update a dataset by name",
     description:
@@ -743,6 +750,7 @@ export class TestflowController {
   @UseGuards(JwtAuthGuard)
   async updateDatasetByName(
     @Param("testflowId") testflowId: string,
+    @Param("workspaceId") workspaceId: string,
     @Body() updateTestflowDatasetDto: UpdateTestflowDatasetDto,
     @Req() request: ExtendedFastifyRequest,
     @Res() res: FastifyReply,
@@ -751,6 +759,8 @@ export class TestflowController {
     const result = await this.testflowDataSetService.locateAndUpdateFileByName(
       updateTestflowDatasetDto,
       testflowId,
+      workspaceId,
+      user,
     );
     const responseData = new ApiResponseService(
       "Dataset updated successfully",
@@ -763,7 +773,7 @@ export class TestflowController {
   /**
    * Delete a dataset from a testflow
    */
-  @Delete(":testflowId/dataset/:datasetId")
+  @Delete(":workspaceId/testflow/:testflowId/dataset/:datasetId")
   @ApiOperation({
     summary: "Delete a dataset",
     description: "Remove a dataset from a specific testflow.",
@@ -773,16 +783,21 @@ export class TestflowController {
   @UseGuards(JwtAuthGuard)
   async deleteDataset(
     @Param("testflowId") testflowId: string,
+    @Param("workspaceId") workspaceId: string,
     @Param("datasetId") datasetId: string,
+    @Req() request: ExtendedFastifyRequest,
     @Res() res: FastifyReply,
   ) {
+    const user = request.user;
     const result = await this.testflowDataSetService.deleteDatasetItem(
       testflowId,
       datasetId,
+      workspaceId,
+      user,
     );
 
     const responseData = new ApiResponseService(
-      result.message,
+      "Dataset deleted successfully",
       HttpStatusCode.OK,
       result,
     );
