@@ -235,7 +235,7 @@ export class TestflowRunService {
       dataSetResult = response.data.map((result: any, index: number) => ({
         result,
         environmentName: payloads[index].environmentName,
-        nodes: payloads[index].nodesInput,
+        nodes: payloads[index].nodes,
         edges: payloads[index].edges,
       }));
       return dataSetResult;
