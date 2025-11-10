@@ -100,10 +100,13 @@ export class TestflowDataSetService {
     if (!testflow) {
       throw new NotFoundException("Testflow not found");
     }
-    const exists = testflow.datasets.some(
-      (dataset) => dataset.name === datasetName.trim(),
-    );
-    return exists;
+    if (testflow?.datasets) {
+      const exists = testflow.datasets.some(
+        (dataset) => dataset.name === datasetName.trim(),
+      );
+      return exists;
+    }
+    return false;
   }
 
   async changeImportFileName(
