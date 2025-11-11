@@ -498,6 +498,18 @@ export class TestflowSchedularDataSetHistory {
   @IsOptional()
   schedularDataRunHistory?: TestflowDataSetRunHistoryRequest[];
 
+  @IsArray()
+  @Type(() => TestflowEdges)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  edges?: TestflowEdges[];
+
+  @IsArray()
+  @Type(() => TestflowNodes)
+  @ValidateNested({ each: true })
+  @IsOptional()
+  nodes?: TestflowNodes[];
+
   @IsBoolean()
   isScheduled: boolean;
 
@@ -534,18 +546,6 @@ export class TestflowDataSetRunHistoryRequest {
   @IsArray()
   @IsOptional()
   responses?: TestflowSchedularHistoryResponse[];
-
-  @IsArray()
-  @Type(() => TestflowEdges)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  edges: TestflowEdges[];
-
-  @IsArray()
-  @Type(() => TestflowNodes)
-  @ValidateNested({ each: true })
-  @IsOptional()
-  nodes: TestflowNodes[];
 
   @IsString()
   @IsNotEmpty()
