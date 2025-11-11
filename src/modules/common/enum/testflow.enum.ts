@@ -37,12 +37,21 @@ export interface EmailData {
   scheduleRunPassedCount: number;
   scheduleRunFailedCount: number;
   scheduleRunTotalRequest: number;
-  scheduleRunPassPercentage: string; 
+  scheduleRunPassPercentage: string;
   scheduleTotalTime: string | number;
   scheduleRunEnvName: string;
   isSuccess: boolean;
   isFailed: boolean;
   isPartial: boolean;
+  testflowDataSummary?: DatasetSummaryItem[];
+}
+
+export interface DatasetSummaryItem {
+  datasetName: string;
+  requestCount: number;
+  passedCount: number;
+  failedCount: number;
+  duration: string;
 }
 
 export interface OnceConfig {

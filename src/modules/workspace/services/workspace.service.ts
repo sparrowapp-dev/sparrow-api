@@ -257,7 +257,7 @@ export class WorkspaceService {
     }
     throw new BadRequestException("You don't have access of this Workspace");
   }
-  
+
   /**
    * Creates a new workspace in the database
    * @param {CreateOrUpdateWorkspaceDto} workspaceData
@@ -281,12 +281,16 @@ export class WorkspaceService {
     }
     const planData = teamData?.plan;
     const uuid = new ObjectId();
-    const  ws = {
+    const ws = {
       id: uuid,
       name: workspaceData.name,
     };
-    const res = await this.teamRepository.updateTeamWorkspaceCountById(teamId, planData, ws);
-    if(!res){
+    const res = await this.teamRepository.updateTeamWorkspaceCountById(
+      teamId,
+      planData,
+      ws,
+    );
+    if (!res) {
       throw new ForbiddenException("Plan limit reached");
     }
     const createEnvironmentDto: CreateEnvironmentDto = {

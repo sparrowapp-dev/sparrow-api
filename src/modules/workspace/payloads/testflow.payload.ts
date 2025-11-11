@@ -16,6 +16,7 @@ import { Type } from "class-transformer";
 import {
   NotificationDto,
   RunConfigurationDto,
+  TestflowDataSet,
   TestflowEdges,
   TestflowNodes,
 } from "@src/modules/common/models/testflow.model";
@@ -156,6 +157,11 @@ export class CreateTestflowSchedularDto {
   @IsOptional()
   environmentId: string;
 
+  @IsString()
+  @ApiProperty({ required: true, example: "428347384723" })
+  @IsOptional()
+  testflowDataSetId?: string;
+
   @ApiProperty({
     required: true,
     type: () => RunConfigurationDto,
@@ -223,35 +229,49 @@ export class FormdataNodeDto {
  * Data Transfer Object for testflow validation result.
  */
 export class TestflowValidationResultDto {
-  @ApiProperty({ 
+  @ApiProperty({
     example: true,
-    description: "Indicates if any nodes contain localhost URLs"
+    description: "Indicates if any nodes contain localhost URLs",
   })
   @IsBoolean()
   hasLocalhostUrls: boolean;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: false,
-    description: "Indicates if any nodes contain formdata files"
+    description: "Indicates if any nodes contain formdata files",
   })
   @IsBoolean()
   hasFormdataFiles: boolean;
 
-  @ApiProperty({ 
+  @ApiProperty({
     type: [LocalhostNodeDto],
-    description: "List of nodes containing localhost URLs"
+    description: "List of nodes containing localhost URLs",
   })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => LocalhostNodeDto)
   localhostNodes: LocalhostNodeDto[];
 
-  @ApiProperty({ 
+  @ApiProperty({
     type: [FormdataNodeDto],
-    description: "List of nodes containing formdata files"
+    description: "List of nodes containing formdata files",
   })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FormdataNodeDto)
   formdataNodes: FormdataNodeDto[];
+}
+
+export class UpdateTestflowDatasetDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  fileUrl?: string;
+
+  @ValidateNested()
+  @Type(() => TestflowDataSet)
+  item: TestflowDataSet;
 }
