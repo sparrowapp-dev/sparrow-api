@@ -28,11 +28,6 @@ import {
   RunCycleEnum,
 } from "../enum/testflow.enum";
 
-enum AddTo {
-  Header = "Header",
-  QueryParameter = "Query Parameter",
-}
-
 export class SparrowRequestBody {
   raw?: string;
   urlencoded?: KeyValue[];

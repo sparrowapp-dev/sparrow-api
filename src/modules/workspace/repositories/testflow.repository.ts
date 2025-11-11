@@ -465,33 +465,6 @@ export class TestflowRepository {
   }
 
   /**
-   * Update the fileUrl of a specific dataset
-   * @param testflowId - The ID of the testflow
-   * @param datasetId - The ID of the dataset to update
-   * @param fileUrl - The new file URL
-   * @returns UpdateResult
-   */
-  async updateDatasetFileUrl(
-    testflowId: string,
-    datasetId: string,
-    fileUrl: string,
-  ): Promise<UpdateResult> {
-    return this.db.collection(Collections.TESTFLOW).updateOne(
-      {
-        _id: new ObjectId(testflowId),
-        "datasets.id": datasetId,
-      },
-      {
-        $set: {
-          "datasets.$.fileUrl": fileUrl,
-          "datasets.$.updatedAt": new Date(),
-          updatedAt: new Date(),
-        },
-      },
-    );
-  }
-
-  /**
    * Remove a dataset from a testflow by dataset ID
    * @param testflowId - The ID of the testflow
    * @param datasetId - The ID of the dataset to remove
