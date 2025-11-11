@@ -1138,8 +1138,6 @@ export class TestflowService implements OnModuleInit {
             failedRequests: history.failedRequests || 0,
             requests: history.requests || [],
             responses: history.responses || [],
-            edges: dataSetResult.edges || [],
-            nodes: dataSetResult.nodes || [],
             status: history.status || "error",
             successRequests: history.successRequests || 0,
             totalTime: history.totalTime || "0ms",
@@ -1249,6 +1247,8 @@ export class TestflowService implements OnModuleInit {
         id: uuid,
         isScheduled,
         schedularDataRunHistory,
+        nodes: dataSetResults[0].nodes,
+        edges: dataSetResults[0].edges,
         status: overallStatus,
         updatedAt: new Date(),
       };
