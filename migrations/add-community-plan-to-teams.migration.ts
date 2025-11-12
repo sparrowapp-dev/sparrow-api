@@ -2,12 +2,16 @@ import { Injectable, Inject, OnModuleInit } from "@nestjs/common";
 import { Db, ObjectId } from "mongodb";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { LimitArea } from "@src/modules/common/models/plan.model";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class AddCommunityPlanToTeamsMigration implements OnModuleInit {
   private hasRun = false;
 
-  constructor(@Inject("DATABASE_CONNECTION") private readonly db: Db) {}
+  constructor(
+    @Inject("DATABASE_CONNECTION") private readonly db: Db,
+    private readonly configService: ConfigService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     if (this.hasRun) return;
@@ -16,9 +20,23 @@ export class AddCommunityPlanToTeamsMigration implements OnModuleInit {
       console.log("Running AddCommunityPlanToTeamsMigration...");
 
       const teamCollection = this.db.collection(Collections.TEAM);
+      const planCollection = this.db.collection(Collections.PLAN);
 
-      const planId = new ObjectId("68f226aee37f6bdd541bfaa2");
-      const createdAt = new Date("2025-10-17T11:21:18.843Z");
+      // Get the default hub plan name from config
+      const defaultHubPlan =
+        this.configService.get<string>("app.defaultHubPlan");
+      // Fetch the plan from plan collection
+      const planDoc = await planCollection.findOne({ name: defaultHubPlan });
+      if (!planDoc) {
+        console.warn(
+          `Plan '${defaultHubPlan}' not found in plan collection. Skipping team updates.`,
+        );
+        return;
+      }
+      const planId = planDoc._id;
+      const createdAt = planDoc.createdAt
+        ? new Date(planDoc.createdAt)
+        : new Date();
 
       // Update teams that don't have a plan or where plan.id is missing
       const query = {
@@ -83,7 +101,9 @@ export class AddCommunityPlanToTeamsMigration implements OnModuleInit {
       };
 
       const result = await teamCollection.updateMany(query, update);
-      console.log(`Updated ${result.modifiedCount} team(s) with the Community plan.`);
+      console.log(
+        `Updated ${result.modifiedCount} team(s) with the Community plan.`,
+      );
 
       this.hasRun = true;
     } catch (error) {
