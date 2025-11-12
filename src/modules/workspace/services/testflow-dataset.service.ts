@@ -160,12 +160,44 @@ export class TestflowDataSetService {
       );
     }
 
-    await this.validateDataSetGroups(testflowData.dataSet);
-    const updateFileName = this.incrementOrAppendNumber(testdataName.trim());
     // Calculate file size (approximate)
     const dataSize = JSON.stringify(testflowData).length;
     const fileSizeKB = (dataSize / 1024).toFixed(2);
+    const fileSizeMB = dataSize / (1024 * 1024);
 
+    // Validate file size - must not exceed 2MB
+    const MAX_FILE_SIZE_MB = 2;
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      throw new BadRequestException(
+        `File size exceeds the maximum limit of ${MAX_FILE_SIZE_MB}MB.`,
+      );
+    }
+
+    await this.validateDataSetGroups(testflowData.dataSet);
+
+    // Find a unique filename by incrementing until no conflict exists
+    let updateFileName = testdataName.trim();
+    let isNameUnique = false;
+    let maxAttempts = 100;
+    let attempts = 0;
+
+    while (!isNameUnique && attempts < maxAttempts) {
+      const alreadyExist = await this.validataDataSetSameName(
+        testflowId,
+        updateFileName,
+      );
+      if (!alreadyExist) {
+        isNameUnique = true;
+      } else {
+        updateFileName = this.incrementOrAppendNumber(updateFileName);
+        attempts++;
+      }
+    }
+    if (!isNameUnique) {
+      throw new BadRequestException(
+        "Unable to generate a unique dataset name. Please try a different name.",
+      );
+    }
     // Create dataset item
     const dataSetId = uuidv4();
     const testflowDataSetItem: TestflowDataSetItem = {
