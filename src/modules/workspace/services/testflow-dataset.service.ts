@@ -48,7 +48,7 @@ export class TestflowDataSetService {
     const fileSizeMB = dataSize / (1024 * 1024);
 
     // Validate file size - must not exceed 10MB
-    const MAX_FILE_SIZE_MB = 10;
+    const MAX_FILE_SIZE_MB = 2;
     if (fileSizeMB > MAX_FILE_SIZE_MB) {
       throw new BadRequestException(
         `File size exceeds the maximum limit of ${MAX_FILE_SIZE_MB}MB.`,
