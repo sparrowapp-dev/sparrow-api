@@ -38,7 +38,20 @@ export class TestflowDataSetService {
     }
     if (testflowData.dataSet.length > 5) {
       throw new BadRequestException(
-        "Dataset must contain less than 5 dataset group",
+        "File must contain less than 5 dataset group",
+      );
+    }
+
+    // Calculate file size (approximate)
+    const dataSize = JSON.stringify(testflowData).length;
+    const fileSizeKB = (dataSize / 1024).toFixed(2);
+    const fileSizeMB = dataSize / (1024 * 1024);
+
+    // Validate file size - must not exceed 10MB
+    const MAX_FILE_SIZE_MB = 10;
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      throw new BadRequestException(
+        `File size exceeds the maximum limit of ${MAX_FILE_SIZE_MB}MB.`,
       );
     }
 
@@ -50,9 +63,6 @@ export class TestflowDataSetService {
     if (alreadyExist) {
       throw new BadRequestException("Dataset already exists");
     }
-    // Calculate file size (approximate)
-    const dataSize = JSON.stringify(testflowData).length;
-    const fileSizeKB = (dataSize / 1024).toFixed(2);
 
     // Create dataset item
     const dataSetId = uuidv4();
