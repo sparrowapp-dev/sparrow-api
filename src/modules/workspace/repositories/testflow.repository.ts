@@ -268,6 +268,7 @@ export class TestflowRepository {
     }
     const updateOperations: any = {
       $set: {
+        "schedules.$[elem].lastExecuted": nowUtc,
         updatedAt: nowUtc,
       },
       $push: {
