@@ -33,10 +33,7 @@ export class AddCommunityPlanToTeamsMigration implements OnModuleInit {
         );
         return;
       }
-      const planId = planDoc._id;
-      const createdAt = planDoc.createdAt
-        ? new Date(planDoc.createdAt)
-        : new Date();
+      const { _id, ...planData } = planDoc;
 
       // Update teams that don't have a plan or where plan.id is missing
       const query = {
@@ -50,52 +47,8 @@ export class AddCommunityPlanToTeamsMigration implements OnModuleInit {
       const update = {
         $set: {
           plan: {
-            id: planId,
-            name: "Community",
-            description: "Free tier with limited access",
-            active: true,
-            limits: {
-              workspacesPerHub: {
-                area: LimitArea.HUB,
-                value: 3,
-              },
-              testflowPerWorkspace: {
-                area: LimitArea.WORKSPACE,
-                value: 3,
-              },
-              blocksPerTestflow: {
-                area: LimitArea.TESTFLOW,
-                value: 5,
-              },
-              usersPerHub: {
-                area: LimitArea.HUB,
-                value: 5,
-              },
-              selectiveTestflowRun: {
-                area: LimitArea.TESTFLOW,
-                active: false,
-              },
-              activeSync: {
-                area: LimitArea.COLLECTION,
-                active: false,
-              },
-              testflowRunHistory: {
-                area: LimitArea.TESTFLOW,
-                value: 5,
-              },
-              aiRequestsPerMonth: {
-                area: LimitArea.AI,
-                value: 50,
-              },
-              testflowScheduleRun: {
-                area: LimitArea.TESTFLOW_SCHEDULE_RUN,
-                value: 3,
-              },
-            },
-            createdAt,
-            updatedAt: createdAt,
-            createdBy: "system",
-            updatedBy: "system",
+            id: _id,
+            ...planData,
           },
         },
       };
