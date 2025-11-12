@@ -92,6 +92,7 @@ export class TestflowDataSetService {
   private async validateDataSetGroups(
     items: Record<string, string | number | boolean | null>[],
   ): Promise<void> {
+    const ALLOWED_VALUE_TYPES = ["string", "number", "boolean"];
     for (let index = 0; index < items.length; index++) {
       const data = items[index];
       if (!data || typeof data !== "object") {
@@ -100,9 +101,21 @@ export class TestflowDataSetService {
         );
       }
       for (const [key, value] of Object.entries(data)) {
-        if (value === undefined || value === null || value === "") {
+        // Validate key
+        if (key === undefined || key === null || key === "") {
           throw new BadRequestException(
-            `Item at index=${index} has empty value for key '${key}'.`,
+            `Item at index=${index} has empty or invalid key.`,
+          );
+        }
+        const valueType = typeof value;
+        // Check if value is null (special case since typeof null === 'object')
+        if (value === null) {
+          continue; // null is allowed
+        }
+        // Check if value type is allowed
+        if (!ALLOWED_VALUE_TYPES.includes(valueType)) {
+          throw new BadRequestException(
+            `Item at index=${index} has invalid type for key '${key}'. Expected string, number, boolean, or null, but got ${valueType}.`,
           );
         }
       }
