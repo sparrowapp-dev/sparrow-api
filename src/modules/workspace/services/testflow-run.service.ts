@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import axios from "axios";
 import { TestflowRepository } from "../repositories/testflow.repository";
 import { EnvironmentRepository } from "../repositories/environment.repository";
@@ -7,7 +12,6 @@ import { ConfigService } from "@nestjs/config";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { VariableDto } from "@src/modules/common/models/environment.model";
 import { ObjectId } from "mongodb";
-import { TestflowEdges, TestflowNodes } from "@src/modules/common/models/testflow.model";
 
 @Injectable()
 export class TestflowRunService {
@@ -30,7 +34,12 @@ export class TestflowRunService {
     globalVariables: VariableDto[],
     currentVariables: VariableDto[],
   ): VariableDto[] {
-    const combined: Array<{ key: string; value: string; checked: boolean; type: "G" | "E" }> = [];
+    const combined: Array<{
+      key: string;
+      value: string;
+      checked: boolean;
+      type: "G" | "E";
+    }> = [];
 
     // Add global environment variables first
     if (globalVariables?.length) {
@@ -53,7 +62,7 @@ export class TestflowRunService {
           combined.push({
             key: variable.key,
             value: variable.value,
-            checked:variable.checked,
+            checked: variable.checked,
             type: "E",
           });
         }
@@ -70,7 +79,7 @@ export class TestflowRunService {
   public handleTestFlowRun = async (
     environmentId: string,
     workspaceId: string,
-    testflowId:string,
+    testflowId: string,
     user?: DecodedUserObject,
   ): Promise<any> => {
     try {
@@ -83,17 +92,19 @@ export class TestflowRunService {
       );
       let environmentData;
       if (environmentId) {
-        try{
+        try {
           environmentData =
             await this.environmentReposistory.get(environmentId);
-        }catch(err){}
+        } catch (err) {}
       }
       const activeVariables = this.combineEnvironmentData(
         globalEnvDetails?.variable || [],
         environmentData?.variable || [],
       );
       // Build proxy URL
-      const sparrowProxy = this.configService.get<string>("sparrowProxy.baseUrl");
+      const sparrowProxy = this.configService.get<string>(
+        "sparrowProxy.baseUrl",
+      );
       const proxyUrl = `${sparrowProxy}/proxy/testflow/execute`;
       // Prepare request body for proxy API
       const body = {
@@ -108,23 +119,169 @@ export class TestflowRunService {
         },
       });
       const finalResult = {
-        result:response.data,
-        environmentName:environmentData?.name,
-        nodes:testflowDetails.nodes,
-        edges:testflowDetails.edges,
-      }
+        result: response.data,
+        environmentName: environmentData?.name,
+        nodes: testflowDetails.nodes,
+        edges: testflowDetails.edges,
+      };
       return finalResult;
     } catch (error: any) {
       return {
-        result:{
+        result: {
           history: {
-            status: "error"
-          }
+            status: "error",
+          },
         },
         environmentName: "",
         nodes: [],
         edges: [],
-      }
+      };
     }
   };
+
+  public async handleTestflowDataSetRun(
+    environmentId: string,
+    workspaceId: string,
+    testflowId: string,
+    testflowDataSetId: string,
+    user?: DecodedUserObject,
+  ): Promise<any> {
+    try {
+      // Fetch testflow details
+      const testflowDetails = await this.testflowRepository.get(testflowId);
+      if (!testflowDetails) {
+        throw new NotFoundException("Testflow not found");
+      }
+
+      // Fetch dataset details
+      const testflowDataSet = await this.testflowRepository.getDataset(
+        testflowId,
+        testflowDataSetId,
+      );
+      if (!testflowDataSet) {
+        throw new NotFoundException("Testflow dataset not found");
+      }
+
+      // Fetch workspace and global environment details
+      const workspace = await this.workspaceReposistory.get(workspaceId);
+      if (!workspace) {
+        throw new NotFoundException("Workspace not found");
+      }
+
+      const globalEnvironment = workspace.environments?.[0];
+      const globalEnvDetails = await this.environmentReposistory.get(
+        globalEnvironment.id.toString(),
+      );
+
+      // Attempt to fetch specific environment if provided
+      let environmentData = null;
+      if (environmentId) {
+        try {
+          environmentData =
+            await this.environmentReposistory.get(environmentId);
+        } catch {
+          // Fallback if environment not found or error occurs
+          environmentData = null;
+        }
+      }
+
+      // Build proxy URL
+      const sparrowProxy = this.configService.get<string>(
+        "sparrowProxy.baseUrl",
+      );
+      if (!sparrowProxy) {
+        throw new Error("Sparrow Proxy base URL not configured");
+      }
+
+      const proxyUrl = `${sparrowProxy}/proxy/testflow/dataset-execute`;
+
+      const testflowDataSets = await this.createVariableforTestdata(
+        testflowDataSet.item.dataSet,
+      );
+
+      let dataSetResult = [];
+      const activeVariables = this.combineEnvironmentData(
+        globalEnvDetails?.variable || [],
+        environmentData?.variable || [],
+      );
+
+      // Build the full payload array
+      const payloads = testflowDataSets.map((dataSet) => {
+        const latestVariables = this.combineEnvironmentData(
+          activeVariables || [],
+          dataSet || [],
+        );
+
+        return {
+          nodes: testflowDetails.nodes || [],
+          variables: latestVariables || [],
+          edges: testflowDetails.edges,
+          userId: user?._id || new ObjectId("000000000000000000000000"),
+          environmentName:
+            environmentData?.name || globalEnvDetails?.name || "",
+          nodesInput: dataSet,
+        };
+      });
+
+      const testflowPayload = {
+        testflowItems: payloads,
+      };
+
+      // Send all payloads in a single POST request
+      const response = await axios.post(proxyUrl, testflowPayload, {
+        headers: { "Content-Type": "application/json" },
+      });
+      // Map the response to match your expected structure
+      dataSetResult = response.data.map((result: any, index: number) => ({
+        result,
+        environmentName: payloads[index].environmentName,
+        nodes: payloads[index].nodes,
+        edges: payloads[index].edges,
+      }));
+      return dataSetResult;
+    } catch (error) {
+      console.error("Error running Testflow dataset:", error.message);
+      return [
+        {
+          result: {
+            history: {
+              status: "error",
+              message: error.message || "Failed to execute testflow dataset",
+            },
+          },
+          environmentName: "",
+          nodes: [],
+          edges: [],
+        },
+      ];
+    }
+  }
+
+  private async createVariableforTestdata(
+    items: Record<string, any>[],
+  ): Promise<VariableDto[][]> {
+    const formattedDataSetNodes: VariableDto[][] = [];
+    for (const dataSet of items) {
+      const group: VariableDto[] = [];
+
+      if (dataSet && typeof dataSet === "object") {
+        // Use a Map to track keys and keep only the last occurrence
+        const keyValueMap = new Map<string, any>();
+        for (const [key, value] of Object.entries(dataSet)) {
+          // This will overwrite any previous value for the same key
+          keyValueMap.set(key, value);
+        }
+        for (const [key, value] of keyValueMap.entries()) {
+          group.push({
+            key,
+            value,
+            checked: true,
+          });
+        }
+      }
+
+      formattedDataSetNodes.push(group);
+    }
+    return formattedDataSetNodes;
+  }
 }
