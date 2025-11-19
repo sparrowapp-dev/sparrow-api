@@ -265,7 +265,13 @@ export class TestflowRunService {
       const group: VariableDto[] = [];
 
       if (dataSet && typeof dataSet === "object") {
+        // Use a Map to track keys and keep only the last occurrence
+        const keyValueMap = new Map<string, any>();
         for (const [key, value] of Object.entries(dataSet)) {
+          // This will overwrite any previous value for the same key
+          keyValueMap.set(key, value);
+        }
+        for (const [key, value] of keyValueMap.entries()) {
           group.push({
             key,
             value,

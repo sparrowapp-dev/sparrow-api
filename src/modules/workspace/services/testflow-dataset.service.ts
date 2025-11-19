@@ -38,7 +38,20 @@ export class TestflowDataSetService {
     }
     if (testflowData.dataSet.length > 5) {
       throw new BadRequestException(
-        "Dataset must contain less than 5 dataset group",
+        "File must contain less than 5 dataset group",
+      );
+    }
+
+    // Calculate file size (approximate)
+    const dataSize = JSON.stringify(testflowData).length;
+    const fileSizeKB = (dataSize / 1024).toFixed(2);
+    const fileSizeMB = dataSize / (1024 * 1024);
+
+    // Validate file size - must not exceed 10MB
+    const MAX_FILE_SIZE_MB = 2;
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      throw new BadRequestException(
+        `File size exceeds the maximum limit of ${MAX_FILE_SIZE_MB}MB.`,
       );
     }
 
@@ -50,9 +63,6 @@ export class TestflowDataSetService {
     if (alreadyExist) {
       throw new BadRequestException("Dataset already exists");
     }
-    // Calculate file size (approximate)
-    const dataSize = JSON.stringify(testflowData).length;
-    const fileSizeKB = (dataSize / 1024).toFixed(2);
 
     // Create dataset item
     const dataSetId = uuidv4();
@@ -82,6 +92,7 @@ export class TestflowDataSetService {
   private async validateDataSetGroups(
     items: Record<string, string | number | boolean | null>[],
   ): Promise<void> {
+    const ALLOWED_VALUE_TYPES = ["string", "number", "boolean"];
     for (let index = 0; index < items.length; index++) {
       const data = items[index];
       if (!data || typeof data !== "object") {
@@ -90,9 +101,21 @@ export class TestflowDataSetService {
         );
       }
       for (const [key, value] of Object.entries(data)) {
-        if (value === undefined || value === null || value === "") {
+        // Validate key
+        if (key === undefined || key === null || key === "") {
           throw new BadRequestException(
-            `Item at index=${index} has empty value for key '${key}'.`,
+            `Item at index=${index} has empty or invalid key.`,
+          );
+        }
+        const valueType = typeof value;
+        // Check if value is null (special case since typeof null === 'object')
+        if (value === null) {
+          continue; // null is allowed
+        }
+        // Check if value type is allowed
+        if (!ALLOWED_VALUE_TYPES.includes(valueType)) {
+          throw new BadRequestException(
+            `Item at index=${index} has invalid type for key '${key}'. Expected string, number, boolean, or null, but got ${valueType}.`,
           );
         }
       }
@@ -137,12 +160,44 @@ export class TestflowDataSetService {
       );
     }
 
-    await this.validateDataSetGroups(testflowData.dataSet);
-    const updateFileName = this.incrementOrAppendNumber(testdataName.trim());
     // Calculate file size (approximate)
     const dataSize = JSON.stringify(testflowData).length;
     const fileSizeKB = (dataSize / 1024).toFixed(2);
+    const fileSizeMB = dataSize / (1024 * 1024);
 
+    // Validate file size - must not exceed 2MB
+    const MAX_FILE_SIZE_MB = 2;
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      throw new BadRequestException(
+        `File size exceeds the maximum limit of ${MAX_FILE_SIZE_MB}MB.`,
+      );
+    }
+
+    await this.validateDataSetGroups(testflowData.dataSet);
+
+    // Find a unique filename by incrementing until no conflict exists
+    let updateFileName = testdataName.trim();
+    let isNameUnique = false;
+    let maxAttempts = 100;
+    let attempts = 0;
+
+    while (!isNameUnique && attempts < maxAttempts) {
+      const alreadyExist = await this.validataDataSetSameName(
+        testflowId,
+        updateFileName,
+      );
+      if (!alreadyExist) {
+        isNameUnique = true;
+      } else {
+        updateFileName = this.incrementOrAppendNumber(updateFileName);
+        attempts++;
+      }
+    }
+    if (!isNameUnique) {
+      throw new BadRequestException(
+        "Unable to generate a unique dataset name. Please try a different name.",
+      );
+    }
     // Create dataset item
     const dataSetId = uuidv4();
     const testflowDataSetItem: TestflowDataSetItem = {
