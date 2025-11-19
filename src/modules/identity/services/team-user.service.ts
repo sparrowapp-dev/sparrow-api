@@ -1241,6 +1241,9 @@ export class TeamUserService {
       throw new BadRequestException("Email is required to accept the invite");
     }
     const user = await this.userRepository.getUserByEmail(email?.trim());
+    if (!user) {
+      throw new NotFoundException("User doesn't exist");
+    }
     // Check if user already in the team.
     const isAlreadyMember = teamData.users.some(
       (u: any) => u.id === user._id.toString(),
