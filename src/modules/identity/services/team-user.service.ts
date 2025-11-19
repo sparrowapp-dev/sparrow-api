@@ -908,7 +908,7 @@ export class TeamUserService {
     role: string,
     teamId: string,
     sender: DecodedUserObject,
-    inviteId: string
+    inviteId: string,
   ) {
     const teamFilter = new ObjectId(teamId);
     const userData = await this.userRepository.getUserByEmail(email);
@@ -1138,13 +1138,12 @@ export class TeamUserService {
       }
     }
 
-   
     const usersToBeInvited = [];
     const newInvites = [];
     const resentInvites = [];
     for (const userEmail of payload.users) {
       const sanitizedEmail = userEmail.trim().toLowerCase();
-      
+
       // Trim spaces and convert the email to lowercase
       const now = new Date();
       const inviteId = uuidv4();
@@ -1165,7 +1164,7 @@ export class TeamUserService {
         expiresAt,
         isAccepted: false, // used for non registered user
       });
-    
+
       const teamMember = team.users.some((user) => {
         if (user.email === sanitizedEmail.toLowerCase()) {
           return true;
@@ -1183,10 +1182,10 @@ export class TeamUserService {
         );
 
         if (emailAlreadyInvited) {
-            resentInvites.push({
-              email: sanitizedEmail,
-            });
-            continue;
+          resentInvites.push({
+            email: sanitizedEmail,
+          });
+          continue;
         }
       }
 
@@ -1196,7 +1195,10 @@ export class TeamUserService {
       });
     }
 
-    const res = await this.teamRepository.hubCollaboratorLimitCheck(payload.teamId, usersToBeInvited);
+    const res = await this.teamRepository.hubCollaboratorLimitCheck(
+      payload.teamId,
+      usersToBeInvited,
+    );
     if (!res) {
       throw new ForbiddenException("Plan limit reached");
     }
@@ -1207,13 +1209,13 @@ export class TeamUserService {
         payload.role,
         teamFilter,
         sender,
-        newInvite.inviteId
+        newInvite.inviteId,
       );
     }
 
     for (const resentInvite of resentInvites) {
       const sanitizedEmail = resentInvite.email.trim().toLowerCase();
-       await this.resendInvite(payload.teamId, sanitizedEmail, sender);
+      await this.resendInvite(payload.teamId, sanitizedEmail, sender);
     }
 
     return;
@@ -1225,29 +1227,31 @@ export class TeamUserService {
    * @param {string} teamId - We will send this TeamId a Invite
    * @returns Result of the invite operation
    */
-  async acceptInviteByEmail(inviteId: string, teamId: string): Promise<any> {
+  async acceptInviteByEmail(
+    inviteId: string,
+    teamId: string,
+    email: string,
+  ): Promise<any> {
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
       throw new NotFoundException("Hub not found");
     }
-    const allInvites = teamData.invites || [];
-    const matchedInvite = allInvites.find(
-      (invite: any) => invite.inviteId === inviteId,
-    );
-    const user = await this.userRepository.getUserByEmail(
-      matchedInvite.email.toLowerCase(),
-    );
-    if (!user) {
-      throw new NotFoundException("User doesn't exist");
+    if (!email) {
+      throw new BadRequestException("Email is required to accept the invite");
     }
+    const user = await this.userRepository.getUserByEmail(email?.trim());
     // Check if user already in the team.
     const isAlreadyMember = teamData.users.some(
       (u: any) => u.id === user._id.toString(),
     );
     if (isAlreadyMember) {
-      throw new BadRequestException("User is already a member of the team");
+      throw new BadRequestException("User is already a member of the hub");
     }
+    const allInvites = teamData.invites || [];
+    const matchedInvite = allInvites.find(
+      (invite: any) => invite.inviteId === inviteId,
+    );
     //check of user already Declined.
     if (!matchedInvite) {
       throw new BadRequestException("User already Declined the Invite.");
