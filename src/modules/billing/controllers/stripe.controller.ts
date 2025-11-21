@@ -50,6 +50,7 @@ import { ConfigService } from "@nestjs/config";
 import { TrialType } from "@src/modules/common/enum/trial.enum";
 import { PricingPlan } from "@src/modules/common/models/pricing.model";
 import { DownGradeService } from "../services/downgrade.service";
+import { UpGradeService } from "../services/upgrade.service";
 
 // Dynamically import Stripe services
 let StripeService: any;
@@ -74,6 +75,7 @@ export class StripeController {
     private readonly configService: ConfigService,
     private readonly salesEmailRepository: SalesEmailRepository,
     private readonly downgradeService: DownGradeService,
+    private readonly upgradeService: UpGradeService,
   ) {
     this.isStripeAvailable = !!this.stripeService;
 
@@ -342,6 +344,15 @@ export class StripeController {
           }
         }
       }
+      if (
+        createSubscriptionDto?.isUpgrade &&
+        createSubscriptionDto?.workspaces
+      ) {
+        await this.upgradeService.addUpgradeDetails(
+          createSubscriptionDto?.metadata?.hubId,
+          createSubscriptionDto?.workspaces,
+        );
+      }
 
       return subscription;
     } catch (error) {
@@ -425,11 +436,25 @@ export class StripeController {
         updateSubscriptionDto.seats,
         updateSubscriptionDto.paymentBehavior,
       );
-      if (subscription && updateSubscriptionDto?.workspaces) {
+      if (
+        subscription &&
+        updateSubscriptionDto?.workspaces &&
+        !updateSubscriptionDto?.isUpgrade
+      ) {
         await this.downgradeService.addDowgradeDetails(
           updateSubscriptionDto?.metadata?.hubId,
           updateSubscriptionDto?.workspaces,
           updateSubscriptionDto?.users,
+        );
+      }
+      if (
+        subscription &&
+        updateSubscriptionDto?.isUpgrade &&
+        updateSubscriptionDto?.workspaces
+      ) {
+        await this.upgradeService.addUpgradeDetails(
+          updateSubscriptionDto?.metadata?.hubId,
+          updateSubscriptionDto?.workspaces,
         );
       }
 
@@ -773,6 +798,51 @@ export class StripeController {
       throw new HttpException(
         "Webhook error: " + error.message,
         HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("user", "admin")
+  @Get("/:teamId/shared-workspaces/:selectedPlan")
+  @ApiOperation({
+    summary: "Check and unrestrict workspaces if required",
+    description:
+      "Checks whether workspaces can be unrestricted/restored based on the selected plan for a team.",
+  })
+  @ApiParam({
+    name: "teamId",
+    description: "Team ID",
+    example: "675a84b1bd31d451443ae019",
+  })
+  @ApiParam({
+    name: "selectedPlan",
+    description: "Plan selected for upgrade",
+    example: "professional_monthly",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "unrestricted workspaces returned successfully",
+  })
+  @ApiResponse({ status: 404, description: "Team or data not found" })
+  @ApiResponse({
+    status: 400,
+    description: "Cannot get unrestrict workspaces.",
+  })
+  async getUnRestrictWorkspaces(
+    @Param("teamId") teamId: string,
+    @Param("selectedPlan") selectedPlan: string,
+  ): Promise<any> {
+    try {
+      const response = await this.upgradeService.getWorkspacesRestortable(
+        teamId,
+        selectedPlan,
+      );
+      return response;
+    } catch (error: any) {
+      throw new HttpException(
+        error.message || "Failed to get unrestricted workspaces",
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

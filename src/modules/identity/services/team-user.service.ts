@@ -908,7 +908,7 @@ export class TeamUserService {
     role: string,
     teamId: string,
     sender: DecodedUserObject,
-    inviteId: string
+    inviteId: string,
   ) {
     const teamFilter = new ObjectId(teamId);
     const userData = await this.userRepository.getUserByEmail(email);
@@ -1138,13 +1138,12 @@ export class TeamUserService {
       }
     }
 
-   
     const usersToBeInvited = [];
     const newInvites = [];
     const resentInvites = [];
     for (const userEmail of payload.users) {
       const sanitizedEmail = userEmail.trim().toLowerCase();
-      
+
       // Trim spaces and convert the email to lowercase
       const now = new Date();
       const inviteId = uuidv4();
@@ -1165,7 +1164,7 @@ export class TeamUserService {
         expiresAt,
         isAccepted: false, // used for non registered user
       });
-    
+
       const teamMember = team.users.some((user) => {
         if (user.email === sanitizedEmail.toLowerCase()) {
           return true;
@@ -1183,10 +1182,10 @@ export class TeamUserService {
         );
 
         if (emailAlreadyInvited) {
-            resentInvites.push({
-              email: sanitizedEmail,
-            });
-            continue;
+          resentInvites.push({
+            email: sanitizedEmail,
+          });
+          continue;
         }
       }
 
@@ -1196,7 +1195,10 @@ export class TeamUserService {
       });
     }
 
-    const res = await this.teamRepository.hubCollaboratorLimitCheck(payload.teamId, usersToBeInvited);
+    const res = await this.teamRepository.hubCollaboratorLimitCheck(
+      payload.teamId,
+      usersToBeInvited,
+    );
     if (!res) {
       throw new ForbiddenException("Plan limit reached");
     }
@@ -1207,13 +1209,13 @@ export class TeamUserService {
         payload.role,
         teamFilter,
         sender,
-        newInvite.inviteId
+        newInvite.inviteId,
       );
     }
 
     for (const resentInvite of resentInvites) {
       const sanitizedEmail = resentInvite.email.trim().toLowerCase();
-       await this.resendInvite(payload.teamId, sanitizedEmail, sender);
+      await this.resendInvite(payload.teamId, sanitizedEmail, sender);
     }
 
     return;
@@ -1230,6 +1232,10 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
       throw new NotFoundException("Hub not found");
+    }
+    const limitCheck = this.acceptInviteLimitCheck(teamData);
+    if (!limitCheck) {
+      throw new ForbiddenException("Plan limit reached.");
     }
     const allInvites = teamData.invites || [];
     const matchedInvite = allInvites.find(
@@ -1295,6 +1301,10 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
       throw new NotFoundException("Hub not found");
+    }
+    const limitCheck = this.acceptInviteLimitCheck(teamData);
+    if (!limitCheck) {
+      throw new ForbiddenException("Plan limit reached.");
     }
     const allInvites = teamData.invites || [];
     const matchedInvite = allInvites.find(
@@ -1794,5 +1804,14 @@ export class TeamUserService {
       }
       await this.emailService.sendEmail(transporter, mailOptions);
     }
+  }
+
+  private acceptInviteLimitCheck(team: Team): boolean {
+    if (team) {
+      if (team?.users?.length >= team?.plan?.limits?.usersPerHub?.value + 1) {
+        return false;
+      }
+    }
+    return true;
   }
 }

@@ -2151,7 +2151,7 @@ export class StripeSubscriptionService {
       const OwnerEmail = team.users[0].email;
       // Extract workspace IDs from downgrade list (workspaces to keep)
       const downgradeWorkspaceIds =
-        teamDowngradeWorkspaces?.map((ws) => ws.id) || [];
+        teamDowngradeWorkspaces?.map((ws) => ws.workspaceId) || [];
       // Extract user IDs from downgrade list (users to keep)
       const downgradeUserIds = teamDowngradeUsers?.map((user) => user.id) || [];
       const downgradeUserEmails =
