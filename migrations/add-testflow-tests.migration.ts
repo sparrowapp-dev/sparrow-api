@@ -10,7 +10,7 @@ import { Db } from "mongodb";
 @Injectable()
 export class addTestflowTestsMigration implements OnModuleInit {
   private hasRun = false;
-  private readonly MAX_SIZE_BYTES = 15.8 * 1024 * 1024;
+  private readonly MAX_SIZE_BYTES = 14 * 1024 * 1024;
 
   constructor(@Inject("DATABASE_CONNECTION") private readonly db: Db) {}
 
