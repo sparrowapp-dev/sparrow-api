@@ -804,7 +804,7 @@ export class StripeController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("user", "admin")
-  @Get("/:teamId/check-unrestrict-workspaces/:selectedPlan")
+  @Get("/:teamId/shared-workspaces/:selectedPlan")
   @ApiOperation({
     summary: "Check and unrestrict workspaces if required",
     description:
