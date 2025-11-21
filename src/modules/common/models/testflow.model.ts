@@ -45,6 +45,83 @@ interface FormData {
   text: FormDataKeyValue[];
 }
 
+export enum TestCaseModeEnum {
+  NO_CODE = "no-code",
+  SCRIPT = "script",
+}
+
+export enum TestCaseConditionOperatorEnum {
+  EQUALS = "Equals",
+  NOT_EQUAL = "Is Not Equal",
+  EXISTS = "Exists",
+  DOES_NOT_EXIST = "Does Not Exist",
+  LESS_THAN = "Less Than",
+  GREATER_THAN = "Greater Than",
+  CONTAINS = "Contains",
+  DOES_NOT_CONTAIN = "Does Not Contain",
+  IS_EMPTY = "Is Empty",
+  IS_NOT_EMPTY = "Is Not Empty",
+  IN_LIST = "In List",
+  NOT_IN_LIST = "Not In List",
+}
+
+export enum TestCaseSelectionTypeEnum {
+  RESPONSE_TEXT = "Response Text",
+  RESPONSE_JSON = "Response JSON",
+  RESPONSE_HEADER = "Response Header",
+  RESPONSE_XML = "Response XML",
+  TIME_CONSUMING = "Time Consuming",
+}
+
+export class NoCodeTestCaseDto {
+  @ApiProperty()
+  @IsString()
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  name: string;
+
+  @ApiProperty({ enum: TestCaseConditionOperatorEnum })
+  @IsEnum(TestCaseConditionOperatorEnum)
+  condition: TestCaseConditionOperatorEnum | "";
+
+  @ApiProperty()
+  @IsString()
+  expectedResult: string;
+
+  @ApiProperty()
+  @IsString()
+  testPath: string;
+
+  @ApiProperty({ enum: TestCaseSelectionTypeEnum })
+  @IsEnum(TestCaseSelectionTypeEnum)
+  testTarget: TestCaseSelectionTypeEnum | "";
+}
+
+export class RequestTestCases {
+  @ApiProperty({ enum: TestCaseModeEnum })
+  @IsEnum(TestCaseModeEnum)
+  testCaseMode: TestCaseModeEnum;
+
+  @ApiProperty({ type: [NoCodeTestCaseDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => NoCodeTestCaseDto)
+  noCode?: NoCodeTestCaseDto[];
+
+  @ApiProperty({ type: String, required: false })
+  @IsOptional()
+  @IsString()
+  script?: string;
+
+  @ApiProperty({ type: String, required: false })
+  @IsOptional()
+  @IsString()
+  preScript?: string;
+}
+
 export class RequestMetaData {
   @ApiProperty({ example: "put" })
   @IsNotEmpty()
@@ -148,6 +225,12 @@ export class RequestMetaData {
   @ValidateNested({ each: true })
   @IsOptional()
   auth?: Auth;
+
+  @ApiProperty({ type: RequestTestCases })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RequestTestCases)
+  tests?: RequestTestCases;
 }
 
 /**
