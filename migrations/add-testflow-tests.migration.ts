@@ -10,6 +10,7 @@ import { Db } from "mongodb";
 @Injectable()
 export class addTestflowTestsMigration implements OnModuleInit {
   private hasRun = false;
+  private readonly MAX_SIZE_BYTES = 15.8 * 1024 * 1024;
 
   constructor(@Inject("DATABASE_CONNECTION") private readonly db: Db) {}
 
@@ -47,12 +48,25 @@ export class addTestflowTestsMigration implements OnModuleInit {
           }
         });
 
-        // Save only if modified
+        // Save only if modified and size check passes
         if (isUpdated) {
-          await testflowCollection.updateOne(
-            { _id: testflow._id },
-            { $set: { nodes: testflow.nodes } },
+          // Calculate the size of the updated testflow document
+          const documentSize = Buffer.byteLength(
+            JSON.stringify(testflow),
+            "utf8",
           );
+
+          // Only update if the document size is less than 15.8 MB
+          if (documentSize < this.MAX_SIZE_BYTES) {
+            await testflowCollection.updateOne(
+              { _id: testflow._id },
+              { $set: { nodes: testflow.nodes } },
+            );
+          } else {
+            console.warn(
+              `\x1b[33m[Nest] Skipping testflow ${testflow._id} - size ${(documentSize / (1024 * 1024)).toFixed(2)} MB exceeds 15.8 MB limit\x1b[0m`,
+            );
+          }
         }
       }
 
