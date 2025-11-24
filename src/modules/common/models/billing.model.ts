@@ -196,10 +196,27 @@ export class DowngradeDetails {
   downgradeType?: SubscriptionDowngradeType;
 }
 
+export class UpgradeDetails {
+  @IsArray()
+  @IsOptional()
+  @Type(() => upgradeWorkspace)
+  workspaces?: upgradeWorkspace[];
+}
+
+export class upgradeWorkspace {
+  @IsString()
+  @IsOptional()
+  workspaceId: string;
+
+  @IsString()
+  @IsOptional()
+  name: string;
+}
+
 export class downgradeWorkspace {
   @IsString()
   @IsOptional()
-  id: string;
+  workspaceId: string;
 
   @IsString()
   @IsOptional()

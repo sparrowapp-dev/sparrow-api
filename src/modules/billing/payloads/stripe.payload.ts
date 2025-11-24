@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   downgradeUser,
   downgradeWorkspace,
+  upgradeWorkspace,
 } from "@src/modules/common/models/billing.model";
 import {
   IsEmail,
@@ -144,6 +145,25 @@ export class CreateSubscriptionDto {
   @IsOptional()
   @IsString()
   promoCodeId?: string;
+
+  @ApiPropertyOptional({
+    description: "List of workspaces to downgrade",
+    example: [
+      { workspaceId: "workspace-id-1", name: "Workspace One" },
+      { workspaceId: "workspace-id-2", name: "Workspace Two" },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  workspaces?: upgradeWorkspace[];
+
+  @ApiProperty({
+    description: "Indicates if the change is an upgrade or downgrade",
+    example: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  isUpgrade?: boolean;
 }
 
 export class SubscriptionResponseDto {
@@ -227,6 +247,14 @@ export class UpdateSubscriptionDto {
   @IsOptional()
   @IsArray()
   users?: downgradeUser[];
+
+  @ApiProperty({
+    description: "Indicates if the change is an upgrade or downgrade",
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isUpgrade?: boolean;
 }
 
 export class CancelSubscriptionDto {

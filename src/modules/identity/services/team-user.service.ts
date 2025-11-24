@@ -1241,6 +1241,10 @@ export class TeamUserService {
       throw new BadRequestException("Email is required to accept the invite");
     }
     const user = await this.userRepository.getUserByEmail(email?.trim());
+    const limitCheck = this.acceptInviteLimitCheck(teamData);
+    if (!limitCheck) {
+      throw new ForbiddenException("Plan limit reached.");
+    }
     if (!user) {
       throw new NotFoundException("User doesn't exist");
     }
@@ -1302,6 +1306,10 @@ export class TeamUserService {
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
       throw new NotFoundException("Hub not found");
+    }
+    const limitCheck = this.acceptInviteLimitCheck(teamData);
+    if (!limitCheck) {
+      throw new ForbiddenException("Plan limit reached.");
     }
     const allInvites = teamData.invites || [];
     const matchedInvite = allInvites.find(
@@ -1801,5 +1809,14 @@ export class TeamUserService {
       }
       await this.emailService.sendEmail(transporter, mailOptions);
     }
+  }
+
+  private acceptInviteLimitCheck(team: Team): boolean {
+    if (team) {
+      if (team?.users?.length >= team?.plan?.limits?.usersPerHub?.value + 1) {
+        return false;
+      }
+    }
+    return true;
   }
 }
