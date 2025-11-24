@@ -328,4 +328,38 @@ export class DownGradeService {
       console.log(error);
     }
   }
+
+  async validateWorkspaceRestrictions(
+    teamDetails: Team,
+    teamID: string,
+    newPlan: PlanName,
+  ): Promise<void> {
+    try {
+      const planData =
+        await this.stripeSubscriptionRepository.findPlanByName(newPlan);
+      if (!teamDetails || !Array.isArray(teamDetails.workspaces)) {
+        return;
+      }
+      // Get only unrestricted workspaces
+      // A workspace is unrestricted if isRestricted is not present OR isRestricted === false
+      const unrestrictedWorkspaces = teamDetails.workspaces.filter(
+        (w) => w?.isRestricted !== true,
+      );
+      const unRestrictedCount = unrestrictedWorkspaces.length;
+      const limit = planData?.limits?.workspacesPerHub?.value ?? 0;
+      // Only act when unrestricted workspaces exceed the plan limit
+      if (unRestrictedCount > limit) {
+        // Get excess workspaces (those beyond the limit)
+        const idsToRestrict = unrestrictedWorkspaces
+          .slice(limit) // Take all workspaces after the limit
+          .map((w) => w.id.toString());
+        await this.restrictTeamWorkspace(teamID, idsToRestrict);
+        for (const wid of idsToRestrict) {
+          await this.restrictWorkspace(wid);
+        }
+      }
+    } catch (error) {
+      console.log("Error in validateWorkspaceRestrictions:", error);
+    }
+  }
 }
