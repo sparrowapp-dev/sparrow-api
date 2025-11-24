@@ -206,7 +206,7 @@ export class UpgradeDetails {
 export class upgradeWorkspace {
   @IsString()
   @IsOptional()
-  workspaceId: string;
+  id: string;
 
   @IsString()
   @IsOptional()
@@ -216,7 +216,7 @@ export class upgradeWorkspace {
 export class downgradeWorkspace {
   @IsString()
   @IsOptional()
-  workspaceId: string;
+  id: string;
 
   @IsString()
   @IsOptional()

@@ -161,8 +161,8 @@ export class CreateSubscriptionDto {
     description: "Indicates if the change is an upgrade or downgrade",
     example: true,
   })
+  @IsOptional()
   @IsBoolean()
-  @IsNotEmpty()
   isUpgrade?: boolean;
 }
 

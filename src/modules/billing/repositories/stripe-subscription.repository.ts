@@ -293,7 +293,7 @@ export class StripeSubscriptionRepository {
    */
   async addDowngradeDetails(
     teamId: string,
-    workspaces: Array<{ workspaceId: string; name: string }>,
+    workspaces: Array<{ id: string; name: string }>,
     users: Array<{ id: string; email: string }>,
     downgradeType?: SubscriptionDowngradeType,
   ): Promise<UpdateResult> {
@@ -437,7 +437,7 @@ export class StripeSubscriptionRepository {
    */
   async addUpgradeDetails(
     teamId: string,
-    workspaces: Array<{ workspaceId: string; name: string }>,
+    workspaces: Array<{ id: string; name: string }>,
   ): Promise<void> {
     try {
       if (!teamId) {

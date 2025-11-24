@@ -19,7 +19,7 @@ export class UpGradeService {
    */
   async addUpgradeDetails(
     teamId: string,
-    workspaces: Array<{ workspaceId: string; name: string }>,
+    workspaces: Array<{ id: string; name: string }>,
   ) {
     try {
       await this.stripeSubscriptionRepository.addUpgradeDetails(
