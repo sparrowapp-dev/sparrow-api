@@ -303,7 +303,7 @@ export class StripeSubscriptionRepository {
       }
       const updateQuery: Record<string, any> = {};
       // Add workspaces if provided
-      if (workspaces && workspaces.length > 0) {
+      if (workspaces) {
         updateQuery["downgrade.workspaces"] = { $each: workspaces };
       }
       // Add users if provided

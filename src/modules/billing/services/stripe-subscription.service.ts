@@ -590,6 +590,16 @@ export class StripeSubscriptionService {
               newPlan,
               new Date(),
             );
+            if (
+              !team?.downgrade?.workspaces ||
+              team?.downgrade?.workspaces.length === 0
+            ) {
+              await this.downgradeService.validateWorkspaceRestrictions(
+                team,
+                metadata.hubId,
+                newPlan,
+              );
+            }
             await this.stripeSubscriptionRepo.removeDowngradeDetails(
               metadata.hubId,
             );
