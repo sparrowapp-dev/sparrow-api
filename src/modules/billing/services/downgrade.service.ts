@@ -111,7 +111,12 @@ export class DownGradeService {
     return response;
   }
 
-  async restrictTeamWorkspace(teamId: string, workspaceIds: string[]) {
+  async restrictTeamWorkspace(teamId: string, workspaceIds: string[] = []) {
+    // If no workspaceIds passed → do nothing
+    if (!workspaceIds || workspaceIds.length === 0) {
+      console.log("No workspaceIds provided. Skipping restriction update.");
+      return;
+    }
     const teamObject = new ObjectId(teamId);
     const teamData =
       await this.downgradeTeamRepository.findTeamByTeamId(teamObject);
@@ -125,14 +130,11 @@ export class DownGradeService {
       }
       return workspace;
     });
-    const teamUpdated = {
-      workspaces: updatedWorkspaces,
-    };
-    const data = await this.downgradeTeamRepository.updateTeamById(
+    const teamUpdated = { workspaces: updatedWorkspaces };
+    return await this.downgradeTeamRepository.updateTeamById(
       teamObject,
       teamUpdated,
     );
-    return data;
   }
 
   /**
@@ -146,7 +148,7 @@ export class DownGradeService {
    */
   async addDowgradeDetails(
     teamId: string,
-    workspaces: Array<{ workspaceId: string; name: string }>,
+    workspaces: Array<{ id: string; name: string }>,
     users: Array<{ id: string; email: string }>,
   ) {
     try {
@@ -184,10 +186,10 @@ export class DownGradeService {
       const teamObject = new ObjectId(teamId);
       let workspacesToUnrestrict: WorkspaceDtoWithRestriction[] = [];
       let updatedWorkspaces: WorkspaceDtoWithRestriction[];
-      if (team.upgrade && team.upgrade.workspaces.length > 0) {
+      if (team?.upgrade && team?.upgrade.workspaces.length > 0) {
         // If the team is on an upgrade plan, unrestrict User select workspaces
         const workspacesToUnrestrictIds = new Set(
-          team.upgrade.workspaces.map((w) => w.workspaceId.toString()),
+          team.upgrade.workspaces.map((w) => w.id.toString()),
         );
 
         updatedWorkspaces = team.workspaces.map((workspace) => {
