@@ -2,12 +2,14 @@ import { Injectable } from "@nestjs/common";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 import { DownGradeTeamRepository } from "../repositories/downgradeTeam.repository";
 import { ObjectId } from "mongodb";
+import { DownGradeWorkspaceRepository } from "../repositories/downgradeWorkspace.repository";
 
 @Injectable()
 export class UpGradeService {
   constructor(
     private readonly stripeSubscriptionRepository: StripeSubscriptionRepository,
     private readonly downgradeTeamRepository: DownGradeTeamRepository,
+    private readonly downgradeworkspaceRepository: DownGradeWorkspaceRepository,
   ) {}
 
   /**
@@ -73,7 +75,39 @@ export class UpGradeService {
     }
     const maxWorkspaces = plan.limits.workspacesPerHub.value;
     if (team.workspaces.length > maxWorkspaces) {
-      return restrictedWorkspaces;
+      const workspaceIds = restrictedWorkspaces.map((w) => w.id.toString());
+      const getWorkspaces =
+        await this.downgradeworkspaceRepository.getWorkspacesByIds(
+          workspaceIds,
+        );
+
+      let restrictedWorkspacesDetails: any[] = [];
+
+      for (let restrictedWs of restrictedWorkspaces) {
+        // Find the corresponding workspace details
+        const workspaceDetail = getWorkspaces.find(
+          (ws) => ws._id.toString() === restrictedWs.id.toString(),
+        );
+
+        if (workspaceDetail) {
+          restrictedWorkspacesDetails.push({
+            ...restrictedWs,
+            collection: workspaceDetail?.collection?.length || 0,
+            contributors: workspaceDetail?.users?.length || 0,
+            lastUpdated: workspaceDetail?.updatedAt || null,
+          });
+        } else {
+          // If workspace details not found, add with default values
+          restrictedWorkspacesDetails.push({
+            ...restrictedWs,
+            collection: 0,
+            contributors: 0,
+            lastUpdated: null,
+          });
+        }
+      }
+
+      return restrictedWorkspacesDetails;
     }
     return [];
   }
