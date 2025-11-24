@@ -19,7 +19,7 @@ import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
 import { Plan } from "./plan.model";
-import { BillingDto, DowngradeDetails } from "./billing.model";
+import { BillingDto, DowngradeDetails, UpgradeDetails } from "./billing.model";
 import { LicensesDto } from "./licenses.model";
 
 export class logoDto {
@@ -130,6 +130,11 @@ export class Team {
   @ValidateNested()
   @Type(() => DowngradeDetails)
   downgrade?: DowngradeDetails;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpgradeDetails)
+  upgrade?: UpgradeDetails;
 
   @IsBoolean()
   @IsOptional()
