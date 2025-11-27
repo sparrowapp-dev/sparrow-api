@@ -92,10 +92,10 @@ export class TeamRepository {
         name: team.name,
         hubUrl: team.hubUrl,
         logo: team.logo,
-        workspaces:[],
+        workspaces: [],
         isRestricted: true,
-        users:team.users,
-        owner:team.owner
+        users: team.users,
+        owner: team.owner,
       } as unknown as WithId<Team>;
     }
     // Case 2: Plan active → filter workspaces
@@ -141,10 +141,10 @@ export class TeamRepository {
           name: team.name,
           hubUrl: team.hubUrl,
           logo: team.logo,
-          workspaces:[],
+          workspaces: [],
           isRestricted: true,
-          users:team.users,
-          owner:team.owner
+          users: team.users,
+          owner: team.owner,
         } as Partial<WithId<Team>>;
       }
       // Filter out restricted workspaces
@@ -239,7 +239,6 @@ export class TeamRepository {
     return responseData.value;
   }
 
-
   async updateTeamWorkspaceCountById(
     id: ObjectId,
     planData: PlanDto,
@@ -249,9 +248,22 @@ export class TeamRepository {
       .collection<Team>(Collections.TEAM)
       .findOneAndUpdate(
         {
-          _id: id,   $expr: {
-          $lt: [{ $size: "$workspaces" }, planData.limits.workspacesPerHub.value],
-          } , 
+          _id: id,
+          $expr: {
+            $lt: [
+              {
+                $size: {
+                  $filter: {
+                    input: "$workspaces",
+                    as: "workspace",
+                    // keep only those where isRestricted is not true
+                    cond: { $ne: ["$$workspace.isRestricted", true] },
+                  },
+                },
+              },
+              planData.limits.workspacesPerHub.value,
+            ],
+          },
         },
         {
           $push: { workspaces: ws },
@@ -313,11 +325,16 @@ export class TeamRepository {
       .updateOne({ _id }, { $set: { isHubTrialExhausted, plan } });
   }
 
-  async hubCollaboratorLimitCheck(teamId: string, users: Invite[]): Promise<WithId<Team>> {
+  async hubCollaboratorLimitCheck(
+    teamId: string,
+    users: Invite[],
+  ): Promise<WithId<Team>> {
     const teamObjectId = new ObjectId(teamId);
-    const incomingEmails = users.map(u => u.email);
+    const incomingEmails = users.map((u) => u.email);
 
-    const result = await this.db.collection<Team>(Collections.TEAM).findOneAndUpdate(
+    const result = await this.db
+      .collection<Team>(Collections.TEAM)
+      .findOneAndUpdate(
         {
           _id: teamObjectId,
           // Ensure limit not exceeded
@@ -333,18 +350,30 @@ export class TeamRepository {
                         incomingEmails,
                         {
                           $concatArrays: [
-                          { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
-                          { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
-                        ]
-                      }
-                    ]
-                  }
-                }
-              ]
+                            {
+                              $map: {
+                                input: { $ifNull: ["$users", []] },
+                                as: "u",
+                                in: "$$u.email",
+                              },
+                            },
+                            {
+                              $map: {
+                                input: { $ifNull: ["$invites", []] },
+                                as: "i",
+                                in: "$$i.email",
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                ],
               },
-            { $add: ["$plan.limits.usersPerHub.value", 1] }
-          ]
-        }
+              { $add: ["$plan.limits.usersPerHub.value", 1] },
+            ],
+          },
         },
         [
           {
@@ -362,24 +391,35 @@ export class TeamRepository {
                             "$$newInvite.email",
                             {
                               $concatArrays: [
-                              { $map: { input: { $ifNull: ["$users", []] }, as: "u", in: "$$u.email" } },
-                              { $map: { input: { $ifNull: ["$invites", []] }, as: "i", in: "$$i.email" } }
-                            ]
-                          }
-                        ]
-                      }
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      ]  ,
-      { returnDocument: "after" }
+                                {
+                                  $map: {
+                                    input: { $ifNull: ["$users", []] },
+                                    as: "u",
+                                    in: "$$u.email",
+                                  },
+                                },
+                                {
+                                  $map: {
+                                    input: { $ifNull: ["$invites", []] },
+                                    as: "i",
+                                    in: "$$i.email",
+                                  },
+                                },
+                              ],
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        { returnDocument: "after" },
       );
 
     return result.value;
   }
-
 }
