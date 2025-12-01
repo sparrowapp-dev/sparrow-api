@@ -104,6 +104,9 @@ export const generateTestCasesInstructions = `
                 - if user prompt is not valid then return 
                 - If the user's prompt is not clearly about API post-script generation or contains irrelevant content 
                   (general coding questions, or non-API testing topics) then return
+                - If the user's prompt contains only special characters OR contains sequences of continuous special characters 
+                  (for example: "&&&&", "****", "*&#*&#&*#&", "@@@@") OR ends with such sequences 
+                  (for example: "generate a testcase *&&&&") then return
                 - Example format:  '
                     sp.test("userId is a number", function () {
                       sp.expect(jsonBody.userId).to.be.a("number");
