@@ -13,6 +13,43 @@ export enum AddTo {
   QueryParameter = "Query Parameter",
 }
 
+export enum AddOAuth2To {
+  Header = "Header",
+  QueryParameter = "Query Parameter",
+}
+
+export enum GrantTypeOAuth2 {
+  AUTHORIZATION_CODE = "authorization_code",
+  CLIENT_CREDENTIALS = "client_credentials",
+  PASSWORD = "password",
+  REFRESH_TOKEN = "refresh_token",
+  IMPLICIT = "implicit",
+}
+
+export interface OAuth2Token {
+  id: string;
+  name: string;
+  accessToken?: string;
+  refreshToken?: string;
+  scopes?: string[];
+  createdAt?: Date;
+  expiresAt?: Date;
+  add: AddOAuth2To;
+}
+
+export interface OAuth2Configuration {
+  tokenName: string;
+  clientId: string;
+  clientSecret: string;
+  AuthUrl?: string;
+  AccessTokenUrl?: string;
+  callbackUrl: string;
+  state?: string;
+  scopes?: string[];
+  grantType?: GrantTypeOAuth2;
+  addTo: AddOAuth2To;
+}
+
 export class TransformedRequest {
   id?: string;
   tag?: string;
@@ -78,6 +115,11 @@ export class Auth {
     authKey: string;
     authValue: string | unknown;
     addTo: AddTo;
+  };
+  oAuth2?: {
+    tokens: OAuth2Token[];
+    configuration: OAuth2Configuration;
+    selectToken?: string;
   };
 }
 
