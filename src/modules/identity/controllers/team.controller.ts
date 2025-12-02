@@ -423,7 +423,7 @@ export class TeamController {
     return res.status(responseData.httpStatusCode).send(responseData);
   }
 
-  @Post(":teamId/invite/user/accept/:inviteId")
+  @Post(":teamId/invite/user/accept/:inviteId/email/:emailId")
   @ApiOperation({
     summary: "Create a Invite",
     description: "",
@@ -437,11 +437,13 @@ export class TeamController {
   async acceptInvitebyEmail(
     @Param("teamId") teamId: string,
     @Param("inviteId") inviteId: string,
+    @Param("emailId") emailId: string,
     @Res() res: FastifyReply,
   ) {
     const data = await this.teamUserService.acceptInviteByEmail(
       inviteId,
       teamId,
+      emailId,
     );
     const responseData = new ApiResponseService(
       "User joined the hub",

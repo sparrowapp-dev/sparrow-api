@@ -303,7 +303,7 @@ export class StripeSubscriptionRepository {
       }
       const updateQuery: Record<string, any> = {};
       // Add workspaces if provided
-      if (workspaces && workspaces.length > 0) {
+      if (workspaces) {
         updateQuery["downgrade.workspaces"] = { $each: workspaces };
       }
       // Add users if provided
@@ -423,6 +423,79 @@ export class StripeSubscriptionRepository {
       return result;
     } catch (error) {
       console.error("Error disabling auto downgrade:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add upgrade details (workspaces) to a team's upgrade record.
+   * Automatically avoids duplicates via MongoDB's $addToSet.$each.
+   *
+   * @param teamId The team to update
+   * @param workspaces Array of workspace objects {id, name}
+   * @returns MongoDB UpdateResult
+   */
+  async addUpgradeDetails(
+    teamId: string,
+    workspaces: Array<{ id: string; name: string }>,
+  ): Promise<void> {
+    try {
+      if (!teamId) {
+        throw new Error("teamId is required to update upgrade details.");
+      }
+      if (!workspaces || workspaces.length === 0) {
+        throw new Error("No workspaces provided to update upgrade details.");
+      }
+      const teamObjectId = new ObjectId(teamId);
+      const updateQuery = {
+        "upgrade.workspaces": { $each: workspaces },
+      };
+      const setQuery = {
+        updatedBy: "system",
+        updatedAt: new Date(),
+      };
+      await this.db.collection(Collections.TEAM).updateOne(
+        { _id: teamObjectId },
+        {
+          $addToSet: updateQuery,
+          $set: setQuery,
+        },
+      );
+    } catch (error) {
+      console.error("Error adding upgrade details:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove upgrade workspace details from a team record.
+   * This function removes the entire upgrade object from the team document.
+   *
+   * @param teamId The team to update
+   * @param workspaceIds Array of workspace IDs to remove
+   * @returns MongoDB UpdateResult
+   */
+  async removeUpgradeDetails(teamId: string): Promise<UpdateResult> {
+    try {
+      if (!teamId) {
+        throw new Error("teamId is required to remove downgrade details.");
+      }
+      const teamObjectId = new ObjectId(teamId);
+      const result = await this.db.collection(Collections.TEAM).updateOne(
+        { _id: teamObjectId },
+        {
+          $unset: {
+            upgrade: "", // Removes the entire upgrade object
+          },
+          $set: {
+            updatedBy: "system",
+            updatedAt: new Date(),
+          },
+        },
+      );
+      return result;
+    } catch (error) {
+      console.error("Error removing upgrade details:", error);
       throw error;
     }
   }

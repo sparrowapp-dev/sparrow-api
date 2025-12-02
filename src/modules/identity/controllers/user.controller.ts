@@ -592,7 +592,7 @@ export class UserController {
   @ApiOperation({
     summary: "When the User has completed the Assertions Demo.",
     description:
-      "Marks the property as true when the user has completed the assertions demo.",
+      "Marks the property as true when the user has completed assertions demo.",
   })
   @UseGuards(JwtAuthGuard)
   @ApiResponse({

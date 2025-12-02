@@ -111,7 +111,12 @@ export class DownGradeService {
     return response;
   }
 
-  async restrictTeamWorkspace(teamId: string, workspaceIds: string[]) {
+  async restrictTeamWorkspace(teamId: string, workspaceIds: string[] = []) {
+    // If no workspaceIds passed → do nothing
+    if (!workspaceIds || workspaceIds.length === 0) {
+      console.log("No workspaceIds provided. Skipping restriction update.");
+      return;
+    }
     const teamObject = new ObjectId(teamId);
     const teamData =
       await this.downgradeTeamRepository.findTeamByTeamId(teamObject);
@@ -125,14 +130,11 @@ export class DownGradeService {
       }
       return workspace;
     });
-    const teamUpdated = {
-      workspaces: updatedWorkspaces,
-    };
-    const data = await this.downgradeTeamRepository.updateTeamById(
+    const teamUpdated = { workspaces: updatedWorkspaces };
+    return await this.downgradeTeamRepository.updateTeamById(
       teamObject,
       teamUpdated,
     );
-    return data;
   }
 
   /**
@@ -182,62 +184,27 @@ export class DownGradeService {
   async unRestrictWorkspaces(team: Team, teamId: string) {
     try {
       const teamObject = new ObjectId(teamId);
-      const restrictedWorkspaces = team.workspaces.filter(
-        (workspace) => workspace.isRestricted === true,
-      );
-      if (restrictedWorkspaces.length > 0) {
-        let workspacesToUnrestrict: WorkspaceDtoWithRestriction[] = [];
-        let updatedWorkspaces: WorkspaceDtoWithRestriction[];
-        if (team.workspaces.length > team.plan.limits.workspacesPerHub.value) {
-          const unRestrictedWorkspaceCount =
-            team.workspaces.length - restrictedWorkspaces.length;
-          // Calculate how many MORE workspaces can be unrestricted
-          const canUnrestrictCount =
-            team.plan.limits.workspacesPerHub.value -
-            unRestrictedWorkspaceCount;
+      let workspacesToUnrestrict: WorkspaceDtoWithRestriction[] = [];
+      let updatedWorkspaces: WorkspaceDtoWithRestriction[];
+      if (team?.upgrade && team?.upgrade.workspaces.length > 0) {
+        // If the team is on an upgrade plan, unrestrict User select workspaces
+        const workspacesToUnrestrictIds = new Set(
+          team.upgrade.workspaces.map((w) => w.id.toString()),
+        );
 
-          // Take only the number of workspaces that can be unrestricted
-          workspacesToUnrestrict = restrictedWorkspaces.slice(
-            0,
-            canUnrestrictCount > 0 ? canUnrestrictCount : 0,
-          );
-
-          // Get IDs of workspaces that will be unrestricted
-          const workspacesToUnrestrictIds = new Set(
-            workspacesToUnrestrict.map((w) => w.id.toString()),
-          );
-
-          // Update workspaces: set isRestricted to false only for workspaces in workspacesToUnrestrict
-          updatedWorkspaces = team.workspaces.map((workspace) => {
-            if (
-              workspace.isRestricted &&
-              workspacesToUnrestrictIds.has(workspace.id.toString())
-            ) {
-              return {
-                ...workspace,
-                isRestricted: false,
-              };
-            }
-            return workspace;
-          });
-        } else {
-          // Team has EQUAL or LESS workspaces than allowed - unrestrict ALL
-          workspacesToUnrestrict = restrictedWorkspaces;
-
-          // Set all workspaces to isRestricted: false
-          updatedWorkspaces = team.workspaces.map((workspace) => {
-            if (workspace.isRestricted) {
-            }
+        updatedWorkspaces = team.workspaces.map((workspace) => {
+          if (workspacesToUnrestrictIds.has(workspace.id.toString())) {
             return {
               ...workspace,
               isRestricted: false,
             };
-          });
-        }
+          }
+          return workspace;
+        });
         // Unrestrict the workspaces in the database
-        for (const workspace of workspacesToUnrestrict) {
+        for (const workspaceId of workspacesToUnrestrictIds) {
           await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(
-            workspace.id.toString(),
+            workspaceId.toString(),
             false,
           );
         }
@@ -248,6 +215,77 @@ export class DownGradeService {
           teamObject,
           teamUpdated,
         );
+        await this.stripeSubscriptionRepository.removeUpgradeDetails(teamId);
+        return;
+      } else {
+        const restrictedWorkspaces = team.workspaces.filter(
+          (workspace) => workspace.isRestricted === true,
+        );
+        if (restrictedWorkspaces.length > 0) {
+          if (
+            team.workspaces.length > team.plan.limits.workspacesPerHub.value
+          ) {
+            const unRestrictedWorkspaceCount =
+              team.workspaces.length - restrictedWorkspaces.length;
+            // Calculate how many MORE workspaces can be unrestricted
+            const canUnrestrictCount =
+              team.plan.limits.workspacesPerHub.value -
+              unRestrictedWorkspaceCount;
+
+            // Take only the number of workspaces that can be unrestricted
+            workspacesToUnrestrict = restrictedWorkspaces.slice(
+              0,
+              canUnrestrictCount > 0 ? canUnrestrictCount : 0,
+            );
+
+            // Get IDs of workspaces that will be unrestricted
+            const workspacesToUnrestrictIds = new Set(
+              workspacesToUnrestrict.map((w) => w.id.toString()),
+            );
+
+            // Update workspaces: set isRestricted to false only for workspaces in workspacesToUnrestrict
+            updatedWorkspaces = team.workspaces.map((workspace) => {
+              if (
+                workspace.isRestricted &&
+                workspacesToUnrestrictIds.has(workspace.id.toString())
+              ) {
+                return {
+                  ...workspace,
+                  isRestricted: false,
+                };
+              }
+              return workspace;
+            });
+          } else {
+            // Team has EQUAL or LESS workspaces than allowed - unrestrict ALL
+            workspacesToUnrestrict = restrictedWorkspaces;
+
+            // Set all workspaces to isRestricted: false
+            updatedWorkspaces = team.workspaces.map((workspace) => {
+              if (workspace.isRestricted) {
+              }
+              return {
+                ...workspace,
+                isRestricted: false,
+              };
+            });
+          }
+          // Unrestrict the workspaces in the database
+          for (const workspace of workspacesToUnrestrict) {
+            await this.downgradeWorkspaceReposiory.setWorkspaceRestriction(
+              workspace.id.toString(),
+              false,
+            );
+          }
+          const teamUpdated = {
+            workspaces: updatedWorkspaces,
+          };
+          await this.downgradeTeamRepository.updateTeamById(
+            teamObject,
+            teamUpdated,
+          );
+        }
+        return;
       }
     } catch (error) {
       console.error("Error in Removing restricted Workspaces.", error);
@@ -288,6 +326,40 @@ export class DownGradeService {
       );
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  async validateWorkspaceRestrictions(
+    teamDetails: Team,
+    teamID: string,
+    newPlan: PlanName,
+  ): Promise<void> {
+    try {
+      const planData =
+        await this.stripeSubscriptionRepository.findPlanByName(newPlan);
+      if (!teamDetails || !Array.isArray(teamDetails.workspaces)) {
+        return;
+      }
+      // Get only unrestricted workspaces
+      // A workspace is unrestricted if isRestricted is not present OR isRestricted === false
+      const unrestrictedWorkspaces = teamDetails.workspaces.filter(
+        (w) => w?.isRestricted !== true,
+      );
+      const unRestrictedCount = unrestrictedWorkspaces.length;
+      const limit = planData?.limits?.workspacesPerHub?.value ?? 0;
+      // Only act when unrestricted workspaces exceed the plan limit
+      if (unRestrictedCount > limit) {
+        // Get excess workspaces (those beyond the limit)
+        const idsToRestrict = unrestrictedWorkspaces
+          .slice(limit) // Take all workspaces after the limit
+          .map((w) => w.id.toString());
+        await this.restrictTeamWorkspace(teamID, idsToRestrict);
+        for (const wid of idsToRestrict) {
+          await this.restrictWorkspace(wid);
+        }
+      }
+    } catch (error) {
+      console.log("Error in validateWorkspaceRestrictions:", error);
     }
   }
 }
