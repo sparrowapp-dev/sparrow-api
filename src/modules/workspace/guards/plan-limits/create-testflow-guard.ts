@@ -23,6 +23,9 @@ export class CreateTestflowGuard implements CanActivate {
     const teamId = workspaceDetails.team.id;
     const userTeam = await this.teamService.get(teamId);
     const planData = userTeam?.plan
+    if (!planData.active) {
+      throw new ForbiddenException("Hub is Restricted.");
+    }
     if (
       workspaceDetails?.testflows?.length >=
       planData?.limits?.testflowPerWorkspace?.value

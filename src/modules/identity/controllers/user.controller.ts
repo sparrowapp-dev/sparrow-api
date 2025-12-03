@@ -587,4 +587,31 @@ export class UserController {
     );
     return res.status(HttpStatusCode.OK).send(responseData);
   }
+
+  @Post("/request-assertions-demo")
+  @ApiOperation({
+    summary: "When the User has completed the Assertions Demo.",
+    description:
+      "Marks the property as true when the user has completed assertions demo.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: "Assertions Demo completed successfully",
+  })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  async requestAssertionsDemoCompleted(
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const user = request.user;
+    const result = await this.userService.requestAssertionsDemoCompleted(
+      user.email,
+    );
+    const responseData = new ApiResponseService(
+      "Assertions Demo completed successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+  }
 }

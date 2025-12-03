@@ -94,11 +94,6 @@ export class WorkspaceService {
     userId: string,
     currentUser: DecodedUserObject,
   ): Promise<Workspace[]> {
-    if (currentUser?._id.toString() !== userId.toString()) {
-      throw new BadRequestException(
-        "You are not authorised to fetch the workspace details of this particular user",
-      );
-    }
     const user = await this.userRepository.getUserById(userId, currentUser);
     if (!user) {
       throw new BadRequestException(
@@ -905,9 +900,18 @@ export class WorkspaceService {
 
   async getAllWorkspaceUsers(
     workspaceId: string,
+    currentUser: DecodedUserObject,
   ): Promise<workspaceUsersResponseDto[]> {
     const workspaceData = await this.workspaceRepository.get(workspaceId);
     const workspaceUsers = [...workspaceData.users];
+
+    if (
+      !workspaceUsers.some(
+        (u: any) => u.id.toString() === currentUser._id.toString(),
+      )
+    ) {
+      throw new ForbiddenException("You are not authorized to access this API");
+    }
     const updatedIdArray = [];
     for (const item of workspaceUsers) {
       if (!isString(item.id)) {

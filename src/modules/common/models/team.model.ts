@@ -13,13 +13,13 @@ import {
   IsUUID,
   ValidateNested,
 } from "class-validator";
-import { WorkspaceDto } from "./workspace.model";
+import { WorkspaceDto, WorkspaceDtoWithRestriction } from "./workspace.model";
 import { Type } from "class-transformer";
 import { UserDto } from "./user.model";
 import { ObjectId } from "mongodb";
 import { SelectedWorkspaces } from "@src/modules/identity/payloads/teamUser.payload";
 import { Plan } from "./plan.model";
-import { BillingDto } from "./billing.model";
+import { BillingDto, DowngradeDetails, UpgradeDetails } from "./billing.model";
 import { LicensesDto } from "./licenses.model";
 
 export class logoDto {
@@ -82,10 +82,10 @@ export class Team {
   logo?: logoDto;
 
   @IsArray()
-  @Type(() => WorkspaceDto)
+  @Type(() => WorkspaceDtoWithRestriction)
   @ValidateNested({ each: true })
   @IsOptional()
-  workspaces?: WorkspaceDto[];
+  workspaces?: WorkspaceDtoWithRestriction[];
 
   @IsArray()
   @Type(() => UserDto)
@@ -125,6 +125,20 @@ export class Team {
   @IsOptional()
   @IsObject()
   licenses?: LicensesDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DowngradeDetails)
+  downgrade?: DowngradeDetails;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpgradeDetails)
+  upgrade?: UpgradeDetails;
+
+  @IsBoolean()
+  @IsOptional()
+  isDowngraded?: boolean;
 }
 
 export class TeamWithNewInviteTag extends Team {

@@ -23,6 +23,7 @@ import {
   UpdateCollectionDto,
   UpdateMockCollectionStatusDto,
   AuthCollection,
+  MoveRequestDto,
 } from "../payloads/collection.payload";
 import { FastifyReply } from "fastify";
 import { CollectionService } from "../services/collection.service";
@@ -91,10 +92,11 @@ export class collectionController {
         data.insertedId.toString(),
       );
     }
-    const collection = await this.collectionService.getCollectionWithGenerateVariable(
-      user.email,
-      data.insertedId.toString(),
-    );
+    const collection =
+      await this.collectionService.getCollectionWithGenerateVariable(
+        user.email,
+        data.insertedId.toString(),
+      );
     await this.workSpaceService.addCollectionInWorkSpace(
       workspaceId,
       {
@@ -1707,6 +1709,34 @@ export class collectionController {
       "Generated Variables Inserted Successfully",
       HttpStatusCode.OK,
       collection,
+    );
+    return res.status(responseData.httpStatusCode).send(responseData);
+  }
+
+  @Post("move-request")
+  @ApiOperation({
+    summary: "Move Request Within Workspace",
+    description:
+      "This will move a request from one collection/folder to another collection/folder within the same workspace.",
+  })
+  @UseGuards(JwtAuthGuard)
+  @ApiResponse({ status: 200, description: "Request moved successfully" })
+  @ApiResponse({ status: 400, description: "Failed to move request" })
+  @ApiResponse({ status: 404, description: "Request or collection not found" })
+  async moveRequest(
+    @Body() moveRequestDto: MoveRequestDto,
+    @Res() res: FastifyReply,
+    @Req() request: ExtendedFastifyRequest,
+  ) {
+    const user = request.user;
+    const result = await this.collectionService.moveRequest(
+      moveRequestDto,
+      user,
+    );
+    const responseData = new ApiResponseService(
+      "Request moved successfully",
+      HttpStatusCode.OK,
+      result,
     );
     return res.status(responseData.httpStatusCode).send(responseData);
   }

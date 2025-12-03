@@ -95,10 +95,13 @@ export class StripeWebhookHelper {
    * Handle subscription updated webhook event
    */
   private async handleSubscriptionUpdated(event: any): Promise<void> {
+    // Check for resubscription (subscription reactivated)
+    const isResubscribed = this.detectResubscription(event);
     // Only handle for specific status changes, like cancellation
     await this.stripeSubscriptionService.handleSubscriptionUpdated(
       event.data.object,
       event.id,
+      isResubscribed
     );
 
     // Get the updated team data
@@ -106,8 +109,6 @@ export class StripeWebhookHelper {
       event.data.object.metadata?.hubId,
     );
 
-    // Check for resubscription (subscription reactivated)
-    const isResubscribed = this.detectResubscription(event);
     if (isResubscribed && teamUpdated) {
       // Send resubscription email
       await this.paymentEmailHelper.sendSubscriptionResubscribedEmail(

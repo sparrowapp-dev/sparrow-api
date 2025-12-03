@@ -6,12 +6,17 @@ import {
   IsOptional,
   IsNotEmpty,
   IsMongoId,
+  IsBoolean,
+  IsNumber,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 
 // ---- Model
 import {
+  NotificationDto,
+  RunConfigurationDto,
+  TestflowDataSet,
   TestflowEdges,
   TestflowNodes,
 } from "@src/modules/common/models/testflow.model";
@@ -129,4 +134,144 @@ export class UpdateTestflowDto {
   @ValidateNested({ each: true })
   @IsOptional()
   nodes?: TestflowNodes[];
+}
+
+export class CreateTestflowSchedularDto {
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  testflowId: string;
+
+  @ApiProperty({ required: true, example: "6544cdea4b3d3b043a96c307" })
+  @IsMongoId()
+  @IsNotEmpty()
+  workspaceId: string;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "New Testflow Schedular Name" })
+  @IsOptional()
+  name: string;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "428347384723" })
+  @IsOptional()
+  environmentId: string;
+
+  @IsString()
+  @ApiProperty({ required: true, example: "428347384723" })
+  @IsOptional()
+  testflowDataSetId?: string;
+
+  @ApiProperty({
+    required: true,
+    type: () => RunConfigurationDto,
+    example: {
+      runCycle: "daily",
+      every: "2h",
+      date: "2025-09-23",
+      time: "14:30",
+      startTime: "09:00",
+      endTime: "18:00",
+    },
+  })
+  @ValidateNested()
+  @Type(() => RunConfigurationDto)
+  runConfiguration: RunConfigurationDto;
+
+  @ApiProperty({
+    required: false,
+    type: () => NotificationDto,
+    example: {
+      emails: ["user1@example.com", "user2@example.com"],
+      receiveNotifications: true,
+    },
+  })
+  @ValidateNested()
+  @Type(() => NotificationDto)
+  notification?: NotificationDto;
+}
+
+/**
+ * Data Transfer Object for localhost node validation result.
+ */
+export class LocalhostNodeDto {
+  @ApiProperty({ example: "node-123" })
+  @IsString()
+  nodeId: string;
+
+  @ApiProperty({ example: "Login API" })
+  @IsString()
+  blockName: string;
+
+  @ApiProperty({ example: "http://localhost:3000/api/login" })
+  @IsString()
+  url: string;
+}
+
+/**
+ * Data Transfer Object for formdata node validation result.
+ */
+export class FormdataNodeDto {
+  @ApiProperty({ example: "node-456" })
+  @IsString()
+  nodeId: string;
+
+  @ApiProperty({ example: "Upload File API" })
+  @IsString()
+  blockName: string;
+
+  @ApiProperty({ example: 2 })
+  @IsNumber()
+  fileCount: number;
+}
+
+/**
+ * Data Transfer Object for testflow validation result.
+ */
+export class TestflowValidationResultDto {
+  @ApiProperty({
+    example: true,
+    description: "Indicates if any nodes contain localhost URLs",
+  })
+  @IsBoolean()
+  hasLocalhostUrls: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: "Indicates if any nodes contain formdata files",
+  })
+  @IsBoolean()
+  hasFormdataFiles: boolean;
+
+  @ApiProperty({
+    type: [LocalhostNodeDto],
+    description: "List of nodes containing localhost URLs",
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => LocalhostNodeDto)
+  localhostNodes: LocalhostNodeDto[];
+
+  @ApiProperty({
+    type: [FormdataNodeDto],
+    description: "List of nodes containing formdata files",
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FormdataNodeDto)
+  formdataNodes: FormdataNodeDto[];
+}
+
+export class UpdateTestflowDatasetDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  fileUrl?: string;
+
+  @ValidateNested()
+  @Type(() => TestflowDataSet)
+  item: TestflowDataSet;
 }

@@ -1,5 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  downgradeUser,
+  downgradeWorkspace,
+  upgradeWorkspace,
+} from "@src/modules/common/models/billing.model";
+import {
   IsEmail,
   IsString,
   IsOptional,
@@ -7,6 +12,8 @@ import {
   IsBoolean,
   IsNotEmpty,
   IsNumber,
+  IsArray,
+  ValidateNested,
 } from "class-validator";
 
 export class CreateCustomerDto {
@@ -138,6 +145,25 @@ export class CreateSubscriptionDto {
   @IsOptional()
   @IsString()
   promoCodeId?: string;
+
+  @ApiPropertyOptional({
+    description: "List of workspaces to downgrade",
+    example: [
+      { workspaceId: "workspace-id-1", name: "Workspace One" },
+      { workspaceId: "workspace-id-2", name: "Workspace Two" },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  workspaces?: upgradeWorkspace[];
+
+  @ApiProperty({
+    description: "Indicates if the change is an upgrade or downgrade",
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isUpgrade?: boolean;
 }
 
 export class SubscriptionResponseDto {
@@ -199,6 +225,36 @@ export class UpdateSubscriptionDto {
   @IsNumber()
   seats?: number;
   paymentBehavior?: "default_incomplete" | "allow_incomplete";
+
+  @ApiPropertyOptional({
+    description: "List of workspaces to downgrade",
+    example: [
+      { id: "workspace-id-1", name: "Workspace One" },
+      { id: "workspace-id-2", name: "Workspace Two" },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  workspaces?: downgradeWorkspace[];
+
+  @ApiPropertyOptional({
+    description: "List of users to downgrade",
+    example: [
+      { id: "user-id-1", email: "example1@gmail.com" },
+      { id: "user-id-2", email: "example2@gmail.com" },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  users?: downgradeUser[];
+
+  @ApiProperty({
+    description: "Indicates if the change is an upgrade or downgrade",
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isUpgrade?: boolean;
 }
 
 export class CancelSubscriptionDto {
@@ -210,6 +266,26 @@ export class CancelSubscriptionDto {
   @IsOptional()
   @IsBoolean()
   cancelImmediately?: boolean;
+
+  @ApiPropertyOptional({
+    description: "team Id",
+    example: "688731d965594536e3ffdce1",
+  })
+  @IsOptional()
+  @IsString()
+  teamId?: string;
+
+  @IsOptional()
+  @IsArray()
+  workspaces?: downgradeWorkspace[];
+
+  @ApiPropertyOptional({
+    description: "List of user IDs to downgrade",
+    example: ["example@gmail.com"],
+  })
+  @IsOptional()
+  @IsArray()
+  users?: downgradeUser[];
 }
 
 export class ReactivateSubscriptionDto {

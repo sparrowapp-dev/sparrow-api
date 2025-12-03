@@ -18,6 +18,7 @@ export enum LimitArea {
   COLLECTION = "collection",
   TESTFLOW_RUNHISTORY = "testflow-run-history",
   AI = "ai",
+  TESTFLOW_SCHEDULE_RUN = "testflow-schedule-run",
 }
 
 export class WorkspaceLimit {
@@ -81,6 +82,14 @@ export class TestflowRunHistory {
   value: number;
 }
 
+export class TestflowScheduleRun {
+  area: LimitArea.TESTFLOW_SCHEDULE_RUN;
+
+  @IsNumber()
+  @IsNotEmpty()
+  value: number;
+}
+
 export class Limits {
   workspacesPerHub: WorkspaceLimit;
   testflowPerWorkspace: TestflowLimit;
@@ -90,6 +99,7 @@ export class Limits {
   aiRequestsPerMonth: AiRequestsPerMonth;
   activeSync: ActiveSync;
   testflowRunHistory: TestflowRunHistory;
+  testflowScheduleRun:TestflowScheduleRun
 }
 
 export class Plan {

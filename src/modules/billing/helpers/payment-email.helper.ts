@@ -6,6 +6,10 @@ import {
 } from "../services/payment-email.service";
 import { StripeCustomerService } from "../services/stripe-customer.service";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
+import {
+  UserExcelDto,
+  WorkspaceExcelDto,
+} from "../payloads/downgrade-user.payload";
 
 // Dynamically import payment methods service
 let PaymentMethodsService: any;
@@ -181,6 +185,64 @@ export class PaymentEmailHelper {
       await this.paymentEmailService.sendPaymentEmail(
         PaymentEmailType.PLAN_DOWNGRADED,
         emailData,
+      );
+    } catch (error) {
+      console.error("Error sending plan downgraded email:", error);
+    }
+  }
+
+  /**
+   * Send plan downgraded emails to existing users in Hub.
+   */
+  async sendHubDowngradedEmail(
+    team: any,
+    startDate: Date,
+    previousPlan: string,
+    newPlan: string,
+    sendEmails: string[],
+    workspaces: WorkspaceExcelDto[],
+    users: UserExcelDto[],
+  ): Promise<void> {
+    try {
+      const emailData = await this.buildPlanDowngradeEmailData(
+        team,
+        startDate,
+        previousPlan,
+        newPlan,
+      );
+      if (!emailData) return;
+      const updateEmailData = { ...emailData, sendEmails, workspaces, users };
+      await this.paymentEmailService.sendPaymentEmail(
+        PaymentEmailType.HUB_DOWNGRADED,
+        updateEmailData,
+      );
+    } catch (error) {
+      console.error("Error sending plan downgraded email:", error);
+    }
+  }
+
+  /**
+   * Send plan downgraded emails to Removed users in Hub.
+   */
+  async sendHubDowngradeRemoveUserEmail(
+    team: any,
+    startDate: Date,
+    previousPlan: string,
+    newPlan: string,
+    sendEmails: string[],
+  ): Promise<void> {
+    try {
+      const emailData = await this.buildPlanDowngradeEmailData(
+        team,
+        startDate,
+        previousPlan,
+        newPlan,
+      );
+      if (!emailData) return;
+      const updateEmailData = { ...emailData, sendEmails };
+      await this.paymentEmailService.sendPaymentEmail(
+        PaymentEmailType.HUB_DOWNGRADED_REMOVE_USER,
+        updateEmailData,
       );
     } catch (error) {
       console.error("Error sending plan downgraded email:", error);

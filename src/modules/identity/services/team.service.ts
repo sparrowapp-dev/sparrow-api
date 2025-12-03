@@ -298,9 +298,11 @@ export class TeamService {
     }
     const url: string = this.configService.get("app.url");
     const adminUrl: string = this.configService.get("admin.baseURL");
+    const identityUrl: string = this.configService.get("auth.baseURL");
     const data = {
       appUrl: url,
       adminUrl: adminUrl,
+      identityUrl: identityUrl,
     };
     return data;
   }
@@ -360,12 +362,16 @@ export class TeamService {
 
     let team;
     if (image) {
-      if (!isImageBuffer(image.buffer)) {
-        throw new BadRequestException("Uploaded file is not a valid image");
+      if (image.size > 0) {
+        if (!isImageBuffer(image.buffer)) {
+          throw new BadRequestException("Uploaded file is not a valid image");
+        }
       }
       await this.isImageSizeValid(image.size);
       const dataBuffer = image.buffer;
-      await this.isImageDimensionValid(dataBuffer);
+      if (image.size > 0) {
+        await this.isImageDimensionValid(dataBuffer);
+      }
       const dataString = dataBuffer.toString("base64");
       const logo = {
         bufferString: dataString,
@@ -424,11 +430,6 @@ export class TeamService {
     userId: string,
     currentUser: DecodedUserObject,
   ): Promise<WithId<Team>[]> {
-    if (currentUser?._id.toString() !== userId.toString()) {
-      throw new BadRequestException(
-        "You are not authorised to fetch the team details of this particular user",
-      );
-    }
     const user = await this.userRepository.getUserById(userId, currentUser);
     if (!user) {
       throw new BadRequestException(
@@ -461,7 +462,7 @@ export class TeamService {
     const teamMap = new Map<string, WithId<Team>>();
     for (const team of teamDocs) {
       // Sanitize invites
-      team.invites?.forEach((invite: Invite) => {
+      team?.invites?.forEach((invite: Invite) => {
         delete invite.inviteId;
         delete invite.isAccepted;
         delete invite.workspaces;

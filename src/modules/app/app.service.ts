@@ -43,33 +43,59 @@ export class AppService {
     return this.curlconverterPromise;
   }
 
-  isVersionGreater(v1: string, v2: string) {
-    if (v1 && v2) {
-      const v1Parts = v1?.split(".")?.map(Number);
-      const v2Parts = v2?.split(".")?.map(Number);
+  /**
+   * Compares server version with client version to determine if an update is available
+   * @param clientVersion - The current version of the client application (e.g., "1.2.3")
+   * @param target - The target platform ("darwin" for macOS, "linux" for Linux, or "windows" for Windows)
+   * @returns true if server version is greater than client version, false otherwise
+   */
+  isVersionGreater(serverVersion: string, clientVersion: string, target: string) {
 
+    // Only proceed if both versions are available
+    if (serverVersion && clientVersion) {
+      // Split version strings into numeric parts (e.g., "1.2.3" -> [1, 2, 3])
+      const v1Parts = serverVersion?.split(".")?.map(Number);
+      const v2Parts = clientVersion?.split(".")?.map(Number);
+
+      // Compare each part of the version numbers from left to right
       for (let i = 0; i < Math.max(v1Parts?.length, v2Parts?.length); i++) {
         const v1Part = v1Parts[i] || 0; // default to 0 if part is missing
         const v2Part = v2Parts[i] || 0;
 
+        // If server version part is greater, update is available
         if (v1Part > v2Part) return true;
+        // If client version part is greater, no update needed
         if (v1Part < v2Part) return false;
       }
     }
 
-    return false; // versions are equal
+    // Return false if versions are equal or if version data is unavailable
+    return false;
   }
 
-  getUpdaterDetails(currentVersion: string): UpdaterJsonResponsePayload {
+  getUpdaterDetails(currentVersion: string, target: string): UpdaterJsonResponsePayload {
+    let serverVersion;
+    // Get the appropriate server version based on the target platform
+    if(target === "darwin"){
+      serverVersion = this.config.get("updater.appMacVersion");
+    }
+    else if(target === "linux"){
+      serverVersion = this.config.get("updater.appLinuxVersion");
+    }
+    else{
+      // Default to Windows version for any other target
+      serverVersion = this.config.get("updater.appVersion");
+    }
     if (
       this.config.get("updater.updateAvailable") === "true" &&
       this.isVersionGreater(
-        this.config.get("updater.appVersion"),
+        serverVersion,
         currentVersion,
+        target
       )
     ) {
       const updatorJson = {
-        version: this.config.get("updater.appVersion"),
+        version: serverVersion,
         platforms: {
           "windows-x86_64": {
             signature: this.config.get("updater.windows.appSignature"),
