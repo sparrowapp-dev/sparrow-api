@@ -1,6 +1,6 @@
 {
   "name": "project-sparrow-api",
-  "version": "2.35.0",
+  "version": "2.36.0",
   "description": "Backend APIs for Project Sparrow.",
   "author": "techdome",
   "license": "",
@@ -37,7 +37,8 @@
     "start:migration-email": "ts-node -r tsconfig-paths/register src/migration-emailId.ts",
     "start:add-test-request": "ts-node -r tsconfig-paths/register src/add-tests-to-request.ts",
     "start:add-testflow-schedule": "ts-node -r tsconfig-paths/register src/update-plan-testflow-schedule.ts",
-    "start:add-community-plan-to-teams": "ts-node -r tsconfig-paths/register src/add-community-plan-to-teams.ts"
+    "start:add-community-plan-to-teams": "ts-node -r tsconfig-paths/register src/add-community-plan-to-teams.ts",
+    "start:add-testflow-tests": "ts-node -r tsconfig-paths/register src/add-testflow-tests.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",

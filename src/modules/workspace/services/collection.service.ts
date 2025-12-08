@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -57,6 +58,7 @@ import { RequestBodyDto } from "@src/modules/common/models/collection.model";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
 import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
 import { CollectionRequestService } from "./collection-request.service";
+import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
 
 @Injectable()
 export class CollectionService {
@@ -1595,6 +1597,11 @@ export class CollectionService {
         "Please provide collectionId and Generated Variables.",
       );
     }
+    await this.workspaceService.IsWorkspaceAdminOrEditor(
+      workspaceId,
+      user._id,
+    );
+    await this.checkPermission(workspaceId, user._id);
     const collectionDocument = await this.getCollection(collectionId);
     if (!collectionDocument) {
       throw new NotFoundException("Collection is not Found.");
