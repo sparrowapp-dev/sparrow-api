@@ -6,6 +6,7 @@ import {
   Get,
   Req,
   Res,
+  BadRequestException,
 } from "@nestjs/common";
 
 import {
@@ -25,6 +26,7 @@ import { UserService } from "../services/user.service";
 import { ObjectId } from "mongodb";
 import { ConfigService } from "@nestjs/config";
 import { HubSpotService } from "../services/hubspot.service";
+import { TeamUserService } from "../services/team-user.service";
 /**
  * Authentication Controller
  */
@@ -46,6 +48,7 @@ export class AuthController {
     private readonly authService: AuthService,
 
     private readonly userService: UserService,
+    private readonly teamUserService: TeamUserService,
     private readonly configService: ConfigService,
     private readonly hubspotService: HubSpotService,
   ) {}
@@ -188,6 +191,46 @@ export class AuthController {
     return res.redirect(
       HttpStatusCode.MOVED_PERMANENTLY,
       urlWithTokenAndSource,
+    );
+  }
+
+  @Post("invite/accept-and-login")
+  @ApiOperation({
+    summary: "Accept invite and login user",
+  })
+  async acceptInviteAndLogin(
+    @Body() body: { teamId: string; inviteId: string; email: string },
+    @Res() res: FastifyReply,
+  ) {
+    const { teamId, inviteId, email } = body;
+
+    const inviteResult = await this.teamUserService.acceptInviteByEmail(
+      inviteId,
+      teamId,
+      email,
+    );
+
+    const user = await this.userService.getUserByEmail(email);
+    if (!user) {
+      throw new BadRequestException("User not found after invite acceptance");
+    }
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.authService.createToken(user._id),
+      this.authService.createRefreshToken(user._id),
+    ]);
+
+    return res.status(HttpStatusCode.OK).send(
+      new ApiResponseService(
+        "Invite accepted & login successful",
+        HttpStatusCode.OK,
+        {
+          accessToken,
+          refreshToken,
+          teamId,
+          workspaces: inviteResult.workspaces,
+        },
+      ),
     );
   }
 }
