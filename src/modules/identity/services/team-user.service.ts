@@ -1289,6 +1289,7 @@ export class TeamUserService {
     // now remove it from invites array
     await this.removeTeamInvite(teamId, matchedInvite.email);
     return {
+      teamName: teamData.name,
       teamId: teamId,
       email: matchedInvite.email,
       role: matchedInvite.role,
