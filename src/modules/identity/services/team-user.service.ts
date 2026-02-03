@@ -1313,6 +1313,7 @@ export class TeamUserService {
     await this.removeTeamInvite(teamId, matchedInvite.email);
     return {
       teamId: teamId,
+      teamName: teamData.name,
       email: matchedInvite.email,
       role: matchedInvite.role,
       workspaces: allWorkspaces,
