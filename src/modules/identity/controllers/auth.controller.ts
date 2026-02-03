@@ -229,6 +229,7 @@ export class AuthController {
           refreshToken,
           teamId,
           workspaces: inviteResult.workspaces,
+          role: inviteResult.role,
         },
       ),
     );
