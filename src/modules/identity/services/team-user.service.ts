@@ -47,6 +47,23 @@ export class TeamUserService {
     private readonly licenseManagementService: LicenseManagementService,
   ) {}
 
+  private buildInviteSignupUrl(
+    teamId: string,
+    inviteId: string,
+    email: string,
+  ): string {
+    const authBaseUrl = this.configService.get("auth.baseURL");
+
+    return (
+      `${authBaseUrl}/init` +
+      `?source=desktop` +
+      `&flow=invite` +
+      `&teamId=${teamId}` +
+      `&inviteId=${inviteId}` +
+      `&email=${encodeURIComponent(email)}`
+    );
+  }
+
   async HasPermissionToRemove(
     payload: CreateOrUpdateTeamUserDto,
     teamData: Team,
@@ -1011,6 +1028,13 @@ export class TeamUserService {
     } else {
       // non registered user
       const transporter = this.emailService.createTransporter();
+
+      const inviteSignupUrl = this.buildInviteSignupUrl(
+        teamId,
+        inviteId,
+        email,
+      );
+
       const mailOptions = {
         from: this.configService.get("app.senderEmail"),
         to: email,
@@ -1020,15 +1044,14 @@ export class TeamUserService {
           teamName: team.name,
           userName: userData?.name || email,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
-          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
           sparrowWebsiteName: this.configService.get(
             "support.sparrowWebsiteName",
           ),
-          marketingUrl: this.configService.get("marketing.baseURL"),
-          inviteId: inviteId,
-          teamId: teamId,
-          role: role,
-          email: email,
+          inviteSignupUrl,
+          inviteId,
+          teamId,
+          role,
+          email,
         },
         subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
       };
@@ -1290,6 +1313,7 @@ export class TeamUserService {
     await this.removeTeamInvite(teamId, matchedInvite.email);
     return {
       teamId: teamId,
+      teamName: teamData.name,
       email: matchedInvite.email,
       role: matchedInvite.role,
       workspaces: allWorkspaces,
@@ -1545,6 +1569,13 @@ export class TeamUserService {
     } else {
       // non registered user
       const transporter = this.emailService.createTransporter();
+
+      const inviteSignupUrl = this.buildInviteSignupUrl(
+        teamId,
+        newInviteId,
+        inviteEmail,
+      );
+
       const mailOptions = {
         from: this.configService.get("app.senderEmail"),
         to: inviteEmail,
@@ -1554,13 +1585,12 @@ export class TeamUserService {
           teamName: teamData.name,
           userName: userData?.name || inviteEmail,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
-          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
           sparrowWebsiteName: this.configService.get(
             "support.sparrowWebsiteName",
           ),
-          marketingUrl: this.configService.get("marketing.baseURL"),
+          inviteSignupUrl,
           inviteId: newInviteId,
-          teamId: teamId,
+          teamId,
           email: inviteEmail,
           role: invitedRole,
         },
@@ -1614,9 +1644,13 @@ export class TeamUserService {
       updatedData,
     );
     const userData = await this.userRepository.getUserByEmail(inviteEmail);
-    const senderName = userData?.name || "Someone";
     const transporter = this.emailService.createTransporter();
     const isRegistered = !!userData;
+
+    const inviteSignupUrl = !isRegistered
+      ? this.buildInviteSignupUrl(teamId, newInviteId, inviteEmail)
+      : null;
+
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: inviteEmail,
@@ -1628,7 +1662,6 @@ export class TeamUserService {
         teamName: teamData.name,
         userName: userData?.name || inviteEmail,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
-        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
           "support.sparrowWebsiteName",
         ),
@@ -1637,14 +1670,14 @@ export class TeamUserService {
               authUrl: this.configService.get("auth.baseURL"),
             }
           : {
-              marketingUrl: this.configService.get("marketing.baseURL"),
+              inviteSignupUrl,
             }),
         inviteId: newInviteId,
-        teamId: teamId,
+        teamId,
         email: inviteEmail,
       },
       subject: isRegistered
-        ? `${senderName} has invited you to the hub “${teamData.name}”`
+        ? `${userData?.name || "Someone"} has invited you to the hub “${teamData.name}”`
         : `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
     };
     await this.emailService.sendEmail(transporter, mailOptions);
@@ -1785,6 +1818,12 @@ export class TeamUserService {
         };
       } else {
         // Non-registered user
+        const inviteSignupUrl = this.buildInviteSignupUrl(
+          teamId,
+          inviteId,
+          email,
+        );
+
         mailOptions = {
           from: this.configService.get("app.senderEmail"),
           to: email,
@@ -1794,15 +1833,14 @@ export class TeamUserService {
             teamName: team.name,
             userName: userData?.name || email,
             sparrowEmail: this.configService.get("support.sparrowEmail"),
-            sparrowWebsite: this.configService.get("support.sparrowWebsite"),
             sparrowWebsiteName: this.configService.get(
               "support.sparrowWebsiteName",
             ),
-            marketingUrl: this.configService.get("marketing.baseURL"),
-            inviteId: inviteId,
-            teamId: teamId,
-            email: email,
-            role: role,
+            inviteSignupUrl,
+            inviteId,
+            teamId,
+            email,
+            role,
           },
           subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
         };
