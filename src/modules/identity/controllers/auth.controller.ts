@@ -27,6 +27,10 @@ import { ObjectId } from "mongodb";
 import { ConfigService } from "@nestjs/config";
 import { HubSpotService } from "../services/hubspot.service";
 import { TeamUserService } from "../services/team-user.service";
+import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { TeamService } from "../services/team.service";
+import { JwtService } from "@nestjs/jwt";
 /**
  * Authentication Controller
  */
@@ -51,6 +55,8 @@ export class AuthController {
     private readonly teamUserService: TeamUserService,
     private readonly configService: ConfigService,
     private readonly hubspotService: HubSpotService,
+    private readonly teamService: TeamService,
+    private readonly jwtService: JwtService,
   ) {}
 
   /**
@@ -234,5 +240,42 @@ export class AuthController {
         },
       ),
     );
+  }
+
+  @Post("admin-sso-token")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: "Generate Admin SSO Token (Owner/Admin only)" })
+  async generateAdminSsoToken(
+    @Body() body: { teamId: string },
+    @Req() req: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const { teamId } = body;
+
+    if (!teamId) {
+      throw new BadRequestException("Team ID is required");
+    }
+
+    const user = req.user;
+
+    await this.teamService.isTeamOwnerOrAdmin(new ObjectId(teamId), user._id);
+
+    const ssoToken = this.jwtService.sign(
+      {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        type: "admin-sso",
+      },
+      {
+        secret: this.configService.get("app.jwtSecretKey"),
+        expiresIn: "5m",
+      },
+    );
+
+    return res.status(200).send({
+      message: "Admin SSO token generated successfully",
+      ssoToken,
+    });
   }
 }

@@ -168,4 +168,23 @@ export class AdminAuthController {
 
     return res.status(responseData.httpStatusCode).send(responseData);
   }
+
+  @Post("validate-sso")
+  async validateSsoToken(
+    @Body() body: { token: string },
+    @Res() res: FastifyReply,
+  ) {
+    const { token } = body;
+
+    if (!token) {
+      throw new BadRequestException("SSO token is required");
+    }
+
+    const tokens = await this.adminAuthService.validateShortLivedToken(token);
+
+    return res.status(200).send({
+      message: "SSO login successful",
+      data: tokens,
+    });
+  }
 }
