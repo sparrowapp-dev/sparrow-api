@@ -31,6 +31,9 @@ import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { TeamService } from "../services/team.service";
 import { JwtService } from "@nestjs/jwt";
+import { ForbiddenException } from "@nestjs/common/exceptions/forbidden.exception";
+import { TeamRepository } from "../repositories/team.repository";
+import { NotFoundException } from "@nestjs/common/exceptions/not-found.exception";
 /**
  * Authentication Controller
  */
@@ -57,6 +60,7 @@ export class AuthController {
     private readonly hubspotService: HubSpotService,
     private readonly teamService: TeamService,
     private readonly jwtService: JwtService,
+    private readonly teamRepository: TeamRepository,
   ) {}
 
   /**
@@ -258,7 +262,23 @@ export class AuthController {
 
     const user = req.user;
 
-    await this.teamService.isTeamOwnerOrAdmin(new ObjectId(teamId), user._id);
+    // Allow ANY team member (owner, admin, member)
+
+    const team = await this.teamRepository.findTeamByTeamId(
+      new ObjectId(teamId),
+    );
+
+    if (!team) {
+      throw new NotFoundException("Team not found");
+    }
+
+    const isMember = team.users.some(
+      (member) => member.id.toString() === user._id.toString(),
+    );
+
+    if (!isMember) {
+      throw new ForbiddenException("You are not a member of this team");
+    }
 
     const ssoToken = this.jwtService.sign(
       {
