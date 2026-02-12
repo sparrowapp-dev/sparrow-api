@@ -89,4 +89,27 @@ export class NotificationRepository {
         { $set: { isRead: true, updatedAt: new Date() } },
       );
   }
+
+  async updateInviteStatus(
+    notificationId: ObjectId,
+    status: "accepted" | "rejected",
+  ): Promise<UpdateResult> {
+    return this.db.collection(Collections.NOTIFICATIONS).updateOne(
+      { _id: notificationId },
+      {
+        $set: {
+          "data.inviteStatus": status,
+          isRead: true,
+          isArchived: true,
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
+
+  async findById(notificationId: ObjectId): Promise<Notification | null> {
+    return this.db
+      .collection<Notification>(Collections.NOTIFICATIONS)
+      .findOne({ _id: notificationId });
+  }
 }

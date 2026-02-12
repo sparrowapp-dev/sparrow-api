@@ -5,7 +5,7 @@ import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
-import { Param, Patch } from "@nestjs/common";
+import { Param, Patch, Post, Body } from "@nestjs/common";
 
 @Controller("api/notifications")
 export class NotificationController {
@@ -74,6 +74,28 @@ export class NotificationController {
 
     const response = new ApiResponseService(
       "All notifications marked as read",
+      HttpStatusCode.OK,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @Post(":id/respond")
+  @UseGuards(JwtAuthGuard)
+  async respondToInvite(
+    @Param("id") id: string,
+    @Body() body: { action: "accept" | "reject" },
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    await this.notificationService.respondToWorkspaceInvite(
+      id,
+      body.action,
+      request.user.email,
+    );
+
+    const response = new ApiResponseService(
+      "Invite response recorded",
       HttpStatusCode.OK,
     );
 

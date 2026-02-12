@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Inject, forwardRef } from "@nestjs/common";
 import { ObjectId } from "mongodb";
 import { NotificationRepository } from "../repositories/notification.repository";
 import {
@@ -8,11 +9,14 @@ import {
   InviteStatus,
   WorkspaceRole,
 } from "@src/modules/common/models/notification.model";
+import { TeamUserService } from "@src/modules/identity/services/team-user.service";
 
 @Injectable()
 export class NotificationService {
   constructor(
     private readonly notificationRepository: NotificationRepository,
+    @Inject(forwardRef(() => TeamUserService))
+    private readonly teamUserService: TeamUserService,
   ) {}
 
   /**
@@ -90,5 +94,40 @@ export class NotificationService {
 
   async markAllAsRead(userId: ObjectId) {
     return this.notificationRepository.markAllAsRead(userId);
+  }
+
+  async respondToWorkspaceInvite(
+    notificationId: string,
+    action: "accept" | "reject",
+    userEmail: string,
+  ) {
+    const objectId = new ObjectId(notificationId);
+
+    const notifications = await this.notificationRepository.findById(objectId);
+
+    if (!notifications) {
+      throw new Error("Notification not found");
+    }
+
+    const data = notifications.data;
+
+    if (action === "accept") {
+      // call existing invite accept logic
+      await this.teamUserService.acceptInvite(data.teamId, userEmail);
+
+      await this.notificationRepository.updateInviteStatus(
+        objectId,
+        "accepted",
+      );
+    }
+
+    if (action === "reject") {
+      await this.notificationRepository.updateInviteStatus(
+        objectId,
+        "rejected",
+      );
+    }
+
+    return true;
   }
 }
