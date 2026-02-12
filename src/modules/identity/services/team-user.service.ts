@@ -30,6 +30,8 @@ import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
 import { InternalServerErrorException } from "@nestjs/common";
 import { AppEdition } from "@src/modules/common/config/env.validation";
+import { NotificationService } from "@src/modules/notifications/services/notification.service";
+import { WorkspaceRole } from "@src/modules/common/models/notification.model";
 /**
  * Team User Service
  */
@@ -45,6 +47,7 @@ export class TeamUserService {
     private readonly emailService: EmailService,
     private readonly stripeSubscriptionService: StripeSubscriptionService,
     private readonly licenseManagementService: LicenseManagementService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private buildInviteSignupUrl(
@@ -1234,6 +1237,26 @@ export class TeamUserService {
         sender,
         newInvite.inviteId,
       );
+
+      // CREATE NOTIFICATION
+      const recipientUser = await this.userRepository.getUserByEmail(
+        newInvite.email,
+      );
+
+      // Only create notification if user is registered
+      if (recipientUser) {
+        await this.notificationService.createWorkspaceInviteNotification({
+          recipientId: recipientUser._id,
+          inviterId: sender._id,
+          inviterName: sender.name,
+          teamId: payload.teamId,
+          teamName: team.name,
+          workspaceIds:
+            payload.workspaces?.map((ws) => new ObjectId(ws.id)) || [],
+          workspaceNames: payload.workspaces?.map((ws) => ws.name) || [],
+          role: payload.role as WorkspaceRole,
+        });
+      }
     }
 
     for (const resentInvite of resentInvites) {

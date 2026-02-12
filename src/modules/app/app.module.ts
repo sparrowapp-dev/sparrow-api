@@ -26,6 +26,7 @@ import { AppRepository } from "./app.repository";
 import { SentryModule } from "@sentry/nestjs/setup";
 import { UserAdminModule } from "../user-admin/user-admin.module";
 import { BillingModule } from "../billing/billing.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { BillingModule } from "../billing/billing.module";
     BillingModule.register(),
     CommonModule,
     ProxyModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [
