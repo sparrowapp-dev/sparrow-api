@@ -87,4 +87,8 @@ export class NotificationService {
   async archive(notificationId: string) {
     return this.notificationRepository.archive(new ObjectId(notificationId));
   }
+
+  async markAllAsRead(userId: ObjectId) {
+    return this.notificationRepository.markAllAsRead(userId);
+  }
 }

@@ -63,4 +63,20 @@ export class NotificationController {
 
     return res.status(response.httpStatusCode).send(response);
   }
+
+  @Patch("read-all")
+  @UseGuards(JwtAuthGuard)
+  async markAllAsRead(
+    @Req() request: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    await this.notificationService.markAllAsRead(request.user._id);
+
+    const response = new ApiResponseService(
+      "All notifications marked as read",
+      HttpStatusCode.OK,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
 }

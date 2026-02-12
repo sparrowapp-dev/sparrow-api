@@ -80,4 +80,13 @@ export class NotificationRepository {
         ...(includeArchived ? {} : { isArchived: false }),
       });
   }
+
+  async markAllAsRead(userId: ObjectId) {
+    return this.db
+      .collection(Collections.NOTIFICATIONS)
+      .updateMany(
+        { recipientId: userId, isRead: false },
+        { $set: { isRead: true, updatedAt: new Date() } },
+      );
+  }
 }
