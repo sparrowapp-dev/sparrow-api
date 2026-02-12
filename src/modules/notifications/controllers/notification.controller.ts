@@ -50,4 +50,17 @@ export class NotificationController {
 
     return res.status(response.httpStatusCode).send(response);
   }
+
+  @Patch(":id/archive")
+  @UseGuards(JwtAuthGuard)
+  async archive(@Param("id") id: string, @Res() res: FastifyReply) {
+    await this.notificationService.archive(id);
+
+    const response = new ApiResponseService(
+      "Notification archived",
+      HttpStatusCode.OK,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
 }
