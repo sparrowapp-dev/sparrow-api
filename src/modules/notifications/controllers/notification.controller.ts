@@ -5,6 +5,7 @@ import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
 import { HttpStatusCode } from "@src/modules/common/enum/httpStatusCode.enum";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { Param, Patch } from "@nestjs/common";
 
 @Controller("api/notifications")
 export class NotificationController {
@@ -32,6 +33,19 @@ export class NotificationController {
       "Notifications fetched successfully",
       HttpStatusCode.OK,
       data,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @Patch(":id/read")
+  @UseGuards(JwtAuthGuard)
+  async markAsRead(@Param("id") id: string, @Res() res: FastifyReply) {
+    await this.notificationService.markAsRead(id);
+
+    const response = new ApiResponseService(
+      "Notification marked as read",
+      HttpStatusCode.OK,
     );
 
     return res.status(response.httpStatusCode).send(response);

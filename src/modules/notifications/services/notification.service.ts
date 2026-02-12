@@ -79,4 +79,8 @@ export class NotificationService {
       totalPages: Math.ceil(total / limit),
     };
   }
+
+  async markAsRead(notificationId: string) {
+    return this.notificationRepository.markAsRead(new ObjectId(notificationId));
+  }
 }
