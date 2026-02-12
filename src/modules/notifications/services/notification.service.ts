@@ -53,4 +53,30 @@ export class NotificationService {
 
     return this.notificationRepository.create(notification);
   }
+
+  async getUserNotifications(
+    userId: ObjectId,
+    page: number,
+    limit: number,
+    includeArchived: boolean,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const [notifications, total] = await Promise.all([
+      this.notificationRepository.findByRecipient(
+        userId,
+        includeArchived,
+        limit,
+        skip,
+      ),
+      this.notificationRepository.countByRecipient(userId, includeArchived),
+    ]);
+
+    return {
+      notifications,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
 }

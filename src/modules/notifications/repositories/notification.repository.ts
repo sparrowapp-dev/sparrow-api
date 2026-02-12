@@ -68,4 +68,16 @@ export class NotificationRepository {
         { $set: { isArchived: true, updatedAt: new Date() } },
       );
   }
+
+  async countByRecipient(
+    recipientId: ObjectId,
+    includeArchived = false,
+  ): Promise<number> {
+    return this.db
+      .collection<Notification>(Collections.NOTIFICATIONS)
+      .countDocuments({
+        recipientId,
+        ...(includeArchived ? {} : { isArchived: false }),
+      });
+  }
 }
