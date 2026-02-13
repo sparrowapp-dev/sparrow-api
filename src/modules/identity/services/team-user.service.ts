@@ -32,6 +32,7 @@ import { InternalServerErrorException } from "@nestjs/common";
 import { AppEdition } from "@src/modules/common/config/env.validation";
 import { NotificationService } from "@src/modules/notifications/services/notification.service";
 import { WorkspaceRole } from "@src/modules/common/models/notification.model";
+import { NotificationRepository } from "@src/modules/notifications/repositories/notification.repository";
 /**
  * Team User Service
  */
@@ -48,6 +49,7 @@ export class TeamUserService {
     private readonly stripeSubscriptionService: StripeSubscriptionService,
     private readonly licenseManagementService: LicenseManagementService,
     private readonly notificationService: NotificationService,
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   private buildInviteSignupUrl(
@@ -1349,6 +1351,14 @@ export class TeamUserService {
    * @returns Result of the invite operation
    */
   async acceptInvite(teamId: string, senderEmail: string) {
+    const notification = await this.notificationRepository.findPendingInvite(
+      senderEmail,
+      teamId,
+    );
+
+    if (!notification) {
+      throw new BadRequestException("Invite already rejected or not valid");
+    }
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {

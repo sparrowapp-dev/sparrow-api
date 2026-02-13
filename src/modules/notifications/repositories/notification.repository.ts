@@ -112,4 +112,11 @@ export class NotificationRepository {
       .collection<Notification>(Collections.NOTIFICATIONS)
       .findOne({ _id: notificationId });
   }
+
+  async findPendingInvite(email: string, teamId: string) {
+    return this.db.collection(Collections.NOTIFICATIONS).findOne({
+      "data.teamId": teamId,
+      "data.inviteStatus": "pending",
+    });
+  }
 }

@@ -8,6 +8,6 @@ import { IdentityModule } from "../identity/identity.module";
   imports: [forwardRef(() => IdentityModule)],
   providers: [NotificationRepository, NotificationService],
   controllers: [NotificationController],
-  exports: [NotificationService],
+  exports: [NotificationService, NotificationRepository],
 })
 export class NotificationsModule {}

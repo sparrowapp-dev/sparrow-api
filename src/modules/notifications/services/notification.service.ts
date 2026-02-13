@@ -103,16 +103,20 @@ export class NotificationService {
   ) {
     const objectId = new ObjectId(notificationId);
 
-    const notifications = await this.notificationRepository.findById(objectId);
+    const notification = await this.notificationRepository.findById(objectId);
 
-    if (!notifications) {
+    if (!notification) {
       throw new Error("Notification not found");
     }
 
-    const data = notifications.data;
+    if (notification.data.inviteStatus !== "pending") {
+      throw new Error("Invite already responded");
+    }
+
+    const data = notification.data;
 
     if (action === "accept") {
-      // call existing invite accept logic
+      // existing business logic
       await this.teamUserService.acceptInvite(data.teamId, userEmail);
 
       await this.notificationRepository.updateInviteStatus(
@@ -122,6 +126,9 @@ export class NotificationService {
     }
 
     if (action === "reject") {
+      // remove invite from team
+      await this.teamUserService.removeInviteUser(data.teamId, userEmail);
+
       await this.notificationRepository.updateInviteStatus(
         objectId,
         "rejected",
