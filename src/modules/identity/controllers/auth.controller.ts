@@ -248,7 +248,7 @@ export class AuthController {
 
   @Post("admin-sso-token")
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: "Generate Admin SSO Token (Owner/Admin only)" })
+  @ApiOperation({ summary: "Generate SSO Token (Team Member only)" })
   async generateAdminSsoToken(
     @Body() body: { teamId: string },
     @Req() req: ExtendedFastifyRequest,
