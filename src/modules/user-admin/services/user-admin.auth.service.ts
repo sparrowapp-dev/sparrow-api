@@ -83,6 +83,9 @@ export class AdminAuthService {
       const decoded = this.jwtService.verify(token, {
         secret: this.configService.get("app.jwtSecretKey"),
       });
+      if (decoded.type !== "admin-sso") {
+        throw new UnauthorizedException("Invalid SSO token type");
+      }
 
       // Check expiration
       const now = Math.floor(Date.now() / 1000);
