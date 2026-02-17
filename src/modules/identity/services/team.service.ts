@@ -551,9 +551,7 @@ export class TeamService {
           }
         }
       }
-      throw new ForbiddenException(
-        "Only owner or admin can access admin panel",
-      );
+      throw new ForbiddenException("Only team members can access admin panel");
     }
     throw new BadRequestException("Team doesn't exist");
   }
