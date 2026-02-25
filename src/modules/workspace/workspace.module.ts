@@ -30,6 +30,7 @@ import { PricingRepository } from "./repositories/pricing.repository";
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
 import { BillingModule } from "../billing/billing.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 // ---- Handler
 import { WorkspaceHandler } from "./handlers/workspace.handler";
@@ -88,7 +89,12 @@ import { TestflowDataSetService } from "./services/testflow-dataset.service";
  * and controllers related to the workspace functionality.
  */
 @Module({
-  imports: [ScheduleModule.forRoot(), IdentityModule, BillingModule.register()],
+  imports: [
+    ScheduleModule.forRoot(),
+    IdentityModule,
+    BillingModule.register(),
+    NotificationsModule,
+  ],
   providers: [
     WorkspaceService,
     WorkspaceRepository,

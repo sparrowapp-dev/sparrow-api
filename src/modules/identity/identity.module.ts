@@ -22,11 +22,14 @@ import { GoogleStrategy } from "./strategies/google.strategy";
 import { BillingModule } from "../billing/billing.module";
 import { BillingAuditService } from "../billing/services/billing-audit.service";
 import { StripeSubscriptionService } from "../billing/services/stripe-subscription.service";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { forwardRef } from "@nestjs/common";
 
 @Module({
   imports: [
     ConfigModule,
     BillingModule.register(),
+    forwardRef(() => NotificationsModule),
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

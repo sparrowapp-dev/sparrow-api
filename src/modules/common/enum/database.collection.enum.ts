@@ -22,4 +22,5 @@ export enum Collections {
   PRICING = "pricing",
   PROMOCODES = "promocodes",
   SUPERADMINS = "superadmins",
+  NOTIFICATIONS = "notifications",
 }
