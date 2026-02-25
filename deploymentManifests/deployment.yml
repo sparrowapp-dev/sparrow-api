@@ -430,7 +430,22 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: sparrow-api-secret
-                  key: DOWNGRADE_HUB_BLOB_CONTAINER      
+                  key: DOWNGRADE_HUB_BLOB_CONTAINER
+            - name: VITE_OPENFEEDBACK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: VITE_OPENFEEDBACK_URL
+            - name: VITE_OPENFEEDBACK_API
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: VITE_OPENFEEDBACK_API
+            - name: VITE_OPENFEEDBACK_BOARD_ID
+              valueFrom:
+                secretKeyRef:
+                  name: sparrow-api-secret
+                  key: VITE_OPENFEEDBACK_BOARD_ID                            
                     
 ---
 apiVersion: v1
