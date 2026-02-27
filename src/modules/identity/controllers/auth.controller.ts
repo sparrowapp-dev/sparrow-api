@@ -6,6 +6,7 @@ import {
   Get,
   Req,
   Res,
+  BadRequestException,
 } from "@nestjs/common";
 
 import {
@@ -25,6 +26,14 @@ import { UserService } from "../services/user.service";
 import { ObjectId } from "mongodb";
 import { ConfigService } from "@nestjs/config";
 import { HubSpotService } from "../services/hubspot.service";
+import { TeamUserService } from "../services/team-user.service";
+import { JwtAuthGuard } from "@src/modules/common/guards/jwt-auth.guard";
+import { ExtendedFastifyRequest } from "@src/types/fastify";
+import { TeamService } from "../services/team.service";
+import { JwtService } from "@nestjs/jwt";
+import { ForbiddenException } from "@nestjs/common/exceptions/forbidden.exception";
+import { TeamRepository } from "../repositories/team.repository";
+import { NotFoundException } from "@nestjs/common/exceptions/not-found.exception";
 /**
  * Authentication Controller
  */
@@ -46,8 +55,12 @@ export class AuthController {
     private readonly authService: AuthService,
 
     private readonly userService: UserService,
+    private readonly teamUserService: TeamUserService,
     private readonly configService: ConfigService,
     private readonly hubspotService: HubSpotService,
+    private readonly teamService: TeamService,
+    private readonly jwtService: JwtService,
+    private readonly teamRepository: TeamRepository,
   ) {}
 
   /**
@@ -189,5 +202,100 @@ export class AuthController {
       HttpStatusCode.MOVED_PERMANENTLY,
       urlWithTokenAndSource,
     );
+  }
+
+  @Post("invite/accept-and-login")
+  @ApiOperation({
+    summary: "Accept invite and login user",
+  })
+  async acceptInviteAndLogin(
+    @Body() body: { teamId: string; inviteId: string; email: string },
+    @Res() res: FastifyReply,
+  ) {
+    const { teamId, inviteId, email } = body;
+
+    const inviteResult = await this.teamUserService.acceptInviteByEmail(
+      inviteId,
+      teamId,
+      email,
+    );
+
+    const user = await this.userService.getUserByEmail(email);
+    if (!user) {
+      throw new BadRequestException("User not found after invite acceptance");
+    }
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.authService.createToken(user._id),
+      this.authService.createRefreshToken(user._id),
+    ]);
+
+    return res.status(HttpStatusCode.OK).send(
+      new ApiResponseService(
+        "Invite accepted & login successful",
+        HttpStatusCode.OK,
+        {
+          accessToken,
+          refreshToken,
+          teamId,
+          teamName: inviteResult.teamName,
+          workspaces: inviteResult.workspaces,
+          role: inviteResult.role,
+        },
+      ),
+    );
+  }
+
+  @Post("admin-sso-token")
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: "Generate SSO Token (Team Member only)" })
+  async generateAdminSsoToken(
+    @Body() body: { teamId: string },
+    @Req() req: ExtendedFastifyRequest,
+    @Res() res: FastifyReply,
+  ) {
+    const { teamId } = body;
+
+    if (!teamId) {
+      throw new BadRequestException("Team ID is required");
+    }
+
+    const user = req.user;
+
+    // Allow ANY team member (owner, admin, member)
+
+    const team = await this.teamRepository.findTeamByTeamId(
+      new ObjectId(teamId),
+    );
+
+    if (!team) {
+      throw new NotFoundException("Team not found");
+    }
+
+    const isMember = team.users.some(
+      (member) => member.id.toString() === user._id.toString(),
+    );
+
+    if (!isMember) {
+      throw new ForbiddenException("You are not a member of this team");
+    }
+
+    const ssoToken = this.jwtService.sign(
+      {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        type: "admin-sso",
+      },
+      {
+        secret: this.configService.get("app.jwtSecretKey"),
+        expiresIn: "5m",
+      },
+    );
+
+    return res.status(200).send({
+      message: "Admin SSO token generated successfully",
+      ssoToken,
+    });
   }
 }

@@ -36,6 +36,7 @@ import {
 import { isValidName } from "@src/modules/common/util/validate.name.util";
 import { isImageBuffer } from "@src/modules/common/util/isImageBuffer.util";
 import { imageSize } from "image-size";
+import { ForbiddenException } from "@nestjs/common/exceptions/forbidden.exception";
 
 /**
  * Team Service
@@ -550,7 +551,7 @@ export class TeamService {
           }
         }
       }
-      throw new BadRequestException("You don't have access");
+      throw new ForbiddenException("Only team members can access admin panel");
     }
     throw new BadRequestException("Team doesn't exist");
   }

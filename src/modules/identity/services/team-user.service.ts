@@ -30,6 +30,9 @@ import { UserInvitesRepository } from "../repositories/userInvites.repository";
 import { DecodedUserObject } from "@src/types/fastify";
 import { InternalServerErrorException } from "@nestjs/common";
 import { AppEdition } from "@src/modules/common/config/env.validation";
+import { NotificationService } from "@src/modules/notifications/services/notification.service";
+import { WorkspaceRole } from "@src/modules/common/models/notification.model";
+import { NotificationRepository } from "@src/modules/notifications/repositories/notification.repository";
 /**
  * Team User Service
  */
@@ -45,7 +48,26 @@ export class TeamUserService {
     private readonly emailService: EmailService,
     private readonly stripeSubscriptionService: StripeSubscriptionService,
     private readonly licenseManagementService: LicenseManagementService,
+    private readonly notificationService: NotificationService,
+    private readonly notificationRepository: NotificationRepository,
   ) {}
+
+  private buildInviteSignupUrl(
+    teamId: string,
+    inviteId: string,
+    email: string,
+  ): string {
+    const authBaseUrl = this.configService.get("auth.baseURL");
+
+    return (
+      `${authBaseUrl}/init` +
+      `?source=desktop` +
+      `&flow=invite` +
+      `&teamId=${teamId}` +
+      `&inviteId=${inviteId}` +
+      `&email=${encodeURIComponent(email)}`
+    );
+  }
 
   async HasPermissionToRemove(
     payload: CreateOrUpdateTeamUserDto,
@@ -894,6 +916,88 @@ export class TeamUserService {
     await Promise.all(promise);
   }
 
+  async inviteAcceptedUserEmail(
+    userName: string,
+    teamName: string,
+    email: string,
+  ) {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      template: "inviteAcceptedUserEmail",
+      context: {
+        userName,
+        teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `You're now part of ${teamName} on Sparrow!`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
+  async inviteAcceptedAdminOwnerEmail(
+    adminName: string,
+    userName: string,
+    teamName: string,
+    email: string,
+  ) {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      template: "inviteAcceptedAdminOwnerEmail",
+      context: {
+        adminName,
+        userName,
+        teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `${userName} accepted your Sparrow invite`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
+  async inviteDeclinedAdminOwnerEmail(
+    adminName: string,
+    userName: string,
+    teamName: string,
+    email: string,
+  ) {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: email,
+      template: "inviteDeclinedAdminOwnerEmail",
+      context: {
+        adminName,
+        userName,
+        teamName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+        sparrowWebsiteName: this.configService.get(
+          "support.sparrowWebsiteName",
+        ),
+      },
+      subject: `Invite declined for ${teamName}`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
   /**
    * This will create Invite in the Owner's Team of that Particular user.
    *
@@ -1011,6 +1115,13 @@ export class TeamUserService {
     } else {
       // non registered user
       const transporter = this.emailService.createTransporter();
+
+      const inviteSignupUrl = this.buildInviteSignupUrl(
+        teamId,
+        inviteId,
+        email,
+      );
+
       const mailOptions = {
         from: this.configService.get("app.senderEmail"),
         to: email,
@@ -1020,15 +1131,14 @@ export class TeamUserService {
           teamName: team.name,
           userName: userData?.name || email,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
-          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
           sparrowWebsiteName: this.configService.get(
             "support.sparrowWebsiteName",
           ),
-          marketingUrl: this.configService.get("marketing.baseURL"),
-          inviteId: inviteId,
-          teamId: teamId,
-          role: role,
-          email: email,
+          inviteSignupUrl,
+          inviteId,
+          teamId,
+          role,
+          email,
         },
         subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
       };
@@ -1211,6 +1321,26 @@ export class TeamUserService {
         sender,
         newInvite.inviteId,
       );
+
+      // CREATE NOTIFICATION
+      const recipientUser = await this.userRepository.getUserByEmail(
+        newInvite.email,
+      );
+
+      // Only create notification if user is registered
+      if (recipientUser) {
+        await this.notificationService.createWorkspaceInviteNotification({
+          recipientId: recipientUser._id,
+          inviterId: sender._id,
+          inviterName: sender.name,
+          teamId: payload.teamId,
+          teamName: team.name,
+          workspaceIds:
+            payload.workspaces?.map((ws) => new ObjectId(ws.id)) || [],
+          workspaceNames: payload.workspaces?.map((ws) => ws.name) || [],
+          role: payload.role as WorkspaceRole,
+        });
+      }
     }
 
     for (const resentInvite of resentInvites) {
@@ -1290,6 +1420,7 @@ export class TeamUserService {
     await this.removeTeamInvite(teamId, matchedInvite.email);
     return {
       teamId: teamId,
+      teamName: teamData.name,
       email: matchedInvite.email,
       role: matchedInvite.role,
       workspaces: allWorkspaces,
@@ -1302,6 +1433,14 @@ export class TeamUserService {
    * @returns Result of the invite operation
    */
   async acceptInvite(teamId: string, senderEmail: string) {
+    const notification = await this.notificationRepository.findPendingInvite(
+      senderEmail,
+      teamId,
+    );
+
+    if (!notification) {
+      throw new BadRequestException("Invite already rejected or not valid");
+    }
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
     if (!teamData) {
@@ -1364,6 +1503,53 @@ export class TeamUserService {
     });
     // now remove it from invites array
     await this.removeTeamInvite(teamId, matchedInvite.email);
+    const updatedTeam =
+      await this.teamRepository.findTeamByTeamId(teamObjectId);
+
+    // always use invite email (source of truth)
+    const acceptedUser = await this.userRepository.getUserByEmail(
+      matchedInvite.email.toLowerCase().trim(),
+    );
+
+    const inviter = await this.userRepository.findUserByUserId(
+      matchedInvite.updatedBy,
+    );
+
+    const ownerDetails = await this.getOwnerDetails(
+      updatedTeam.owner,
+      updatedTeam.users,
+    );
+
+    // SEND EMAILS
+
+    // email to accepted user
+    if (acceptedUser) {
+      await this.inviteAcceptedUserEmail(
+        acceptedUser.name,
+        updatedTeam.name,
+        acceptedUser.email,
+      );
+    }
+
+    // email to inviter (admin)
+    if (inviter && acceptedUser) {
+      await this.inviteAcceptedAdminOwnerEmail(
+        inviter.name,
+        acceptedUser.name,
+        updatedTeam.name,
+        inviter.email,
+      );
+    }
+
+    // email to owner (if different)
+    if (ownerDetails && acceptedUser && ownerDetails.email !== inviter?.email) {
+      await this.inviteAcceptedAdminOwnerEmail(
+        ownerDetails.name,
+        acceptedUser.name,
+        updatedTeam.name,
+        ownerDetails.email,
+      );
+    }
   }
 
   /**
@@ -1461,6 +1647,44 @@ export class TeamUserService {
       throw new NotFoundException("Invite not found");
     }
     const data = await this.removeTeamInvite(teamId, senderEmail);
+
+    // SEND DECLINE EMAILS
+
+    // declined user details
+    const declinedUser = await this.userRepository.getUserByEmail(senderEmail);
+
+    // inviter (admin who sent invite)
+    const inviter = await this.userRepository.findUserByUserId(
+      matchedInvite.updatedBy,
+    );
+
+    // owner details
+    const ownerDetails = await this.getOwnerDetails(
+      teamData.owner,
+      teamData.users,
+    );
+
+    // email to inviter (admin)
+    if (inviter && declinedUser) {
+      await this.inviteDeclinedAdminOwnerEmail(
+        inviter.name,
+        declinedUser.name,
+        teamData.name,
+        inviter.email,
+      );
+    }
+
+    // email to owner (if owner different from inviter)
+
+    if (ownerDetails && declinedUser && ownerDetails.email !== inviter?.email) {
+      await this.inviteDeclinedAdminOwnerEmail(
+        ownerDetails.name,
+        declinedUser.name,
+        teamData.name,
+        ownerDetails.email,
+      );
+    }
+
     return data;
   }
 
@@ -1545,6 +1769,13 @@ export class TeamUserService {
     } else {
       // non registered user
       const transporter = this.emailService.createTransporter();
+
+      const inviteSignupUrl = this.buildInviteSignupUrl(
+        teamId,
+        newInviteId,
+        inviteEmail,
+      );
+
       const mailOptions = {
         from: this.configService.get("app.senderEmail"),
         to: inviteEmail,
@@ -1554,13 +1785,12 @@ export class TeamUserService {
           teamName: teamData.name,
           userName: userData?.name || inviteEmail,
           sparrowEmail: this.configService.get("support.sparrowEmail"),
-          sparrowWebsite: this.configService.get("support.sparrowWebsite"),
           sparrowWebsiteName: this.configService.get(
             "support.sparrowWebsiteName",
           ),
-          marketingUrl: this.configService.get("marketing.baseURL"),
+          inviteSignupUrl,
           inviteId: newInviteId,
-          teamId: teamId,
+          teamId,
           email: inviteEmail,
           role: invitedRole,
         },
@@ -1614,9 +1844,13 @@ export class TeamUserService {
       updatedData,
     );
     const userData = await this.userRepository.getUserByEmail(inviteEmail);
-    const senderName = userData?.name || "Someone";
     const transporter = this.emailService.createTransporter();
     const isRegistered = !!userData;
+
+    const inviteSignupUrl = !isRegistered
+      ? this.buildInviteSignupUrl(teamId, newInviteId, inviteEmail)
+      : null;
+
     const mailOptions = {
       from: this.configService.get("app.senderEmail"),
       to: inviteEmail,
@@ -1628,7 +1862,6 @@ export class TeamUserService {
         teamName: teamData.name,
         userName: userData?.name || inviteEmail,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
-        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
         sparrowWebsiteName: this.configService.get(
           "support.sparrowWebsiteName",
         ),
@@ -1637,14 +1870,14 @@ export class TeamUserService {
               authUrl: this.configService.get("auth.baseURL"),
             }
           : {
-              marketingUrl: this.configService.get("marketing.baseURL"),
+              inviteSignupUrl,
             }),
         inviteId: newInviteId,
-        teamId: teamId,
+        teamId,
         email: inviteEmail,
       },
       subject: isRegistered
-        ? `${senderName} has invited you to the hub “${teamData.name}”`
+        ? `${userData?.name || "Someone"} has invited you to the hub “${teamData.name}”`
         : `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
     };
     await this.emailService.sendEmail(transporter, mailOptions);
@@ -1785,6 +2018,12 @@ export class TeamUserService {
         };
       } else {
         // Non-registered user
+        const inviteSignupUrl = this.buildInviteSignupUrl(
+          teamId,
+          inviteId,
+          email,
+        );
+
         mailOptions = {
           from: this.configService.get("app.senderEmail"),
           to: email,
@@ -1794,15 +2033,14 @@ export class TeamUserService {
             teamName: team.name,
             userName: userData?.name || email,
             sparrowEmail: this.configService.get("support.sparrowEmail"),
-            sparrowWebsite: this.configService.get("support.sparrowWebsite"),
             sparrowWebsiteName: this.configService.get(
               "support.sparrowWebsiteName",
             ),
-            marketingUrl: this.configService.get("marketing.baseURL"),
-            inviteId: inviteId,
-            teamId: teamId,
-            email: email,
-            role: role,
+            inviteSignupUrl,
+            inviteId,
+            teamId,
+            email,
+            role,
           },
           subject: `You’ve Been Invited to Join Sparrow – Power Up Your API Workflow`,
         };
