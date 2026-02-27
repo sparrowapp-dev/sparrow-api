@@ -1433,13 +1433,16 @@ export class TeamUserService {
    * @returns Result of the invite operation
    */
   async acceptInvite(teamId: string, senderEmail: string) {
-    const notification = await this.notificationRepository.findPendingInvite(
-      senderEmail,
-      teamId,
-    );
+    // notification is optional (not present in old versions)
+    let notification = null;
 
-    if (!notification) {
-      throw new BadRequestException("Invite already rejected or not valid");
+    try {
+      notification = await this.notificationRepository.findPendingInvite(
+        senderEmail,
+        teamId,
+      );
+    } catch (e) {
+      // ignore — notification system may not exist in old versions
     }
     const teamObjectId = new ObjectId(teamId);
     const teamData = await this.teamRepository.findTeamByTeamId(teamObjectId);
@@ -1454,6 +1457,10 @@ export class TeamUserService {
     const matchedInvite = allInvites.find(
       (invite: any) => invite.email === senderEmail,
     );
+    if (!matchedInvite && !notification) {
+      throw new BadRequestException("Invite already rejected or not valid");
+    }
+
     if (!matchedInvite) {
       throw new BadRequestException(
         "User already Exist or Declined the Invite.",
