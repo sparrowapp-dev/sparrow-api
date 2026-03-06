@@ -248,4 +248,27 @@ export class AdminHubsRepository {
       throw new InternalServerErrorException("Failed to update team feedback");
     }
   }
+
+  async updateHubBillingPeriod(
+    hubId: string,
+    newTrialEnd: Date,
+  ): Promise<void> {
+    try {
+      const hubObjectId = new ObjectId(hubId);
+
+      await this.db.collection(Collections.TEAM).updateOne(
+        { _id: hubObjectId },
+        {
+          $set: {
+            "billing.current_period_end": newTrialEnd,
+          },
+        },
+      );
+    } catch (error) {
+      console.error("Error updating hub billing period:", error);
+      throw new InternalServerErrorException(
+        "Failed to update hub billing period",
+      );
+    }
+  }
 }

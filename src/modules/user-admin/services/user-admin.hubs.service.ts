@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { ObjectId } from "mongodb";
 
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
@@ -6,6 +10,19 @@ import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.r
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { StripeSubscriptionService } from "@src/modules/billing/services/stripe-subscription.service";
+import { BillingAuditService } from "@src/modules/billing/services/billing-audit.service";
+import {
+  PaymentEmailService,
+  PaymentEmailType,
+} from "@src/modules/billing/services/payment-email.service";
+import {
+  BillingActorType,
+  BillingSource,
+  PaymentProvider,
+} from "@src/modules/common/enum/billing.enum";
+import { ConfigService } from "@nestjs/config";
+import { HttpService } from "@nestjs/axios";
 
 interface SortOptions {
   sortBy: string;
@@ -18,6 +35,11 @@ export class AdminHubsService {
     private readonly teamsRepo: AdminHubsRepository,
     private readonly workspaceRepo: AdminWorkspaceRepository,
     private readonly userRepo: UserRepository,
+    private readonly stripeSubscriptionService: StripeSubscriptionService,
+    private readonly billingAuditService: BillingAuditService,
+    private readonly paymentEmailService: PaymentEmailService,
+    private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
   ) {}
 
   async getHubsForUser(userId: string) {
@@ -39,7 +61,7 @@ export class AdminHubsService {
         role: matchedUser?.role,
         users: team.users,
         workspaces: team.workspaces,
-        plan: team?.plan?.name
+        plan: team?.plan?.name,
       };
     });
   }
@@ -303,5 +325,125 @@ export class AdminHubsService {
     }
 
     return { success: true };
+  }
+
+  async extendTrial(
+    hubId: string,
+    extensionDays: number,
+    reason: string,
+    notifyCustomer?: boolean,
+  ) {
+    // Validate hub exists
+    const team = await this.teamsRepo.findHubById(hubId);
+
+    if (!team) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Validate trial status
+    if (team.billing?.in_trial !== true) {
+      throw new BadRequestException("Hub is not currently in trial");
+    }
+
+    // Validate extension limits
+    const MAX_TRIAL_EXTENSION_DAYS = 100;
+
+    if (extensionDays <= 0 || extensionDays > MAX_TRIAL_EXTENSION_DAYS) {
+      throw new BadRequestException(
+        `Trial extension must be between 1 and ${MAX_TRIAL_EXTENSION_DAYS} days`,
+      );
+    }
+
+    // Get Stripe subscription
+    const stripeProvider = team.billing?.paymentProviders?.find(
+      (p: any) => p.provider === PaymentProvider.STRIPE,
+    );
+
+    if (!stripeProvider?.subscriptionId) {
+      throw new BadRequestException("Stripe subscription not found for hub");
+    }
+
+    const subscriptionId = stripeProvider.subscriptionId;
+
+    let currentTrialEnd: Date;
+
+    // Local development bypass
+    if (subscriptionId.startsWith("sub_test")) {
+      currentTrialEnd = new Date(team.billing.current_period_end);
+    } else {
+      const subscription =
+        await this.stripeSubscriptionService["stripeService"].getSubscription(
+          subscriptionId,
+        );
+
+      if (!subscription?.trial_end) {
+        throw new BadRequestException(
+          "Subscription does not have an active trial",
+        );
+      }
+
+      currentTrialEnd = new Date(subscription.trial_end * 1000);
+    }
+
+    // Calculate new trial end
+    const newTrialEnd = new Date(
+      currentTrialEnd.getTime() + extensionDays * 24 * 60 * 60 * 1000,
+    );
+
+    // Update Stripe if real subscription
+    if (!subscriptionId.startsWith("sub_test")) {
+      await this.stripeSubscriptionService["stripeService"].updateSubscription(
+        subscriptionId,
+        undefined,
+        {
+          hubId: hubId,
+          planName: team.plan?.name,
+          trial_end_date: newTrialEnd.toISOString(),
+          trialExtension: "true",
+          extensionDays: extensionDays.toString(),
+        },
+      );
+    }
+
+    // Update database billing
+    await this.teamsRepo.updateHubBillingPeriod(hubId, newTrialEnd);
+    console.log("ADMIN API updating billing to:", newTrialEnd);
+
+    // Record audit event
+    await this.billingAuditService.recordTrialStarted(
+      hubId,
+      team.plan?.name,
+      {
+        trialEndDate: newTrialEnd,
+        seats: team.billing?.seats || 1,
+      },
+      {
+        actor: {
+          type: BillingActorType.SYSTEM,
+          name: "Admin Trial Extension",
+        },
+        source: BillingSource.API_CALL,
+        reason,
+      },
+    );
+
+    // Optional email notification
+    if (notifyCustomer) {
+      try {
+        await this.httpService.axiosRef.post(
+          `${this.configService.get("app.baseURL")}/api/user-trial-confirmation-mail/${hubId}`,
+        );
+      } catch (error) {
+        console.warn("Failed to send trial confirmation email", error);
+      }
+    }
+
+    // Return response
+    return {
+      hubId,
+      previousTrialEnd: currentTrialEnd,
+      newTrialEnd,
+      extensionDays,
+    };
   }
 }

@@ -41,6 +41,7 @@ import { TeamService } from "@src/modules/identity/services/team.service";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { CreateOrUpdateAdminHubDto } from "../payloads/hub.payload";
 import { SalesEmailService } from "@src/modules/workspace/services/sales-email.service";
+import { ExtendTrialDto } from "../payloads/trial-extension.payload";
 
 @Controller("api/admin")
 @ApiTags("admin hubs")
@@ -378,5 +379,33 @@ export class AdminHubsController {
 
       return res.status(statusCode).send(responseData);
     }
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles("admin")
+  @Post("hubs/:hubId/trial/extend")
+  @ApiOperation({ summary: "Extend trial period for a hub" })
+  async extendTrial(
+    @Param("hubId") hubId: string,
+    @Body() body: ExtendTrialDto,
+    @Req() request: any,
+
+    @Res() res: FastifyReply,
+  ) {
+    console.log("USER:", request.user);
+    const result = await this.hubsService.extendTrial(
+      hubId,
+      body.extensionDays,
+      body.reason,
+      body.notifyCustomer,
+    );
+
+    const response = new ApiResponseService(
+      "Trial extended successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
   }
 }

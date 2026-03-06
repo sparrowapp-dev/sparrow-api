@@ -17,6 +17,7 @@ export enum PaymentEmailType {
   SUBSCRIPTION_EXPIRED = "subscription_expired",
   PAYMENT_INFO_UPDATED = "payment_info_updated",
   DOWNGRADED_TO_COMMUNITY = "downgraded_to_community",
+  TRIAL_EXTENDED = "trial_extended",
 }
 
 export interface PaymentEmailData {
@@ -107,6 +108,9 @@ export class PaymentEmailService {
           break;
         case PaymentEmailType.DOWNGRADED_TO_COMMUNITY:
           await this.sendDowngradedToCommunityEmail(data);
+          break;
+        case PaymentEmailType.TRIAL_EXTENDED:
+          await this.sendTrialExtendedEmail(data);
           break;
         default:
           console.warn(`Unknown payment email type: ${emailType}`);
@@ -634,7 +638,7 @@ export class PaymentEmailService {
     date: Date | number,
     options?: { grace_period?: boolean },
   ): string {
-    let d = typeof date === "number" ? new Date(date * 1000) : new Date(date);
+    const d = typeof date === "number" ? new Date(date * 1000) : new Date(date);
 
     if (options?.grace_period) {
       d.setDate(d.getDate() + 3);
@@ -645,5 +649,27 @@ export class PaymentEmailService {
       month: "long",
       day: "numeric",
     });
+  }
+
+  private async sendTrialExtendedEmail(data: PaymentEmailData): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: data.ownerEmail,
+      text: "Trial Extended",
+      template: "trialExtendedEmail",
+      context: {
+        firstName: this.extractFirstName(data.ownerName),
+        hubName: data.hubName,
+        planName: data.planName,
+        newTrialEndDate: this.formatDate(data.billingPeriodEnd),
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+      },
+      subject: `Your trial for ${data.hubName} has been extended`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
   }
 }
