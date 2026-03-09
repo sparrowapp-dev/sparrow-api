@@ -569,4 +569,139 @@ export class AdminHubsService {
       proratedAmount,
     };
   }
+
+  async changeHubPlan(
+    hubId: string,
+    currentPlanId: string,
+    newPlanId: string,
+    changeType: string,
+    effectiveDate: string,
+    prorate: boolean,
+  ) {
+    // Validate hub
+    const team = await this.teamsRepo.findHubById(hubId);
+
+    if (!team) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Fetch plans
+    const currentPlan = await this.teamsRepo.findPlanById(currentPlanId);
+    const newPlan = await this.teamsRepo.findPlanById(newPlanId);
+
+    if (!currentPlan || !newPlan) {
+      throw new BadRequestException("Invalid plan");
+    }
+
+    // Validate hub current plan
+    if (team.plan?.id.toString() !== currentPlanId) {
+      throw new BadRequestException(
+        "Hub does not currently have the specified plan",
+      );
+    }
+
+    // Determine plan hierarchy
+    const currentPlanTier = currentPlan.limits?.workspacesPerHub?.value || 0;
+
+    const newPlanTier = newPlan.limits?.workspacesPerHub?.value || 0;
+
+    if (changeType === "upgrade" && newPlanTier <= currentPlanTier) {
+      throw new BadRequestException(
+        "New plan must be higher than current plan for upgrade",
+      );
+    }
+
+    if (changeType === "downgrade" && newPlanTier >= currentPlanTier) {
+      throw new BadRequestException(
+        "New plan must be lower than current plan for downgrade",
+      );
+    }
+
+    let proratedAmount = 0;
+
+    if (prorate) {
+      const billingStart = new Date(team.billing?.current_period_start);
+      const billingEnd = new Date(team.billing?.current_period_end);
+      const effective = new Date(effectiveDate);
+
+      const totalPeriod = billingEnd.getTime() - billingStart.getTime();
+
+      const remainingPeriod = billingEnd.getTime() - effective.getTime();
+
+      if (remainingPeriod > 0) {
+        const ratio = remainingPeriod / totalPeriod;
+
+        const currentPrice = currentPlan.price || 0;
+        const newPrice = newPlan.price || 0;
+
+        proratedAmount = Math.round((newPrice - currentPrice) * ratio);
+      }
+    }
+
+    const stripeProvider = team.billing?.paymentProviders?.find(
+      (p: any) => p.provider === PaymentProvider.STRIPE,
+    );
+
+    const subscriptionId = stripeProvider?.subscriptionId;
+
+    if (subscriptionId && !subscriptionId.startsWith("sub_test")) {
+      await this.stripeSubscriptionService["stripeService"].updateSubscription(
+        subscriptionId,
+        undefined,
+        {
+          hubId,
+          newPlan: newPlan.name,
+          changeType,
+          proratedAmount,
+          effectiveDate,
+        },
+      );
+    }
+
+    await this.teamsRepo.updateHubPlan(hubId, newPlan);
+
+    await this.billingAuditService.recordSubscriptionCreated(
+      hubId,
+      newPlan.name,
+      {
+        changeType,
+        proratedAmount,
+        effectiveDate,
+      },
+      {
+        actor: {
+          type: BillingActorType.SYSTEM,
+          name: "Admin Plan Change",
+        },
+        source: BillingSource.API_CALL,
+        reason: `Admin ${changeType}`,
+      },
+    );
+    try {
+      const owner = team.users?.find((u: any) => u.role === "owner");
+
+      if (owner) {
+        await this.paymentEmailService.sendPaymentEmail(
+          PaymentEmailType.PLAN_ADDED,
+          {
+            ownerEmail: owner.email,
+            ownerName: owner.name,
+            hubName: team.name,
+            planName: newPlan.name,
+          },
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to send plan change email", error);
+    }
+
+    return {
+      hubId,
+      previousPlan: currentPlan.name,
+      newPlan: newPlan.name,
+      changeType,
+      effectiveDate,
+      proratedAmount,
+    };
+  }
 }

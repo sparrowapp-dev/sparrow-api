@@ -43,6 +43,7 @@ import { CreateOrUpdateAdminHubDto } from "../payloads/hub.payload";
 import { SalesEmailService } from "@src/modules/workspace/services/sales-email.service";
 import { ExtendTrialDto } from "../payloads/trial-extension.payload";
 import { AddPlanDto } from "../payloads/add-plan.payload";
+import { ChangePlanDto } from "../payloads/change-plan.payload";
 
 @Controller("api/admin")
 @ApiTags("admin hubs")
@@ -430,6 +431,33 @@ export class AdminHubsController {
 
     const response = new ApiResponseService(
       "Plan added successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Put("hubs/:hubId/plan/change")
+  @ApiOperation({ summary: "Change hub subscription plan" })
+  async changePlan(
+    @Param("hubId") hubId: string,
+    @Body() body: ChangePlanDto,
+    @Req() request: any,
+    @Res() res: FastifyReply,
+  ) {
+    const result = await this.hubsService.changeHubPlan(
+      hubId,
+      body.currentPlanId,
+      body.newPlanId,
+      body.changeType,
+      body.effectiveDate,
+      body.prorate,
+    );
+
+    const response = new ApiResponseService(
+      "Plan changed successfully",
       HttpStatusCode.OK,
       result,
     );
