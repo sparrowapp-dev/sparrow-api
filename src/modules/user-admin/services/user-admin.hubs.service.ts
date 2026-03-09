@@ -346,11 +346,29 @@ export class AdminHubsService {
     }
 
     // Validate extension limits
-    const MAX_TRIAL_EXTENSION_DAYS = 100;
+    const MAX_TOTAL_TRIAL_DAYS = 180;
 
-    if (extensionDays <= 0 || extensionDays > MAX_TRIAL_EXTENSION_DAYS) {
+    const currentTrialEnd = new Date(team.billing.current_period_end);
+
+    if (!currentTrialEnd) {
+      throw new BadRequestException("Trial end date not found");
+    }
+
+    // Calculate new trial end
+    const newTrialEnd = new Date(
+      currentTrialEnd.getTime() + extensionDays * 24 * 60 * 60 * 1000,
+    );
+
+    // Validate total trial duration
+    const trialStart = new Date(team.billing.current_period_start);
+
+    const maxAllowedTrialEnd = new Date(
+      trialStart.getTime() + MAX_TOTAL_TRIAL_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    if (newTrialEnd > maxAllowedTrialEnd) {
       throw new BadRequestException(
-        `Trial extension must be between 1 and ${MAX_TRIAL_EXTENSION_DAYS} days`,
+        `Trial cannot exceed ${MAX_TOTAL_TRIAL_DAYS} days from start`,
       );
     }
 
@@ -365,30 +383,9 @@ export class AdminHubsService {
 
     const subscriptionId = stripeProvider.subscriptionId;
 
-    let currentTrialEnd: Date;
-
-    // Local development bypass
-    if (subscriptionId.startsWith("sub_test")) {
-      currentTrialEnd = new Date(team.billing.current_period_end);
-    } else {
-      const subscription =
-        await this.stripeSubscriptionService["stripeService"].getSubscription(
-          subscriptionId,
-        );
-
-      if (!subscription?.trial_end) {
-        throw new BadRequestException(
-          "Subscription does not have an active trial",
-        );
-      }
-
-      currentTrialEnd = new Date(subscription.trial_end * 1000);
+    if (!currentTrialEnd) {
+      throw new BadRequestException("Trial end date not found");
     }
-
-    // Calculate new trial end
-    const newTrialEnd = new Date(
-      currentTrialEnd.getTime() + extensionDays * 24 * 60 * 60 * 1000,
-    );
 
     // Update Stripe if real subscription
     if (!subscriptionId.startsWith("sub_test")) {
