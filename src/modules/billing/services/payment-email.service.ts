@@ -18,6 +18,7 @@ export enum PaymentEmailType {
   PAYMENT_INFO_UPDATED = "payment_info_updated",
   DOWNGRADED_TO_COMMUNITY = "downgraded_to_community",
   TRIAL_EXTENDED = "trial_extended",
+  PLAN_ADDED = "plan_added",
 }
 
 export interface PaymentEmailData {
@@ -111,6 +112,9 @@ export class PaymentEmailService {
           break;
         case PaymentEmailType.TRIAL_EXTENDED:
           await this.sendTrialExtendedEmail(data);
+          break;
+        case PaymentEmailType.PLAN_ADDED:
+          await this.sendPlanAddedEmail(data);
           break;
         default:
           console.warn(`Unknown payment email type: ${emailType}`);
@@ -668,6 +672,27 @@ export class PaymentEmailService {
         sparrowWebsite: this.configService.get("support.sparrowWebsite"),
       },
       subject: `Your trial for ${data.hubName} has been extended`,
+    };
+
+    await this.emailService.sendEmail(transporter, mailOptions);
+  }
+
+  private async sendPlanAddedEmail(data: PaymentEmailData): Promise<void> {
+    const transporter = this.emailService.createTransporter();
+
+    const mailOptions = {
+      from: this.configService.get("app.senderEmail"),
+      to: data.ownerEmail,
+      text: "Plan Updated",
+      template: "planAddedEmail",
+      context: {
+        firstName: this.extractFirstName(data.ownerName),
+        hubName: data.hubName,
+        planName: data.planName,
+        sparrowEmail: this.configService.get("support.sparrowEmail"),
+        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
+      },
+      subject: `Your hub ${data.hubName} has been upgraded to ${data.planName}`,
     };
 
     await this.emailService.sendEmail(transporter, mailOptions);

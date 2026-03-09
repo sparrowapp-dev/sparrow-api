@@ -271,4 +271,40 @@ export class AdminHubsRepository {
       );
     }
   }
+
+  async findPlanById(planId: string) {
+    try {
+      const planObjectId = new ObjectId(planId);
+
+      const plan = await this.db
+        .collection(Collections.PLAN)
+        .findOne({ _id: planObjectId, active: true });
+
+      return plan;
+    } catch (error) {
+      console.error("Error fetching plan:", error);
+      throw new InternalServerErrorException("Failed to fetch plan");
+    }
+  }
+
+  async updateHubPlan(hubId: string, plan: any): Promise<void> {
+    try {
+      const hubObjectId = new ObjectId(hubId);
+
+      await this.db.collection(Collections.TEAM).updateOne(
+        { _id: hubObjectId },
+        {
+          $set: {
+            plan: {
+              ...plan,
+              id: plan._id,
+            },
+          },
+        },
+      );
+    } catch (error) {
+      console.error("Error updating hub plan:", error);
+      throw new InternalServerErrorException("Failed to update hub plan");
+    }
+  }
 }

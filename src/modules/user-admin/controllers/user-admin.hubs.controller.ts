@@ -42,6 +42,7 @@ import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { CreateOrUpdateAdminHubDto } from "../payloads/hub.payload";
 import { SalesEmailService } from "@src/modules/workspace/services/sales-email.service";
 import { ExtendTrialDto } from "../payloads/trial-extension.payload";
+import { AddPlanDto } from "../payloads/add-plan.payload";
 
 @Controller("api/admin")
 @ApiTags("admin hubs")
@@ -402,6 +403,33 @@ export class AdminHubsController {
 
     const response = new ApiResponseService(
       "Trial extended successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles("admin")
+  @Post("hubs/:hubId/plans/add")
+  @ApiOperation({ summary: "Add a plan to a hub from backend" })
+  async addPlan(
+    @Param("hubId") hubId: string,
+    @Body() body: AddPlanDto,
+    @Req() request: any,
+    @Res() res: FastifyReply,
+  ) {
+    const result = await this.hubsService.addPlanToHub(
+      hubId,
+      body.planId,
+      body.effectiveDate,
+      body.billingCycle,
+      body.notes,
+    );
+
+    const response = new ApiResponseService(
+      "Plan added successfully",
       HttpStatusCode.OK,
       result,
     );
