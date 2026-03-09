@@ -427,11 +427,23 @@ export class AdminHubsService {
     // Optional email notification
     if (notifyCustomer) {
       try {
-        await this.httpService.axiosRef.post(
-          `${this.configService.get("app.baseURL")}/api/user-trial-confirmation-mail/${hubId}`,
-        );
+        const emails = team.users?.map((u: any) => u.email) || [];
+
+        if (emails) {
+          await this.paymentEmailService.sendPaymentEmail(
+            PaymentEmailType.TRIAL_EXTENDED,
+            {
+              sendEmails: emails,
+              hubName: team.name,
+              planName: team.plan?.name,
+              billingPeriodStart: team.billing.current_period_start,
+              billingPeriodEnd: newTrialEnd,
+              totalSeats: team.billing?.seats || 1,
+            },
+          );
+        }
       } catch (error) {
-        console.warn("Failed to send trial confirmation email", error);
+        console.warn("Failed to send trial extension email", error);
       }
     }
 

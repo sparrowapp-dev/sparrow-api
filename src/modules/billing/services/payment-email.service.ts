@@ -657,24 +657,25 @@ export class PaymentEmailService {
 
   private async sendTrialExtendedEmail(data: PaymentEmailData): Promise<void> {
     const transporter = this.emailService.createTransporter();
+    const emailsToSend = data.sendEmails || [data.ownerEmail];
 
-    const mailOptions = {
-      from: this.configService.get("app.senderEmail"),
-      to: data.ownerEmail,
-      text: "Trial Extended",
-      template: "trialExtendedEmail",
-      context: {
-        firstName: this.extractFirstName(data.ownerName),
-        hubName: data.hubName,
-        planName: data.planName,
-        newTrialEndDate: this.formatDate(data.billingPeriodEnd),
-        sparrowEmail: this.configService.get("support.sparrowEmail"),
-        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
-      },
-      subject: `Your trial for ${data.hubName} has been extended`,
-    };
+    for (const email of emailsToSend) {
+      const mailOptions = {
+        from: this.configService.get("app.senderEmail"),
+        to: email,
+        template: "trialExtendedEmail",
+        context: {
+          hubName: data.hubName,
+          planName: data.planName,
+          trialStart: this.formatDate(data.billingPeriodStart),
+          trialEnd: this.formatDate(data.billingPeriodEnd),
+          seats: data.totalSeats,
+        },
+        subject: `Your trial for ${data.hubName} has been extended`,
+      };
 
-    await this.emailService.sendEmail(transporter, mailOptions);
+      await this.emailService.sendEmail(transporter, mailOptions);
+    }
   }
 
   private async sendPlanAddedEmail(data: PaymentEmailData): Promise<void> {
