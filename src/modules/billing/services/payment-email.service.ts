@@ -52,6 +52,10 @@ export interface PaymentEmailData {
   workspaces?: any;
   users?: any;
   sendEmails?: string[];
+  price?: number;
+  features?: string[];
+  upgradeDate?: string;
+  nextBillingDate?: string;
 }
 
 @Injectable()
@@ -685,13 +689,17 @@ export class PaymentEmailService {
       from: this.configService.get("app.senderEmail"),
       to: data.ownerEmail,
       text: "Plan Updated",
-      template: "planAddedEmail",
+      template: "planUpgradedEmail",
       context: {
         firstName: this.extractFirstName(data.ownerName),
         hubName: data.hubName,
-        planName: data.planName,
+        newPlanName: data.planName,
+        features: data.features,
+        price: data.price,
+        interval: data.interval,
+        upgradeDate: data.upgradeDate,
+        nextBillingDate: data.nextBillingDate,
         sparrowEmail: this.configService.get("support.sparrowEmail"),
-        sparrowWebsite: this.configService.get("support.sparrowWebsite"),
       },
       subject: `Your hub ${data.hubName} has been upgraded to ${data.planName}`,
     };

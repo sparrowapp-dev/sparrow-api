@@ -562,6 +562,22 @@ export class AdminHubsService {
             ownerName: owner.name,
             hubName: team.name,
             planName: plan.name,
+
+            price: plan.price || 0,
+            interval: billingCycle || "month",
+
+            upgradeDate: new Date(effectiveDate).toDateString(),
+
+            nextBillingDate: team.billing?.current_period_end
+              ? new Date(team.billing.current_period_end).toDateString()
+              : "",
+
+            features: [
+              `Up to ${plan.limits?.workspacesPerHub?.value || "multiple"} workspaces`,
+              "Unlimited collaborators",
+              "Private hubs",
+              "Unlimited collections",
+            ],
           },
         );
       }
@@ -697,6 +713,21 @@ export class AdminHubsService {
             ownerName: owner.name,
             hubName: team.name,
             planName: newPlan.name,
+            price: newPlan.price || 0,
+            interval: "month",
+
+            upgradeDate: new Date(effectiveDate).toDateString(),
+
+            nextBillingDate: team.billing?.current_period_end
+              ? new Date(team.billing.current_period_end).toDateString()
+              : "",
+
+            features: [
+              `Up to ${newPlan.limits?.workspacesPerHub?.value || "multiple"} workspaces`,
+              "Unlimited collaborators",
+              "Private hubs",
+              "Unlimited collections",
+            ],
           },
         );
       }
