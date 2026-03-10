@@ -22,6 +22,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiResponse,
+  ApiParam,
 } from "@nestjs/swagger";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -385,8 +386,22 @@ export class AdminHubsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles("admin")
-  @Post("hubs/:hubId/trial/extend")
+  @ApiBearerAuth()
   @ApiOperation({ summary: "Extend trial period for a hub" })
+  @ApiParam({
+    name: "hubId",
+    description: "Unique Hub ID",
+    example: "69ae736e7ef406283329e75d",
+  })
+  @ApiBody({
+    type: ExtendTrialDto,
+    description: "Trial extension request body",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Trial extended successfully",
+  })
+  @Post("hubs/:hubId/trial/extend")
   async extendTrial(
     @Param("hubId") hubId: string,
     @Body() body: ExtendTrialDto,
@@ -413,8 +428,22 @@ export class AdminHubsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles("admin")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Add a subscription plan to a hub" })
+  @ApiParam({
+    name: "hubId",
+    description: "Hub ID",
+    example: "69ae736e7ef406283329e75d",
+  })
+  @ApiBody({
+    type: AddPlanDto,
+    description: "Plan addition request body",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Plan added successfully",
+  })
   @Post("hubs/:hubId/plans/add")
-  @ApiOperation({ summary: "Add a plan to a hub from backend" })
   async addPlan(
     @Param("hubId") hubId: string,
     @Body() body: AddPlanDto,
@@ -439,8 +468,22 @@ export class AdminHubsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Change hub subscription plan (upgrade/downgrade)" })
+  @ApiParam({
+    name: "hubId",
+    description: "Hub ID",
+    example: "69ae736e7ef406283329e75d",
+  })
+  @ApiBody({
+    type: ChangePlanDto,
+    description: "Plan change request body",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Plan changed successfully",
+  })
   @Put("hubs/:hubId/plan/change")
-  @ApiOperation({ summary: "Change hub subscription plan" })
   async changePlan(
     @Param("hubId") hubId: string,
     @Body() body: ChangePlanDto,
