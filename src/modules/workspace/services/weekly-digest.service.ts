@@ -1,8 +1,45 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { TestflowRepository } from "../repositories/testflow.repository";
 
 @Injectable()
 export class WeeklyDigestService {
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly testflowRepository: TestflowRepository,
+  ) {}
+
   private readonly logger = new Logger(WeeklyDigestService.name);
+
+  async processWeeklyDigest() {
+    this.logger.log("Processing weekly digest emails...");
+
+    const { start, end } = this.getLastWeekRange();
+
+    this.logger.log(
+      `Weekly range: ${start.toISOString()} - ${end.toISOString()}`,
+    );
+
+    const users = await this.userRepository.getAllUsers();
+
+    this.logger.log(`Total users found: ${users.length}`);
+
+    for (const user of users) {
+      this.logger.log(`Preparing digest for: ${user.email}`);
+    }
+
+    for (const user of users) {
+      const executionCount = await this.getExecutionCountForUser(
+        user._id.toString(),
+        start,
+        end,
+      );
+
+      this.logger.log(
+        `User: ${user.email} | Weekly Executions: ${executionCount}`,
+      );
+    }
+  }
 
   private getLastWeekRange() {
     const now = new Date();
@@ -20,20 +57,40 @@ export class WeeklyDigestService {
     return { start, end };
   }
 
-  async processWeeklyDigest() {
-    this.logger.log("Processing weekly digest emails...");
+  async getExecutionCountForUser(
+    userId: string,
+    start: Date,
+    end: Date,
+  ): Promise<number> {
+    let testflows = [];
 
-    const { start, end } = this.getLastWeekRange();
+    try {
+      testflows = await this.testflowRepository.getAll();
+    } catch (error) {
+      // If no testflows exist, simply return 0 executions
+      this.logger.warn("No testflows found in database.");
+      return 0;
+    }
 
-    this.logger.log(
-      `Weekly range: ${start.toISOString()} - ${end.toISOString()}`,
-    );
+    let executionCount = 0;
 
-    // next steps will use this
+    for (const testflow of testflows) {
+      if (!testflow.schedules) continue;
 
-    // Step 1: get all users
-    // Step 2: fetch weekly metrics
-    // Step 3: build email payload
-    // Step 4: send email
+      for (const schedule of testflow.schedules) {
+        if (!schedule.schedularRunHistory) continue;
+
+        for (const run of schedule.schedularRunHistory) {
+          const runDate = new Date(run.createdAt);
+
+          if (runDate >= start && runDate <= end) {
+            executionCount +=
+              (run.successRequests || 0) + (run.failedRequests || 0);
+          }
+        }
+      }
+    }
+
+    return executionCount;
   }
 }
