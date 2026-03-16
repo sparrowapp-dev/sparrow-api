@@ -669,6 +669,7 @@ export class AdminHubsService {
 
     const subscriptionId = stripeProvider?.subscriptionId;
 
+    // Update Stripe subscription if exists
     if (subscriptionId && !subscriptionId.startsWith("sub_test")) {
       await this.stripeSubscriptionService["stripeService"].updateSubscription(
         subscriptionId,
@@ -679,6 +680,7 @@ export class AdminHubsService {
           changeType,
           proratedAmount,
           effectiveDate,
+          updatedByAdmin: true,
         },
       );
     }

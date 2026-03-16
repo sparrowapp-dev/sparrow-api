@@ -385,7 +385,7 @@ export class AdminHubsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles("admin")
+  @Roles("super-admin")
   @ApiBearerAuth()
   @ApiOperation({ summary: "Extend trial period for a hub" })
   @ApiParam({
@@ -427,7 +427,7 @@ export class AdminHubsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles("admin")
+  @Roles("super-admin")
   @ApiBearerAuth()
   @ApiOperation({ summary: "Add a subscription plan to a hub" })
   @ApiParam({
@@ -468,6 +468,7 @@ export class AdminHubsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("super-admin")
   @ApiBearerAuth()
   @ApiOperation({ summary: "Change hub subscription plan (upgrade/downgrade)" })
   @ApiParam({
