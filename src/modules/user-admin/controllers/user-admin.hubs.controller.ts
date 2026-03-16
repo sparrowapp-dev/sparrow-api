@@ -22,6 +22,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiResponse,
+  ApiParam,
 } from "@nestjs/swagger";
 import { FastifyReply } from "fastify";
 import { ApiResponseService } from "@src/modules/common/services/api-response.service";
@@ -41,6 +42,9 @@ import { TeamService } from "@src/modules/identity/services/team.service";
 import { ExtendedFastifyRequest } from "@src/types/fastify";
 import { CreateOrUpdateAdminHubDto } from "../payloads/hub.payload";
 import { SalesEmailService } from "@src/modules/workspace/services/sales-email.service";
+import { ExtendTrialDto } from "../payloads/trial-extension.payload";
+import { AddPlanDto } from "../payloads/add-plan.payload";
+import { ChangePlanDto } from "../payloads/change-plan.payload";
 
 @Controller("api/admin")
 @ApiTags("admin hubs")
@@ -378,5 +382,129 @@ export class AdminHubsController {
 
       return res.status(statusCode).send(responseData);
     }
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles("admin")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Extend trial period for a hub" })
+  @ApiParam({
+    name: "hubId",
+    description: "Unique Hub ID",
+    example: "69ae736e7ef406283329e75d",
+  })
+  @ApiBody({
+    type: ExtendTrialDto,
+    description: "Trial extension request body",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Trial extended successfully",
+  })
+  @Post("hubs/:hubId/trial/extend")
+  async extendTrial(
+    @Param("hubId") hubId: string,
+    @Body() body: ExtendTrialDto,
+    @Req() request: any,
+
+    @Res() res: FastifyReply,
+  ) {
+    console.log("USER:", request.user);
+    const result = await this.hubsService.extendTrial(
+      hubId,
+      body.extensionDays,
+      body.reason,
+      body.notifyCustomer,
+    );
+
+    const response = new ApiResponseService(
+      "Trial extended successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles("admin")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Add a subscription plan to a hub" })
+  @ApiParam({
+    name: "hubId",
+    description: "Hub ID",
+    example: "69ae736e7ef406283329e75d",
+  })
+  @ApiBody({
+    type: AddPlanDto,
+    description: "Plan addition request body",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Plan added successfully",
+  })
+  @Post("hubs/:hubId/plans/add")
+  async addPlan(
+    @Param("hubId") hubId: string,
+    @Body() body: AddPlanDto,
+    @Req() request: any,
+    @Res() res: FastifyReply,
+  ) {
+    const result = await this.hubsService.addPlanToHub(
+      hubId,
+      body.planId,
+      body.effectiveDate,
+      body.billingCycle,
+      body.notes,
+    );
+
+    const response = new ApiResponseService(
+      "Plan added successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Change hub subscription plan (upgrade/downgrade)" })
+  @ApiParam({
+    name: "hubId",
+    description: "Hub ID",
+    example: "69ae736e7ef406283329e75d",
+  })
+  @ApiBody({
+    type: ChangePlanDto,
+    description: "Plan change request body",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Plan changed successfully",
+  })
+  @Put("hubs/:hubId/plan/change")
+  async changePlan(
+    @Param("hubId") hubId: string,
+    @Body() body: ChangePlanDto,
+    @Req() request: any,
+    @Res() res: FastifyReply,
+  ) {
+    const result = await this.hubsService.changeHubPlan(
+      hubId,
+      body.currentPlanId,
+      body.newPlanId,
+      body.changeType,
+      body.effectiveDate,
+      body.prorate,
+    );
+
+    const response = new ApiResponseService(
+      "Plan changed successfully",
+      HttpStatusCode.OK,
+      result,
+    );
+
+    return res.status(response.httpStatusCode).send(response);
   }
 }

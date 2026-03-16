@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { ObjectId } from "mongodb";
 
 import { AdminHubsRepository } from "../repositories/user-admin.hubs.repository";
@@ -6,6 +10,19 @@ import { AdminWorkspaceRepository } from "../repositories/user-admin.workspace.r
 import { TeamRole } from "@src/modules/common/enum/roles.enum";
 import { PlanName } from "@src/modules/common/enum/plan.enum";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
+import { StripeSubscriptionService } from "@src/modules/billing/services/stripe-subscription.service";
+import { BillingAuditService } from "@src/modules/billing/services/billing-audit.service";
+import {
+  PaymentEmailService,
+  PaymentEmailType,
+} from "@src/modules/billing/services/payment-email.service";
+import {
+  BillingActorType,
+  BillingSource,
+  PaymentProvider,
+} from "@src/modules/common/enum/billing.enum";
+import { ConfigService } from "@nestjs/config";
+import { HttpService } from "@nestjs/axios";
 
 interface SortOptions {
   sortBy: string;
@@ -18,6 +35,11 @@ export class AdminHubsService {
     private readonly teamsRepo: AdminHubsRepository,
     private readonly workspaceRepo: AdminWorkspaceRepository,
     private readonly userRepo: UserRepository,
+    private readonly stripeSubscriptionService: StripeSubscriptionService,
+    private readonly billingAuditService: BillingAuditService,
+    private readonly paymentEmailService: PaymentEmailService,
+    private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
   ) {}
 
   async getHubsForUser(userId: string) {
@@ -39,7 +61,7 @@ export class AdminHubsService {
         role: matchedUser?.role,
         users: team.users,
         workspaces: team.workspaces,
-        plan: team?.plan?.name
+        plan: team?.plan?.name,
       };
     });
   }
@@ -303,5 +325,423 @@ export class AdminHubsService {
     }
 
     return { success: true };
+  }
+
+  async extendTrial(
+    hubId: string,
+    extensionDays: number,
+    reason: string,
+    notifyCustomer?: boolean,
+  ) {
+    // Validate hub exists
+    const team = await this.teamsRepo.findHubById(hubId);
+
+    if (!team) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Validate trial status
+    if (team.billing?.in_trial !== true) {
+      throw new BadRequestException("Hub is not currently in trial");
+    }
+
+    // Validate extension limits
+    const MAX_TOTAL_TRIAL_DAYS = 180;
+
+    const currentTrialEnd = new Date(team.billing.current_period_end);
+
+    if (!currentTrialEnd) {
+      throw new BadRequestException("Trial end date not found");
+    }
+
+    // Calculate new trial end
+    const newTrialEnd = new Date(
+      currentTrialEnd.getTime() + extensionDays * 24 * 60 * 60 * 1000,
+    );
+
+    // Validate total trial duration
+    const trialStart = new Date(team.billing.current_period_start);
+
+    const maxAllowedTrialEnd = new Date(
+      trialStart.getTime() + MAX_TOTAL_TRIAL_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    if (newTrialEnd > maxAllowedTrialEnd) {
+      throw new BadRequestException(
+        `Trial cannot exceed ${MAX_TOTAL_TRIAL_DAYS} days from start`,
+      );
+    }
+
+    // Get Stripe subscription
+    const stripeProvider = team.billing?.paymentProviders?.find(
+      (p: any) => p.provider === PaymentProvider.STRIPE,
+    );
+
+    if (!stripeProvider?.subscriptionId) {
+      throw new BadRequestException("Stripe subscription not found for hub");
+    }
+
+    const subscriptionId = stripeProvider.subscriptionId;
+
+    if (!currentTrialEnd) {
+      throw new BadRequestException("Trial end date not found");
+    }
+
+    // Update Stripe if real subscription
+    if (!subscriptionId.startsWith("sub_test")) {
+      await this.stripeSubscriptionService["stripeService"].updateSubscription(
+        subscriptionId,
+        undefined,
+        {
+          hubId: hubId,
+          planName: team.plan?.name,
+          trial_end_date: newTrialEnd.toISOString(),
+          trialExtension: "true",
+          extensionDays: extensionDays.toString(),
+        },
+      );
+    }
+
+    // Update database billing
+    await this.teamsRepo.updateHubBillingPeriod(hubId, newTrialEnd);
+    console.log("ADMIN API updating billing to:", newTrialEnd);
+
+    // Record audit event
+    await this.billingAuditService.recordTrialStarted(
+      hubId,
+      team.plan?.name,
+      {
+        trialEndDate: newTrialEnd,
+        seats: team.billing?.seats || 1,
+      },
+      {
+        actor: {
+          type: BillingActorType.SYSTEM,
+          name: "Admin Trial Extension",
+        },
+        source: BillingSource.API_CALL,
+        reason,
+      },
+    );
+
+    // Optional email notification
+    if (notifyCustomer) {
+      try {
+        const emails = team.users?.map((u: any) => u.email) || [];
+
+        if (emails) {
+          await this.paymentEmailService.sendPaymentEmail(
+            PaymentEmailType.TRIAL_EXTENDED,
+            {
+              sendEmails: emails,
+              hubName: team.name,
+              planName: team.plan?.name,
+              billingPeriodStart: team.billing.current_period_start,
+              billingPeriodEnd: newTrialEnd,
+              totalSeats: team.billing?.seats || 1,
+            },
+          );
+        }
+      } catch (error) {
+        console.warn("Failed to send trial extension email", error);
+      }
+    }
+
+    // Return response
+    return {
+      hubId,
+      previousTrialEnd: currentTrialEnd,
+      newTrialEnd,
+      extensionDays,
+    };
+  }
+
+  async addPlanToHub(
+    hubId: string,
+    planId: string,
+    effectiveDate: string,
+    billingCycle: string,
+    notes?: string,
+  ) {
+    // Validate hub exists
+    const team = await this.teamsRepo.findHubById(hubId);
+
+    if (!team) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Validate plan exists
+    const plan = await this.teamsRepo.findPlanById(planId);
+
+    if (!plan) {
+      throw new BadRequestException("Plan not found or inactive");
+    }
+    //Prevent adding same plan again
+    const currentPlan = team.plan?.name;
+
+    if (currentPlan === plan.name) {
+      throw new BadRequestException(`Hub already has ${plan.name} plan`);
+    }
+
+    // Calculate proration
+    let proratedAmount = 0;
+
+    const billingStart = new Date(team.billing?.current_period_start);
+    const billingEnd = new Date(team.billing?.current_period_end);
+    const effective = new Date(effectiveDate);
+
+    const totalPeriod = billingEnd.getTime() - billingStart.getTime();
+
+    const remainingPeriod = billingEnd.getTime() - effective.getTime();
+
+    if (remainingPeriod > 0) {
+      const remainingRatio = remainingPeriod / totalPeriod;
+
+      const planPrice = plan.price || 0;
+
+      proratedAmount = Math.round(planPrice * remainingRatio);
+    }
+    // Get Stripe subscription
+    const stripeProvider = team.billing?.paymentProviders?.find(
+      (p: any) => p.provider === PaymentProvider.STRIPE,
+    );
+
+    const subscriptionId = stripeProvider?.subscriptionId;
+
+    // If no Stripe subscription (community/self-host hubs)
+    if (!subscriptionId) {
+      proratedAmount = 0;
+    }
+
+    // Update Stripe subscription with new plan
+    if (subscriptionId && !subscriptionId.startsWith("sub_test")) {
+      await this.stripeSubscriptionService["stripeService"].updateSubscription(
+        subscriptionId,
+        undefined,
+        {
+          hubId: hubId,
+          newPlan: plan.name,
+          billingCycle,
+          effectiveDate,
+          notes,
+        },
+      );
+    }
+
+    // Update hub plan in database
+    await this.teamsRepo.updateHubPlan(hubId, plan);
+
+    // Record billing audit
+    await this.billingAuditService.recordSubscriptionCreated(
+      hubId,
+      plan.name,
+      {
+        proratedAmount,
+        billingCycle,
+        effectiveDate,
+      },
+      {
+        actor: {
+          type: BillingActorType.SYSTEM,
+          name: "Admin Plan Addition",
+        },
+        source: BillingSource.API_CALL,
+        reason: notes || "Admin added plan",
+      },
+    );
+
+    // Send notification email
+    try {
+      const owner = team.users?.find((u: any) => u.role === "owner");
+
+      if (owner) {
+        await this.paymentEmailService.sendPaymentEmail(
+          PaymentEmailType.PLAN_ADDED,
+          {
+            ownerEmail: owner.email,
+            ownerName: owner.name,
+            hubName: team.name,
+            planName: plan.name,
+
+            price: plan.price || 0,
+            interval: billingCycle || "month",
+
+            upgradeDate: new Date(effectiveDate).toDateString(),
+
+            nextBillingDate: team.billing?.current_period_end
+              ? new Date(team.billing.current_period_end).toDateString()
+              : "",
+
+            features: [
+              `Up to ${plan.limits?.workspacesPerHub?.value || "multiple"} workspaces`,
+              "Unlimited collaborators",
+              "Private hubs",
+              "Unlimited collections",
+            ],
+          },
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to send plan addition email", error);
+    }
+
+    return {
+      hubId,
+      previousPlan: currentPlan,
+      newPlan: plan.name,
+      effectiveDate,
+      billingCycle,
+      proratedAmount,
+    };
+  }
+
+  async changeHubPlan(
+    hubId: string,
+    currentPlanId: string,
+    newPlanId: string,
+    changeType: string,
+    effectiveDate: string,
+    prorate: boolean,
+  ) {
+    // Validate hub
+    const team = await this.teamsRepo.findHubById(hubId);
+
+    if (!team) {
+      throw new NotFoundException("Hub not found");
+    }
+
+    // Fetch plans
+    const currentPlan = await this.teamsRepo.findPlanById(currentPlanId);
+    const newPlan = await this.teamsRepo.findPlanById(newPlanId);
+
+    if (!currentPlan || !newPlan) {
+      throw new BadRequestException("Invalid plan");
+    }
+
+    // Validate hub current plan
+    if (team.plan?.id.toString() !== currentPlanId) {
+      throw new BadRequestException(
+        "Hub does not currently have the specified plan",
+      );
+    }
+
+    // Determine plan hierarchy
+    const currentPlanTier = currentPlan.limits?.workspacesPerHub?.value || 0;
+
+    const newPlanTier = newPlan.limits?.workspacesPerHub?.value || 0;
+
+    if (changeType === "upgrade" && newPlanTier <= currentPlanTier) {
+      throw new BadRequestException(
+        "New plan must be higher than current plan for upgrade",
+      );
+    }
+
+    if (changeType === "downgrade" && newPlanTier >= currentPlanTier) {
+      throw new BadRequestException(
+        "New plan must be lower than current plan for downgrade",
+      );
+    }
+
+    let proratedAmount = 0;
+
+    if (prorate) {
+      const billingStart = new Date(team.billing?.current_period_start);
+      const billingEnd = new Date(team.billing?.current_period_end);
+      const effective = new Date(effectiveDate);
+
+      const totalPeriod = billingEnd.getTime() - billingStart.getTime();
+
+      const remainingPeriod = billingEnd.getTime() - effective.getTime();
+
+      if (remainingPeriod > 0) {
+        const ratio = remainingPeriod / totalPeriod;
+
+        const currentPrice = currentPlan.price || 0;
+        const newPrice = newPlan.price || 0;
+
+        proratedAmount = Math.round((newPrice - currentPrice) * ratio);
+      }
+    }
+
+    const stripeProvider = team.billing?.paymentProviders?.find(
+      (p: any) => p.provider === PaymentProvider.STRIPE,
+    );
+
+    const subscriptionId = stripeProvider?.subscriptionId;
+
+    if (subscriptionId && !subscriptionId.startsWith("sub_test")) {
+      await this.stripeSubscriptionService["stripeService"].updateSubscription(
+        subscriptionId,
+        undefined,
+        {
+          hubId,
+          newPlan: newPlan.name,
+          changeType,
+          proratedAmount,
+          effectiveDate,
+        },
+      );
+    }
+
+    await this.teamsRepo.updateHubPlan(hubId, newPlan);
+
+    await this.billingAuditService.recordSubscriptionCreated(
+      hubId,
+      newPlan.name,
+      {
+        changeType,
+        proratedAmount,
+        effectiveDate,
+      },
+      {
+        actor: {
+          type: BillingActorType.SYSTEM,
+          name: "Admin Plan Change",
+        },
+        source: BillingSource.API_CALL,
+        reason: `Admin ${changeType}`,
+      },
+    );
+    try {
+      const owner = team.users?.find((u: any) => u.role === "owner");
+
+      if (owner) {
+        await this.paymentEmailService.sendPaymentEmail(
+          PaymentEmailType.PLAN_ADDED,
+          {
+            ownerEmail: owner.email,
+            ownerName: owner.name,
+            hubName: team.name,
+            planName: newPlan.name,
+            price: newPlan.price || 0,
+            interval: "month",
+
+            upgradeDate: new Date(effectiveDate).toDateString(),
+
+            nextBillingDate: team.billing?.current_period_end
+              ? new Date(team.billing.current_period_end).toDateString()
+              : "",
+
+            features: [
+              `Up to ${newPlan.limits?.workspacesPerHub?.value || "multiple"} workspaces`,
+              "Unlimited collaborators",
+              "Private hubs",
+              "Unlimited collections",
+            ],
+          },
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to send plan change email", error);
+    }
+
+    return {
+      hubId,
+      previousPlan: currentPlan.name,
+      newPlan: newPlan.name,
+      changeType,
+      effectiveDate,
+      proratedAmount,
+    };
   }
 }
