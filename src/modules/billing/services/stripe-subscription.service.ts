@@ -671,7 +671,21 @@ export class StripeSubscriptionService {
       ),
     };
 
-    await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
+    // Get current team plan
+    const existingTeam = await this.stripeSubscriptionRepo.findTeamById(
+      metadata.hubId,
+    );
+
+    // Skip webhook overwrite ONLY if admin changed plan recently
+    if (existingTeam?.billing?.updatedBy === BillingSource.API_CALL) {
+      console.log("Skipping webhook overwrite due to admin plan change");
+    } else {
+      await this.updateTeamPlanWithBilling(
+        metadata.hubId,
+        plan,
+        billingDetails,
+      );
+    }
     if (!isDowngrading) {
       const teamIdObject = new ObjectId(metadata.hubId);
       const updateTeam =
