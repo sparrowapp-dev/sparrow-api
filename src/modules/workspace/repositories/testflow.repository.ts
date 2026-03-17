@@ -612,4 +612,27 @@ export class TestflowRepository {
       );
     return { datasets: result.value?.datasets || null };
   }
+
+  async getTestflowsExecutionCount(start: Date, end: Date): Promise<number> {
+    const testflows = await this.db
+      .collection(Collections.TESTFLOW)
+      .find({})
+      .toArray();
+
+    let count = 0;
+
+    for (const testflow of testflows) {
+      for (const schedule of testflow.schedules || []) {
+        for (const run of schedule.schedularRunHistory || []) {
+          const runDate = new Date(run.createdAt);
+
+          if (runDate >= start && runDate <= end) {
+            count += (run.successRequests || 0) + (run.failedRequests || 0);
+          }
+        }
+      }
+    }
+
+    return count;
+  }
 }
