@@ -612,4 +612,13 @@ export class TestflowRepository {
       );
     return { datasets: result.value?.datasets || null };
   }
+
+  async getTestflowsExecutionCount(start: Date, end: Date): Promise<number> {
+    return this.db.collection(Collections.TESTFLOW).countDocuments({
+      $or: [
+        { createdAt: { $gte: start, $lte: end } },
+        { updatedAt: { $gte: start, $lte: end } },
+      ],
+    });
+  }
 }

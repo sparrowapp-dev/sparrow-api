@@ -71,4 +71,15 @@ export class UserInvitesRepository {
       .deleteOne({ email });
     return result;
   }
+
+  async getPendingInvites(start: Date, end: Date, email: string) {
+    return this.db
+      .collection(Collections.USERINVITES)
+      .find({
+        createdAt: { $gte: start, $lte: end },
+        email: email,
+      })
+      .limit(5)
+      .toArray();
+  }
 }

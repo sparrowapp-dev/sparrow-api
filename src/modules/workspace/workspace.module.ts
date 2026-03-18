@@ -58,6 +58,7 @@ import { TestflowService } from "./services/testflow.service";
 import { TeamUserService } from "../identity/services/team-user.service";
 import { SalesEmailService } from "./services/sales-email.service";
 import { PricingService } from "./services/pricing.repository";
+import { WeeklyDigestService } from "./services/weekly-digest.service";
 
 // ---- Gateway
 import {
@@ -83,6 +84,7 @@ import { TestflowSchedulerService } from "./services/testflow-schedular.service"
 import { TestflowRunService } from "./services/testflow-run.service";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TestflowDataSetService } from "./services/testflow-dataset.service";
+import { WeeklyDigestScheduler } from "./schedulers/weekly-digest.scheduler";
 
 /**
  * Workspace Module provides all necessary services, handlers, repositories,
@@ -147,6 +149,8 @@ import { TestflowDataSetService } from "./services/testflow-dataset.service";
     PricingService,
     PricingRepository,
     AiConsumptionScheduler,
+    WeeklyDigestScheduler,
+    WeeklyDigestService,
   ],
   exports: [
     CollectionService,

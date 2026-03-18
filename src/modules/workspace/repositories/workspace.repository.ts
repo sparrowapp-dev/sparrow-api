@@ -458,4 +458,25 @@ export class WorkspaceRepository {
 
     return { workspaces, total };
   }
+
+  async getNewWorkspacesCount(start: Date, end: Date): Promise<number> {
+    return await this.db
+      .collection<Workspace>(Collections.WORKSPACE)
+      .countDocuments({
+        createdAt: { $gte: start, $lte: end },
+        isRestricted: { $ne: true },
+        isFreezed: { $ne: true },
+      });
+  }
+
+  async getActiveWorkspacesCount(start: Date, end: Date): Promise<number> {
+    return await this.db.collection(Collections.WORKSPACE).countDocuments({
+      $or: [
+        { createdAt: { $gte: start, $lte: end } },
+        { updatedAt: { $gte: start, $lte: end } },
+      ],
+      isRestricted: { $ne: true },
+      isFreezed: { $ne: true },
+    });
+  }
 }

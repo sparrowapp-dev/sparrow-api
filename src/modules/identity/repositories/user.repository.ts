@@ -3,7 +3,11 @@ import { Db, InsertOneResult, ModifyResult, ObjectId, WithId } from "mongodb";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { createHmac } from "crypto";
 import { RegisterPayload } from "../payloads/register.payload";
-import { UpdateUserDto, UserDto, UserTourGuideDto } from "../payloads/user.payload";
+import {
+  UpdateUserDto,
+  UserDto,
+  UserTourGuideDto,
+} from "../payloads/user.payload";
 import {
   EarlyAccessEmail,
   EmailServiceProvider,
@@ -467,5 +471,28 @@ export class UserRepository {
       console.error("Error adding applied promo code to user:", error);
       return false;
     }
+  }
+
+  async getAllUsers(): Promise<WithId<User>[]> {
+    return await this.db
+      .collection<User>(Collections.USER)
+      .find(
+        { isEmailVerified: true }, // only verified users
+        { projection: { password: 0 } },
+      )
+      .toArray();
+  }
+
+  async disableWeeklyDigest(userId: string) {
+    return this.db
+      .collection(Collections.USER)
+      .updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { isWeeklyDigestEnabled: false } },
+      );
+  }
+
+  async updateUserByQuery(filter: any, update: any) {
+    return this.db.collection(Collections.USER).updateOne(filter, update);
   }
 }

@@ -52,4 +52,35 @@ export class UpdatesRepository {
       .toArray();
     return resposne;
   }
+
+  async getWeeklyActivity(start: Date, end: Date) {
+    return this.db
+      .collection(Collections.UPDATES)
+      .aggregate([
+        {
+          $match: {
+            createdAt: { $gte: start, $lte: end },
+          },
+        },
+        {
+          $group: {
+            _id: { $dayOfWeek: "$createdAt" },
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+  }
+
+  async getUpdatesForEmail(start: Date, end: Date, userId: string) {
+    return this.db
+      .collection(Collections.UPDATES)
+      .find({
+        createdAt: { $gte: start, $lte: end },
+        createdBy: userId,
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .toArray();
+  }
 }
