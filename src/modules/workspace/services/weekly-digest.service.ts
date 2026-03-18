@@ -77,6 +77,7 @@ export class WeeklyDigestService {
     const transporter = this.emailService.createTransporter();
 
     for (const user of users) {
+      if (user.isWeeklyDigestEnabled === false) continue;
       const activityData = await this.updatesRepository.getWeeklyActivity(
         start,
         end,
@@ -114,11 +115,18 @@ export class WeeklyDigestService {
         (inv) => `Invitation sent to ${inv.email}`,
       );
 
+      const unsubscribeLink = `${this.configService.get("app.url")}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
+
       const mailOptions = {
         from: this.configService.get("app.senderEmail"),
         to: user.email,
         template: "weeklyDigestEmail",
         subject: "Your Weekly Digest 📊",
+
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeLink}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
         context: {
           userName: user.name || user.email,
 
@@ -141,6 +149,7 @@ export class WeeklyDigestService {
           ctaLink: "https://sparrowapp.dev",
           collaborationUpdates,
           pendingActions,
+          unsubscribeLink,
         },
       };
 

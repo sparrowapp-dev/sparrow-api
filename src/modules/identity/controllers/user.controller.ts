@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   UseGuards,
+  Query,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -613,5 +614,30 @@ export class UserController {
       HttpStatusCode.OK,
       result,
     );
+  }
+
+  @Get("unsubscribe-weekly-digest")
+  @ApiOperation({
+    summary: "Unsubscribe from weekly digest emails",
+  })
+  async unsubscribeWeeklyDigest(
+    @Query("userId") userId: string,
+    @Res() res: FastifyReply,
+  ) {
+    await this.userService.disableWeeklyDigest(userId);
+
+    return res.header("Content-Type", "text/html; charset=utf-8").send(`
+      <div style="
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin-top: 100px;
+        color: #111827;
+      ">
+        <h2>✅ You have been unsubscribed</h2>
+        <p style="color:#6b7280;">
+          You will no longer receive weekly digest emails.
+        </p>
+      </div>
+    `);
   }
 }

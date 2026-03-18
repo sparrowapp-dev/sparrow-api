@@ -482,4 +482,17 @@ export class UserRepository {
       )
       .toArray();
   }
+
+  async disableWeeklyDigest(userId: string) {
+    return this.db
+      .collection(Collections.USER)
+      .updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { isWeeklyDigestEnabled: false } },
+      );
+  }
+
+  async updateUserByQuery(filter: any, update: any) {
+    return this.db.collection(Collections.USER).updateOne(filter, update);
+  }
 }

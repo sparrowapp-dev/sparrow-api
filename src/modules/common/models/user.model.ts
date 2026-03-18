@@ -166,6 +166,10 @@ export class User {
   @ValidateNested()
   @Type(() => TourGuideDto)
   tourGuide?: TourGuideDto;
+
+  @IsBoolean()
+  @IsOptional()
+  isWeeklyDigestEnabled?: boolean;
 }
 
 export class UserDto {
