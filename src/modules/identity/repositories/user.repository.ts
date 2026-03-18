@@ -515,4 +515,42 @@ export class UserRepository {
   async updateUserByQuery(filter: any, update: any) {
     return this.db.collection(Collections.USER).updateOne(filter, update);
   }
+
+  /**
+   * Fetch users for weekly digest in batches using cursor-based pagination.
+   * @param batchSize Number of users to fetch per batch
+   * @param lastCursor The _id of the last user from the previous batch (for cursor-based pagination)
+   * @param qaEmail Optional email for QA testing (to fetch a single user)
+   * @returns Array of users for the current batch
+   */
+  async getUsersBatchForWeeklyDigest(
+    batchSize: number,
+    lastCursor?: ObjectId,
+    qaEmail?: string,
+  ): Promise<WithId<User>[]> {
+    const query: any = {
+      isEmailVerified: true,
+      isWeeklyDigestEnabled: { $ne: false },
+      ...(qaEmail ? { email: qaEmail } : {}),
+    };
+
+    // Cursor-based pagination: fetch users with _id greater than lastCursor
+    if (lastCursor) {
+      query._id = { $gt: lastCursor };
+    }
+
+    return await this.db
+      .collection<User>(Collections.USER)
+      .find(query, {
+        projection: {
+          _id: 1,
+          email: 1,
+          name: 1,
+          isWeeklyDigestEnabled: 1,
+        },
+      })
+      .sort({ _id: 1 })
+      .limit(batchSize)
+      .toArray();
+  }
 }

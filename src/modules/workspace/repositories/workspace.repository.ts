@@ -479,4 +479,179 @@ export class WorkspaceRepository {
       isFreezed: { $ne: true },
     });
   }
+
+  /**
+   * Get aggregated workspace metrics for a batch of users.
+   * Uses MongoDB aggregation to compute per-user metrics efficiently.
+   * @param userIds Array of user IDs to fetch metrics for
+   * @param start Start date for activity range
+   * @param end End date for activity range
+   * @returns Map of userId to metrics object
+   */
+  async getWorkspaceMetricsForUserBatch(
+    userIds: string[],
+    start: Date,
+    end: Date,
+  ): Promise<
+    Map<
+      string,
+      {
+        activeWorkspaces: number;
+        newWorkspaces: number;
+        collectionsCount: number;
+        apisCount: number;
+      }
+    >
+  > {
+    const results = await this.db
+      .collection(Collections.WORKSPACE)
+      .aggregate([
+        // Match workspaces where user is a member (in users array)
+        {
+          $match: {
+            "users.id": { $in: userIds },
+            isRestricted: { $ne: true },
+            isFreezed: { $ne: true },
+          },
+        },
+        // Unwind users to get individual user-workspace pairs
+        {
+          $unwind: "$users",
+        },
+        // Filter only the users we care about
+        {
+          $match: {
+            "users.id": { $in: userIds },
+          },
+        },
+        // Lookup collections for each workspace
+        {
+          $lookup: {
+            from: Collections.COLLECTION,
+            let: { collectionIds: "$collection" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $in: [
+                      "$_id",
+                      {
+                        $ifNull: [
+                          {
+                            $map: {
+                              input: "$$collectionIds",
+                              as: "c",
+                              in: "$$c.id",
+                            },
+                          },
+                          [],
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+              // Count non-folder and non-deleted items (APIs)
+              {
+                $project: {
+                  apisCount: {
+                    $size: {
+                      $filter: {
+                        input: { $ifNull: ["$items", []] },
+                        as: "item",
+                        cond: {
+                          $and: [
+                            { $ne: ["$$item.type", "FOLDER"] },
+                            { $ne: ["$$item.isDeleted", true] },
+                          ],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+            as: "collectionsData",
+          },
+        },
+        // Group by userId and compute metrics
+        {
+          $group: {
+            _id: "$users.id",
+            activeWorkspaces: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      {
+                        $and: [
+                          { $gte: ["$createdAt", start] },
+                          { $lte: ["$createdAt", end] },
+                        ],
+                      },
+                      {
+                        $and: [
+                          { $gte: ["$updatedAt", start] },
+                          { $lte: ["$updatedAt", end] },
+                        ],
+                      },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            newWorkspaces: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ["$createdAt", start] },
+                      { $lte: ["$createdAt", end] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            collectionsCount: {
+              $sum: { $size: { $ifNull: ["$collection", []] } },
+            },
+            apisCount: {
+              $sum: {
+                $reduce: {
+                  input: "$collectionsData",
+                  initialValue: 0,
+                  in: { $add: ["$$value", "$$this.apisCount"] },
+                },
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    const metricsMap = new Map<
+      string,
+      {
+        activeWorkspaces: number;
+        newWorkspaces: number;
+        collectionsCount: number;
+        apisCount: number;
+      }
+    >();
+
+    for (const result of results) {
+      metricsMap.set(result._id, {
+        activeWorkspaces: result.activeWorkspaces || 0,
+        newWorkspaces: result.newWorkspaces || 0,
+        collectionsCount: result.collectionsCount || 0,
+        apisCount: result.apisCount || 0,
+      });
+    }
+
+    return metricsMap;
+  }
 }
