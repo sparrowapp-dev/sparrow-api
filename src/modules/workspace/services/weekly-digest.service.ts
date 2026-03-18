@@ -30,10 +30,10 @@ export class WeeklyDigestService {
     // const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
 
     const end = new Date();
-    const start = new Date(end.getTime() - 30 * 60 * 1000); // last 30 mins
+    const start = new Date(end.getTime() - 5 * 60 * 1000); // last 30 mins
 
     const prevEnd = new Date(start);
-    const prevStart = new Date(prevEnd.getTime() - 30 * 60 * 1000);
+    const prevStart = new Date(prevEnd.getTime() - 5 * 60 * 1000);
 
     // Fetch users
     const users = await this.userRepository.getAllUsers();
