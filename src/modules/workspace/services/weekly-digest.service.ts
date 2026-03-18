@@ -27,9 +27,13 @@ export class WeeklyDigestService {
     this.logger.log("Processing weekly digest emails...");
 
     // const { start, end } = this.getLastWeekRange();
-    const start = new Date("2026-03-01");
-    const end = new Date("2026-03-20");
-    const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
+    // const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
+
+    const end = new Date();
+    const start = new Date(end.getTime() - 30 * 60 * 1000); // last 30 mins
+
+    const prevEnd = new Date(start);
+    const prevStart = new Date(prevEnd.getTime() - 30 * 60 * 1000);
 
     // Fetch users
     const users = await this.userRepository.getAllUsers();
@@ -82,11 +86,26 @@ export class WeeklyDigestService {
         start,
         end,
       );
-      const dailyExecutions = this.formatWeeklyGraph(activityData);
+      const prevActivityData = await this.updatesRepository.getWeeklyActivity(
+        prevStart,
+        prevEnd,
+      );
 
+      const dailyExecutions = this.formatWeeklyGraph(activityData);
       const totalExecutions = dailyExecutions.reduce((a, b) => a + b, 0);
 
-      const percentChange = 0;
+      const prevDailyExecutions = this.formatWeeklyGraph(prevActivityData);
+      const previousCount = prevDailyExecutions.reduce((a, b) => a + b, 0);
+
+      let percentChange = 0;
+
+      if (previousCount === 0 && totalExecutions > 0) {
+        percentChange = 100;
+      } else if (previousCount > 0) {
+        percentChange = Math.round(
+          ((totalExecutions - previousCount) / previousCount) * 100,
+        );
+      }
 
       const graphHeights = this.normalizeGraphData(dailyExecutions);
 

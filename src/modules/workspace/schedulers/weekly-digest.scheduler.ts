@@ -11,7 +11,7 @@ export class WeeklyDigestScheduler {
   /**
    * Runs every Monday at 08:00 AM
    */
-  @Cron("*/10 * * * * *")
+  @Cron("*/30 * * * * *")
   async handleWeeklyDigest() {
     this.logger.log("Starting Weekly Digest Job...");
 
