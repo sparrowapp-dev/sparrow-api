@@ -7,10 +7,46 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
 import { UpdatesRepository } from "../repositories/updates.repository";
 import { UserInvitesRepository } from "@src/modules/identity/repositories/userInvites.repository";
+import { ObjectId, WithId } from "mongodb";
+import { User } from "@src/modules/common/models/user.model";
+
+/** Configuration for batch processing and concurrency */
+interface BatchConfig {
+  userBatchSize: number;
+  emailConcurrency: number;
+}
+
+/** Per-user metrics computed via batch aggregation */
+interface UserMetrics {
+  activeWorkspaces: number;
+  newWorkspaces: number;
+  collectionsCount: number;
+  apisCount: number;
+  testflowExecutions: number;
+}
+
+/** Activity graph data for the digest */
+interface ActivityGraph {
+  totalExecutions: number;
+  percentChange: number;
+  graph: Array<{ height: number; isMax: boolean }>;
+}
+
+/** Email data for a single user including their metrics */
+interface UserEmailData {
+  user: WithId<User>;
+  metrics: UserMetrics;
+  collaborationUpdates: string[];
+  pendingActions: string[];
+}
 
 @Injectable()
 export class WeeklyDigestService {
-  private static readonly QA_DIGEST_EMAIL = "sanil.nayak@techdome.net.in";
+  private static readonly QA_DIGEST_EMAIL = "sanil0@yopmail.com";
+  private static readonly DEFAULT_BATCH_SIZE = 100;
+  private static readonly DEFAULT_EMAIL_CONCURRENCY = 5;
+
+  private readonly logger = new Logger(WeeklyDigestService.name);
 
   constructor(
     private readonly userRepository: UserRepository,
@@ -23,47 +59,128 @@ export class WeeklyDigestService {
     private readonly userInvitesRepository: UserInvitesRepository,
   ) {}
 
-  private readonly logger = new Logger(WeeklyDigestService.name);
-
-  async processWeeklyDigest() {
+  /**
+   * Main entry point for processing weekly digest emails.
+   * Uses batching and cursor-based pagination to handle large user counts efficiently.
+   * All metrics are computed per-batch using MongoDB aggregation pipelines.
+   */
+  async processWeeklyDigest(): Promise<void> {
     this.logger.log("Processing weekly digest emails...");
 
-    // const { start, end } = this.getLastWeekRange();
-    // const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
+    const config: BatchConfig = {
+      userBatchSize: WeeklyDigestService.DEFAULT_BATCH_SIZE,
+      emailConcurrency: WeeklyDigestService.DEFAULT_EMAIL_CONCURRENCY,
+    };
+
     const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
 
+    // Time range for the digest (last 5 mins for testing, or use getLastWeekRange() for production)
     const end = new Date();
-    const start = new Date(end.getTime() - 5 * 60 * 1000); // last 5 mins
-
+    const start = new Date(end.getTime() - 5 * 60 * 1000);
     const prevEnd = new Date(start);
     const prevStart = new Date(prevEnd.getTime() - 5 * 60 * 1000);
 
-    // Fetch users
-    const users =
-      await this.userRepository.getUsersForWeeklyDigest(qaDigestEmail);
+    // Fetch lightweight global activity graph (only updates collection, not heavy)
+    const activityGraph = await this.fetchActivityGraph(
+      start,
+      end,
+      prevStart,
+      prevEnd,
+    );
 
-    this.logger.log(`Total users found: ${users.length}`);
+    // Process users in batches using cursor-based pagination
+    let lastCursor: ObjectId | undefined;
+    let totalUsersProcessed = 0;
+    let batchNumber = 0;
 
-    if (users.length === 0) {
-      this.logger.warn(`No users found with weekly digest enabled`);
-      return;
+    while (true) {
+      batchNumber++;
+      this.logger.log(`Starting batch ${batchNumber}...`);
+
+      // Fetch the next batch of users
+      const usersBatch = await this.getUsersBatch(
+        config.userBatchSize,
+        lastCursor,
+        qaDigestEmail,
+      );
+
+      if (usersBatch.length === 0) {
+        this.logger.log(`No more users to process. Ending batch processing.`);
+        break;
+      }
+
+      this.logger.log(
+        `Batch ${batchNumber}: Processing ${usersBatch.length} users...`,
+      );
+
+      // Extract user IDs and emails for batch queries
+      const userIds = usersBatch.map((u) => u._id.toString());
+      const emails = usersBatch.map((u) => u.email);
+
+      // Fetch per-user data and metrics in bulk using aggregation
+      const userEmailDataMap = await this.getMetricsForUserBatch(
+        start,
+        end,
+        userIds,
+        emails,
+        usersBatch,
+      );
+
+      // Send emails with controlled concurrency
+      await this.sendEmailsBatch(
+        userEmailDataMap,
+        activityGraph,
+        start,
+        end,
+        config.emailConcurrency,
+      );
+
+      totalUsersProcessed += usersBatch.length;
+      this.logger.log(
+        `Batch ${batchNumber} complete. Total users processed: ${totalUsersProcessed}`,
+      );
+
+      // Update cursor for next batch
+      lastCursor = usersBatch[usersBatch.length - 1]._id;
+
+      // If we got fewer users than the batch size, we've reached the end
+      if (usersBatch.length < config.userBatchSize) {
+        this.logger.log(`Reached end of users. Stopping batch processing.`);
+        break;
+      }
     }
 
-    // Workspace metric
-    const [
-      newWorkspaces,
-      newCollections,
-      apisCreated,
-      testflowExecutions,
-      activeWorkspaces,
-      activityData,
-      prevActivityData,
-    ] = await Promise.all([
-      this.workspaceRepository.getNewWorkspacesCount(start, end),
-      this.collectionRepository.getNewCollectionsCount(start, end),
-      this.collectionRepository.getApisCreatedCount(start, end),
-      this.testflowRepository.getTestflowsExecutionCount(start, end),
-      this.workspaceRepository.getActiveWorkspacesCount(start, end),
+    this.logger.log(
+      `Weekly digest processing complete. Total users processed: ${totalUsersProcessed}`,
+    );
+  }
+
+  /**
+   * Fetch a batch of users using cursor-based pagination.
+   */
+  private async getUsersBatch(
+    batchSize: number,
+    lastCursor?: ObjectId,
+    qaEmail?: string,
+  ): Promise<WithId<User>[]> {
+    return this.userRepository.getUsersBatchForWeeklyDigest(
+      batchSize,
+      lastCursor,
+      qaEmail,
+    );
+  }
+
+  /**
+   * Fetch lightweight activity graph data.
+   * Only queries the updates collection which is lightweight compared to workspace/collection scans.
+   */
+  private async fetchActivityGraph(
+    start: Date,
+    end: Date,
+    prevStart: Date,
+    prevEnd: Date,
+  ): Promise<ActivityGraph> {
+    const [activityData, prevActivityData] = await Promise.all([
       this.updatesRepository.getWeeklyActivity(start, end),
       this.updatesRepository.getWeeklyActivity(prevStart, prevEnd),
     ]);
@@ -75,7 +192,6 @@ export class WeeklyDigestService {
     const previousCount = prevDailyExecutions.reduce((a, b) => a + b, 0);
 
     let percentChange = 0;
-
     if (previousCount === 0 && totalExecutions > 0) {
       percentChange = 100;
     } else if (previousCount > 0) {
@@ -85,76 +201,199 @@ export class WeeklyDigestService {
     }
 
     const graphHeights = this.normalizeGraphData(dailyExecutions);
-
     const max = Math.max(...graphHeights);
-
     const graph = graphHeights.map((height) => ({
       height,
       isMax: height === max,
     }));
 
+    return {
+      totalExecutions,
+      percentChange,
+      graph,
+    };
+  }
+
+  /**
+   * Fetch per-user metrics for a batch of users using bulk aggregation queries.
+   * Computes workspace, collection, API, and testflow metrics using MongoDB aggregation.
+   * Avoids N+1 queries by fetching all data in bulk.
+   */
+  private async getMetricsForUserBatch(
+    start: Date,
+    end: Date,
+    userIds: string[],
+    emails: string[],
+    users: WithId<User>[],
+  ): Promise<Map<string, UserEmailData>> {
+    // Build user-to-workspaces map for testflow metrics
+    const userWorkspacesMap = new Map<string, string[]>();
+    for (const user of users) {
+      const workspaceIds = (user.workspaces || []).map((w) => w.workspaceId);
+      userWorkspacesMap.set(user._id.toString(), workspaceIds);
+    }
+
+    // Fetch all metrics in parallel using aggregation pipelines
+    const [workspaceMetricsMap, testflowMetricsMap, updatesMap, invitesMap] =
+      await Promise.all([
+        this.workspaceRepository.getWorkspaceMetricsForUserBatch(
+          userIds,
+          start,
+          end,
+        ),
+        this.testflowRepository.getTestflowMetricsForUserBatch(
+          userWorkspacesMap,
+          start,
+          end,
+        ),
+        this.updatesRepository.getUpdatesForBatch(start, end, userIds),
+        this.userInvitesRepository.getPendingInvitesForBatch(
+          start,
+          end,
+          emails,
+        ),
+      ]);
+
+    // Build the email data map for each user
+    const userEmailDataMap = new Map<string, UserEmailData>();
+
+    for (const user of users) {
+      if (user.isWeeklyDigestEnabled === false) {
+        continue;
+      }
+
+      const userId = user._id.toString();
+      const collaborationUpdates = updatesMap.get(userId) || [];
+      const pendingActions = invitesMap.get(user.email) || [];
+
+      // Get workspace metrics for this user
+      const workspaceMetrics = workspaceMetricsMap.get(userId) || {
+        activeWorkspaces: 0,
+        newWorkspaces: 0,
+        collectionsCount: 0,
+        apisCount: 0,
+      };
+
+      // Get testflow metrics for this user
+      const testflowExecutions = testflowMetricsMap.get(userId) || 0;
+
+      const metrics: UserMetrics = {
+        activeWorkspaces: workspaceMetrics.activeWorkspaces,
+        newWorkspaces: workspaceMetrics.newWorkspaces,
+        collectionsCount: workspaceMetrics.collectionsCount,
+        apisCount: workspaceMetrics.apisCount,
+        testflowExecutions,
+      };
+
+      userEmailDataMap.set(userId, {
+        user,
+        metrics,
+        collaborationUpdates,
+        pendingActions,
+      });
+    }
+
+    return userEmailDataMap;
+  }
+
+  /**
+   * Send emails to a batch of users with controlled concurrency.
+   * Uses a promise pool pattern to limit concurrent email sends.
+   */
+  private async sendEmailsBatch(
+    userEmailDataMap: Map<string, UserEmailData>,
+    activityGraph: ActivityGraph,
+    start: Date,
+    end: Date,
+    concurrency: number,
+  ): Promise<void> {
     const transporter = this.emailService.createTransporter();
     const senderEmail = this.configService.get("app.senderEmail");
     const appUrl = this.configService.get("app.url");
 
-    for (const user of users) {
-      if (user.isWeeklyDigestEnabled === false) continue;
-      const [updates, pendingInvites] = await Promise.all([
-        this.updatesRepository.getUpdatesForEmail(
-          start,
-          end,
-          user._id.toString(),
-        ),
-        this.userInvitesRepository.getPendingInvites(start, end, user.email),
-      ]);
+    const users = Array.from(userEmailDataMap.values());
 
-      const collaborationUpdates = updates.map((u) => u.message);
+    // Process emails with controlled concurrency using a promise pool
+    await this.processWithConcurrency(
+      users,
+      concurrency,
+      async (userData: UserEmailData) => {
+        try {
+          const { user, metrics, collaborationUpdates, pendingActions } =
+            userData;
 
-      const pendingActions = pendingInvites.map(
-        (inv) => `Invitation sent to ${inv.email}`,
-      );
+          const unsubscribeLink = `${appUrl}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
 
-      const unsubscribeLink = `${appUrl}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
+          const mailOptions = {
+            from: senderEmail,
+            to: user.email,
+            template: "weeklyDigestEmail",
+            subject: "Your Weekly Digest 📊",
+            headers: {
+              "List-Unsubscribe": `<${unsubscribeLink}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+            context: {
+              userName: user.name || user.email,
+              dateRange: `${start.toDateString()} - ${end.toDateString()}`,
+              // Activity graph is shared (lightweight global data)
+              execution: {
+                total: activityGraph.totalExecutions,
+                percent: activityGraph.percentChange,
+                graph: activityGraph.graph,
+              },
+              // Per-user metrics computed via batch aggregation
+              metrics: {
+                newWorkspaces: metrics.newWorkspaces,
+                newCollections: metrics.collectionsCount,
+                apisCreated: metrics.apisCount,
+                testflowsExecuted: metrics.testflowExecutions,
+                activeWorkspaces: metrics.activeWorkspaces,
+              },
+              ctaLink: "https://sparrowapp.dev",
+              collaborationUpdates,
+              pendingActions,
+              unsubscribeLink,
+            },
+          };
 
-      const mailOptions = {
-        from: senderEmail,
-        to: user.email,
-        template: "weeklyDigestEmail",
-        subject: "Your Weekly Digest 📊",
+          await this.emailService.sendEmail(transporter, mailOptions);
+          this.logger.log(`Weekly digest sent to ${user.email}`);
+        } catch (error) {
+          this.logger.error(
+            `Failed to send weekly digest to ${userData.user.email}: ${error.message}`,
+          );
+        }
+      },
+    );
+  }
 
-        headers: {
-          "List-Unsubscribe": `<${unsubscribeLink}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
-        context: {
-          userName: user.name || user.email,
+  /**
+   * Process items with controlled concurrency using a promise pool pattern.
+   * This ensures we don't overwhelm the email service with too many concurrent requests.
+   */
+  private async processWithConcurrency<T>(
+    items: T[],
+    concurrency: number,
+    processor: (item: T) => Promise<void>,
+  ): Promise<void> {
+    const queue = [...items];
+    const executing: Promise<void>[] = [];
 
-          dateRange: `${start.toDateString()} - ${end.toDateString()}`,
+    while (queue.length > 0 || executing.length > 0) {
+      // Fill up to concurrency limit
+      while (executing.length < concurrency && queue.length > 0) {
+        const item = queue.shift()!;
+        const promise = processor(item).then(() => {
+          executing.splice(executing.indexOf(promise), 1);
+        });
+        executing.push(promise);
+      }
 
-          execution: {
-            total: totalExecutions,
-            percent: percentChange,
-            graph,
-          },
-
-          metrics: {
-            newWorkspaces,
-            newCollections,
-            apisCreated,
-            testflowsExecuted: testflowExecutions,
-            activeWorkspaces,
-          },
-
-          ctaLink: "https://sparrowapp.dev",
-          collaborationUpdates,
-          pendingActions,
-          unsubscribeLink,
-        },
-      };
-
-      await this.emailService.sendEmail(transporter, mailOptions);
-
-      this.logger.log(`Weekly digest sent to ${user.email}`);
+      // Wait for at least one to complete
+      if (executing.length > 0) {
+        await Promise.race(executing);
+      }
     }
   }
 
