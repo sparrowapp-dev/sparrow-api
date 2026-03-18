@@ -9,9 +9,12 @@ export class WeeklyDigestScheduler {
   constructor(private readonly weeklyDigestService: WeeklyDigestService) {}
 
   /**
-   * Runs every Monday at 08:00 AM
+   * Runs every 5 minutes
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_5_MINUTES, {
+    name: "weekly-digest",
+    waitForCompletion: true,
+  })
   async handleWeeklyDigest() {
     this.logger.log("Starting Weekly Digest Job...");
 

@@ -2117,27 +2117,25 @@ export class CollectionRepository {
 
   // APIs Created Count
   async getApisCreatedCount(start: Date, end: Date): Promise<number> {
-    const collections = await this.db
+    const [result] = await this.db
       .collection<Collection>(Collections.COLLECTION)
-      .find({})
+      .aggregate<{ count: number }>([
+        {
+          $unwind: "$items",
+        },
+        {
+          $match: {
+            "items.type": { $ne: "FOLDER" },
+            "items.isDeleted": { $ne: true },
+            "items.createdAt": { $gte: start, $lte: end },
+          },
+        },
+        {
+          $count: "count",
+        },
+      ])
       .toArray();
 
-    let count = 0;
-
-    for (const col of collections) {
-      for (const item of col.items || []) {
-        if (
-          item.type !== "FOLDER" &&
-          !item.isDeleted &&
-          item.createdAt &&
-          new Date(item.createdAt) >= start &&
-          new Date(item.createdAt) <= end
-        ) {
-          count++;
-        }
-      }
-    }
-
-    return count;
+    return result?.count ?? 0;
   }
 }
