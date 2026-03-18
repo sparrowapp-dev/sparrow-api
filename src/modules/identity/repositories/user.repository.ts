@@ -483,6 +483,26 @@ export class UserRepository {
       .toArray();
   }
 
+  async getUsersForWeeklyDigest(email?: string): Promise<WithId<User>[]> {
+    return await this.db
+      .collection<User>(Collections.USER)
+      .find(
+        {
+          isEmailVerified: true,
+          isWeeklyDigestEnabled: { $ne: false },
+          ...(email ? { email } : {}),
+        },
+        {
+          projection: {
+            email: 1,
+            name: 1,
+            isWeeklyDigestEnabled: 1,
+          },
+        },
+      )
+      .toArray();
+  }
+
   async disableWeeklyDigest(userId: string) {
     return this.db
       .collection(Collections.USER)
