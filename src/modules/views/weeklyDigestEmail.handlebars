@@ -184,39 +184,49 @@
 
         {{!-- Collaboration Updates --}}
 
-        <tr>
-          <td bgcolor="#f4f6fb" style="padding:16px;border-radius:10px;border-left:3px solid #3b82f6;">
+        {{#if collaborationUpdates.length}}
+          <tr>
+            <td bgcolor="#f4f6fb" style="padding:16px;border-radius:10px;border-left:3px solid #3b82f6;">
+              
+              <div style="font-size:14px;font-weight:600;color:#111827;margin-bottom:10px;">
+                Collaboration Updates
+              </div>
 
-            <div style="font-size:14px;font-weight:600;color:#111827;margin-bottom:10px;">
-              Collaboration Updates
-            </div>
+              <ul style="padding-left:16px;margin:0;color:#374151;font-size:13px;">
+                {{#each collaborationUpdates}}
+                  <li>{{this}}</li>
+                {{/each}}
+              </ul>
 
-            <ul style="padding-left:16px;margin:0;color:#374151;font-size:13px;">
-              <li>Kartik joined Apple workspace</li>
-              <li>2 members were active in the last 24 hours</li>
-            </ul>
+            </td>
+          </tr>
 
-          </td>
-        </tr>
+          <tr><td height="12"></td></tr>
+        {{/if}}
 
         <tr><td height="12"></td></tr>
 
         {{!-- Pending Actions --}}
 
-        <tr>
-          <td bgcolor="#f4f6fb" style="padding:16px;border-radius:10px;border-left:3px solid #3b82f6;">
+        {{#if pendingActions.length}}
+          <tr>
+            <td bgcolor="#f4f6fb" style="padding:16px;border-radius:10px;border-left:3px solid #3b82f6;">
+              
+              <div style="font-size:14px;font-weight:600;color:#111827;margin-bottom:10px;">
+                Pending Actions
+              </div>
 
-            <div style="font-size:14px;font-weight:600;color:#111827;margin-bottom:10px;">
-              Pending Actions
-            </div>
+              <ul style="padding-left:16px;margin:0;color:#374151;font-size:13px;">
+                {{#each pendingActions}}
+                  <li>{{this}}</li>
+                {{/each}}
+              </ul>
 
-            <ul style="padding-left:16px;margin:0;color:#374151;font-size:13px;">
-              <li>Review changes made to a shared collection</li>
-              <li>Respond to an invite from Techdome Team</li>
-            </ul>
+            </td>
+          </tr>
 
-          </td>
-        </tr>       
+          <tr><td height="12"></td></tr>
+        {{/if}}     
 
         <tr><td height="12"></td></tr> 
 

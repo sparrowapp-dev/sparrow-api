@@ -71,4 +71,16 @@ export class UpdatesRepository {
       ])
       .toArray();
   }
+
+  async getUpdatesForEmail(start: Date, end: Date, userId: string) {
+    return this.db
+      .collection(Collections.UPDATES)
+      .find({
+        createdAt: { $gte: start, $lte: end },
+        createdBy: userId,
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .toArray();
+  }
 }

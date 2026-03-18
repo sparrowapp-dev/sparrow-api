@@ -6,6 +6,7 @@ import { CollectionRepository } from "../repositories/collection.repository";
 import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
 import { UpdatesRepository } from "../repositories/updates.repository";
+import { UserInvitesRepository } from "@src/modules/identity/repositories/userInvites.repository";
 
 @Injectable()
 export class WeeklyDigestService {
@@ -17,6 +18,7 @@ export class WeeklyDigestService {
     private readonly updatesRepository: UpdatesRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly userInvitesRepository: UserInvitesRepository,
   ) {}
 
   private readonly logger = new Logger(WeeklyDigestService.name);
@@ -94,6 +96,24 @@ export class WeeklyDigestService {
         isMax: h === max,
       }));
 
+      const updates = await this.updatesRepository.getUpdatesForEmail(
+        start,
+        end,
+        user._id.toString(),
+      );
+
+      const collaborationUpdates = updates.map((u) => u.message);
+
+      const pendingInvites = await this.userInvitesRepository.getPendingInvites(
+        start,
+        end,
+        user.email,
+      );
+
+      const pendingActions = pendingInvites.map(
+        (inv) => `Invitation sent to ${inv.email}`,
+      );
+
       const mailOptions = {
         from: this.configService.get("app.senderEmail"),
         to: user.email,
@@ -119,6 +139,8 @@ export class WeeklyDigestService {
           },
 
           ctaLink: "https://sparrowapp.dev",
+          collaborationUpdates,
+          pendingActions,
         },
       };
 
