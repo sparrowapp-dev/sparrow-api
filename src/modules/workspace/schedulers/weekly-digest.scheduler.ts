@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { WeeklyDigestService } from "../services/weekly-digest.service";
 
 @Injectable()
@@ -11,7 +11,7 @@ export class WeeklyDigestScheduler {
   /**
    * Runs every Monday at 08:00 AM
    */
-  @Cron("*/5 * * * * *")
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async handleWeeklyDigest() {
     this.logger.log("Starting Weekly Digest Job...");
 
