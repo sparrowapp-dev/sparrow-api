@@ -8,9 +8,6 @@ export class WeeklyDigestScheduler {
 
   constructor(private readonly weeklyDigestService: WeeklyDigestService) {}
 
-  /**
-   * Runs every 30 minutes
-   */
   @Cron(CronExpression.EVERY_30_MINUTES, {
     name: "weekly-digest",
     waitForCompletion: true,
