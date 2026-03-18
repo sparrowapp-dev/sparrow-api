@@ -3,6 +3,9 @@ import { UserRepository } from "@src/modules/identity/repositories/user.reposito
 import { TestflowRepository } from "../repositories/testflow.repository";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { CollectionRepository } from "../repositories/collection.repository";
+import { EmailService } from "@src/modules/common/services/email.service";
+import { ConfigService } from "@nestjs/config";
+import { UpdatesRepository } from "../repositories/updates.repository";
 
 @Injectable()
 export class WeeklyDigestService {
@@ -11,6 +14,9 @@ export class WeeklyDigestService {
     private readonly testflowRepository: TestflowRepository,
     private readonly workspaceRepository: WorkspaceRepository,
     private readonly collectionRepository: CollectionRepository,
+    private readonly updatesRepository: UpdatesRepository,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   private readonly logger = new Logger(WeeklyDigestService.name);
@@ -18,7 +24,9 @@ export class WeeklyDigestService {
   async processWeeklyDigest() {
     this.logger.log("Processing weekly digest emails...");
 
-    const { start, end } = this.getLastWeekRange();
+    // const { start, end } = this.getLastWeekRange();
+    const start = new Date("2026-03-01");
+    const end = new Date("2026-03-20");
     const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
 
     // Fetch users
@@ -64,21 +72,59 @@ export class WeeklyDigestService {
     this.logger.log(`New Collections: ${newCollections}`);
     this.logger.log(`APIs Created: ${apisCreated}`);
 
+    const transporter = this.emailService.createTransporter();
+
     for (const user of users) {
-      const trend = await this.getExecutionTrend(
-        user._id.toString(),
+      const activityData = await this.updatesRepository.getWeeklyActivity(
         start,
         end,
-        prevStart,
-        prevEnd,
-        testflows,
       );
+      const dailyExecutions = this.formatWeeklyGraph(activityData);
 
-      this.logger.log(
-        `User: ${user.email} | Total: ${trend.totalExecutions} | Change: ${trend.percentChange}%`,
-      );
+      const totalExecutions = dailyExecutions.reduce((a, b) => a + b, 0);
 
-      this.logger.log(`Daily: ${trend.dailyExecutions}`);
+      const percentChange = 0;
+
+      const graphHeights = this.normalizeGraphData(dailyExecutions);
+
+      const max = Math.max(...graphHeights);
+
+      const graph = graphHeights.map((h) => ({
+        height: h,
+        isMax: h === max,
+      }));
+
+      const mailOptions = {
+        from: this.configService.get("app.senderEmail"),
+        to: user.email,
+        template: "weeklyDigestEmail",
+        subject: "Your Weekly Digest 📊",
+        context: {
+          userName: user.name || user.email,
+
+          dateRange: `${start.toDateString()} - ${end.toDateString()}`,
+
+          execution: {
+            total: totalExecutions,
+            percent: percentChange,
+            graph,
+          },
+
+          metrics: {
+            newWorkspaces,
+            newCollections,
+            apisCreated,
+            testflowsExecuted: testflowExecutions,
+            activeWorkspaces,
+          },
+
+          ctaLink: "https://sparrowapp.dev",
+        },
+      };
+
+      await this.emailService.sendEmail(transporter, mailOptions);
+
+      this.logger.log(`Weekly digest sent to ${user.email}`);
     }
   }
 
@@ -164,5 +210,28 @@ export class WeeklyDigestService {
       percentChange,
       dailyExecutions,
     };
+  }
+
+  private normalizeGraphData(data: number[]) {
+    const max = Math.max(...data, 1);
+
+    return data.map((value) => {
+      if (max === 0) return 12;
+
+      const height = Math.round((value / max) * 40);
+      return height < 10 ? 10 : height;
+    });
+  }
+
+  private formatWeeklyGraph(data: any[]) {
+    const result = Array(7).fill(0);
+
+    data.forEach((item) => {
+      const mongoDay = item._id;
+      const index = (mongoDay + 5) % 7;
+      result[index] = item.count;
+    });
+
+    return result;
   }
 }
