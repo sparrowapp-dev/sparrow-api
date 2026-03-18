@@ -74,11 +74,11 @@ export class WeeklyDigestService {
 
     const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
 
-    // Time range for the digest (last 5 mins for testing, or use getLastWeekRange() for production)
+    // Time range for the digest (last 30 mins for testing, or use getLastWeekRange() for production)
     const end = new Date();
-    const start = new Date(end.getTime() - 5 * 60 * 1000);
+    const start = new Date(end.getTime() - 30 * 60 * 1000);
     const prevEnd = new Date(start);
-    const prevStart = new Date(prevEnd.getTime() - 5 * 60 * 1000);
+    const prevStart = new Date(prevEnd.getTime() - 30 * 60 * 1000);
 
     // Fetch lightweight global activity graph (only updates collection, not heavy)
     const activityGraph = await this.fetchActivityGraph(
