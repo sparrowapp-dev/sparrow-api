@@ -8,10 +8,11 @@ export class WeeklyDigestScheduler {
 
   constructor(private readonly weeklyDigestService: WeeklyDigestService) {}
 
-  @Cron(CronExpression.EVERY_30_MINUTES, {
-    name: "weekly-digest",
-    waitForCompletion: true,
-  })
+  // Disabled until we are sure it works correctly and doesn't cause issues with the database load. We can enable it later once we have confidence in its stability.
+  // @Cron(CronExpression.EVERY_30_MINUTES, {
+  //   name: "weekly-digest",
+  //   waitForCompletion: true,
+  // })
   async handleWeeklyDigest() {
     this.logger.log("Starting Weekly Digest Job...");
 
