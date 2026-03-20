@@ -518,13 +518,6 @@ export class StripeSubscriptionService {
       metadata?.trialExtension === "true" ||
       (team?.billing?.in_trial === true && metadata?.trial_end_date);
 
-    console.log("TRIAL EXTENSION DEBUG:", {
-      hubId: metadata?.hubId,
-      metadataTrialExtension: metadata?.trialExtension,
-      metadataTrialEndDate: metadata?.trial_end_date,
-      billingInTrial: team?.billing?.in_trial,
-      isTrialExtension,
-    });
     // Initialize or update the licenses object based on billing seats
     const currentSeats =
       latestSubscription?.quantity || metadata?.userCount || 1;
