@@ -23,4 +23,5 @@ export enum Collections {
   PROMOCODES = "promocodes",
   SUPERADMINS = "superadmins",
   NOTIFICATIONS = "notifications",
+  USER_METRICS = "user_metrics",
 }
