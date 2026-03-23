@@ -60,6 +60,7 @@ import { TeamUserService } from "../identity/services/team-user.service";
 import { SalesEmailService } from "./services/sales-email.service";
 import { PricingService } from "./services/pricing.repository";
 import { WeeklyDigestService } from "./services/weekly-digest.service";
+import { UserMetricsService } from "./services/userMetrics.service";
 
 // ---- Gateway
 import {
@@ -153,6 +154,7 @@ import { WeeklyDigestScheduler } from "./schedulers/weekly-digest.scheduler";
     WeeklyDigestScheduler,
     WeeklyDigestService,
     UserMetricsRepository,
+    UserMetricsService,
   ],
   exports: [
     CollectionService,

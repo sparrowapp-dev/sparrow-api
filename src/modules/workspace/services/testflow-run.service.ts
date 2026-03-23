@@ -12,6 +12,7 @@ import { ConfigService } from "@nestjs/config";
 import { WorkspaceRepository } from "../repositories/workspace.repository";
 import { VariableDto } from "@src/modules/common/models/environment.model";
 import { ObjectId } from "mongodb";
+import { UserMetricsService } from "./userMetrics.service";
 
 @Injectable()
 export class TestflowRunService {
@@ -20,6 +21,7 @@ export class TestflowRunService {
     private readonly environmentReposistory: EnvironmentRepository,
     private readonly configService: ConfigService,
     private readonly workspaceReposistory: WorkspaceRepository,
+    private readonly userMetricsService: UserMetricsService,
   ) {}
   private readonly logger = new Logger(TestflowRunService.name);
 
@@ -118,6 +120,23 @@ export class TestflowRunService {
           "Content-Type": "application/json",
         },
       });
+
+      // Fire-and-forget: record a successful testflow execution for user metrics
+      try {
+        const result = response?.data || {};
+        const history = result.history || {};
+        const successRequests = history.successRequests || 0;
+        if (user && user._id && successRequests > 0) {
+          const userIdStr =
+            typeof user._id === "string" ? user._id : user._id.toString();
+          this.userMetricsService.onTestflowExecuted(userIdStr);
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to record testflow metric: ${err?.message || err}`,
+        );
+      }
+
       const finalResult = {
         result: response.data,
         environmentName: environmentData?.name,

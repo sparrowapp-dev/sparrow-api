@@ -8,6 +8,7 @@ import { Updates } from "@src/modules/common/models/updates.model";
 // ---- Repository
 import { UpdatesRepository } from "../repositories/updates.repository";
 import { DecodedUserObject } from "@src/types/fastify";
+import { UserMetricsService } from "./userMetrics.service";
 
 /**
  * Updates Service - Service responsible for handling operations related to updates.
@@ -17,8 +18,12 @@ export class UpdatesService {
   /**
    * Constructor to initialize UpdatesService with required dependencies.
    * @param updatesRepository - Injected UpdatesRepository for database operations.
+   * @param userMetricsService - Injected UserMetricsService for tracking metrics.
    */
-  constructor(private readonly updatesRepository: UpdatesRepository) {}
+  constructor(
+    private readonly updatesRepository: UpdatesRepository,
+    private readonly userMetricsService: UserMetricsService,
+  ) {}
 
   /**
    * Adds a new update to the database.
@@ -36,6 +41,10 @@ export class UpdatesService {
       detailsUpdatedBy: user.name,
     };
     const response = await this.updatesRepository.addUpdate(modifiedUpdate);
+
+    // Track execution activity (fire-and-forget)
+    this.userMetricsService.onExecutionActivity(user._id.toString());
+
     return response;
   }
 
