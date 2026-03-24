@@ -57,6 +57,7 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
 import { isValidName } from "@src/modules/common/util/validate.name.util";
+import { UserMetricsService } from "./userMetrics.service";
 
 /**
  * Workspace Service
@@ -73,6 +74,7 @@ export class WorkspaceService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly emailService: EmailService,
+    private readonly userMetricsService: UserMetricsService,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -405,6 +407,9 @@ export class WorkspaceService {
       );
     }
 
+    // Track workspace activity (fire-and-forget)
+    this.userMetricsService.onWorkspaceActive(user._id.toString());
+
     return response;
   }
 
@@ -495,6 +500,9 @@ export class WorkspaceService {
         }),
       });
     }
+
+    // Track workspace activity (fire-and-forget)
+    this.userMetricsService.onWorkspaceActive(user._id.toString());
     return data;
   }
 
