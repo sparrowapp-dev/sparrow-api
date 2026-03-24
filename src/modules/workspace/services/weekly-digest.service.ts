@@ -22,6 +22,7 @@ interface UserMetrics {
   collectionsCount: number;
   apisCount: number;
   testflowExecutions: number;
+  newWorkspaces: number;
 }
 
 /** Activity graph data for the digest */
@@ -265,13 +266,24 @@ export class WeeklyDigestService {
       const collaborationUpdates = updatesMap.get(userId) || [];
       const pendingActions = invitesMap.get(user.email) || [];
 
-      const metricsData = mergedMetricsMap.get(userId);
+      const metricsData: UserMetricsData = mergedMetricsMap.get(userId) ?? {
+        userId,
+        weekStart,
+        totalExecutions: 0,
+        apisCreated: 0,
+        collectionsCount: 0,
+        activeWorkspaces: 0,
+        newWorkspaces: 0,
+        testflowsExecuted: 0,
+        updatedAt: new Date(),
+      };
 
       const metrics: UserMetrics = {
-        activeWorkspaces: metricsData?.activeWorkspaces ?? 0,
-        collectionsCount: metricsData?.collectionsCount ?? 0,
-        apisCount: metricsData?.apisCreated ?? 0,
-        testflowExecutions: metricsData?.testflowsExecuted ?? 0,
+        activeWorkspaces: metricsData.activeWorkspaces || 0,
+        newWorkspaces: metricsData.newWorkspaces || 0,
+        collectionsCount: metricsData.collectionsCount || 0,
+        apisCount: metricsData.apisCreated || 0,
+        testflowExecutions: metricsData.testflowsExecuted || 0,
       };
 
       userEmailDataMap.set(userId, {
@@ -333,6 +345,7 @@ export class WeeklyDigestService {
               },
               // Per-user metrics computed via batch aggregation
               metrics: {
+                newWorkspaces: metrics.newWorkspaces,
                 newCollections: metrics.collectionsCount,
                 apisCreated: metrics.apisCount,
                 testflowsExecuted: metrics.testflowExecutions,

@@ -55,6 +55,13 @@ export class UserMetrics {
   activeWorkspaces?: number;
 
   /**
+   * Number of new workspaces created by the user this week.
+   */
+  @IsNumber()
+  @IsOptional()
+  newWorkspaces?: number;
+
+  /**
    * Number of testflows executed by the user this week.
    */
   @IsNumber()
@@ -78,6 +85,7 @@ export interface IncrementMetricsPayload {
   apisCreated?: number;
   collectionsCount?: number;
   activeWorkspaces?: number;
+  newWorkspaces?: number;
   testflowsExecuted?: number;
 }
 
@@ -91,6 +99,7 @@ export interface UserMetricsData {
   apisCreated: number;
   collectionsCount: number;
   activeWorkspaces: number;
+  newWorkspaces: number;
   testflowsExecuted: number;
   updatedAt: Date;
 }

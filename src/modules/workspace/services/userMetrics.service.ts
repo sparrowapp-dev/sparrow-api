@@ -31,7 +31,16 @@ export class UserMetricsService {
    */
   async onTestflowExecuted(userId: string): Promise<void> {
     this.logger.log(`Metrics update: Testflow executed for ${userId}`);
-    this.trackMetric(userId, { testflowsExecuted: 1 }, "onTestflowExecuted");
+    try {
+      const weekStart = this.userMetricsRepository.getWeekStart();
+      await this.userMetricsRepository.incrementMetrics(userId, weekStart, {
+        testflowsExecuted: 1,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment testflowsExecuted for ${userId}: ${error?.message || error}`,
+      );
+    }
   }
 
   /**
@@ -53,7 +62,35 @@ export class UserMetricsService {
    */
   async onWorkspaceActive(userId: string): Promise<void> {
     this.logger.log(`Metrics update: Workspace active for ${userId}`);
-    this.trackMetric(userId, { activeWorkspaces: 1 }, "onWorkspaceActive");
+    try {
+      const weekStart = this.userMetricsRepository.getWeekStart();
+      await this.userMetricsRepository.incrementMetrics(userId, weekStart, {
+        activeWorkspaces: 1,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment activeWorkspaces for ${userId}: ${error?.message || error}`,
+      );
+    }
+  }
+
+  /**
+   * Track when a user creates a workspace.
+   * Increments both newWorkspaces and activeWorkspaces for the week.
+   */
+  async onWorkspaceCreated(userId: string): Promise<void> {
+    this.logger.log(`Metrics update: Workspace created for ${userId}`);
+    try {
+      const weekStart = this.userMetricsRepository.getWeekStart();
+      await this.userMetricsRepository.incrementMetrics(userId, weekStart, {
+        newWorkspaces: 1,
+        activeWorkspaces: 1,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to increment newWorkspaces for ${userId}: ${error?.message || error}`,
+      );
+    }
   }
 
   /**
@@ -83,6 +120,7 @@ export class UserMetricsService {
       testflowsExecuted?: number;
       collectionsCount?: number;
       activeWorkspaces?: number;
+      newWorkspaces?: number;
       totalExecutions?: number;
     },
     eventName: string,
@@ -102,6 +140,7 @@ export class UserMetricsService {
       testflowsExecuted?: number;
       collectionsCount?: number;
       activeWorkspaces?: number;
+      newWorkspaces?: number;
       totalExecutions?: number;
     },
     eventName: string,
@@ -141,6 +180,7 @@ export class UserMetricsService {
         | "testflowExecuted"
         | "collectionCreated"
         | "workspaceActive"
+        | "workspaceCreated"
         | "executionActivity";
     }>,
   ): Promise<void> {
@@ -157,6 +197,7 @@ export class UserMetricsService {
           testflowsExecuted?: number;
           collectionsCount?: number;
           activeWorkspaces?: number;
+          newWorkspaces?: number;
           totalExecutions?: number;
         };
 
@@ -172,6 +213,9 @@ export class UserMetricsService {
             break;
           case "workspaceActive":
             payload = { activeWorkspaces: 1 };
+            break;
+          case "workspaceCreated":
+            payload = { newWorkspaces: 1, activeWorkspaces: 1 };
             break;
           case "executionActivity":
             payload = { totalExecutions: 1 };

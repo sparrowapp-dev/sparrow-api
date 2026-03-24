@@ -97,6 +97,9 @@ export class UserMetricsRepository implements OnModuleInit {
     if (payload.testflowsExecuted !== undefined) {
       incPayload.testflowsExecuted = payload.testflowsExecuted;
     }
+    if (payload.newWorkspaces !== undefined) {
+      incPayload.newWorkspaces = payload.newWorkspaces;
+    }
 
     // Skip if no metrics to increment
     if (Object.keys(incPayload).length === 0) {
@@ -166,6 +169,9 @@ export class UserMetricsRepository implements OnModuleInit {
       if (payload.testflowsExecuted !== undefined) {
         incPayload.testflowsExecuted = payload.testflowsExecuted;
       }
+      if (payload.newWorkspaces !== undefined) {
+        incPayload.newWorkspaces = payload.newWorkspaces;
+      }
 
       return {
         updateOne: {
@@ -228,6 +234,10 @@ export class UserMetricsRepository implements OnModuleInit {
           existing.testflowsExecuted =
             (existing.testflowsExecuted || 0) + payload.testflowsExecuted;
         }
+        if (payload.newWorkspaces !== undefined) {
+          existing.newWorkspaces =
+            (existing.newWorkspaces || 0) + payload.newWorkspaces;
+        }
       }
     }
 
@@ -265,6 +275,7 @@ export class UserMetricsRepository implements OnModuleInit {
             apisCreated: 1,
             collectionsCount: 1,
             activeWorkspaces: 1,
+            newWorkspaces: 1,
             testflowsExecuted: 1,
             updatedAt: 1,
           },
@@ -282,6 +293,7 @@ export class UserMetricsRepository implements OnModuleInit {
         apisCreated: result.apisCreated || 0,
         collectionsCount: result.collectionsCount || 0,
         activeWorkspaces: result.activeWorkspaces || 0,
+        newWorkspaces: result.newWorkspaces || 0,
         testflowsExecuted: result.testflowsExecuted || 0,
         updatedAt: result.updatedAt || new Date(),
       });
@@ -330,6 +342,7 @@ export class UserMetricsRepository implements OnModuleInit {
       apisCreated: result.apisCreated || 0,
       collectionsCount: result.collectionsCount || 0,
       activeWorkspaces: result.activeWorkspaces || 0,
+      newWorkspaces: result.newWorkspaces || 0,
       testflowsExecuted: result.testflowsExecuted || 0,
       updatedAt: result.updatedAt || new Date(),
     };
@@ -363,6 +376,9 @@ export class UserMetricsRepository implements OnModuleInit {
     }
     if (metrics.activeWorkspaces !== undefined) {
       setPayload.activeWorkspaces = metrics.activeWorkspaces;
+    }
+    if (metrics.newWorkspaces !== undefined) {
+      setPayload.newWorkspaces = metrics.newWorkspaces;
     }
     if (metrics.testflowsExecuted !== undefined) {
       setPayload.testflowsExecuted = metrics.testflowsExecuted;

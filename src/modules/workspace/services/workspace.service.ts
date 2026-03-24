@@ -407,8 +407,8 @@ export class WorkspaceService {
       );
     }
 
-    // Track workspace activity (fire-and-forget)
-    this.userMetricsService.onWorkspaceActive(user._id.toString());
+    // Track workspace creation (fire-and-forget)
+    this.userMetricsService.onWorkspaceCreated(user._id.toString());
 
     return response;
   }
