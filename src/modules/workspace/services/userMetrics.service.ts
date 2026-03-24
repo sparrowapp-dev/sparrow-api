@@ -19,6 +19,7 @@ export class UserMetricsService {
    * @param userId The user who created the API
    */
   async onApiCreated(userId: string): Promise<void> {
+    this.logger.log(`Metrics update: API created for ${userId}`);
     this.trackMetric(userId, { apisCreated: 1 }, "onApiCreated");
   }
 
@@ -29,6 +30,7 @@ export class UserMetricsService {
    * @param userId The user who executed the testflow
    */
   async onTestflowExecuted(userId: string): Promise<void> {
+    this.logger.log(`Metrics update: Testflow executed for ${userId}`);
     this.trackMetric(userId, { testflowsExecuted: 1 }, "onTestflowExecuted");
   }
 
@@ -39,6 +41,7 @@ export class UserMetricsService {
    * @param userId The user who created the collection
    */
   async onCollectionCreated(userId: string): Promise<void> {
+    this.logger.log(`Metrics update: Collection created for ${userId}`);
     this.trackMetric(userId, { collectionsCount: 1 }, "onCollectionCreated");
   }
 
@@ -49,6 +52,7 @@ export class UserMetricsService {
    * @param userId The user who was active in the workspace
    */
   async onWorkspaceActive(userId: string): Promise<void> {
+    this.logger.log(`Metrics update: Workspace active for ${userId}`);
     this.trackMetric(userId, { activeWorkspaces: 1 }, "onWorkspaceActive");
   }
 
@@ -59,6 +63,7 @@ export class UserMetricsService {
    * @param userId The user who performed the activity
    */
   async onExecutionActivity(userId: string): Promise<void> {
+    this.logger.log(`Metrics update: Execution activity for ${userId}`);
     this.trackMetric(userId, { totalExecutions: 1 }, "onExecutionActivity");
   }
 

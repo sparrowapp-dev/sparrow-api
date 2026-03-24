@@ -184,6 +184,7 @@ import { WeeklyDigestScheduler } from "./schedulers/weekly-digest.scheduler";
     PricingService,
     PricingRepository,
     UserMetricsRepository,
+    UserMetricsService,
   ],
   controllers: [
     WorkSpaceController,

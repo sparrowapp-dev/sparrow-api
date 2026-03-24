@@ -111,11 +111,6 @@ export class UserMetricsRepository implements OnModuleInit {
         $setOnInsert: {
           userId,
           weekStart,
-          totalExecutions: 0,
-          apisCreated: 0,
-          collectionsCount: 0,
-          activeWorkspaces: 0,
-          testflowsExecuted: 0,
         },
       },
       { upsert: true },
@@ -181,11 +176,6 @@ export class UserMetricsRepository implements OnModuleInit {
             $setOnInsert: {
               userId,
               weekStart,
-              totalExecutions: 0,
-              apisCreated: 0,
-              collectionsCount: 0,
-              activeWorkspaces: 0,
-              testflowsExecuted: 0,
             },
           },
           upsert: true,
