@@ -1,14 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
-import { TestflowRepository } from "../repositories/testflow.repository";
-import { WorkspaceRepository } from "../repositories/workspace.repository";
-import { CollectionRepository } from "../repositories/collection.repository";
+// testflow/workspace/collection repositories are not needed here; metrics come from UserMetricsRepository
 import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
 import { UpdatesRepository } from "../repositories/updates.repository";
 import { UserInvitesRepository } from "@src/modules/identity/repositories/userInvites.repository";
+import { UserMetricsRepository } from "../repositories/userMetrics.repository";
 import { ObjectId, WithId } from "mongodb";
 import { User } from "@src/modules/common/models/user.model";
+import { UserMetricsData } from "@src/modules/common/models/user-metrics.model";
 
 /** Configuration for batch processing and concurrency */
 interface BatchConfig {
@@ -19,7 +19,6 @@ interface BatchConfig {
 /** Per-user metrics computed via batch aggregation */
 interface UserMetrics {
   activeWorkspaces: number;
-  newWorkspaces: number;
   collectionsCount: number;
   apisCount: number;
   testflowExecutions: number;
@@ -50,10 +49,8 @@ export class WeeklyDigestService {
 
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly testflowRepository: TestflowRepository,
-    private readonly workspaceRepository: WorkspaceRepository,
-    private readonly collectionRepository: CollectionRepository,
     private readonly updatesRepository: UpdatesRepository,
+    private readonly userMetricsRepository: UserMetricsRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly userInvitesRepository: UserInvitesRepository,
@@ -117,7 +114,7 @@ export class WeeklyDigestService {
       const userIds = usersBatch.map((u) => u._id.toString());
       const emails = usersBatch.map((u) => u.email);
 
-      // Fetch per-user data and metrics in bulk using aggregation
+      // Fetch per-user data using precomputed user metrics (no aggregation)
       const userEmailDataMap = await this.getMetricsForUserBatch(
         start,
         end,
@@ -216,7 +213,7 @@ export class WeeklyDigestService {
 
   /**
    * Fetch per-user metrics for a batch of users using bulk aggregation queries.
-   * Computes workspace, collection, API, and testflow metrics using MongoDB aggregation.
+   * Avoids heavy aggregation and uses O(1) lookups.
    * Avoids N+1 queries by fetching all data in bulk.
    */
   private async getMetricsForUserBatch(
@@ -226,63 +223,55 @@ export class WeeklyDigestService {
     emails: string[],
     users: WithId<User>[],
   ): Promise<Map<string, UserEmailData>> {
-    // Build user-to-workspaces map for testflow metrics
-    const userWorkspacesMap = new Map<string, string[]>();
-    for (const user of users) {
-      const workspaceIds = (user.workspaces || []).map((w) => w.workspaceId);
-      userWorkspacesMap.set(user._id.toString(), workspaceIds);
+    // Compute weekStart once per batch using the repository helper
+    const weekStart = this.userMetricsRepository.getWeekStart();
+
+    // If userIds is very large, split into chunks to keep queries manageable
+    const maxChunk = userIds.length > 1000 ? 800 : userIds.length;
+    const chunks: string[][] = [];
+    for (let i = 0; i < userIds.length; i += maxChunk) {
+      chunks.push(userIds.slice(i, i + maxChunk));
     }
 
-    // Fetch all metrics in parallel using aggregation pipelines
-    const [workspaceMetricsMap, testflowMetricsMap, updatesMap, invitesMap] =
-      await Promise.all([
-        this.workspaceRepository.getWorkspaceMetricsForUserBatch(
-          userIds,
-          start,
-          end,
-        ),
-        this.testflowRepository.getTestflowMetricsForUserBatch(
-          userWorkspacesMap,
-          start,
-          end,
-        ),
-        this.updatesRepository.getUpdatesForBatch(start, end, userIds),
-        this.userInvitesRepository.getPendingInvitesForBatch(
-          start,
-          end,
-          emails,
-        ),
-      ]);
+    // Fetch metrics for all users in the batch (may run multiple queries if chunked)
+    const metricsPromises = chunks.map((chunk) =>
+      this.userMetricsRepository.getMetricsForUsers(chunk, weekStart),
+    );
 
-    // Build the email data map for each user
+    // Also fetch lightweight updates and invites in parallel
+    const [metricsMapsArray, updatesMap, invitesMap] = await Promise.all([
+      Promise.all(metricsPromises),
+      this.updatesRepository.getUpdatesForBatch(start, end, userIds),
+      this.userInvitesRepository.getPendingInvitesForBatch(start, end, emails),
+    ]);
+
+    // Merge chunked metrics maps into a single map
+    const mergedMetricsMap = new Map<string, UserMetricsData>();
+    for (const map of metricsMapsArray) {
+      for (const [key, value] of map.entries()) {
+        mergedMetricsMap.set(key, value);
+      }
+    }
+    this.logger.log(
+      `Fetched metrics for ${userIds.length} users (chunks: ${chunks.length})`,
+    );
+
     const userEmailDataMap = new Map<string, UserEmailData>();
 
     for (const user of users) {
-      if (user.isWeeklyDigestEnabled === false) {
-        continue;
-      }
+      if (user.isWeeklyDigestEnabled === false) continue;
 
       const userId = user._id.toString();
       const collaborationUpdates = updatesMap.get(userId) || [];
       const pendingActions = invitesMap.get(user.email) || [];
 
-      // Get workspace metrics for this user
-      const workspaceMetrics = workspaceMetricsMap.get(userId) || {
-        activeWorkspaces: 0,
-        newWorkspaces: 0,
-        collectionsCount: 0,
-        apisCount: 0,
-      };
-
-      // Get testflow metrics for this user
-      const testflowExecutions = testflowMetricsMap.get(userId) || 0;
+      const metricsData = mergedMetricsMap.get(userId);
 
       const metrics: UserMetrics = {
-        activeWorkspaces: workspaceMetrics.activeWorkspaces,
-        newWorkspaces: workspaceMetrics.newWorkspaces,
-        collectionsCount: workspaceMetrics.collectionsCount,
-        apisCount: workspaceMetrics.apisCount,
-        testflowExecutions,
+        activeWorkspaces: metricsData?.activeWorkspaces ?? 0,
+        collectionsCount: metricsData?.collectionsCount ?? 0,
+        apisCount: metricsData?.apisCreated ?? 0,
+        testflowExecutions: metricsData?.testflowsExecuted ?? 0,
       };
 
       userEmailDataMap.set(userId, {
@@ -344,7 +333,6 @@ export class WeeklyDigestService {
               },
               // Per-user metrics computed via batch aggregation
               metrics: {
-                newWorkspaces: metrics.newWorkspaces,
                 newCollections: metrics.collectionsCount,
                 apisCreated: metrics.apisCount,
                 testflowsExecuted: metrics.testflowExecutions,
