@@ -63,11 +63,7 @@ export class UserMetricsService {
    * Increments both newWorkspaces and activeWorkspaces for the week.
    */
   async onWorkspaceCreated(userId: string): Promise<void> {
-    this.trackMetric(
-      userId,
-      { newWorkspaces: 1, activeWorkspaces: 1 },
-      "onWorkspaceCreated",
-    );
+    this.trackMetric(userId, { newWorkspaces: 1 }, "onWorkspaceCreated");
   }
 
   /**

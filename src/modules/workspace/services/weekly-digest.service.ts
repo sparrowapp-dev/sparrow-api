@@ -5,6 +5,7 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
 import { UpdatesRepository } from "../repositories/updates.repository";
 import { UserInvitesRepository } from "@src/modules/identity/repositories/userInvites.repository";
+import { NotificationRepository } from "@src/modules/notifications/repositories/notification.repository";
 import { UserMetricsRepository } from "../repositories/userMetrics.repository";
 import { ObjectId, WithId } from "mongodb";
 import { User } from "@src/modules/common/models/user.model";
@@ -55,6 +56,7 @@ export class WeeklyDigestService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly userInvitesRepository: UserInvitesRepository,
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   /**
@@ -279,11 +281,15 @@ export class WeeklyDigestService {
       this.userMetricsRepository.getMetricsForUsers(chunk, weekStart),
     );
 
-    // Also fetch lightweight updates and invites in parallel
-    const [metricsMapsArray, updatesMap, invitesMap] = await Promise.all([
+    // Also fetch lightweight updates and pending invite notifications in parallel
+    const [metricsMapsArray, updatesMap, notificationsMap] = await Promise.all([
       Promise.all(metricsPromises),
       this.updatesRepository.getUpdatesForBatch(start, end, userIds),
-      this.userInvitesRepository.getPendingInvitesForBatch(start, end, emails),
+      this.notificationRepository.getPendingInvitesForUsers(
+        userIds,
+        start,
+        end,
+      ),
     ]);
 
     // Merge chunked metrics maps into a single map
@@ -304,7 +310,7 @@ export class WeeklyDigestService {
 
       const userId = user._id.toString();
       const collaborationUpdates = updatesMap.get(userId) || [];
-      const pendingActions = invitesMap.get(user.email) || [];
+      const pendingActions = notificationsMap.get(userId) || [];
 
       const metricsData: UserMetricsData = mergedMetricsMap.get(userId) ?? {
         userId,
