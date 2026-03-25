@@ -514,6 +514,10 @@ export class StripeSubscriptionService {
     const isTrialOngoing =
       trialEndDateStr && new Date(trialEndDateStr).getTime() > Date.now();
 
+    const isTrialExtension =
+      metadata?.trialExtension === "true" ||
+      (team?.billing?.in_trial === true && metadata?.trial_end_date);
+
     // Initialize or update the licenses object based on billing seats
     const currentSeats =
       latestSubscription?.quantity || metadata?.userCount || 1;
@@ -630,10 +634,17 @@ export class StripeSubscriptionService {
 
     // Create billing details object with successful payment status
     const billingDetails = {
-      current_period_start: period.start
-        ? new Date(period.start * 1000)
-        : new Date(),
-      current_period_end: period.end ? new Date(period.end * 1000) : null,
+      current_period_start: isTrialExtension
+        ? team.billing?.current_period_start
+        : period.start
+          ? new Date(period.start * 1000)
+          : new Date(),
+
+      current_period_end: isTrialExtension
+        ? new Date(metadata.trial_end_date)
+        : period.end
+          ? new Date(period.end * 1000)
+          : null,
       amount_billed: amount,
       currency: invoice.currency,
       status: SubscriptionStatus.ACTIVE,
@@ -663,7 +674,21 @@ export class StripeSubscriptionService {
       ),
     };
 
-    await this.updateTeamPlanWithBilling(metadata.hubId, plan, billingDetails);
+    // Get current team plan
+    const existingTeam = await this.stripeSubscriptionRepo.findTeamById(
+      metadata.hubId,
+    );
+
+    // Skip webhook overwrite ONLY if admin changed plan recently
+    if (existingTeam?.billing?.updatedBy === BillingSource.API_CALL) {
+      console.log("Skipping webhook overwrite due to admin plan change");
+    } else {
+      await this.updateTeamPlanWithBilling(
+        metadata.hubId,
+        plan,
+        billingDetails,
+      );
+    }
     if (!isDowngrading) {
       const teamIdObject = new ObjectId(metadata.hubId);
       const updateTeam =

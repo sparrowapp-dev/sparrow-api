@@ -840,4 +840,11 @@ export class UserService {
     });
     return response;
   }
+
+  async disableWeeklyDigest(userId: string) {
+    return this.userRepository.updateUserByQuery(
+      { _id: new ObjectId(userId) },
+      { $set: { isWeeklyDigestEnabled: false } },
+    );
+  }
 }

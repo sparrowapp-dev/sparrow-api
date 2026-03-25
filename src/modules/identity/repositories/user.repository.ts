@@ -3,7 +3,11 @@ import { Db, InsertOneResult, ModifyResult, ObjectId, WithId } from "mongodb";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { createHmac } from "crypto";
 import { RegisterPayload } from "../payloads/register.payload";
-import { UpdateUserDto, UserDto, UserTourGuideDto } from "../payloads/user.payload";
+import {
+  UpdateUserDto,
+  UserDto,
+  UserTourGuideDto,
+} from "../payloads/user.payload";
 import {
   EarlyAccessEmail,
   EmailServiceProvider,
@@ -467,5 +471,86 @@ export class UserRepository {
       console.error("Error adding applied promo code to user:", error);
       return false;
     }
+  }
+
+  async getAllUsers(): Promise<WithId<User>[]> {
+    return await this.db
+      .collection<User>(Collections.USER)
+      .find(
+        { isEmailVerified: true }, // only verified users
+        { projection: { password: 0 } },
+      )
+      .toArray();
+  }
+
+  async getUsersForWeeklyDigest(email?: string): Promise<WithId<User>[]> {
+    return await this.db
+      .collection<User>(Collections.USER)
+      .find(
+        {
+          isEmailVerified: true,
+          isWeeklyDigestEnabled: { $ne: false },
+          ...(email ? { email } : {}),
+        },
+        {
+          projection: {
+            email: 1,
+            name: 1,
+            isWeeklyDigestEnabled: 1,
+          },
+        },
+      )
+      .toArray();
+  }
+
+  async disableWeeklyDigest(userId: string) {
+    return this.db
+      .collection(Collections.USER)
+      .updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { isWeeklyDigestEnabled: false } },
+      );
+  }
+
+  async updateUserByQuery(filter: any, update: any) {
+    return this.db.collection(Collections.USER).updateOne(filter, update);
+  }
+
+  /**
+   * Fetch users for weekly digest in batches using cursor-based pagination.
+   * @param batchSize Number of users to fetch per batch
+   * @param lastCursor The _id of the last user from the previous batch (for cursor-based pagination)
+   * @param qaEmail Optional email for QA testing (to fetch a single user)
+   * @returns Array of users for the current batch
+   */
+  async getUsersBatchForWeeklyDigest(
+    batchSize: number,
+    lastCursor?: ObjectId,
+    qaEmail?: string,
+  ): Promise<WithId<User>[]> {
+    const query: any = {
+      isEmailVerified: true,
+      isWeeklyDigestEnabled: { $ne: false },
+      ...(qaEmail ? { email: qaEmail } : {}),
+    };
+
+    // Cursor-based pagination: fetch users with _id greater than lastCursor
+    if (lastCursor) {
+      query._id = { $gt: lastCursor };
+    }
+
+    return await this.db
+      .collection<User>(Collections.USER)
+      .find(query, {
+        projection: {
+          _id: 1,
+          email: 1,
+          name: 1,
+          isWeeklyDigestEnabled: 1,
+        },
+      })
+      .sort({ _id: 1 })
+      .limit(batchSize)
+      .toArray();
   }
 }

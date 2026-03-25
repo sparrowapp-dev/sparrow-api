@@ -612,4 +612,99 @@ export class TestflowRepository {
       );
     return { datasets: result.value?.datasets || null };
   }
+
+  async getTestflowsExecutionCount(start: Date, end: Date): Promise<number> {
+    return this.db.collection(Collections.TESTFLOW).countDocuments({
+      $or: [
+        { createdAt: { $gte: start, $lte: end } },
+        { updatedAt: { $gte: start, $lte: end } },
+      ],
+    });
+  }
+
+  /**
+   * Get testflow execution metrics for a batch of users.
+   * Aggregates testflow activity by workspaceId and maps to users.
+   * @param workspaceIds Array of workspace IDs the users have access to
+   * @param start Start date for activity range
+   * @param end End date for activity range
+   * @returns Map of workspaceId to testflow execution count
+   */
+  async getTestflowMetricsForWorkspaces(
+    workspaceIds: string[],
+    start: Date,
+    end: Date,
+  ): Promise<Map<string, number>> {
+    const results = await this.db
+      .collection(Collections.TESTFLOW)
+      .aggregate([
+        {
+          $match: {
+            workspaceId: { $in: workspaceIds },
+            $or: [
+              { createdAt: { $gte: start, $lte: end } },
+              { updatedAt: { $gte: start, $lte: end } },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: "$workspaceId",
+            executionCount: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    const metricsMap = new Map<string, number>();
+    for (const result of results) {
+      metricsMap.set(result._id, result.executionCount || 0);
+    }
+    return metricsMap;
+  }
+
+  /**
+   * Get testflow execution metrics for a batch of users.
+   * Uses the user's workspaces to compute aggregated testflow metrics.
+   * @param userWorkspacesMap Map of userId to array of workspaceIds
+   * @param start Start date for activity range
+   * @param end End date for activity range
+   * @returns Map of userId to testflow execution count
+   */
+  async getTestflowMetricsForUserBatch(
+    userWorkspacesMap: Map<string, string[]>,
+    start: Date,
+    end: Date,
+  ): Promise<Map<string, number>> {
+    // Collect all unique workspace IDs
+    const allWorkspaceIds = new Set<string>();
+    for (const workspaceIds of userWorkspacesMap.values()) {
+      for (const wsId of workspaceIds) {
+        allWorkspaceIds.add(wsId);
+      }
+    }
+
+    if (allWorkspaceIds.size === 0) {
+      return new Map();
+    }
+
+    // Get testflow counts per workspace
+    const workspaceMetrics = await this.getTestflowMetricsForWorkspaces(
+      Array.from(allWorkspaceIds),
+      start,
+      end,
+    );
+
+    // Map workspace metrics back to users
+    const userMetrics = new Map<string, number>();
+    for (const [userId, workspaceIds] of userWorkspacesMap) {
+      let totalExecutions = 0;
+      for (const wsId of workspaceIds) {
+        totalExecutions += workspaceMetrics.get(wsId) || 0;
+      }
+      userMetrics.set(userId, totalExecutions);
+    }
+
+    return userMetrics;
+  }
 }

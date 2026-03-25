@@ -52,4 +52,82 @@ export class UpdatesRepository {
       .toArray();
     return resposne;
   }
+
+  async getWeeklyActivity(start: Date, end: Date) {
+    return this.db
+      .collection(Collections.UPDATES)
+      .aggregate([
+        {
+          $match: {
+            createdAt: { $gte: start, $lte: end },
+          },
+        },
+        {
+          $group: {
+            _id: { $dayOfWeek: "$createdAt" },
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+  }
+
+  async getUpdatesForEmail(start: Date, end: Date, userId: string) {
+    return this.db
+      .collection(Collections.UPDATES)
+      .find({
+        createdAt: { $gte: start, $lte: end },
+        createdBy: userId,
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .toArray();
+  }
+
+  /**
+   * Get updates for a batch of users using aggregation.
+   * Returns updates grouped by userId for efficient batch processing.
+   * @param start Start date range
+   * @param end End date range
+   * @param userIds Array of user IDs to fetch updates for
+   * @returns Map of userId to array of update messages
+   */
+  async getUpdatesForBatch(
+    start: Date,
+    end: Date,
+    userIds: string[],
+  ): Promise<Map<string, string[]>> {
+    const results = await this.db
+      .collection(Collections.UPDATES)
+      .aggregate([
+        {
+          $match: {
+            createdAt: { $gte: start, $lte: end },
+            createdBy: { $in: userIds },
+          },
+        },
+        {
+          $sort: { createdAt: -1 },
+        },
+        {
+          $group: {
+            _id: "$createdBy",
+            updates: { $push: "$message" },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            updates: { $slice: ["$updates", 5] },
+          },
+        },
+      ])
+      .toArray();
+
+    const updatesMap = new Map<string, string[]>();
+    for (const result of results) {
+      updatesMap.set(result._id, result.updates || []);
+    }
+    return updatesMap;
+  }
 }

@@ -2107,4 +2107,35 @@ export class CollectionRepository {
       };
     }
   }
+
+  // New Collections Count
+  async getNewCollectionsCount(start: Date, end: Date): Promise<number> {
+    return await this.db.collection(Collections.COLLECTION).countDocuments({
+      createdAt: { $gte: start, $lte: end },
+    });
+  }
+
+  // APIs Created Count
+  async getApisCreatedCount(start: Date, end: Date): Promise<number> {
+    const [result] = await this.db
+      .collection<Collection>(Collections.COLLECTION)
+      .aggregate<{ count: number }>([
+        {
+          $unwind: "$items",
+        },
+        {
+          $match: {
+            "items.type": { $ne: "FOLDER" },
+            "items.isDeleted": { $ne: true },
+            "items.createdAt": { $gte: start, $lte: end },
+          },
+        },
+        {
+          $count: "count",
+        },
+      ])
+      .toArray();
+
+    return result?.count ?? 0;
+  }
 }

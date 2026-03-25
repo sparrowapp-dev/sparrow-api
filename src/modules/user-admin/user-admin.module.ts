@@ -23,13 +23,19 @@ import { AdminUsersController } from "./controllers/user-admin.enterprise-user.c
 import { AdminUsersService } from "./services/user-admin.enterprise-user.service";
 import { AdminUpdatesRepository } from "./repositories/user-admin.updates.repository";
 import { BillingModule } from "../billing/billing.module";
+import { HttpModule } from "@nestjs/axios";
 
 /**
  * Admin Module provides all necessary services, handlers, repositories,
  * and controllers related to the admin dashboard functionality.
  */
 @Module({
-  imports: [IdentityModule, WorkspaceModule, BillingModule.register()],
+  imports: [
+    IdentityModule,
+    WorkspaceModule,
+    BillingModule.register(),
+    HttpModule,
+  ],
   providers: [
     WorkspaceService,
     JwtService,
