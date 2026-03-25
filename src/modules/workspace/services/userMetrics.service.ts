@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { UserMetricsRepository } from "../repositories/userMetrics.repository";
+import { UserMetricsBufferService } from "./userMetricsBuffer.service";
 
 /**
  * UserMetrics Service
@@ -10,7 +11,10 @@ import { UserMetricsRepository } from "../repositories/userMetrics.repository";
 export class UserMetricsService {
   private readonly logger = new Logger(UserMetricsService.name);
 
-  constructor(private readonly userMetricsRepository: UserMetricsRepository) {}
+  constructor(
+    private readonly userMetricsRepository: UserMetricsRepository,
+    private readonly userMetricsBufferService: UserMetricsBufferService,
+  ) {}
 
   /**
    * Track when a user creates an API endpoint.
@@ -30,17 +34,7 @@ export class UserMetricsService {
    * @param userId The user who executed the testflow
    */
   async onTestflowExecuted(userId: string): Promise<void> {
-    this.logger.log(`Metrics update: Testflow executed for ${userId}`);
-    try {
-      const weekStart = this.userMetricsRepository.getWeekStart();
-      await this.userMetricsRepository.incrementMetrics(userId, weekStart, {
-        testflowsExecuted: 1,
-      });
-    } catch (error) {
-      this.logger.error(
-        `Failed to increment testflowsExecuted for ${userId}: ${error?.message || error}`,
-      );
-    }
+    this.trackMetric(userId, { testflowsExecuted: 1 }, "onTestflowExecuted");
   }
 
   /**
@@ -61,17 +55,7 @@ export class UserMetricsService {
    * @param userId The user who was active in the workspace
    */
   async onWorkspaceActive(userId: string): Promise<void> {
-    this.logger.log(`Metrics update: Workspace active for ${userId}`);
-    try {
-      const weekStart = this.userMetricsRepository.getWeekStart();
-      await this.userMetricsRepository.incrementMetrics(userId, weekStart, {
-        activeWorkspaces: 1,
-      });
-    } catch (error) {
-      this.logger.error(
-        `Failed to increment activeWorkspaces for ${userId}: ${error?.message || error}`,
-      );
-    }
+    this.trackMetric(userId, { activeWorkspaces: 1 }, "onWorkspaceActive");
   }
 
   /**
@@ -79,18 +63,11 @@ export class UserMetricsService {
    * Increments both newWorkspaces and activeWorkspaces for the week.
    */
   async onWorkspaceCreated(userId: string): Promise<void> {
-    this.logger.log(`Metrics update: Workspace created for ${userId}`);
-    try {
-      const weekStart = this.userMetricsRepository.getWeekStart();
-      await this.userMetricsRepository.incrementMetrics(userId, weekStart, {
-        newWorkspaces: 1,
-        activeWorkspaces: 1,
-      });
-    } catch (error) {
-      this.logger.error(
-        `Failed to increment newWorkspaces for ${userId}: ${error?.message || error}`,
-      );
-    }
+    this.trackMetric(
+      userId,
+      { newWorkspaces: 1, activeWorkspaces: 1 },
+      "onWorkspaceCreated",
+    );
   }
 
   /**
@@ -150,13 +127,8 @@ export class UserMetricsService {
         return;
       }
 
-      const weekStart = this.userMetricsRepository.getWeekStart();
-
-      await this.userMetricsRepository.incrementMetrics(
-        userId,
-        weekStart,
-        payload,
-      );
+      // Buffer increments instead of immediate DB writes
+      this.userMetricsBufferService.addToBuffer(userId, payload);
     } catch (error) {
       // Log error but do not throw - this should never block the main flow
       this.logger.error(
@@ -188,8 +160,6 @@ export class UserMetricsService {
       if (operations.length === 0) {
         return;
       }
-
-      const weekStart = this.userMetricsRepository.getWeekStart();
 
       const metricsOperations = operations.map(({ userId, event }) => {
         let payload: {
@@ -227,10 +197,9 @@ export class UserMetricsService {
         return { userId, payload };
       });
 
-      await this.userMetricsRepository.bulkIncrementMetrics(
-        metricsOperations,
-        weekStart,
-      );
+      for (const { userId, payload } of metricsOperations) {
+        this.userMetricsBufferService.addToBuffer(userId, payload);
+      }
     } catch (error) {
       this.logger.error(
         `Failed to track batch metrics: ${error.message}`,

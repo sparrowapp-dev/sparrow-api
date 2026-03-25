@@ -27,6 +27,7 @@ import { TestflowRepository } from "./repositories/testflow.repository";
 import { SalesEmailRepository } from "./repositories/sales-email.repository";
 import { PricingRepository } from "./repositories/pricing.repository";
 import { UserMetricsRepository } from "./repositories/userMetrics.repository";
+import { UserMetricsBufferService } from "./services/userMetricsBuffer.service";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -154,6 +155,7 @@ import { WeeklyDigestScheduler } from "./schedulers/weekly-digest.scheduler";
     WeeklyDigestScheduler,
     WeeklyDigestService,
     UserMetricsRepository,
+    UserMetricsBufferService,
     UserMetricsService,
   ],
   exports: [
@@ -184,6 +186,7 @@ import { WeeklyDigestScheduler } from "./schedulers/weekly-digest.scheduler";
     PricingService,
     PricingRepository,
     UserMetricsRepository,
+    UserMetricsBufferService,
     UserMetricsService,
   ],
   controllers: [
