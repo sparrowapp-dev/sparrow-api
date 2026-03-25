@@ -47,6 +47,14 @@ export class UserMetricsRepository implements OnModuleInit {
       // Create index on updatedAt for maintenance queries
       await collection.createIndex({ updatedAt: 1 }, { background: true });
 
+      // Create unique index for daily metrics (user + date)
+      await this.db
+        .collection(Collections.USER_METRICS + "_daily")
+        .createIndex(
+          { userId: 1, date: 1 },
+          { unique: true, background: true },
+        );
+
       this.logger.log("UserMetrics indexes created successfully");
     } catch (error) {
       this.logger.error("Failed to create UserMetrics indexes", error);
@@ -195,6 +203,35 @@ export class UserMetricsRepository implements OnModuleInit {
   }
 
   /**
+   * Bulk increment daily execution counts for users.
+   * Expects operations as array of { userId, totalExecutions }
+   */
+  async bulkIncrementDailyMetrics(
+    operations: Array<{ userId: string; totalExecutions: number }>,
+  ): Promise<BulkWriteResult | null> {
+    if (!operations || operations.length === 0) return null;
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const bulkOps = operations.map(({ userId, totalExecutions }) => ({
+      updateOne: {
+        filter: { userId, date: today },
+        update: {
+          $inc: { totalExecutions: totalExecutions || 0 },
+          $setOnInsert: { userId, date: today },
+        },
+        upsert: true,
+      },
+    }));
+
+    // Use the daily collection name derived from USER_METRICS
+    return await this.db
+      .collection(Collections.USER_METRICS + "_daily")
+      .bulkWrite(bulkOps as any, { ordered: false });
+  }
+
+  /**
    * Merge multiple operations for the same userId by summing their payloads.
    * Reduces redundant DB operations for high-frequency events.
    *
@@ -300,6 +337,37 @@ export class UserMetricsRepository implements OnModuleInit {
     }
 
     return metricsMap;
+  }
+
+  /**
+   * Get daily metrics for multiple users between date range.
+   * Returns raw documents with { userId, date, totalExecutions }
+   */
+  async getDailyMetricsForUsers(
+    userIds: string[],
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ userId: string; date: Date; totalExecutions: number }>> {
+    if (!userIds || userIds.length === 0) return [];
+
+    const results = await this.db
+      .collection(Collections.USER_METRICS + "_daily")
+      .find(
+        {
+          userId: { $in: userIds },
+          date: { $gte: from, $lte: to },
+        },
+        {
+          projection: { userId: 1, date: 1, totalExecutions: 1 },
+        },
+      )
+      .toArray();
+
+    return results.map((r: any) => ({
+      userId: r.userId,
+      date: r.date,
+      totalExecutions: r.totalExecutions || 0,
+    }));
   }
 
   /**

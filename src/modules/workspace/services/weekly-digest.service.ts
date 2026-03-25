@@ -42,7 +42,7 @@ interface UserEmailData {
 
 @Injectable()
 export class WeeklyDigestService {
-  private static readonly QA_DIGEST_EMAIL = "mayank9@yopmail.com";
+  private static readonly QA_DIGEST_EMAIL = "mayank8@yopmail.com";
   private static readonly DEFAULT_BATCH_SIZE = 100;
   private static readonly DEFAULT_EMAIL_CONCURRENCY = 5;
 
@@ -78,13 +78,7 @@ export class WeeklyDigestService {
     const prevEnd = new Date(start);
     const prevStart = new Date(prevEnd.getTime() - 1 * 60 * 1000);
 
-    // Fetch lightweight global activity graph (only updates collection, not heavy)
-    const activityGraph = await this.fetchActivityGraph(
-      start,
-      end,
-      prevStart,
-      prevEnd,
-    );
+    // Note: per-user execution trends are computed per-batch below using daily metrics
 
     // Process users in batches using cursor-based pagination
     let lastCursor: ObjectId | undefined;
@@ -124,10 +118,16 @@ export class WeeklyDigestService {
         usersBatch,
       );
 
-      // Send emails with controlled concurrency
+      // Compute per-user execution trends from daily metrics (single batch query)
+      const activityGraphMap = await this.fetchExecutionTrendsForUsers(
+        userIds,
+        end,
+      );
+
+      // Send emails with controlled concurrency (per-user graphs)
       await this.sendEmailsBatch(
         userEmailDataMap,
-        activityGraph,
+        activityGraphMap,
         start,
         end,
         config.emailConcurrency,
@@ -172,44 +172,84 @@ export class WeeklyDigestService {
    * Fetch lightweight activity graph data.
    * Only queries the updates collection which is lightweight compared to workspace/collection scans.
    */
-  private async fetchActivityGraph(
-    start: Date,
+  /**
+   * Compute per-user execution trends using daily precomputed metrics.
+   * Returns a Map of userId -> ActivityGraph (totalExecutions, percentChange, graph)
+   */
+  private async fetchExecutionTrendsForUsers(
+    userIds: string[],
     end: Date,
-    prevStart: Date,
-    prevEnd: Date,
-  ): Promise<ActivityGraph> {
-    const [activityData, prevActivityData] = await Promise.all([
-      this.updatesRepository.getWeeklyActivity(start, end),
-      this.updatesRepository.getWeeklyActivity(prevStart, prevEnd),
-    ]);
+  ): Promise<Map<string, ActivityGraph>> {
+    const map = new Map<string, ActivityGraph>();
+    if (!userIds || userIds.length === 0) return map;
 
-    const dailyExecutions = this.formatWeeklyGraph(activityData);
-    const totalExecutions = dailyExecutions.reduce((a, b) => a + b, 0);
+    // Determine the week split points
+    const currentWeekStart = this.userMetricsRepository.getWeekStart(end);
+    const prevWeekStart = new Date(currentWeekStart);
+    prevWeekStart.setDate(currentWeekStart.getDate() - 7);
 
-    const prevDailyExecutions = this.formatWeeklyGraph(prevActivityData);
-    const previousCount = prevDailyExecutions.reduce((a, b) => a + b, 0);
+    // Fetch daily metrics for all users in one query
+    const rows = await this.userMetricsRepository.getDailyMetricsForUsers(
+      userIds,
+      prevWeekStart,
+      end,
+    );
 
-    let percentChange = 0;
-    if (previousCount === 0 && totalExecutions > 0) {
-      percentChange = 100;
-    } else if (previousCount > 0) {
-      percentChange = Math.round(
-        ((totalExecutions - previousCount) / previousCount) * 100,
-      );
+    // Group by userId
+    const grouped = new Map<
+      string,
+      Array<{ date: Date; totalExecutions: number }>
+    >();
+    for (const r of rows) {
+      const arr = grouped.get(r.userId) || [];
+      arr.push({ date: r.date, totalExecutions: r.totalExecutions });
+      grouped.set(r.userId, arr);
     }
 
-    const graphHeights = this.normalizeGraphData(dailyExecutions);
-    const max = Math.max(...graphHeights);
-    const graph = graphHeights.map((height) => ({
-      height,
-      isMax: height === max,
-    }));
+    // Build per-user activity graphs
+    for (const userId of userIds) {
+      const docs = grouped.get(userId) || [];
 
-    return {
-      totalExecutions,
-      percentChange,
-      graph,
-    };
+      // Accumulate per-day sums for current week (Mon→Sun)
+      const dailyExecutions = Array(7).fill(0);
+      let currentTotal = 0;
+      let prevTotal = 0;
+
+      for (const d of docs) {
+        const dt = new Date(d.date);
+        if (dt >= currentWeekStart) {
+          const idx = (dt.getDay() + 6) % 7; // Mon=0..Sun=6
+          dailyExecutions[idx] += d.totalExecutions || 0;
+          currentTotal += d.totalExecutions || 0;
+        } else {
+          prevTotal += d.totalExecutions || 0;
+        }
+      }
+
+      let percentChange = 0;
+      if (prevTotal === 0) {
+        percentChange = currentTotal > 0 ? 100 : 0;
+      } else {
+        percentChange = Math.round(
+          ((currentTotal - prevTotal) / prevTotal) * 100,
+        );
+      }
+
+      const graphHeights = this.normalizeGraphData(dailyExecutions);
+      const max = Math.max(...graphHeights);
+      const graph = graphHeights.map((height) => ({
+        height,
+        isMax: height === max,
+      }));
+
+      map.set(userId, {
+        totalExecutions: currentTotal,
+        percentChange,
+        graph,
+      });
+    }
+
+    return map;
   }
 
   /**
@@ -303,7 +343,7 @@ export class WeeklyDigestService {
    */
   private async sendEmailsBatch(
     userEmailDataMap: Map<string, UserEmailData>,
-    activityGraph: ActivityGraph,
+    activityGraphMap: Map<string, ActivityGraph>,
     start: Date,
     end: Date,
     concurrency: number,
@@ -322,6 +362,12 @@ export class WeeklyDigestService {
         try {
           const { user, metrics, collaborationUpdates, pendingActions } =
             userData;
+
+          const activityGraph = activityGraphMap.get(user._id.toString()) || {
+            totalExecutions: 0,
+            percentChange: 0,
+            graph: [],
+          };
 
           const unsubscribeLink = `${appUrl}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
 

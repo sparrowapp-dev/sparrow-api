@@ -129,6 +129,30 @@ export class UserMetricsBufferService implements OnModuleInit, OnModuleDestroy {
         weekStart,
       );
 
+      // Also flush per-user daily execution counts to user_metrics_daily
+      try {
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+
+        const dailyIncs = operations
+          .map(({ userId, payload }) => ({ userId, payload }))
+          .filter(({ payload }) => (payload.totalExecutions || 0) > 0)
+          .map(({ userId, payload }) => ({
+            userId,
+            totalExecutions: payload.totalExecutions || 0,
+          }));
+
+        if (dailyIncs.length > 0) {
+          // Delegate to repository to perform the bulk daily increments
+          await this.userMetricsRepository.bulkIncrementDailyMetrics(dailyIncs);
+
+          this.logger.log(
+            `Flushed daily metrics for ${dailyIncs.length} users`,
+          );
+        }
+      } catch (dailyErr) {
+        this.logger.error("Failed to flush daily user metrics", dailyErr);
+      }
       this.logger.log(`Flushed ${operations.length} operations`);
     } catch (error) {
       this.logger.error("Failed to flush user metrics buffer", error);
