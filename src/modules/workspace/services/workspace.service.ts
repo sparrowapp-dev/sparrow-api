@@ -103,6 +103,9 @@ export class WorkspaceService {
       );
     }
 
+    // Track access to workspaces as activity (fire-and-forget)
+    this.userMetricsService.onWorkspaceActive(userId);
+
     const userWorkspaceEntries = user.workspaces || [];
     const workspaceIdMap = new Map<string, boolean>();
 
@@ -432,6 +435,7 @@ export class WorkspaceService {
     const workspace = await this.IsWorkspaceAdminOrEditor(id, user._id);
     const updateNameMessage = `Workspace is renamed from "${workspace.name}" to "${updates.name}"`;
     const data = await this.workspaceRepository.update(id, updates, user._id);
+    this.userMetricsService.onWorkspaceActive(user._id.toString());
     const team = await this.teamRepository.findTeamByTeamId(
       new ObjectId(workspace.team.id),
     );
@@ -502,7 +506,6 @@ export class WorkspaceService {
     }
 
     // Track workspace activity (fire-and-forget)
-    this.userMetricsService.onWorkspaceActive(user._id.toString());
     return data;
   }
 

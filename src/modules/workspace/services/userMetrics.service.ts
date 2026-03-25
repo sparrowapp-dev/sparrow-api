@@ -55,6 +55,7 @@ export class UserMetricsService {
    * @param userId The user who was active in the workspace
    */
   async onWorkspaceActive(userId: string): Promise<void> {
+    this.logger.log(`ACTIVE WORKSPACE TRIGGERED: ${userId}`);
     this.trackMetric(userId, { activeWorkspaces: 1 }, "onWorkspaceActive");
   }
 
