@@ -46,6 +46,7 @@ export class WeeklyDigestService {
   private static readonly QA_DIGEST_EMAIL = "iamine@yopmail.com";
   private static readonly DEFAULT_BATCH_SIZE = 100;
   private static readonly DEFAULT_EMAIL_CONCURRENCY = 5;
+  private static isJobRunning = false;
 
   private readonly logger = new Logger(WeeklyDigestService.name);
 
@@ -65,98 +66,108 @@ export class WeeklyDigestService {
    * All metrics are computed per-batch using MongoDB aggregation pipelines.
    */
   async processWeeklyDigest(): Promise<void> {
-    this.logger.log("Processing weekly digest emails...");
-
-    const config: BatchConfig = {
-      userBatchSize: WeeklyDigestService.DEFAULT_BATCH_SIZE,
-      emailConcurrency: WeeklyDigestService.DEFAULT_EMAIL_CONCURRENCY,
-    };
-
-    const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
-
-    // Time range for the digest (last 1 min for testing, or use getLastWeekRange() for production)
-    // const end = new Date();
-    // const start = new Date(end.getTime() - 1 * 60 * 1000);
-    // const prevEnd = new Date(start);
-    // const prevStart = new Date(prevEnd.getTime() - 1 * 60 * 1000);
-
-    const end = new Date();
-    const start = this.userMetricsRepository.getWeekStart(end);
-    const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
-
-    // Note: per-user execution trends are computed per-batch below using daily metrics
-
-    // Process users in batches using cursor-based pagination
-    let lastCursor: ObjectId | undefined;
-    let totalUsersProcessed = 0;
-    let batchNumber = 0;
-
-    while (true) {
-      batchNumber++;
-      this.logger.log(`Starting batch ${batchNumber}...`);
-
-      // Fetch the next batch of users
-      const usersBatch = await this.getUsersBatch(
-        config.userBatchSize,
-        lastCursor,
-        // qaDigestEmail,
-      );
-
-      if (usersBatch.length === 0) {
-        this.logger.log(`No more users to process. Ending batch processing.`);
-        break;
-      }
-
-      this.logger.log(
-        `Batch ${batchNumber}: Processing ${usersBatch.length} users...`,
-      );
-
-      // Extract user IDs and emails for batch queries
-      const userIds = usersBatch.map((u) => u._id.toString());
-      const emails = usersBatch.map((u) => u.email);
-
-      // Fetch per-user data using precomputed user metrics (no aggregation)
-      const userEmailDataMap = await this.getMetricsForUserBatch(
-        start,
-        end,
-        userIds,
-        emails,
-        usersBatch,
-      );
-
-      // Compute per-user execution trends from daily metrics (single batch query)
-      const activityGraphMap = await this.fetchExecutionTrendsForUsers(
-        userIds,
-        end,
-      );
-
-      // Send emails with controlled concurrency (per-user graphs)
-      await this.sendEmailsBatch(
-        userEmailDataMap,
-        activityGraphMap,
-        start,
-        end,
-        config.emailConcurrency,
-      );
-
-      totalUsersProcessed += usersBatch.length;
-      this.logger.log(
-        `Batch ${batchNumber} complete. Total users processed: ${totalUsersProcessed}`,
-      );
-
-      // Update cursor for next batch
-      lastCursor = usersBatch[usersBatch.length - 1]._id;
-
-      // If we got fewer users than the batch size, we've reached the end
-      if (usersBatch.length < config.userBatchSize) {
-        this.logger.log(`Reached end of users. Stopping batch processing.`);
-        break;
-      }
+    if (WeeklyDigestService.isJobRunning) {
+      this.logger.warn("Weekly digest already running, skipping...");
+      return;
     }
 
-    this.logger.log(
-      `Weekly digest processing complete. Total users processed: ${totalUsersProcessed}`,
-    );
+    WeeklyDigestService.isJobRunning = true;
+    try {
+      this.logger.log("Processing weekly digest emails...");
+
+      const config: BatchConfig = {
+        userBatchSize: WeeklyDigestService.DEFAULT_BATCH_SIZE,
+        emailConcurrency: WeeklyDigestService.DEFAULT_EMAIL_CONCURRENCY,
+      };
+
+      const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
+
+      // Time range for the digest (last 1 min for testing, or use getLastWeekRange() for production)
+      // const end = new Date();
+      // const start = new Date(end.getTime() - 1 * 60 * 1000);
+      // const prevEnd = new Date(start);
+      // const prevStart = new Date(prevEnd.getTime() - 1 * 60 * 1000);
+
+      const end = new Date();
+      const start = this.userMetricsRepository.getWeekStart(end);
+      const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
+
+      // Note: per-user execution trends are computed per-batch below using daily metrics
+
+      // Process users in batches using cursor-based pagination
+      let lastCursor: ObjectId | undefined;
+      let totalUsersProcessed = 0;
+      let batchNumber = 0;
+
+      while (true) {
+        batchNumber++;
+        this.logger.log(`Starting batch ${batchNumber}...`);
+
+        // Fetch the next batch of users
+        const usersBatch = await this.getUsersBatch(
+          config.userBatchSize,
+          lastCursor,
+          // qaDigestEmail,
+        );
+
+        if (usersBatch.length === 0) {
+          this.logger.log(`No more users to process. Ending batch processing.`);
+          break;
+        }
+
+        this.logger.log(
+          `Batch ${batchNumber}: Processing ${usersBatch.length} users...`,
+        );
+
+        // Extract user IDs and emails for batch queries
+        const userIds = usersBatch.map((u) => u._id.toString());
+        const emails = usersBatch.map((u) => u.email);
+
+        // Fetch per-user data using precomputed user metrics (no aggregation)
+        const userEmailDataMap = await this.getMetricsForUserBatch(
+          start,
+          end,
+          userIds,
+          emails,
+          usersBatch,
+        );
+
+        // Compute per-user execution trends from daily metrics (single batch query)
+        const activityGraphMap = await this.fetchExecutionTrendsForUsers(
+          userIds,
+          end,
+        );
+
+        // Send emails with controlled concurrency (per-user graphs)
+        await this.sendEmailsBatch(
+          userEmailDataMap,
+          activityGraphMap,
+          start,
+          end,
+          config.emailConcurrency,
+        );
+
+        totalUsersProcessed += usersBatch.length;
+        this.logger.log(
+          `Batch ${batchNumber} complete. Total users processed: ${totalUsersProcessed}`,
+        );
+
+        // Update cursor for next batch
+        lastCursor = usersBatch[usersBatch.length - 1]._id;
+
+        // If we got fewer users than the batch size, we've reached the end
+        if (usersBatch.length < config.userBatchSize) {
+          this.logger.log(`Reached end of users. Stopping batch processing.`);
+          break;
+        }
+      }
+
+      this.logger.log(
+        `Weekly digest processing complete. Total users processed: ${totalUsersProcessed}`,
+      );
+    } finally {
+      WeeklyDigestService.isJobRunning = false;
+    }
   }
 
   /**
@@ -371,7 +382,13 @@ export class WeeklyDigestService {
       const qaUser = users.find(
         (u) => u.user.email === WeeklyDigestService.QA_DIGEST_EMAIL,
       );
-      users = qaUser ? [qaUser] : users.slice(0, 1);
+
+      if (!qaUser) {
+        this.logger.warn("QA user not found, skipping email in DEV");
+        return; // stop execution
+      }
+
+      users = [qaUser];
     }
 
     // Process emails with controlled concurrency using a promise pool
