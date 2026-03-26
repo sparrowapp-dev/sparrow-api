@@ -9,7 +9,7 @@ export class WeeklyDigestScheduler {
   constructor(private readonly weeklyDigestService: WeeklyDigestService) {}
 
   // Disabled until we are sure it works correctly and doesn't cause issues with the database load. We can enable it later once we have confidence in its stability.
-  @Cron(CronExpression.EVERY_MINUTE, {
+  @Cron(CronExpression.EVERY_10_MINUTES, {
     name: "weekly-digest",
     waitForCompletion: true,
   })
