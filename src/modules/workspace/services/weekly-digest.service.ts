@@ -43,7 +43,7 @@ interface UserEmailData {
 
 @Injectable()
 export class WeeklyDigestService {
-  private static readonly QA_DIGEST_EMAIL = "mayank8@yopmail.com";
+  private static readonly QA_DIGEST_EMAIL = "iamine@yopmail.com";
   private static readonly DEFAULT_BATCH_SIZE = 100;
   private static readonly DEFAULT_EMAIL_CONCURRENCY = 5;
 
