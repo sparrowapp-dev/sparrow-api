@@ -75,10 +75,14 @@ export class WeeklyDigestService {
     const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
 
     // Time range for the digest (last 1 min for testing, or use getLastWeekRange() for production)
+    // const end = new Date();
+    // const start = new Date(end.getTime() - 1 * 60 * 1000);
+    // const prevEnd = new Date(start);
+    // const prevStart = new Date(prevEnd.getTime() - 1 * 60 * 1000);
+
     const end = new Date();
-    const start = new Date(end.getTime() - 1 * 60 * 1000);
-    const prevEnd = new Date(start);
-    const prevStart = new Date(prevEnd.getTime() - 1 * 60 * 1000);
+    const start = this.userMetricsRepository.getWeekStart(end);
+    const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
 
     // Note: per-user execution trends are computed per-batch below using daily metrics
 
@@ -95,7 +99,7 @@ export class WeeklyDigestService {
       const usersBatch = await this.getUsersBatch(
         config.userBatchSize,
         lastCursor,
-        qaDigestEmail,
+        // qaDigestEmail,
       );
 
       if (usersBatch.length === 0) {
@@ -187,8 +191,7 @@ export class WeeklyDigestService {
 
     // Determine the week split points
     const currentWeekStart = this.userMetricsRepository.getWeekStart(end);
-    const prevWeekStart = new Date(currentWeekStart);
-    prevWeekStart.setDate(currentWeekStart.getDate() - 7);
+    const { start: prevWeekStart } = this.getPreviousWeekRange();
 
     // Fetch daily metrics for all users in one query
     const rows = await this.userMetricsRepository.getDailyMetricsForUsers(
@@ -267,8 +270,7 @@ export class WeeklyDigestService {
     users: WithId<User>[],
   ): Promise<Map<string, UserEmailData>> {
     // Compute weekStart once per batch using the repository helper
-    const weekStart = this.userMetricsRepository.getWeekStart();
-
+    const weekStart = this.userMetricsRepository.getWeekStart(end);
     // If userIds is very large, split into chunks to keep queries manageable
     const maxChunk = userIds.length > 1000 ? 800 : userIds.length;
     const chunks: string[][] = [];
@@ -360,7 +362,17 @@ export class WeeklyDigestService {
     const marketingBaseUrl =
       this.configService.get("MARKETING_BASE_URL") || "https://sparrowapp.dev";
 
-    const users = Array.from(userEmailDataMap.values());
+    const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
+    const isDev = env === "DEV";
+
+    let users = Array.from(userEmailDataMap.values());
+
+    if (isDev) {
+      const qaUser = users.find(
+        (u) => u.user.email === WeeklyDigestService.QA_DIGEST_EMAIL,
+      );
+      users = qaUser ? [qaUser] : users.slice(0, 1);
+    }
 
     // Process emails with controlled concurrency using a promise pool
     await this.processWithConcurrency(
@@ -378,10 +390,16 @@ export class WeeklyDigestService {
           };
 
           const unsubscribeLink = `${appUrl}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
+          const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
+          const isDev = env === "DEV";
+
+          const recipientEmail = isDev
+            ? WeeklyDigestService.QA_DIGEST_EMAIL
+            : user.email;
 
           const mailOptions = {
             from: senderEmail,
-            to: user.email,
+            to: recipientEmail,
             template: "weeklyDigestEmail",
             subject: "Your Weekly Digest 📊",
             headers: {
@@ -413,7 +431,7 @@ export class WeeklyDigestService {
           };
 
           await this.emailService.sendEmail(transporter, mailOptions);
-          this.logger.log(`Weekly digest sent to ${user.email}`);
+          this.logger.log(`Weekly digest sent to ${recipientEmail}`);
         } catch (error) {
           this.logger.error(
             `Failed to send weekly digest to ${userData.user.email}: ${error.message}`,
