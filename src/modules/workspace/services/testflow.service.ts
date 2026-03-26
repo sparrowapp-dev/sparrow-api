@@ -71,6 +71,7 @@ import { UserRepository } from "@src/modules/identity/repositories/user.reposito
 import { EnvironmentRepository } from "../repositories/environment.repository";
 import { Collections } from "@src/modules/common/enum/database.collection.enum";
 import { TeamRepository } from "@src/modules/identity/repositories/team.repository";
+import { UserMetricsService } from "./userMetrics.service";
 
 /**
  * Testflow Service
@@ -90,6 +91,7 @@ export class TestflowService implements OnModuleInit {
     private readonly userReposistory: UserRepository,
     private readonly environmentReposistory: EnvironmentRepository,
     private readonly teamReposistory: TeamRepository,
+    private readonly userMetricsService: UserMetricsService,
   ) {}
 
   async getNextFutureCronExpression(
@@ -100,15 +102,15 @@ export class TestflowService implements OnModuleInit {
     const parts = pastCron.trim().split(/\s+/);
     if (parts.length !== 6) return pastCron;
 
-    let second = parseInt(parts[0], 10);
-    let minute = parseInt(parts[1], 10);
-    let hour = parseInt(parts[2], 10);
-    let day = parseInt(parts[3], 10);
-    let month = parseInt(parts[4], 10) - 1;
+    const second = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1], 10);
+    const hour = parseInt(parts[2], 10);
+    const day = parseInt(parts[3], 10);
+    const month = parseInt(parts[4], 10) - 1;
 
     // Start from the past time
-    let now = new Date();
-    let next = new Date(
+    const now = new Date();
+    const next = new Date(
       Date.UTC(now.getUTCFullYear(), month, day, hour, minute, second, 0),
     );
 
@@ -429,6 +431,20 @@ export class TestflowService implements OnModuleInit {
       currentWorkspaceObject,
       updateWorkspaceData,
     );
+    // Fire-and-forget: track testflow creation as an execution metric
+    try {
+      if (user && user._id) {
+        const userIdStr =
+          typeof user._id === "string" ? user._id : user._id.toString();
+        this.userMetricsService.onTestflowExecuted(userIdStr);
+      }
+    } catch (err) {
+      // swallow errors - metric tracking must not block the flow
+      this.logger.warn(
+        `userMetrics onTestflowExecuted failed: ${err?.message || err}`,
+      );
+    }
+
     return testflow;
   }
 

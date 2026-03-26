@@ -57,6 +57,7 @@ import { EmailService } from "@src/modules/common/services/email.service";
 import { TestflowInfoDto } from "@src/modules/common/models/testflow.model";
 import { DecodedUserObject } from "@src/types/fastify";
 import { isValidName } from "@src/modules/common/util/validate.name.util";
+import { UserMetricsService } from "./userMetrics.service";
 
 /**
  * Workspace Service
@@ -73,6 +74,7 @@ export class WorkspaceService {
     private readonly configService: ConfigService,
     private readonly producerService: ProducerService,
     private readonly emailService: EmailService,
+    private readonly userMetricsService: UserMetricsService,
   ) {}
 
   async get(id: string): Promise<WithId<Workspace>> {
@@ -100,6 +102,9 @@ export class WorkspaceService {
         "The user with this id does not exist in the system",
       );
     }
+
+    // Track access to workspaces as activity (fire-and-forget)
+    this.userMetricsService.onWorkspaceActive(userId);
 
     const userWorkspaceEntries = user.workspaces || [];
     const workspaceIdMap = new Map<string, boolean>();
@@ -405,6 +410,9 @@ export class WorkspaceService {
       );
     }
 
+    // Track workspace creation (fire-and-forget)
+    this.userMetricsService.onWorkspaceCreated(user._id.toString());
+
     return response;
   }
 
@@ -427,6 +435,7 @@ export class WorkspaceService {
     const workspace = await this.IsWorkspaceAdminOrEditor(id, user._id);
     const updateNameMessage = `Workspace is renamed from "${workspace.name}" to "${updates.name}"`;
     const data = await this.workspaceRepository.update(id, updates, user._id);
+    this.userMetricsService.onWorkspaceActive(user._id.toString());
     const team = await this.teamRepository.findTeamByTeamId(
       new ObjectId(workspace.team.id),
     );
@@ -495,6 +504,8 @@ export class WorkspaceService {
         }),
       });
     }
+
+    // Track workspace activity (fire-and-forget)
     return data;
   }
 

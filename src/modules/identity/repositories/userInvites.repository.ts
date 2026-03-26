@@ -101,7 +101,6 @@ export class UserInvitesRepository {
       .aggregate([
         {
           $match: {
-            createdAt: { $gte: start, $lte: end },
             email: { $in: emails },
           },
         },

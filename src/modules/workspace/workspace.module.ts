@@ -26,6 +26,8 @@ import { ChatbotStatsRepository } from "./repositories/chatbot-stats.repositoy";
 import { TestflowRepository } from "./repositories/testflow.repository";
 import { SalesEmailRepository } from "./repositories/sales-email.repository";
 import { PricingRepository } from "./repositories/pricing.repository";
+import { UserMetricsRepository } from "./repositories/userMetrics.repository";
+import { UserMetricsBufferService } from "./services/userMetricsBuffer.service";
 
 // ---- Module
 import { IdentityModule } from "../identity/identity.module";
@@ -59,6 +61,7 @@ import { TeamUserService } from "../identity/services/team-user.service";
 import { SalesEmailService } from "./services/sales-email.service";
 import { PricingService } from "./services/pricing.repository";
 import { WeeklyDigestService } from "./services/weekly-digest.service";
+import { UserMetricsService } from "./services/userMetrics.service";
 
 // ---- Gateway
 import {
@@ -151,6 +154,9 @@ import { WeeklyDigestScheduler } from "./schedulers/weekly-digest.scheduler";
     AiConsumptionScheduler,
     WeeklyDigestScheduler,
     WeeklyDigestService,
+    UserMetricsRepository,
+    UserMetricsBufferService,
+    UserMetricsService,
   ],
   exports: [
     CollectionService,
@@ -179,6 +185,9 @@ import { WeeklyDigestScheduler } from "./schedulers/weekly-digest.scheduler";
     SalesEmailRepository,
     PricingService,
     PricingRepository,
+    UserMetricsRepository,
+    UserMetricsBufferService,
+    UserMetricsService,
   ],
   controllers: [
     WorkSpaceController,
