@@ -357,6 +357,8 @@ export class WeeklyDigestService {
     const transporter = this.emailService.createTransporter();
     const senderEmail = this.configService.get("app.senderEmail");
     const appUrl = this.configService.get("app.url");
+    const marketingBaseUrl =
+      this.configService.get("MARKETING_BASE_URL") || "https://sparrowapp.dev";
 
     const users = Array.from(userEmailDataMap.values());
 
@@ -403,7 +405,7 @@ export class WeeklyDigestService {
                 testflowsExecuted: metrics.testflowExecutions,
                 activeWorkspaces: metrics.activeWorkspaces,
               },
-              ctaLink: "https://sparrowapp.dev",
+              ctaLink: marketingBaseUrl,
               collaborationUpdates,
               pendingActions,
               unsubscribeLink,
