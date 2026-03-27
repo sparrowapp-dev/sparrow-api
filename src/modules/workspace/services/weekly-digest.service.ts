@@ -87,9 +87,10 @@ export class WeeklyDigestService {
       // const start = new Date(end.getTime() - 1 * 60 * 1000);
       // const prevEnd = new Date(start);
       // const prevStart = new Date(prevEnd.getTime() - 1 * 60 * 1000);
+      // const end = new Date();
+      // const start = this.userMetricsRepository.getWeekStart(end);
 
-      const end = new Date();
-      const start = this.userMetricsRepository.getWeekStart(end);
+      const { start, end } = this.getLastWeekRange();
       const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
 
       // Note: per-user execution trends are computed per-batch below using daily metrics
@@ -373,23 +374,27 @@ export class WeeklyDigestService {
     const marketingBaseUrl =
       this.configService.get("MARKETING_BASE_URL") || "https://sparrowapp.dev";
 
-    const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
-    const isDev = env === "DEV";
+    //Dev - send all digests to QA email
 
-    let users = Array.from(userEmailDataMap.values());
+    // const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
+    // const isDev = env === "DEV";
 
-    if (isDev) {
-      const qaUser = users.find(
-        (u) => u.user.email === WeeklyDigestService.QA_DIGEST_EMAIL,
-      );
+    // let users = Array.from(userEmailDataMap.values());
 
-      if (!qaUser) {
-        this.logger.warn("QA user not found, skipping email in DEV");
-        return; // stop execution
-      }
+    // if (isDev) {
+    //   const qaUser = users.find(
+    //     (u) => u.user.email === WeeklyDigestService.QA_DIGEST_EMAIL,
+    //   );
 
-      users = [qaUser];
-    }
+    //   if (!qaUser) {
+    //     this.logger.warn("QA user not found, skipping email in DEV");
+    //     return; // stop execution
+    //   }
+
+    //   users = [qaUser];
+    // }
+
+    const users = Array.from(userEmailDataMap.values());
 
     // Process emails with controlled concurrency using a promise pool
     await this.processWithConcurrency(
@@ -407,12 +412,17 @@ export class WeeklyDigestService {
           };
 
           const unsubscribeLink = `${appUrl}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
-          const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
-          const isDev = env === "DEV";
 
-          const recipientEmail = isDev
-            ? WeeklyDigestService.QA_DIGEST_EMAIL
-            : user.email;
+          // const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
+          // const isDev = env === "DEV";
+
+          // In DEV, override recipient email to QA email to avoid sending real emails
+
+          // const recipientEmail = isDev
+          //   ? WeeklyDigestService.QA_DIGEST_EMAIL
+          //   : user.email;
+
+          const recipientEmail = user.email;
 
           const mailOptions = {
             from: senderEmail,
