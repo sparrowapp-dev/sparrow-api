@@ -151,6 +151,8 @@ export class NotificationRepository {
             $push: {
               inviterName: "$data.inviterName",
               workspaceNames: "$data.workspaceNames",
+              role: "$data.role",
+              teamName: "$data.teamName",
             },
           },
         },
@@ -175,10 +177,24 @@ export class NotificationRepository {
       const messages: string[] = [];
       for (const inv of row.invites || []) {
         const inviter = inv?.inviterName || "Someone";
-        const workspaceName = Array.isArray(inv?.workspaceNames)
-          ? inv.workspaceNames[0]
-          : inv?.workspaceNames || "a workspace";
-        messages.push(`${inviter} invited you to ${workspaceName}`);
+
+        if (inv?.role === "admin") {
+          const teamName = inv?.teamName || "team";
+          messages.push(`${inviter} invited you as admin to ${teamName}`);
+        } else {
+          const workspaceNames = Array.isArray(inv?.workspaceNames)
+            ? inv.workspaceNames
+            : inv?.workspaceNames
+              ? [inv.workspaceNames]
+              : [];
+
+          const workspaceText =
+            workspaceNames.length > 0
+              ? workspaceNames.join(", ")
+              : "a workspace";
+
+          messages.push(`${inviter} invited you to ${workspaceText}`);
+        }
       }
       map.set(key, messages);
     }
