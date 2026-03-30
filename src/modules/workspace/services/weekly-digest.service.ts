@@ -82,14 +82,6 @@ export class WeeklyDigestService {
 
       const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
 
-      // Time range for the digest (last 1 min for testing, or use getLastWeekRange() for production)
-      // const end = new Date();
-      // const start = new Date(end.getTime() - 1 * 60 * 1000);
-      // const prevEnd = new Date(start);
-      // const prevStart = new Date(prevEnd.getTime() - 1 * 60 * 1000);
-      // const end = new Date();
-      // const start = this.userMetricsRepository.getWeekStart(end);
-
       const { start, end } = this.getLastWeekRange();
       const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
 
@@ -374,26 +366,6 @@ export class WeeklyDigestService {
     const marketingBaseUrl =
       this.configService.get("MARKETING_BASE_URL") || "https://sparrowapp.dev";
 
-    //Dev - send all digests to QA email
-
-    // const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
-    // const isDev = env === "DEV";
-
-    // let users = Array.from(userEmailDataMap.values());
-
-    // if (isDev) {
-    //   const qaUser = users.find(
-    //     (u) => u.user.email === WeeklyDigestService.QA_DIGEST_EMAIL,
-    //   );
-
-    //   if (!qaUser) {
-    //     this.logger.warn("QA user not found, skipping email in DEV");
-    //     return; // stop execution
-    //   }
-
-    //   users = [qaUser];
-    // }
-
     const users = Array.from(userEmailDataMap.values());
 
     // Process emails with controlled concurrency using a promise pool
@@ -412,15 +384,6 @@ export class WeeklyDigestService {
           };
 
           const unsubscribeLink = `${appUrl}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
-
-          // const env = this.configService.get<string>("APP_ENV")?.toUpperCase();
-          // const isDev = env === "DEV";
-
-          // In DEV, override recipient email to QA email to avoid sending real emails
-
-          // const recipientEmail = isDev
-          //   ? WeeklyDigestService.QA_DIGEST_EMAIL
-          //   : user.email;
 
           const recipientEmail = user.email;
 
