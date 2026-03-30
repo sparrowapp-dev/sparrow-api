@@ -2,7 +2,7 @@ name: Staging
 on:
   push:
     branches:
-      - release/2.37.0
+      - release/2.39.0
 
 jobs:
   build:
