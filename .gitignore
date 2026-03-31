@@ -43,3 +43,6 @@ build/config\.gypi
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat

@@ -74,7 +74,13 @@ const { PORT } = process.env;
   SwaggerModule.setup(SWAGGER_API_ROOT, app, document);
 
   // Enable Cross-Origin Resource Sharing (CORS)
-  app.enableCors();
+  if (process.env.APP_ENV === "DEV") {
+    app.enableCors({
+      origin: "*",
+    });
+  } else {
+    app.enableCors();
+  }
 
   // Register additional Fastify plugins
   app.register(headers);
