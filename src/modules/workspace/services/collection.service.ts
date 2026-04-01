@@ -59,6 +59,7 @@ import { UserRepository } from "@src/modules/identity/repositories/user.reposito
 import { CollectionGenerateVariableDto } from "@src/modules/common/models/collection.model";
 import { CollectionRequestService } from "./collection-request.service";
 import { WorkspaceRole } from "@src/modules/common/enum/roles.enum";
+import { UserMetricsService } from "./userMetrics.service";
 
 @Injectable()
 export class CollectionService {
@@ -73,6 +74,7 @@ export class CollectionService {
     private readonly cryptoService: EncryptionService,
     private readonly userRepository: UserRepository,
     private readonly collectionRequestService: CollectionRequestService,
+    private readonly userMetricsService: UserMetricsService,
   ) {}
 
   async createCollection(
@@ -123,6 +125,10 @@ export class CollectionService {
         workspaceId: createCollectionDto.workspaceId,
       }),
     });
+
+    // Track collection creation (fire-and-forget)
+    this.userMetricsService.onCollectionCreated(user._id.toString());
+
     return collection;
   }
 
@@ -1597,10 +1603,7 @@ export class CollectionService {
         "Please provide collectionId and Generated Variables.",
       );
     }
-    await this.workspaceService.IsWorkspaceAdminOrEditor(
-      workspaceId,
-      user._id,
-    );
+    await this.workspaceService.IsWorkspaceAdminOrEditor(workspaceId, user._id);
     await this.checkPermission(workspaceId, user._id);
     const collectionDocument = await this.getCollection(collectionId);
     if (!collectionDocument) {

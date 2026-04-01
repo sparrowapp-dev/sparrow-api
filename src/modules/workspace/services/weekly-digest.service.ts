@@ -1,14 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { UserRepository } from "@src/modules/identity/repositories/user.repository";
-import { TestflowRepository } from "../repositories/testflow.repository";
-import { WorkspaceRepository } from "../repositories/workspace.repository";
-import { CollectionRepository } from "../repositories/collection.repository";
+// testflow/workspace/collection repositories are not needed here; metrics come from UserMetricsRepository
 import { EmailService } from "@src/modules/common/services/email.service";
 import { ConfigService } from "@nestjs/config";
 import { UpdatesRepository } from "../repositories/updates.repository";
 import { UserInvitesRepository } from "@src/modules/identity/repositories/userInvites.repository";
+import { NotificationRepository } from "@src/modules/notifications/repositories/notification.repository";
+import { UserMetricsRepository } from "../repositories/userMetrics.repository";
 import { ObjectId, WithId } from "mongodb";
 import { User } from "@src/modules/common/models/user.model";
+import { UserMetricsData } from "@src/modules/common/models/user-metrics.model";
 
 /** Configuration for batch processing and concurrency */
 interface BatchConfig {
@@ -19,10 +20,10 @@ interface BatchConfig {
 /** Per-user metrics computed via batch aggregation */
 interface UserMetrics {
   activeWorkspaces: number;
-  newWorkspaces: number;
   collectionsCount: number;
   apisCount: number;
   testflowExecutions: number;
+  newWorkspaces: number;
 }
 
 /** Activity graph data for the digest */
@@ -42,21 +43,21 @@ interface UserEmailData {
 
 @Injectable()
 export class WeeklyDigestService {
-  private static readonly QA_DIGEST_EMAIL = "";
+  private static readonly QA_DIGEST_EMAIL = "iamine@yopmail.com";
   private static readonly DEFAULT_BATCH_SIZE = 100;
   private static readonly DEFAULT_EMAIL_CONCURRENCY = 5;
+  private static isJobRunning = false;
 
   private readonly logger = new Logger(WeeklyDigestService.name);
 
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly testflowRepository: TestflowRepository,
-    private readonly workspaceRepository: WorkspaceRepository,
-    private readonly collectionRepository: CollectionRepository,
     private readonly updatesRepository: UpdatesRepository,
+    private readonly userMetricsRepository: UserMetricsRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly userInvitesRepository: UserInvitesRepository,
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   /**
@@ -65,94 +66,101 @@ export class WeeklyDigestService {
    * All metrics are computed per-batch using MongoDB aggregation pipelines.
    */
   async processWeeklyDigest(): Promise<void> {
-    this.logger.log("Processing weekly digest emails...");
-
-    const config: BatchConfig = {
-      userBatchSize: WeeklyDigestService.DEFAULT_BATCH_SIZE,
-      emailConcurrency: WeeklyDigestService.DEFAULT_EMAIL_CONCURRENCY,
-    };
-
-    const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
-
-    // Time range for the digest (last 30 mins for testing, or use getLastWeekRange() for production)
-    const end = new Date();
-    const start = new Date(end.getTime() - 30 * 60 * 1000);
-    const prevEnd = new Date(start);
-    const prevStart = new Date(prevEnd.getTime() - 30 * 60 * 1000);
-
-    // Fetch lightweight global activity graph (only updates collection, not heavy)
-    const activityGraph = await this.fetchActivityGraph(
-      start,
-      end,
-      prevStart,
-      prevEnd,
-    );
-
-    // Process users in batches using cursor-based pagination
-    let lastCursor: ObjectId | undefined;
-    let totalUsersProcessed = 0;
-    let batchNumber = 0;
-
-    while (true) {
-      batchNumber++;
-      this.logger.log(`Starting batch ${batchNumber}...`);
-
-      // Fetch the next batch of users
-      const usersBatch = await this.getUsersBatch(
-        config.userBatchSize,
-        lastCursor,
-        qaDigestEmail,
-      );
-
-      if (usersBatch.length === 0) {
-        this.logger.log(`No more users to process. Ending batch processing.`);
-        break;
-      }
-
-      this.logger.log(
-        `Batch ${batchNumber}: Processing ${usersBatch.length} users...`,
-      );
-
-      // Extract user IDs and emails for batch queries
-      const userIds = usersBatch.map((u) => u._id.toString());
-      const emails = usersBatch.map((u) => u.email);
-
-      // Fetch per-user data and metrics in bulk using aggregation
-      const userEmailDataMap = await this.getMetricsForUserBatch(
-        start,
-        end,
-        userIds,
-        emails,
-        usersBatch,
-      );
-
-      // Send emails with controlled concurrency
-      await this.sendEmailsBatch(
-        userEmailDataMap,
-        activityGraph,
-        start,
-        end,
-        config.emailConcurrency,
-      );
-
-      totalUsersProcessed += usersBatch.length;
-      this.logger.log(
-        `Batch ${batchNumber} complete. Total users processed: ${totalUsersProcessed}`,
-      );
-
-      // Update cursor for next batch
-      lastCursor = usersBatch[usersBatch.length - 1]._id;
-
-      // If we got fewer users than the batch size, we've reached the end
-      if (usersBatch.length < config.userBatchSize) {
-        this.logger.log(`Reached end of users. Stopping batch processing.`);
-        break;
-      }
+    if (WeeklyDigestService.isJobRunning) {
+      this.logger.warn("Weekly digest already running, skipping...");
+      return;
     }
 
-    this.logger.log(
-      `Weekly digest processing complete. Total users processed: ${totalUsersProcessed}`,
-    );
+    WeeklyDigestService.isJobRunning = true;
+    try {
+      this.logger.log("Processing weekly digest emails...");
+
+      const config: BatchConfig = {
+        userBatchSize: WeeklyDigestService.DEFAULT_BATCH_SIZE,
+        emailConcurrency: WeeklyDigestService.DEFAULT_EMAIL_CONCURRENCY,
+      };
+
+      const qaDigestEmail = WeeklyDigestService.QA_DIGEST_EMAIL;
+
+      const { start, end } = this.getLastWeekRange();
+      const { start: prevStart, end: prevEnd } = this.getPreviousWeekRange();
+
+      // Note: per-user execution trends are computed per-batch below using daily metrics
+
+      // Process users in batches using cursor-based pagination
+      let lastCursor: ObjectId | undefined;
+      let totalUsersProcessed = 0;
+      let batchNumber = 0;
+
+      while (true) {
+        batchNumber++;
+        this.logger.log(`Starting batch ${batchNumber}...`);
+
+        // Fetch the next batch of users
+        const usersBatch = await this.getUsersBatch(
+          config.userBatchSize,
+          lastCursor,
+          // qaDigestEmail,
+        );
+
+        if (usersBatch.length === 0) {
+          this.logger.log(`No more users to process. Ending batch processing.`);
+          break;
+        }
+
+        this.logger.log(
+          `Batch ${batchNumber}: Processing ${usersBatch.length} users...`,
+        );
+
+        // Extract user IDs and emails for batch queries
+        const userIds = usersBatch.map((u) => u._id.toString());
+        const emails = usersBatch.map((u) => u.email);
+
+        // Fetch per-user data using precomputed user metrics (no aggregation)
+        const userEmailDataMap = await this.getMetricsForUserBatch(
+          start,
+          end,
+          userIds,
+          emails,
+          usersBatch,
+        );
+
+        // Compute per-user execution trends from daily metrics (single batch query)
+        const activityGraphMap = await this.fetchExecutionTrendsForUsers(
+          userIds,
+          end,
+        );
+
+        // Send emails with controlled concurrency (per-user graphs)
+        await this.sendEmailsBatch(
+          userEmailDataMap,
+          activityGraphMap,
+          start,
+          end,
+          config.emailConcurrency,
+        );
+
+        totalUsersProcessed += usersBatch.length;
+        this.logger.log(
+          `Batch ${batchNumber} complete. Total users processed: ${totalUsersProcessed}`,
+        );
+
+        // Update cursor for next batch
+        lastCursor = usersBatch[usersBatch.length - 1]._id;
+
+        // If we got fewer users than the batch size, we've reached the end
+        if (usersBatch.length < config.userBatchSize) {
+          this.logger.log(`Reached end of users. Stopping batch processing.`);
+          break;
+        }
+      }
+
+      this.logger.log(
+        `Weekly digest processing complete. Total users processed: ${totalUsersProcessed}`,
+      );
+    } finally {
+      WeeklyDigestService.isJobRunning = false;
+    }
   }
 
   /**
@@ -174,49 +182,88 @@ export class WeeklyDigestService {
    * Fetch lightweight activity graph data.
    * Only queries the updates collection which is lightweight compared to workspace/collection scans.
    */
-  private async fetchActivityGraph(
-    start: Date,
+  /**
+   * Compute per-user execution trends using daily precomputed metrics.
+   * Returns a Map of userId -> ActivityGraph (totalExecutions, percentChange, graph)
+   */
+  private async fetchExecutionTrendsForUsers(
+    userIds: string[],
     end: Date,
-    prevStart: Date,
-    prevEnd: Date,
-  ): Promise<ActivityGraph> {
-    const [activityData, prevActivityData] = await Promise.all([
-      this.updatesRepository.getWeeklyActivity(start, end),
-      this.updatesRepository.getWeeklyActivity(prevStart, prevEnd),
-    ]);
+  ): Promise<Map<string, ActivityGraph>> {
+    const map = new Map<string, ActivityGraph>();
+    if (!userIds || userIds.length === 0) return map;
 
-    const dailyExecutions = this.formatWeeklyGraph(activityData);
-    const totalExecutions = dailyExecutions.reduce((a, b) => a + b, 0);
+    // Determine the week split points
+    const currentWeekStart = this.userMetricsRepository.getWeekStart(end);
+    const { start: prevWeekStart } = this.getPreviousWeekRange();
 
-    const prevDailyExecutions = this.formatWeeklyGraph(prevActivityData);
-    const previousCount = prevDailyExecutions.reduce((a, b) => a + b, 0);
+    // Fetch daily metrics for all users in one query
+    const rows = await this.userMetricsRepository.getDailyMetricsForUsers(
+      userIds,
+      prevWeekStart,
+      end,
+    );
 
-    let percentChange = 0;
-    if (previousCount === 0 && totalExecutions > 0) {
-      percentChange = 100;
-    } else if (previousCount > 0) {
-      percentChange = Math.round(
-        ((totalExecutions - previousCount) / previousCount) * 100,
-      );
+    // Group by userId
+    const grouped = new Map<
+      string,
+      Array<{ date: Date; totalExecutions: number }>
+    >();
+    for (const r of rows) {
+      const arr = grouped.get(r.userId) || [];
+      arr.push({ date: r.date, totalExecutions: r.totalExecutions });
+      grouped.set(r.userId, arr);
     }
 
-    const graphHeights = this.normalizeGraphData(dailyExecutions);
-    const max = Math.max(...graphHeights);
-    const graph = graphHeights.map((height) => ({
-      height,
-      isMax: height === max,
-    }));
+    // Build per-user activity graphs
+    for (const userId of userIds) {
+      const docs = grouped.get(userId) || [];
 
-    return {
-      totalExecutions,
-      percentChange,
-      graph,
-    };
+      // Accumulate per-day sums for current week (Mon→Sun)
+      const dailyExecutions = Array(7).fill(0);
+      let currentTotal = 0;
+      let prevTotal = 0;
+
+      for (const d of docs) {
+        const dt = new Date(d.date);
+        if (dt >= currentWeekStart) {
+          const idx = (dt.getDay() + 6) % 7; // Mon=0..Sun=6
+          dailyExecutions[idx] += d.totalExecutions || 0;
+          currentTotal += d.totalExecutions || 0;
+        } else {
+          prevTotal += d.totalExecutions || 0;
+        }
+      }
+
+      let percentChange = 0;
+      if (prevTotal === 0) {
+        percentChange = currentTotal > 0 ? 100 : 0;
+      } else {
+        percentChange = Math.round(
+          ((currentTotal - prevTotal) / prevTotal) * 100,
+        );
+      }
+
+      const graphHeights = this.normalizeGraphData(dailyExecutions);
+      const max = Math.max(...graphHeights);
+      const graph = graphHeights.map((height) => ({
+        height,
+        isMax: height === max,
+      }));
+
+      map.set(userId, {
+        totalExecutions: currentTotal,
+        percentChange,
+        graph,
+      });
+    }
+
+    return map;
   }
 
   /**
    * Fetch per-user metrics for a batch of users using bulk aggregation queries.
-   * Computes workspace, collection, API, and testflow metrics using MongoDB aggregation.
+   * Avoids heavy aggregation and uses O(1) lookups.
    * Avoids N+1 queries by fetching all data in bulk.
    */
   private async getMetricsForUserBatch(
@@ -226,63 +273,69 @@ export class WeeklyDigestService {
     emails: string[],
     users: WithId<User>[],
   ): Promise<Map<string, UserEmailData>> {
-    // Build user-to-workspaces map for testflow metrics
-    const userWorkspacesMap = new Map<string, string[]>();
-    for (const user of users) {
-      const workspaceIds = (user.workspaces || []).map((w) => w.workspaceId);
-      userWorkspacesMap.set(user._id.toString(), workspaceIds);
+    // Compute weekStart once per batch using the repository helper
+    const weekStart = this.userMetricsRepository.getWeekStart(end);
+    // If userIds is very large, split into chunks to keep queries manageable
+    const maxChunk = userIds.length > 1000 ? 800 : userIds.length;
+    const chunks: string[][] = [];
+    for (let i = 0; i < userIds.length; i += maxChunk) {
+      chunks.push(userIds.slice(i, i + maxChunk));
     }
 
-    // Fetch all metrics in parallel using aggregation pipelines
-    const [workspaceMetricsMap, testflowMetricsMap, updatesMap, invitesMap] =
-      await Promise.all([
-        this.workspaceRepository.getWorkspaceMetricsForUserBatch(
-          userIds,
-          start,
-          end,
-        ),
-        this.testflowRepository.getTestflowMetricsForUserBatch(
-          userWorkspacesMap,
-          start,
-          end,
-        ),
-        this.updatesRepository.getUpdatesForBatch(start, end, userIds),
-        this.userInvitesRepository.getPendingInvitesForBatch(
-          start,
-          end,
-          emails,
-        ),
-      ]);
+    // Fetch metrics for all users in the batch (may run multiple queries if chunked)
+    const metricsPromises = chunks.map((chunk) =>
+      this.userMetricsRepository.getMetricsForUsers(chunk, weekStart),
+    );
 
-    // Build the email data map for each user
+    // Also fetch lightweight updates and pending invite notifications in parallel
+    const [metricsMapsArray, updatesMap, notificationsMap] = await Promise.all([
+      Promise.all(metricsPromises),
+      this.updatesRepository.getUpdatesForBatch(start, end, userIds),
+      this.notificationRepository.getPendingInvitesForUsers(
+        userIds,
+        start,
+        end,
+      ),
+    ]);
+
+    // Merge chunked metrics maps into a single map
+    const mergedMetricsMap = new Map<string, UserMetricsData>();
+    for (const map of metricsMapsArray) {
+      for (const [key, value] of map.entries()) {
+        mergedMetricsMap.set(key, value);
+      }
+    }
+    this.logger.log(
+      `Fetched metrics for ${userIds.length} users (chunks: ${chunks.length})`,
+    );
+
     const userEmailDataMap = new Map<string, UserEmailData>();
 
     for (const user of users) {
-      if (user.isWeeklyDigestEnabled === false) {
-        continue;
-      }
+      if (user.isWeeklyDigestEnabled === false) continue;
 
       const userId = user._id.toString();
       const collaborationUpdates = updatesMap.get(userId) || [];
-      const pendingActions = invitesMap.get(user.email) || [];
+      const pendingActions = notificationsMap.get(userId) || [];
 
-      // Get workspace metrics for this user
-      const workspaceMetrics = workspaceMetricsMap.get(userId) || {
+      const metricsData: UserMetricsData = mergedMetricsMap.get(userId) ?? {
+        userId,
+        weekStart,
+        totalExecutions: 0,
+        apisCreated: 0,
+        collectionsCount: 0,
         activeWorkspaces: 0,
         newWorkspaces: 0,
-        collectionsCount: 0,
-        apisCount: 0,
+        testflowsExecuted: 0,
+        updatedAt: new Date(),
       };
 
-      // Get testflow metrics for this user
-      const testflowExecutions = testflowMetricsMap.get(userId) || 0;
-
       const metrics: UserMetrics = {
-        activeWorkspaces: workspaceMetrics.activeWorkspaces,
-        newWorkspaces: workspaceMetrics.newWorkspaces,
-        collectionsCount: workspaceMetrics.collectionsCount,
-        apisCount: workspaceMetrics.apisCount,
-        testflowExecutions,
+        activeWorkspaces: metricsData.activeWorkspaces || 0,
+        newWorkspaces: metricsData.newWorkspaces || 0,
+        collectionsCount: metricsData.collectionsCount || 0,
+        apisCount: metricsData.apisCreated || 0,
+        testflowExecutions: metricsData.testflowsExecuted || 0,
       };
 
       userEmailDataMap.set(userId, {
@@ -302,7 +355,7 @@ export class WeeklyDigestService {
    */
   private async sendEmailsBatch(
     userEmailDataMap: Map<string, UserEmailData>,
-    activityGraph: ActivityGraph,
+    activityGraphMap: Map<string, ActivityGraph>,
     start: Date,
     end: Date,
     concurrency: number,
@@ -310,6 +363,8 @@ export class WeeklyDigestService {
     const transporter = this.emailService.createTransporter();
     const senderEmail = this.configService.get("app.senderEmail");
     const appUrl = this.configService.get("app.url");
+    const marketingBaseUrl =
+      this.configService.get("MARKETING_BASE_URL") || "https://sparrowapp.dev";
 
     const users = Array.from(userEmailDataMap.values());
 
@@ -322,11 +377,19 @@ export class WeeklyDigestService {
           const { user, metrics, collaborationUpdates, pendingActions } =
             userData;
 
+          const activityGraph = activityGraphMap.get(user._id.toString()) || {
+            totalExecutions: 0,
+            percentChange: 0,
+            graph: [],
+          };
+
           const unsubscribeLink = `${appUrl}/api/user/unsubscribe-weekly-digest?userId=${user._id}`;
+
+          const recipientEmail = user.email;
 
           const mailOptions = {
             from: senderEmail,
-            to: user.email,
+            to: recipientEmail,
             template: "weeklyDigestEmail",
             subject: "Your Weekly Digest 📊",
             headers: {
@@ -350,7 +413,7 @@ export class WeeklyDigestService {
                 testflowsExecuted: metrics.testflowExecutions,
                 activeWorkspaces: metrics.activeWorkspaces,
               },
-              ctaLink: "https://sparrowapp.dev",
+              ctaLink: marketingBaseUrl,
               collaborationUpdates,
               pendingActions,
               unsubscribeLink,
@@ -358,7 +421,7 @@ export class WeeklyDigestService {
           };
 
           await this.emailService.sendEmail(transporter, mailOptions);
-          this.logger.log(`Weekly digest sent to ${user.email}`);
+          this.logger.log(`Weekly digest sent to ${recipientEmail}`);
         } catch (error) {
           this.logger.error(
             `Failed to send weekly digest to ${userData.user.email}: ${error.message}`,

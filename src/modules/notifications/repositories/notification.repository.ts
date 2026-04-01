@@ -119,4 +119,86 @@ export class NotificationRepository {
       "data.inviteStatus": "pending",
     });
   }
+
+  /**
+   * Fetch pending workspace invite notifications for a list of users within a time range.
+   * Returns a Map keyed by userId (string) with an array of formatted messages.
+   */
+  async getPendingInvitesForUsers(
+    userIds: string[],
+    start: Date,
+    end: Date,
+  ): Promise<Map<string, string[]>> {
+    if (!userIds || userIds.length === 0) return new Map();
+
+    const objectIds = userIds.map((id) => new ObjectId(id));
+
+    const pipeline = [
+      {
+        $match: {
+          recipientId: { $in: objectIds },
+          type: "WORKSPACE_INVITE",
+          "data.inviteStatus": "pending",
+          createdAt: { $gte: start, $lte: end },
+          isArchived: false,
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$recipientId",
+          invites: {
+            $push: {
+              inviterName: "$data.inviterName",
+              workspaceNames: "$data.workspaceNames",
+              role: "$data.role",
+              teamName: "$data.teamName",
+            },
+          },
+        },
+      },
+      // Keep only the latest 5 invites per recipient for compactness
+      {
+        $project: {
+          invites: { $slice: ["$invites", 5] },
+        },
+      },
+    ];
+
+    const results = await this.db
+      .collection(Collections.NOTIFICATIONS)
+      .aggregate(pipeline)
+      .toArray();
+
+    const map = new Map<string, string[]>();
+
+    for (const row of results) {
+      const key = row._id.toString();
+      const messages: string[] = [];
+      for (const inv of row.invites || []) {
+        const inviter = inv?.inviterName || "Someone";
+
+        if (inv?.role === "admin") {
+          const teamName = inv?.teamName || "team";
+          messages.push(`${inviter} invited you as admin to ${teamName}`);
+        } else {
+          const workspaceNames = Array.isArray(inv?.workspaceNames)
+            ? inv.workspaceNames
+            : inv?.workspaceNames
+              ? [inv.workspaceNames]
+              : [];
+
+          const workspaceText =
+            workspaceNames.length > 0
+              ? workspaceNames.join(", ")
+              : "a workspace";
+
+          messages.push(`${inviter} invited you to ${workspaceText}`);
+        }
+      }
+      map.set(key, messages);
+    }
+
+    return map;
+  }
 }

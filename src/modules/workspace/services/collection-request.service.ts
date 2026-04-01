@@ -41,6 +41,8 @@ import { DecodedUserObject } from "@src/types/fastify";
 import { EncryptionService } from "@src/modules/common/services/encryption.service";
 import { Workspace } from "@src/modules/common/models/workspace.model";
 import { VariableDto } from "@src/modules/common/models/environment.model";
+import { UserMetricsService } from "./userMetrics.service";
+
 @Injectable()
 export class CollectionRequestService {
   constructor(
@@ -50,6 +52,7 @@ export class CollectionRequestService {
     private readonly branchRepository: BranchRepository,
     private readonly producerService: ProducerService,
     private readonly encryptionService: EncryptionService,
+    private readonly userMetricsService: UserMetricsService,
   ) {}
 
   async addFolder(
@@ -378,6 +381,10 @@ export class CollectionRequestService {
           workspaceId: request.workspaceId,
         }),
       });
+
+      // Track API creation (fire-and-forget)
+      this.userMetricsService.onApiCreated(user._id.toString());
+
       return requestObj;
     } else {
       requestObj.items = [
@@ -426,6 +433,10 @@ export class CollectionRequestService {
           workspaceId: request.workspaceId,
         }),
       });
+
+      // Track API creation (fire-and-forget)
+      this.userMetricsService.onApiCreated(user._id.toString());
+
       return requestObj.items[0];
     }
   }
@@ -1620,7 +1631,6 @@ export class CollectionRequestService {
     };
     let updateMessage = ``;
     if (aiRequest.items.type === ItemTypeEnum.AI_REQUEST) {
-
       let encryptedAuthValue: string | undefined;
       if (aiRequest.items.aiRequest?.auth?.apiKey?.authValue) {
         encryptedAuthValue = this.encryptionService.encrypt(
@@ -1636,8 +1646,7 @@ export class CollectionRequestService {
             },
           },
         };
-      }
-      else {
+      } else {
         aiRequestObj.aiRequest = aiRequest.items.aiRequest;
       }
 
@@ -1680,12 +1689,9 @@ export class CollectionRequestService {
             },
           },
         };
-      }
-      else {
+      } else {
         return aiRequestObj;
       }
-
-
     } else {
       if (aiRequest.items.items.aiRequest?.auth?.apiKey?.authValue) {
         const encryptedAuthValue = this.encryptionService.encrypt(
@@ -1714,8 +1720,7 @@ export class CollectionRequestService {
             updatedAt: new Date(),
           },
         ];
-    }
-    else {
+      } else {
         aiRequestObj.items = [
           {
             id: uuidv4(),
@@ -1765,15 +1770,15 @@ export class CollectionRequestService {
               apiKey: {
                 ...aiRequestObj.items[0].aiRequest.auth.apiKey,
                 authValue: this.encryptionService.decrypt(
-                  aiRequestObj.items[0].aiRequest.auth.apiKey.authValue as string,
+                  aiRequestObj.items[0].aiRequest.auth.apiKey
+                    .authValue as string,
                 ),
               },
             },
           },
         };
         return decryptedItem;
-      }
-      else {
+      } else {
         return aiRequestObj.items[0];
       }
     }
@@ -1816,8 +1821,7 @@ export class CollectionRequestService {
           },
         };
       }
-    }
-    else {
+    } else {
       if (aiRequest.items.items.aiRequest?.auth?.apiKey?.authValue) {
         const encryptedAuthValue = this.encryptionService.encrypt(
           aiRequest.items.items.aiRequest.auth.apiKey.authValue as string,
@@ -1847,11 +1851,11 @@ export class CollectionRequestService {
 
     // Decrypt authValue in flat structure
     if (collection?.aiRequest?.auth?.apiKey?.authValue) {
-      collection.aiRequest.auth.apiKey.authValue = this.encryptionService.decrypt(
+      collection.aiRequest.auth.apiKey.authValue =
+        this.encryptionService.decrypt(
           String(collection.aiRequest.auth.apiKey.authValue),
         );
     }
-
 
     const currentWorkspaceObject = new ObjectId(aiRequest.workspaceId);
     const updateWorkspaceData: Partial<Workspace> = {
@@ -2183,7 +2187,9 @@ export class CollectionRequestService {
     }
 
     // Extract data from collection
-    const { urls, bodies, queryParams, headers } = this.extractFromItems(collection.items);
+    const { urls, bodies, queryParams, headers } = this.extractFromItems(
+      collection.items,
+    );
 
     // Generate variables for each type
     const urlVariables = Object.entries(this.generateUrlVariables(urls)).map(
@@ -2234,10 +2240,12 @@ export class CollectionRequestService {
    */
   public clean(arr: any[] = []): any[] {
     return Array.isArray(arr)
-      ? arr.filter(entry => {
+      ? arr.filter((entry) => {
           const key = entry?.key?.trim().toLowerCase();
           const value = entry?.value?.trim();
-          return key && value && key !== 'user-agent' && key !== 'accept-encoding';
+          return (
+            key && value && key !== "user-agent" && key !== "accept-encoding"
+          );
         })
       : [];
   }
@@ -2293,7 +2301,7 @@ export class CollectionRequestService {
             const urlencoded = this.clean(req.body?.urlencoded);
             const formdataText = this.clean(req.body?.formdata?.text);
             const formdataFile = this.clean(req.body?.formdata?.file);
-            const raw = req.body?.raw || '';
+            const raw = req.body?.raw || "";
 
             const body: any = { raw };
 
@@ -2305,9 +2313,10 @@ export class CollectionRequestService {
             }
 
             const hasBodyContent =
-              raw.trim() !== '' ||
-              (body.urlencoded?.length > 0) ||
-              (body.formdata?.text?.length > 0 || body.formdata?.file?.length > 0);
+              raw.trim() !== "" ||
+              body.urlencoded?.length > 0 ||
+              body.formdata?.text?.length > 0 ||
+              body.formdata?.file?.length > 0;
 
             if (hasBodyContent) {
               bodies.push(body);
@@ -2348,7 +2357,8 @@ export class CollectionRequestService {
             if (Object.keys(socketBody).length > 0) bodies.push(socketBody);
 
             const cleanedSocketQuery = this.clean(req.queryParams);
-            if (cleanedSocketQuery.length > 0) queryParams.push(cleanedSocketQuery);
+            if (cleanedSocketQuery.length > 0)
+              queryParams.push(cleanedSocketQuery);
             break;
 
           case ItemTypeEnum.GRAPHQL:
@@ -2414,15 +2424,18 @@ export class CollectionRequestService {
     const existingVariablePattern = /\{\{?[^}]+\}?\}/g;
     const preservedVariables = new Set<string>();
 
-    urls.forEach(url => {
+    urls.forEach((url) => {
       const matches = url.match(existingVariablePattern);
       if (matches) {
-        matches.forEach(match => preservedVariables.add(match));
+        matches.forEach((match) => preservedVariables.add(match));
       }
     });
 
     // Find common substrings
-    const substringFrequency = new Map<string, { count: number; urls: number[] }>();
+    const substringFrequency = new Map<
+      string,
+      { count: number; urls: number[] }
+    >();
 
     urls.forEach((url, urlIndex) => {
       // Clean URL by removing existing variables
@@ -2435,30 +2448,39 @@ export class CollectionRequestService {
       });
 
       // Split URL into meaningful parts
-      const parts = cleanUrl.split(/[\/\?&=]/).filter(part => part.length > 0);
+      const parts = cleanUrl
+        .split(/[\/\?&=]/)
+        .filter((part) => part.length > 0);
 
       // Generate substrings
       for (let i = 0; i < parts.length; i++) {
         for (let j = i + 1; j <= Math.min(parts.length, i + 4); j++) {
-          const substring = parts.slice(i, j).join('/');
+          const substring = parts.slice(i, j).join("/");
 
           // Skip invalid substrings
-          if (substring.includes('__VAR_') || 
+          if (
+            substring.includes("__VAR_") ||
             substring.length < 3 ||
             /^\d+$/.test(substring) ||
-              substring.includes('%') || 
-              substring.includes('=')) continue;
+            substring.includes("%") ||
+            substring.includes("=")
+          )
+            continue;
 
           // Find actual substring in original URL
-          const urlParts = url.split('/');
-          let fullSubstring = '';
+          const urlParts = url.split("/");
+          let fullSubstring = "";
 
           for (let k = 0; k < urlParts.length; k++) {
             for (let l = k + 1; l <= urlParts.length; l++) {
-              const testSubstring = urlParts.slice(k, l).join('/');
-              if (testSubstring.includes(substring) && 
-                  !Array.from(preservedVariables).some(v => testSubstring.includes(v)) &&
-                  testSubstring.length >= 8) {
+              const testSubstring = urlParts.slice(k, l).join("/");
+              if (
+                testSubstring.includes(substring) &&
+                !Array.from(preservedVariables).some((v) =>
+                  testSubstring.includes(v),
+                ) &&
+                testSubstring.length >= 8
+              ) {
                 fullSubstring = testSubstring;
                 break;
               }
@@ -2486,15 +2508,17 @@ export class CollectionRequestService {
 
     const candidates = Array.from(substringFrequency.entries())
       .filter(([substring, data]) => {
-        return data.count >= threshold && 
+        return (
+          data.count >= threshold &&
           substring.length >= 8 &&
-               !Array.from(preservedVariables).some(v => substring.includes(v));
+          !Array.from(preservedVariables).some((v) => substring.includes(v))
+        );
       })
       .map(([substring, data]) => ({
         substring,
         count: data.count,
         length: substring.length,
-        priority: data.count * 1000 + substring.length
+        priority: data.count * 1000 + substring.length,
       }))
       .sort((a, b) => b.priority - a.priority);
 
@@ -2505,8 +2529,10 @@ export class CollectionRequestService {
       let shouldInclude = true;
 
       for (const selected of selectedCandidates) {
-        if (candidate.substring.includes(selected.substring) || 
-            selected.substring.includes(candidate.substring)) {
+        if (
+          candidate.substring.includes(selected.substring) ||
+          selected.substring.includes(candidate.substring)
+        ) {
           shouldInclude = false;
           break;
         }
@@ -2564,14 +2590,21 @@ export class CollectionRequestService {
     const valueFrequencyByKey = new Map<string, Map<string, number>>();
     const valueCountByKey: Record<string, number> = {};
 
-    const extractKeyValuePairs = (obj: any, parentKey = ''): Array<[string, string]> => {
+    const extractKeyValuePairs = (
+      obj: any,
+      parentKey = "",
+    ): Array<[string, string]> => {
       const pairs: Array<[string, string]> = [];
 
-      if (typeof obj === 'string') {
-        if (obj.trim() && !existingVariablePattern.test(obj.trim())) { pairs.push([parentKey || 'body', obj.trim()]); }
+      if (typeof obj === "string") {
+        if (obj.trim() && !existingVariablePattern.test(obj.trim())) {
+          pairs.push([parentKey || "body", obj.trim()]);
+        }
       } else if (Array.isArray(obj)) {
-        obj.forEach((item) => pairs.push(...extractKeyValuePairs(item, parentKey)));
-      } else if (typeof obj === 'object' && obj !== null) {
+        obj.forEach((item) =>
+          pairs.push(...extractKeyValuePairs(item, parentKey)),
+        );
+      } else if (typeof obj === "object" && obj !== null) {
         for (const [k, v] of Object.entries(obj)) {
           pairs.push(...extractKeyValuePairs(v, k));
         }
@@ -2585,10 +2618,19 @@ export class CollectionRequestService {
       // Process urlencoded
       if (body.urlencoded) {
         for (const item of body.urlencoded) {
-          if (item.checked !== false && item.value?.trim() && !existingVariablePattern.test(item.value)) {
+          if (
+            item.checked !== false &&
+            item.value?.trim() &&
+            !existingVariablePattern.test(item.value)
+          ) {
             const key = item.key.trim();
             const value = item.value.trim();
-            this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
+            this.addToFrequencyMap(
+              key,
+              value,
+              valueFrequencyByKey,
+              valueCountByKey,
+            );
           }
         }
       }
@@ -2596,10 +2638,19 @@ export class CollectionRequestService {
       // Process formdata
       if (body.formdata?.text) {
         for (const item of body.formdata.text) {
-          if (item.checked !== false && item.value?.trim() && !existingVariablePattern.test(item.value)) {
+          if (
+            item.checked !== false &&
+            item.value?.trim() &&
+            !existingVariablePattern.test(item.value)
+          ) {
             const key = item.key.trim();
             const value = item.value.trim();
-            this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
+            this.addToFrequencyMap(
+              key,
+              value,
+              valueFrequencyByKey,
+              valueCountByKey,
+            );
           }
         }
       }
@@ -2610,7 +2661,12 @@ export class CollectionRequestService {
           const parsed = JSON.parse(body.raw);
           const keyVals = extractKeyValuePairs(parsed);
           for (const [key, value] of keyVals) {
-            this.addToFrequencyMap(key, value, valueFrequencyByKey, valueCountByKey);
+            this.addToFrequencyMap(
+              key,
+              value,
+              valueFrequencyByKey,
+              valueCountByKey,
+            );
           }
         } catch {
           // Ignore parsing errors
@@ -2618,11 +2674,21 @@ export class CollectionRequestService {
       }
 
       // Process other body types (websocket, socketio, graphql)
-      ['message', 'event', 'query', 'mutation', 'variables'].forEach(field => {
-        if (body[field]?.trim() && !existingVariablePattern.test(body[field])) {
-          this.addToFrequencyMap(field, body[field].trim(), valueFrequencyByKey, valueCountByKey);
+      ["message", "event", "query", "mutation", "variables"].forEach(
+        (field) => {
+          if (
+            body[field]?.trim() &&
+            !existingVariablePattern.test(body[field])
+          ) {
+            this.addToFrequencyMap(
+              field,
+              body[field].trim(),
+              valueFrequencyByKey,
+              valueCountByKey,
+            );
           }
-      });
+        },
+      );
     }
 
     // Generate variables
@@ -2635,7 +2701,7 @@ export class CollectionRequestService {
 
       for (const [value, count] of valMap.entries()) {
         if (count >= threshold) {
-          const cleanKey = key || 'body';
+          const cleanKey = key || "body";
           const varName = `${cleanKey}_var${keyVarCounters[key]++}`;
           result[varName] = value;
         }
@@ -2658,7 +2724,9 @@ export class CollectionRequestService {
    * @returns
    *   An object mapping generated variable names to their original string values.
    */
-  public generateQueryVariables(paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>): Record<string, string> {
+  public generateQueryVariables(
+    paramGroups: Array<Array<{ key: string; value: string; checked: boolean }>>,
+  ): Record<string, string> {
     if (paramGroups.length === 0) return {};
     const existingVariablePattern = /\{\{?[^}]+\}?\}/; // Matches {{VAR}}, {VAR}
 
@@ -2668,7 +2736,8 @@ export class CollectionRequestService {
     // Count frequencies per key
     for (const group of paramGroups) {
       for (const param of group) {
-        if ( param.value?.trim() &&
+        if (
+          param.value?.trim() &&
           !existingVariablePattern.test(param.value.trim()) // skip pre-existing vars
         ) {
           const key = param.key.trim();
@@ -2703,7 +2772,9 @@ export class CollectionRequestService {
     * @returns A record mapping generated variable names to header values.
   */
   public generateHeaderVariables(
-    headerGroups: Array<Array<{ key: string; value: string; checked: boolean }>>
+    headerGroups: Array<
+      Array<{ key: string; value: string; checked: boolean }>
+    >,
   ): Record<string, string> {
     if (headerGroups.length === 0) return {};
 
@@ -2745,7 +2816,6 @@ export class CollectionRequestService {
     return result;
   }
 
-
   /**
    * Adds a key–value occurrence to a nested frequency map and updates its count.
    *
@@ -2760,7 +2830,7 @@ export class CollectionRequestService {
     key: string,
     value: string,
     frequencyMap: Map<string, Map<string, number>>,
-    countMap: Record<string, number>
+    countMap: Record<string, number>,
   ) {
     if (!frequencyMap.has(key)) {
       frequencyMap.set(key, new Map());
